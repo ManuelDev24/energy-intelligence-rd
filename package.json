@@ -1,0 +1,23 @@
+{
+  "name": "energy-rd",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:mobile": "npm run start --workspace apps/mobile",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:api": "npm run dev --workspace services/api",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "db:migrate": "cd services/api && alembic upgrade head",
+    "db:generate": "cd services/api && alembic revision --autogenerate"
+  },
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*",
+    "mcp/*"
+  ],
+  "devDependencies": {},
+  "dependencies": {}
+}
