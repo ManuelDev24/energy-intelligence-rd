@@ -18,6 +18,8 @@ class Home(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Clave estable opcional (p. ej. PILOT-01); permite seeds idempotentes.
+    code: Mapped[str | None] = mapped_column(String(32), unique=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     address: Mapped[str | None] = mapped_column(String(255))
     city: Mapped[str | None] = mapped_column(String(120))

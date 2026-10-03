@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     DATABASE_URL: str = DEFAULT_DATABASE_URL
     ENVIRONMENT: str = "development"
+    # Orígenes permitidos por CORS, separados por coma. Nunca "*" con credenciales.
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8081,http://localhost:19006"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
 
 @lru_cache
