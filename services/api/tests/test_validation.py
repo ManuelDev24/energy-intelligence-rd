@@ -21,7 +21,7 @@ def test_schema_rejects_unknown_distributor():
 
 
 def _bill(**kw):
-    base = dict(home_id="x", period_start=date(2026, 8, 1), period_end=date(2026, 8, 31),
+    base = dict(period_start=date(2026, 8, 1), period_end=date(2026, 8, 31),
                 kwh=Decimal("100"), amount_dop=Decimal("1500"), days=30)
     base.update(kw)
     return BillCreate(**base)

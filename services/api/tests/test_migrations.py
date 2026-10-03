@@ -17,10 +17,23 @@ def test_upgrade_downgrade_upgrade(engine, alembic_cfg):
 
     command.upgrade(alembic_cfg, "head")
     assert {"homes", "bills", "alerts"} <= _tables(engine)
+    assert "code" in {c["name"] for c in inspect(engine).get_columns("homes")}
 
+    # downgrade -1 revierte solo la última migración (0002): tablas siguen, columnas nuevas no.
     command.downgrade(alembic_cfg, "-1")
-    assert not ({"homes", "bills", "alerts"} & _tables(engine))
+    assert {"homes", "bills", "alerts"} <= _tables(engine)
+    assert "code" not in {c["name"] for c in inspect(engine).get_columns("homes")}
 
+    command.upgrade(alembic_cfg, "head")
+    assert "code" in {c["name"] for c in inspect(engine).get_columns("homes")}
+
+
+def test_full_downgrade_to_base_and_back(engine, alembic_cfg):
+    with engine.begin() as c:
+        c.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+    command.upgrade(alembic_cfg, "head")
+    command.downgrade(alembic_cfg, "base")
+    assert not ({"homes", "bills", "alerts"} & _tables(engine))
     command.upgrade(alembic_cfg, "head")
     assert {"homes", "bills", "alerts"} <= _tables(engine)
 

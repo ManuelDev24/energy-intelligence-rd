@@ -60,3 +60,38 @@ def session(migrated):
     with Session(migrated) as s:
         yield s
         s.rollback()
+
+
+@pytest.fixture()
+def client(migrated):
+    """TestClient de la API contra la base de pruebas ya migrada (vacía)."""
+    from fastapi.testclient import TestClient
+    from sqlalchemy.orm import sessionmaker
+
+    from app.database import get_db
+    from app.main import app
+
+    factory = sessionmaker(bind=migrated, autoflush=False, expire_on_commit=False)
+
+    def _get_db():
+        db = factory()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = _get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def seeded_client(client, migrated):
+    from sqlalchemy.orm import Session
+
+    from app.seed import seed_pilot
+
+    with Session(migrated) as s:
+        seed_pilot(s)
+    return client
