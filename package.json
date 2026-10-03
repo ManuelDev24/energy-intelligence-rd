@@ -9,7 +9,7 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test --workspace apps/web --workspace apps/mobile --if-present",
     "db:migrate": "cd services/api && alembic upgrade head",
     "db:generate": "cd services/api && alembic revision --autogenerate"
   },
@@ -19,6 +19,10 @@
     "packages/*",
     "mcp/*"
   ],
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
   "devDependencies": {},
   "dependencies": {}
 }
