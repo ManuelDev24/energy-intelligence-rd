@@ -1,7 +1,8 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect } from 'react';
+import { useEffect, type ComponentProps } from 'react';
 
 import { useAlerts } from '../api/hooks';
 import { Loading } from '../components/ui';
@@ -26,11 +27,28 @@ export type TabParams = { Dashboard: undefined; Bills: undefined; Equipment: und
 const Stack = createNativeStackNavigator<RootStackParams>();
 const Tab = createBottomTabNavigator<TabParams>();
 
+type IconName = ComponentProps<typeof Ionicons>['name'];
+const TAB_ICONS: Record<keyof TabParams, [IconName, IconName]> = {
+  Dashboard: ['home', 'home-outline'],
+  Bills: ['receipt', 'receipt-outline'],
+  Equipment: ['flash', 'flash-outline'],
+  Alerts: ['notifications', 'notifications-outline'],
+  Homes: ['business', 'business-outline'],
+};
+
 function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
   const homeId = useSession((st) => st.selectedHomeId);
   const unread = unreadCount(useAlerts(homeId).data);
   return (
-    <Tab.Navigator screenOptions={{ tabBarActiveTintColor: colors.primary, headerTitleAlign: 'center' }}>
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarActiveTintColor: colors.primary,
+        headerTitleAlign: 'center',
+        tabBarIcon: ({ color, size, focused }) => (
+          <Ionicons name={TAB_ICONS[route.name][focused ? 0 : 1]} size={size} color={color} />
+        ),
+      })}
+    >
       <Tab.Screen name="Dashboard" options={{ title: 'Inicio' }} component={DashboardScreen} />
       <Tab.Screen name="Bills" options={{ title: 'Facturas' }}>
         {() => <BillsScreen onAdd={() => navigation.navigate('BillForm')} />}

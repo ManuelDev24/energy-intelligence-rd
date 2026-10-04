@@ -36,7 +36,7 @@ def thresholds(db: Session, home_id: uuid.UUID) -> tuple[Decimal, Decimal]:
 
 def _message(pct: Decimal, prev: Bill, cur: Bill) -> str:
     return (f"El consumo subió {pct}% frente al período anterior "
-            f"({prev.kwh} kWh → {cur.kwh} kWh).")
+            f"({calc.q2(prev.kwh)} kWh → {calc.q2(cur.kwh)} kWh).")
 
 
 def recompute_alerts(db: Session, home_id: uuid.UUID) -> None:

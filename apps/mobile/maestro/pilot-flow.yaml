@@ -1,0 +1,156 @@
+# ERD-MOB-QUALITY — recorrido piloto sobre la UI real (Expo Go en simulador/emulador).
+# vivienda → factura → historial → dashboard → alerta → descartar → limpieza.
+#
+# Requisitos: API sembrada en :8000, `npx expo start` en :8081, Expo Go instalado.
+# Ejecutar:   maestro test apps/mobile/maestro/pilot-flow.yaml                         (iOS)
+#             maestro test -e APP_ID=host.exp.exponent -e EXPO_URL=exp://<IP-LAN>:8081 \
+#               apps/mobile/maestro/pilot-flow.yaml                                   (Android)
+appId: ${APP_ID || 'host.exp.Exponent'}
+---
+- launchApp:
+    stopApp: true
+- openLink: ${EXPO_URL || 'exp://127.0.0.1:8081'}
+# Expo Go muestra su menú de desarrollo la primera vez tras borrar datos y tapa la app:
+# esperar a la app o al menú, y cerrar el menú si aparece.
+- extendedWaitUntil:
+    visible: "(Bienvenido a Energy RD|This is the developer menu.*)"
+    timeout: 120000
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - tapOn: "Continue"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "Toggle performance monitor"
+    commands:
+      - back
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Bienvenido a Energy RD"
+    timeout: 20000
+- takeScreenshot: evidence/01-onboarding
+
+# 1. Onboarding corto y selección de vivienda
+- tapOn:
+    id: "onboarding-skip"
+- extendedWaitUntil:
+    visible:
+      id: "home-PILOT-05"
+    timeout: 20000
+- tapOn:
+    id: "home-PILOT-05"
+- assertVisible: "Vivienda activa"
+- tapOn:
+    id: "onboarding-finish"
+- waitForAnimationToEnd
+
+# 2. Dashboard inicial: datos demo, sin alerta, etiquetas de calidad
+- extendedWaitUntil:
+    visible: "Vivienda piloto 05 \\(demo\\)"
+    timeout: 20000
+- assertVisible: "Inicio"
+- assertVisible:
+    id: "demo-banner"
+- assertNotVisible:
+    id: "alert-banner"
+- assertVisible: "PROYECTADO"
+- takeScreenshot: evidence/02-dashboard-inicial
+
+# 3. Historial y registro de factura (primero un dato inválido)
+- tapOn: "Facturas"
+- assertVisible:
+    id: "bill-2026-07-01"
+- tapOn:
+    id: "add-bill"
+# El formulario sugiere el período siguiente: borrar y escribir valores explícitos.
+- tapOn:
+    id: "f-start"
+- eraseText: 20
+- inputText: "2026-08-01"
+- tapOn:
+    id: "f-end"
+- eraseText: 20
+- inputText: "2026-08-31"
+- tapOn:
+    id: "f-days"
+- eraseText: 5
+- inputText: "31"
+- tapOn:
+    id: "f-kwh"
+- eraseText: 10
+- inputText: "-5"
+- tapOn:
+    id: "f-amount"
+- eraseText: 10
+- inputText: "5200"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "save-bill"
+- tapOn:
+    id: "save-bill"
+- scrollUntilVisible:
+    element:
+      id: "f-kwh-error"
+    direction: UP
+- takeScreenshot: evidence/03-validacion
+- tapOn:
+    id: "f-kwh"
+- eraseText: 10
+- inputText: "400"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "save-bill"
+- tapOn:
+    id: "save-bill"
+- extendedWaitUntil:
+    visible:
+      id: "bill-2026-08-01"
+    timeout: 20000
+- takeScreenshot: evidence/04-historial
+
+# 4. Dashboard actualizado con alerta crítica y proyección
+- tapOn: "Inicio"
+- extendedWaitUntil:
+    visible:
+      id: "alert-banner"
+    timeout: 20000
+- assertVisible: "Alerta crítica"
+- assertVisible:
+    id: "card-projection"
+- takeScreenshot: evidence/05-dashboard-alerta
+
+# 5. Alertas: descartar
+- tapOn: "Alertas"
+- assertVisible: "Crítica · nueva"
+- takeScreenshot: evidence/06-alertas
+- tapOn: "Descartar"
+- extendedWaitUntil:
+    visible: "Sin alertas"
+    timeout: 20000
+
+# 6. Equipos: estimado etiquetado
+- tapOn: "Equipos"
+- extendedWaitUntil:
+    visible:
+      id: "estimate-summary"
+    timeout: 20000
+- assertVisible: "ESTIMADO"
+- takeScreenshot: evidence/07-equipos
+
+# 7. Limpieza: borrar la factura creada
+- tapOn: "Facturas"
+- scrollUntilVisible:
+    element:
+      id: "bill-2026-08-01"
+- tapOn:
+    text: "Eliminar"
+    index: 0
+- tapOn: "(?i)eliminar"
+- extendedWaitUntil:
+    notVisible:
+      id: "bill-2026-08-01"
+    timeout: 20000

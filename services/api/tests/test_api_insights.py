@@ -100,6 +100,7 @@ def test_alert_created_with_basis_period_severity_and_unread(client):
     [a] = alerts(client, h["id"])
     assert a["severity"] == "warning" and a["status"] == "unread" and a["bill_id"] == b2["id"]
     assert float(a["kwh_pct"]) == 25 and float(a["threshold_pct"]) == 20
+    assert a["message"].endswith("(100.00 kWh → 125.00 kWh).")
     assert a["basis_period_start"] == "2026-06-01" and a["basis_period_end"] == "2026-06-30"
     add_bill(client, h["id"], "2026-08-01", "2026-08-30", "200")    # +60 % vs 125
     crit = [x for x in alerts(client, h["id"]) if x["severity"] == "critical"]
