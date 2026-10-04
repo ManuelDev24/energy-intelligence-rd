@@ -9,6 +9,7 @@ from app.schemas.dashboard import (
     AlertOut, Comparison, DashboardHome, DashboardOut, DataStatus, LatestBill, Metric, ProjectionOut,
 )
 from app.services import calculations as calc
+from app.services.alerts import thresholds as alert_thresholds
 
 QUALITY_LEGEND = {
     "REAL": "Dato tomado directamente de una factura mensual introducida.",
@@ -61,7 +62,8 @@ def build_dashboard(db: Session, home: Home) -> DashboardOut:
         )
         if v.kwh_pct is None:
             reasons.append("El período anterior tiene 0 kWh: no se calcula variación porcentual.")
-        sev = calc.severity_for(v.kwh_pct)
+        warning_pct, critical_pct = alert_thresholds(db, home.id)
+        sev = calc.severity_for(v.kwh_pct, warning_pct, critical_pct)
         if sev:
             alert = AlertOut(
                 severity=sev,

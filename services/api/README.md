@@ -33,6 +33,12 @@ uv run pytest                        # usa la base energy_rd_test (la crea sola)
 | GET/POST | `/homes/{home_id}/bills` | Listar / crear facturas manuales |
 | GET/PUT/DELETE | `/homes/{home_id}/bills/{bill_id}` | Detalle / reemplazar / borrar |
 | GET | `/homes/{home_id}/dashboard` | Consumo, variación, proyección y alerta |
+| GET/POST | `/homes/{home_id}/equipment` | Listar / declarar equipos (nombre, habitación, W, horas/día) |
+| GET | `/homes/{home_id}/equipment/estimate` | Consumo estimado por equipo y total (`ESTIMATED`) |
+| GET/PUT/DELETE | `/homes/{home_id}/equipment/{equipment_id}` | Detalle / reemplazar / borrar equipo |
+| GET | `/homes/{home_id}/alerts` | Alertas de variación (`?status=unread\|read\|dismissed`, `?include_dismissed=true`) |
+| PATCH | `/homes/{home_id}/alerts/{alert_id}` | Cambiar estado: `unread`, `read`, `dismissed` |
+| GET/PUT | `/homes/{home_id}/alert-settings` | Umbrales de la vivienda (`warning_pct`, `critical_pct`) |
 
 Datos inválidos → 422 (validación), vivienda/factura inexistente → 404, período solapado o código duplicado → 409.
 
@@ -42,8 +48,17 @@ Datos inválidos → 422 (validación), vivienda/factura inexistente → 404, pe
   (kWh/día, RD$/kWh). `PROJECTED`: proyección lineal (mínimos cuadrados, últimas ≤6 facturas).
 - Con menos de 2 facturas no hay comparación ni proyección; el motivo va en `data_status.insufficient_reasons`.
 - Si el período base tiene 0 kWh no se calcula porcentaje. No hay métricas horarias (`hourly_data_available=false`).
-- Alerta por reglas sobre variación de kWh: ≥20 % `warning`, ≥40 % `critical`.
+- Alerta por reglas sobre variación de kWh: ≥20 % `warning`, ≥40 % `critical` (umbrales configurables por vivienda).
 - Las facturas del seed llevan `source="seed"` y el dashboard marca `is_demo=true`.
+
+## Equipos y alertas (ERD-API-INSIGHTS)
+
+- **Equipos:** consumo = W × horas/día ÷ 1000 (× 30 días al mes). Siempre `ESTIMATED`: no es una medición.
+  `bill_coverage_pct` indica qué % de la última factura (normalizada a 30 días) explican los equipos declarados.
+- **Alertas:** se recalculan en cada alta/edición/baja de factura y al cambiar umbrales. Solo hay alerta si existe
+  factura anterior (período base) y se supera el umbral; base de 0 kWh nunca alerta. Recalcular conserva
+  `read`/`dismissed`, salvo que cambie el contenido de la alerta (vuelve a `unread`).
+- Validación: potencia 0–100 000 W, horas 0–24, umbrales > 0 y `critical_pct ≥ warning_pct` (422 si no).
 
 ## CORS
 

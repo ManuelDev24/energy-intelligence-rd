@@ -79,7 +79,21 @@ def project_next(bills_oldest_first: Sequence[BillLike]) -> Projection | None:
     )
 
 
-def severity_for(kwh_pct: Decimal | None) -> str | None:
-    if kwh_pct is None or kwh_pct < WARNING_PCT:
+def severity_for(kwh_pct: Decimal | None, warning_pct: Decimal = WARNING_PCT,
+                 critical_pct: Decimal = CRITICAL_PCT) -> str | None:
+    if kwh_pct is None or kwh_pct < warning_pct:
         return None
-    return "critical" if kwh_pct >= CRITICAL_PCT else "warning"
+    return "critical" if kwh_pct >= critical_pct else "warning"
+
+
+# ---------- Equipos declarados (siempre ESTIMATED) ----------
+DAYS_PER_MONTH = Decimal(30)
+
+
+def equipment_daily_kwh(power_w: Decimal, hours_per_day: Decimal) -> Decimal:
+    """kWh/día = W × h / 1000. Es una estimación: supone potencia nominal constante."""
+    return q2(power_w * hours_per_day / 1000)
+
+
+def equipment_monthly_kwh(power_w: Decimal, hours_per_day: Decimal) -> Decimal:
+    return q2(power_w * hours_per_day / 1000 * DAYS_PER_MONTH)

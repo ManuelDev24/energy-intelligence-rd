@@ -43,4 +43,4 @@ class Bill(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     home = relationship("Home", back_populates="bills")
-    alerts = relationship("Alert", back_populates="bill")
+    alerts = relationship("Alert", back_populates="bill", foreign_keys="Alert.bill_id", passive_deletes=True)

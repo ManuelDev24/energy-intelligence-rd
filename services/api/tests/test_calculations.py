@@ -60,3 +60,16 @@ def test_severity_thresholds():
     assert calc.severity_for(D("20")) == "warning"
     assert calc.severity_for(D("39.99")) == "warning"
     assert calc.severity_for(D("40")) == "critical"
+
+
+def test_severity_custom_thresholds():
+    assert calc.severity_for(D("12"), D("10"), D("15")) == "warning"
+    assert calc.severity_for(D("15"), D("10"), D("15")) == "critical"
+    assert calc.severity_for(D("9.99"), D("10"), D("15")) is None
+
+
+def test_equipment_estimates_exact():
+    assert calc.equipment_daily_kwh(D("150"), D("24")) == D("3.60")
+    assert calc.equipment_monthly_kwh(D("150"), D("24")) == D("108.00")
+    assert calc.equipment_daily_kwh(D("0"), D("10")) == D("0.00")
+    assert calc.equipment_monthly_kwh(D("1100"), D("6")) == D("198.00")

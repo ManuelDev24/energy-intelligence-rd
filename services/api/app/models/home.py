@@ -31,3 +31,6 @@ class Home(Base):
 
     bills = relationship("Bill", back_populates="home", cascade="all, delete-orphan")
     alerts = relationship("Alert", back_populates="home", cascade="all, delete-orphan")
+    equipment = relationship("Equipment", back_populates="home", cascade="all, delete-orphan")
+    alert_settings = relationship("AlertSettings", back_populates="home", cascade="all, delete-orphan",
+                                  uselist=False)
