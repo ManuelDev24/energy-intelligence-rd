@@ -44,6 +44,7 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: colors.primary,
         headerTitleAlign: 'center',
+        tabBarButtonTestID: `tab-${route.name}`,
         tabBarIcon: ({ color, size, focused }) => (
           <Ionicons name={TAB_ICONS[route.name][focused ? 0 : 1]} size={size} color={color} />
         ),

@@ -20,6 +20,7 @@ case "$PLATFORM" in
     APP_ID=host.exp.exponent
     EXPO_URL="exp://${LAN_IP}:8081"
     ADB="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb"
+    DEVICE="$("$ADB" devices | awk 'NR>1 && $2=="device"{print $1; exit}')"
     # Estado limpio (onboarding desde cero). Se hace con adb porque el clearState de Maestro
     # corta la conexión adb en algunos emuladores.
     "$ADB" shell pm clear "$APP_ID" >/dev/null
@@ -28,12 +29,16 @@ case "$PLATFORM" in
   ios)
     APP_ID=host.exp.Exponent
     EXPO_URL="exp://127.0.0.1:8081"
-    xcrun simctl terminate booted "$APP_ID" 2>/dev/null || true
-    xcrun simctl privacy booted reset all "$APP_ID" 2>/dev/null || true
-    # Reinstalar Expo Go no es necesario: el flujo borra la sesión saltando el onboarding guardado.
+    DEVICE="$(xcrun simctl list devices booted | grep -oE '[0-9A-F-]{36}' | head -1)"
+    # Estado limpio: reinstalar Expo Go borra la sesión guardada (onboarding desde cero).
+    EXPO_GO_APP="$(xcrun simctl get_app_container "$DEVICE" "$APP_ID" 2>/dev/null || true)"
+    if [ -n "$EXPO_GO_APP" ]; then
+      TMP_APP="$(mktemp -d)/Exponent.app"; cp -R "$EXPO_GO_APP" "$TMP_APP"
+      xcrun simctl uninstall "$DEVICE" "$APP_ID" && xcrun simctl install "$DEVICE" "$TMP_APP"
+    fi
     ;;
   *) echo "uso: $0 android|ios" >&2; exit 2 ;;
 esac
 
 mkdir -p evidence
-MAESTRO_CLI_NO_ANALYTICS=1 maestro test -e APP_ID="$APP_ID" -e EXPO_URL="$EXPO_URL" pilot-flow.yaml
+MAESTRO_CLI_NO_ANALYTICS=1 maestro --device "$DEVICE" test -e APP_ID="$APP_ID" -e EXPO_URL="$EXPO_URL" pilot-flow.yaml
