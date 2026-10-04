@@ -61,7 +61,6 @@ export function createLiveApi(baseUrl: string, fetchImpl: FetchLike = fetch): Ap
   const body = (input: BillInput) => JSON.stringify({ ...input, source: "manual" });
 
   return {
-    mode: "live",
     listHomes: () => request("/homes", HomeSchema.array()),
     listBills: (homeId) => request(`/homes/${homeId}/bills`, BillsSchema),
     getBill: (homeId, billId) => request(`/homes/${homeId}/bills/${billId}`, BillSchema),

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { ModeBanner } from "@/components/mode-banner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session";
@@ -46,7 +45,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <ModeBanner />
       <div className="flex flex-1 flex-col md:flex-row">
         <aside className="hidden w-56 shrink-0 flex-col gap-1 border-r border-border p-4 md:flex">
           <p className="mb-4 text-lg font-bold">⚡ Energy RD</p>
