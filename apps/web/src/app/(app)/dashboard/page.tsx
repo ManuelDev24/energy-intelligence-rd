@@ -1,12 +1,11 @@
 "use client";
 
 import { EnergyDashboard } from "@/features/energy/EnergyDashboard";
-import { env } from "@/lib/env";
 import { useSession } from "@/lib/session";
 
 export default function DashboardPage() {
   const { homeId, signIn } = useSession();
-  return <EnergyDashboard initialHomeId={homeId ?? undefined}
-    initialMode={env.NEXT_PUBLIC_API_MODE === "live" ? "api" : "demo"}
+  // La web siempre usa la API real (ERD-WEB-REAL-API): sin selector de modo demo.
+  return <EnergyDashboard initialHomeId={homeId ?? undefined} initialMode="api"
     onHomeChange={signIn} allowModeSwitch={false} />;
 }

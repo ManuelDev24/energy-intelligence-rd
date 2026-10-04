@@ -1,30 +1,47 @@
-import { screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/app/(app)/dashboard/page";
 import { expectDashboardRendered } from "./assertions";
-import { DASHBOARD_A, HOME_A } from "./mock-api";
+import { BILLS, DASHBOARD_A, HOME_A, createMockApi } from "./mock-api";
 import { renderWithApp } from "./render";
 
-vi.mock("@/lib/api", async () => {
-  const { createMockApi } = await import("./mock-api");
-  const api = createMockApi();
-  return { getApi: () => api };
-});
+// La página del dashboard (features/energy) usa fetch directo contra la API: se
+// simula la API con las fixtures de test.
+async function stubApiFetch() {
+  const homes = await createMockApi().listHomes();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      const body = url.endsWith("/homes")
+        ? homes
+        : url.endsWith(`/homes/${HOME_A}/bills`)
+          ? BILLS.filter((b) => b.home_id === HOME_A)
+          : url.endsWith(`/homes/${HOME_A}/dashboard`)
+            ? DASHBOARD_A
+            : null;
+      return { ok: body !== null, status: body !== null ? 200 : 404, json: async () => body };
+    }),
+  );
+}
 
 describe("DashboardPage", () => {
   beforeEach(() => window.localStorage.clear());
+  afterEach(() => vi.unstubAllGlobals());
 
-  it("muestra cada métrica del backend con su valor y su etiqueta de calidad", async () => {
+  it("muestra kWh, RD$, proyección y etiquetas de calidad tal como los entrega la API", async () => {
+    await stubApiFetch();
     renderWithApp(<DashboardPage />, HOME_A);
-    await waitFor(() => expect(screen.getByText("Última factura")).toBeInTheDocument());
 
-    expect(expectDashboardRendered(DASHBOARD_A)).toBeGreaterThan(0);
+    await screen.findByText("Próxima factura");
+    expectDashboardRendered(DASHBOARD_A, BILLS.filter((b) => b.home_id === HOME_A));
   });
 
-  it("muestra el estado de los datos y su leyenda", async () => {
+  it("siempre usa la API real: no ofrece el modo demo", async () => {
+    await stubApiFetch();
     renderWithApp(<DashboardPage />, HOME_A);
-    await waitFor(() => expect(screen.getByText("Estado de los datos")).toBeInTheDocument());
 
-    expect(screen.getByText(/3 facturas · fuente: seed/)).toBeInTheDocument();
+    await screen.findByText("Próxima factura");
+    expect(screen.getByLabelText("Origen de datos")).toBeDisabled();
+    expect(screen.getByLabelText("Origen de datos")).toHaveValue("api");
   });
 });
