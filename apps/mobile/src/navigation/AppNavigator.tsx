@@ -1,32 +1,53 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect } from 'react';
 
+import { useAlerts } from '../api/hooks';
 import { Loading } from '../components/ui';
+import { AlertsScreen, unreadCount } from '../screens/AlertsScreen';
 import { BillFormScreen } from '../screens/BillFormScreen';
 import { BillsScreen } from '../screens/BillsScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
+import { EquipmentFormScreen } from '../screens/EquipmentFormScreen';
+import { EquipmentScreen } from '../screens/EquipmentScreen';
 import { HomesScreen } from '../screens/HomesScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { useSession } from '../store/session';
 import { colors } from '../theme';
 
-export type RootStackParams = { Tabs: undefined; BillForm: undefined };
-export type TabParams = { Dashboard: undefined; Bills: undefined; Homes: undefined };
+export type RootStackParams = {
+  Tabs: undefined;
+  BillForm: undefined;
+  EquipmentForm: { equipmentId?: string } | undefined;
+};
+export type TabParams = { Dashboard: undefined; Bills: undefined; Equipment: undefined; Alerts: undefined; Homes: undefined };
 
 const Stack = createNativeStackNavigator<RootStackParams>();
 const Tab = createBottomTabNavigator<TabParams>();
 
-function Tabs({ navigation }: { navigation: { navigate: (r: 'BillForm') => void } }) {
+function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
+  const homeId = useSession((st) => st.selectedHomeId);
+  const unread = unreadCount(useAlerts(homeId).data);
   return (
-    <Tab.Navigator
-      screenOptions={{ tabBarActiveTintColor: colors.primary, headerTitleAlign: 'center' }}
-    >
+    <Tab.Navigator screenOptions={{ tabBarActiveTintColor: colors.primary, headerTitleAlign: 'center' }}>
       <Tab.Screen name="Dashboard" options={{ title: 'Inicio' }} component={DashboardScreen} />
       <Tab.Screen name="Bills" options={{ title: 'Facturas' }}>
         {() => <BillsScreen onAdd={() => navigation.navigate('BillForm')} />}
       </Tab.Screen>
+      <Tab.Screen name="Equipment" options={{ title: 'Equipos' }}>
+        {() => (
+          <EquipmentScreen
+            onAdd={() => navigation.navigate('EquipmentForm')}
+            onEdit={(equipmentId) => navigation.navigate('EquipmentForm', { equipmentId })}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Alerts"
+        component={AlertsScreen}
+        options={{ title: 'Alertas', tabBarBadge: unread > 0 ? unread : undefined }}
+      />
       <Tab.Screen name="Homes" options={{ title: 'Viviendas' }} component={HomesScreen} />
     </Tab.Navigator>
   );
@@ -47,9 +68,17 @@ export function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        <Stack.Screen name="Tabs" component={Tabs as never} options={{ headerShown: false }} />
+        <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
         <Stack.Screen name="BillForm" options={{ title: 'Nueva factura' }}>
           {({ navigation }) => <BillFormScreen onDone={() => navigation.goBack()} />}
+        </Stack.Screen>
+        <Stack.Screen
+          name="EquipmentForm"
+          options={({ route }) => ({ title: route.params?.equipmentId ? 'Editar equipo' : 'Nuevo equipo' })}
+        >
+          {({ navigation, route }) => (
+            <EquipmentFormScreen equipmentId={route.params?.equipmentId} onDone={() => navigation.goBack()} />
+          )}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>

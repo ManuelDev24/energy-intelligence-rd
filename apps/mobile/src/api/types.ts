@@ -2,6 +2,52 @@
 export type Distributor = 'EDESUR' | 'EDENORTE' | 'EDEESTE' | 'Otra';
 export type Quality = 'REAL' | 'ESTIMATED' | 'PROJECTED';
 export type Severity = 'warning' | 'critical';
+export type AlertStatus = 'unread' | 'read' | 'dismissed';
+
+export interface Equipment {
+  id: string;
+  home_id: string;
+  name: string;
+  room: string | null;
+  power_w: string;
+  hours_per_day: string;
+  created_at: string;
+}
+
+export interface EquipmentInput {
+  name: string;
+  room: string | null;
+  power_w: string;
+  hours_per_day: string;
+}
+
+export interface EquipmentEstimate {
+  home_id: string;
+  equipment_count: number;
+  items: { equipment_id: string; name: string; room: string | null; daily_kwh: Metric; monthly_kwh: Metric }[];
+  total_daily_kwh: Metric;
+  total_monthly_kwh: Metric;
+  days_per_month: number;
+  latest_bill_kwh: Metric | null;
+  bill_coverage_pct: Metric | null;
+  note: string;
+}
+
+export interface Alert {
+  id: string;
+  home_id: string;
+  bill_id: string | null;
+  type: string;
+  severity: Severity;
+  status: AlertStatus;
+  message: string;
+  kwh_pct: string | null;
+  threshold_pct: string | null;
+  basis_bill_id: string | null;
+  basis_period_start: string | null;
+  basis_period_end: string | null;
+  created_at: string;
+}
 
 export interface Home {
   id: string;

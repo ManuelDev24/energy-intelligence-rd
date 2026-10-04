@@ -1,5 +1,7 @@
 import { API_URL } from '../config';
-import type { Bill, BillInput, Dashboard, Home } from './types';
+import type {
+  Alert, AlertStatus, Bill, BillInput, Dashboard, Equipment, EquipmentEstimate, EquipmentInput, Home,
+} from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -16,6 +18,10 @@ export class ApiError extends Error {
 }
 
 const FIELD_LABELS: Record<string, string> = {
+  name: 'Nombre',
+  room: 'Habitación',
+  power_w: 'Potencia (W)',
+  hours_per_day: 'Horas de uso por día',
   period_start: 'Inicio del período',
   period_end: 'Fin del período',
   kwh: 'kWh',
@@ -81,4 +87,18 @@ export const api = {
   deleteBill: (homeId: string, billId: string) =>
     request<void>(`/api/v1/homes/${homeId}/bills/${billId}`, { method: 'DELETE' }),
   getDashboard: (homeId: string) => request<Dashboard>(`/api/v1/homes/${homeId}/dashboard`),
+
+  listEquipment: (homeId: string) => request<Equipment[]>(`/api/v1/homes/${homeId}/equipment`),
+  getEquipment: (homeId: string, id: string) => request<Equipment>(`/api/v1/homes/${homeId}/equipment/${id}`),
+  createEquipment: (homeId: string, input: EquipmentInput) =>
+    request<Equipment>(`/api/v1/homes/${homeId}/equipment`, { method: 'POST', body: JSON.stringify(input) }),
+  updateEquipment: (homeId: string, id: string, input: EquipmentInput) =>
+    request<Equipment>(`/api/v1/homes/${homeId}/equipment/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
+  deleteEquipment: (homeId: string, id: string) =>
+    request<void>(`/api/v1/homes/${homeId}/equipment/${id}`, { method: 'DELETE' }),
+  getEstimate: (homeId: string) => request<EquipmentEstimate>(`/api/v1/homes/${homeId}/equipment/estimate`),
+
+  listAlerts: (homeId: string) => request<Alert[]>(`/api/v1/homes/${homeId}/alerts`),
+  setAlertStatus: (homeId: string, id: string, status: AlertStatus) =>
+    request<Alert>(`/api/v1/homes/${homeId}/alerts/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 };
