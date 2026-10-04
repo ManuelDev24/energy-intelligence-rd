@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseEnv } from "./env";
 
 describe("parseEnv", () => {
-  it("usa el valor por defecto cuando no hay variable", () => {
+  it("usa la URL por defecto cuando no hay variable", () => {
     expect(parseEnv({}).NEXT_PUBLIC_API_URL).toBe("http://localhost:8000");
   });
 

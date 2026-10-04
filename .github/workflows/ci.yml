@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [Dev, QA, main]
+  push:
+    branches: [Dev, QA, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: api (pytest + migrations)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: energy_rd
+          POSTGRES_USER: energy
+          POSTGRES_PASSWORD: change_me_local_only
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U energy -d energy_rd"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run alembic upgrade head
+      - run: uv run alembic downgrade -1 && uv run alembic upgrade head
+      - run: uv run python -m app.seed && uv run python -m app.seed
+      - run: uv run pytest -q
+
+  web-mobile:
+    name: web + mobile (typecheck, lint, test, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --workspace apps/web --workspace apps/mobile
+      - run: npm run lint --workspace apps/web
+      - run: npm run test --workspace apps/web --workspace apps/mobile
+      - run: npm run build --workspace apps/web
