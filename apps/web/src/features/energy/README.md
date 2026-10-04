@@ -1,8 +1,8 @@
 # ERD-WEB-ENERGY
 
-La página principal integra el API ERD-CORE-API publicado en main. Usa NEXT_PUBLIC_API_URL (base, sin /api/v1), GET /api/v1/homes y GET /api/v1/homes/{id}/bills y /dashboard. React Query cancela solicitudes obsoletas y separa la caché por vivienda y base URL; Zod valida respuestas, decimales, fechas, calidad y pertenencia a la vivienda. No se modifica el backend ni configuración global.
+La página /dashboard integra el API ERD-CORE-API dentro del shell y sesión publicados en Dev. La raíz redirige a /dashboard. Usa NEXT_PUBLIC_API_URL (base, sin /api/v1), GET /api/v1/homes y GET /api/v1/homes/{id}/bills y /dashboard. React Query cancela solicitudes obsoletas y separa la caché por vivienda y base URL; Zod valida respuestas, decimales, fechas, calidad y pertenencia a la vivienda. No se modifica el backend ni configuración global.
 
-API real es el modo inicial. Un fallo permanece visible con Reintentar; no activa demo silenciosamente. El selector permite explorar fixtures tipados ficticios. Las facturas seed del API también se marcan DEMO.
+El shell utiliza el modo explícito existente NEXT_PUBLIC_API_MODE: live consulta API real y mock presenta fixtures tipados ficticios. El selector de origen queda bloqueado dentro del shell para mantener coherencia con su banner de modo. El componente aislado admite cambiar de origen para pruebas. Un fallo permanece visible con Reintentar; no activa demo silenciosamente. Las facturas seed del API también se marcan DEMO. En live, la selección inicial toma la vivienda de la sesión y cambiar vivienda actualiza esa selección para las otras vistas; los IDs de fixtures locales no se guardan como viviendas reales.
 
 El selector de período controla consumo y comparación. La comparación requiere una factura única del mes calendario anterior, utiliza los totales de cada período y no rellena huecos. Los períodos completos quedan visibles; no se reparten facturas entre meses, días u horas. Cero kWh es un valor válido y una base cero no produce porcentaje.
 

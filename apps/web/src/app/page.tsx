@@ -1,5 +1,5 @@
-import { EnergyDashboard } from "@/features/energy/EnergyDashboard";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <EnergyDashboard />;
+  redirect("/dashboard");
 }

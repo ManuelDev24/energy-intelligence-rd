@@ -12,10 +12,15 @@ import { compareBill, sortBills } from './model';
 const number = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 });
 const period = (bill: EnergyBill) => `${bill.period_start} → ${bill.period_end}`;
 
-export function EnergyDashboard() {
+export function EnergyDashboard({ initialHomeId = '', initialMode = 'api', onHomeChange, allowModeSwitch = true }: {
+  initialHomeId?: string;
+  initialMode?: 'api' | 'demo';
+  onHomeChange?: (homeId: string) => void;
+  allowModeSwitch?: boolean;
+} = {}) {
   const id = useId();
-  const [mode, setMode] = useState<'api' | 'demo'>('api');
-  const [homeId, setHomeId] = useState('');
+  const [mode, setMode] = useState<'api' | 'demo'>(initialMode);
+  const [homeId, setHomeId] = useState(initialHomeId);
   const [periodId, setPeriodId] = useState('');
   const homesQuery = useQuery({ queryKey: ['energy-homes', env.NEXT_PUBLIC_API_URL],
     queryFn: ({ signal }) => loadHomes(env.NEXT_PUBLIC_API_URL, signal), enabled: mode === 'api', retry: false });
@@ -31,11 +36,11 @@ export function EnergyDashboard() {
   const isDemo = mode === 'demo' || data?.dashboard.data_status.is_demo || bills.some(bill => bill.source === 'seed');
 
   function resetSelection() { setHomeId(''); setPeriodId(''); }
-  return <main className={styles.dashboard} aria-labelledby={`${id}-title`} aria-busy={loading}>
+  return <section className={styles.dashboard} aria-labelledby={`${id}-title`} aria-busy={loading}>
     <header><p className={styles.eyebrow}>ENERGY RD · DASHBOARD ENERGÉTICO</p><h1 id={`${id}-title`}>Tu energía, mes a mes</h1><p>Consumo facturado, comparación y orientación para tu vivienda.</p></header>
     <div className={styles.filters}>
-      <label htmlFor={`${id}-mode`}>Origen de datos<select id={`${id}-mode`} value={mode} onChange={event => { setMode(event.target.value as 'api' | 'demo'); resetSelection(); }}><option value="api">API real</option><option value="demo">DEMO · fixtures ficticios</option></select></label>
-      <label htmlFor={`${id}-home`}>Vivienda<select id={`${id}-home`} value={home?.id ?? ''} disabled={!homes.length} onChange={event => { setHomeId(event.target.value); setPeriodId(''); }}>{!homes.length && <option value="">Sin viviendas disponibles</option>}{homes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label htmlFor={`${id}-mode`}>Origen de datos<select id={`${id}-mode`} value={mode} disabled={!allowModeSwitch} onChange={event => { setMode(event.target.value as 'api' | 'demo'); resetSelection(); }}><option value="api">API real</option><option value="demo">DEMO · fixtures ficticios</option></select></label>
+      <label htmlFor={`${id}-home`}>Vivienda<select id={`${id}-home`} value={home?.id ?? ''} disabled={!homes.length} onChange={event => { setHomeId(event.target.value); setPeriodId(''); if (mode === 'api') onHomeChange?.(event.target.value); }}>{!homes.length && <option value="">Sin viviendas disponibles</option>}{homes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label htmlFor={`${id}-period`}>Período de factura<select id={`${id}-period`} value={selected?.id ?? ''} disabled={loading || error || !bills.length} onChange={event => setPeriodId(event.target.value)}>{!bills.length && <option value="">Sin períodos disponibles</option>}{bills.map(bill => <option key={bill.id} value={bill.id}>{period(bill)}</option>)}</select></label>
     </div>
     {isDemo && <p className={styles.notice} role="status"><strong>DEMO</strong> · Datos ficticios. Las etiquetas describen su procedencia dentro del ejemplo.</p>}
@@ -46,7 +51,7 @@ export function EnergyDashboard() {
       : <EnergyDetails data={data} selected={selected} id={id} />}
     <p className={styles.footnote}>REAL: dato de factura · ESTIMATED: estimación · PROJECTED: proyección futura · INFERRED: inferencia de modelo.</p>
     <p className={styles.footnote}>Las facturas no miden consumo horario ni telemetría en tiempo real. Los valores derivados no son mediciones directas.</p>
-  </main>;
+  </section>;
 }
 
 function EnergyDetails({ data, selected, id }: { data: EnergyData; selected: EnergyBill; id: string }) {
