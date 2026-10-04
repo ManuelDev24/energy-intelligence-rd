@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ModeBanner } from "@/components/mode-banner";
 import { QueryState } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
@@ -23,7 +22,6 @@ export default function LoginPage() {
 
   return (
     <>
-      <ModeBanner />
       <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-12">
         <h1 className="text-3xl font-bold">⚡ Energy RD</h1>
         <Card>

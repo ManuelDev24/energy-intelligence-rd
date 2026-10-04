@@ -11,7 +11,6 @@ export class ApiError extends Error {
 }
 
 export interface Api {
-  readonly mode: "mock" | "live";
   listHomes(): Promise<Home[]>;
   listBills(homeId: string): Promise<Bill[]>;
   getBill(homeId: string, billId: string): Promise<Bill>;

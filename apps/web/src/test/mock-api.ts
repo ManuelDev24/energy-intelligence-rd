@@ -6,30 +6,31 @@ import {
   type BillInput,
   type Dashboard,
   type Home,
-} from "./schemas";
-import { ApiError, type Api } from "./types";
+} from "@/lib/api/schemas";
+import { ApiError, type Api } from "@/lib/api/types";
 
-// FIXTURES DEMO. Todos los números están escritos a mano para ilustrar la UI:
-// la web no calcula ni recalcula métricas. El dashboard mock es estático y no
-// cambia cuando se crean, editan o borran facturas; eso lo hará el backend.
+// SOLO PARA TESTS. No se importa desde código de producción: la web habla siempre
+// con la API real (`getApi`). Estas fixtures reproducen la forma y la semántica del
+// backend (decimales con 2 dígitos, etiquetas de calidad) usando la vivienda
+// PILOT-01 del seed; los números están escritos a mano, no se calculan aquí.
 
-const HOME_A = "11111111-1111-4111-8111-111111111111";
-const HOME_B = "22222222-2222-4222-8222-222222222222";
+export const HOME_A = "11111111-1111-4111-8111-111111111111";
+export const HOME_B = "22222222-2222-4222-8222-222222222222";
 
 const HOMES: Home[] = [
   {
     id: HOME_A,
-    code: "DEMO-001",
-    name: "Casa demo (Santo Domingo)",
-    address: "Calle Ejemplo 1",
+    code: "PILOT-01",
+    name: "Vivienda piloto 01 (demo)",
+    address: null,
     city: "Santo Domingo",
     distributor: "EDESUR",
     created_at: "2026-01-01T00:00:00Z",
   },
   {
     id: HOME_B,
-    code: "DEMO-002",
-    name: "Apartamento demo (Santiago)",
+    code: "PILOT-02",
+    name: "Vivienda piloto 02 (demo)",
     address: null,
     city: "Santiago",
     distributor: "EDENORTE",
@@ -42,9 +43,9 @@ function bill(
   homeId: string,
   start: string,
   end: string,
+  days: number,
   kwh: string,
   amount: string,
-  days: number,
 ): Bill {
   return {
     id: `aaaaaaaa-0000-4000-8000-${String(n).padStart(12, "0")}`,
@@ -61,49 +62,49 @@ function bill(
   };
 }
 
-const BILLS: Bill[] = [
-  bill(1, HOME_A, "2026-05-01", "2026-05-31", "320.00", "4200.00", 31),
-  bill(2, HOME_A, "2026-06-01", "2026-06-30", "345.00", "4550.00", 30),
-  bill(3, HOME_A, "2026-07-01", "2026-07-31", "410.00", "5480.00", 31),
-  bill(4, HOME_B, "2026-07-01", "2026-07-31", "180.00", "2300.00", 31),
+export const BILLS: Bill[] = [
+  bill(1, HOME_A, "2026-06-01", "2026-06-30", 30, "250.00", "3150.00"),
+  bill(2, HOME_A, "2026-07-01", "2026-07-31", 31, "280.00", "3560.00"),
+  bill(3, HOME_A, "2026-08-01", "2026-08-31", 31, "420.00", "5600.00"),
+  bill(4, HOME_B, "2026-08-01", "2026-08-31", 31, "315.00", "4010.00"),
 ];
 
-const DASHBOARD_A = {
-  home: { id: HOME_A, code: "DEMO-001", name: "Casa demo (Santo Domingo)", distributor: "EDESUR" },
+export const DASHBOARD_A = {
+  home: { id: HOME_A, code: "PILOT-01", name: "Vivienda piloto 01 (demo)", distributor: "EDESUR" },
   latest_bill: {
     bill_id: BILLS[2].id,
-    period_start: "2026-07-01",
-    period_end: "2026-07-31",
+    period_start: "2026-08-01",
+    period_end: "2026-08-31",
     days: 31,
-    kwh: { value: "410.00", unit: "kWh", quality: "REAL" },
-    amount_dop: { value: "5480.00", unit: "RD$", quality: "REAL" },
-    avg_daily_kwh: { value: "13.23", unit: "kWh/día", quality: "ESTIMATED" },
-    avg_price_per_kwh: { value: "13.37", unit: "RD$/kWh", quality: "ESTIMATED" },
+    kwh: { value: "420.00", unit: "kWh", quality: "REAL" },
+    amount_dop: { value: "5600.00", unit: "RD$", quality: "REAL" },
+    avg_daily_kwh: { value: "13.55", unit: "kWh/día", quality: "ESTIMATED" },
+    avg_price_per_kwh: { value: "13.33", unit: "RD$/kWh", quality: "ESTIMATED" },
     source: "seed",
   },
   comparison: {
     previous_bill_id: BILLS[1].id,
-    previous_period_start: "2026-06-01",
-    previous_period_end: "2026-06-30",
-    kwh_delta: { value: "65.00", unit: "kWh", quality: "ESTIMATED" },
-    kwh_pct: { value: "18.84", unit: "%", quality: "ESTIMATED" },
-    amount_delta: { value: "930.00", unit: "RD$", quality: "ESTIMATED" },
-    amount_pct: { value: "20.44", unit: "%", quality: "ESTIMATED" },
+    previous_period_start: "2026-07-01",
+    previous_period_end: "2026-07-31",
+    kwh_delta: { value: "140.00", unit: "kWh", quality: "REAL" },
+    kwh_pct: { value: "50.00", unit: "%", quality: "REAL" },
+    amount_delta: { value: "2040.00", unit: "RD$", quality: "REAL" },
+    amount_pct: { value: "57.30", unit: "%", quality: "REAL" },
   },
   projection: {
-    method: "demo",
+    method: "linear_least_squares",
     bills_used: 3,
-    kwh: { value: "395.00", unit: "kWh", quality: "PROJECTED" },
-    amount_dop: { value: "5250.00", unit: "RD$", quality: "PROJECTED" },
-    note: "Proyección de ejemplo (fixture demo); no es un cálculo real.",
+    kwh: { value: "486.67", unit: "kWh", quality: "PROJECTED" },
+    amount_dop: { value: "6553.33", unit: "RD$", quality: "PROJECTED" },
+    note: "Proyección de la próxima factura mensual por tendencia lineal; no incluye cambios de tarifa.",
   },
   alert: {
-    severity: "warning",
-    message: "Consumo de ejemplo por encima del período anterior (fixture demo).",
+    severity: "critical",
+    message: "El consumo subió 50.00% frente al período anterior (280.00 kWh → 420.00 kWh).",
     basis_period_start: "2026-07-01",
     basis_period_end: "2026-07-31",
   },
-  recommendation: "Recomendación de ejemplo (fixture demo).",
+  recommendation: "Revise equipos de mayor uso y compare con su rutina del mes anterior.",
   data_status: {
     bills_count: 3,
     data_source: "seed",
@@ -113,13 +114,13 @@ const DASHBOARD_A = {
     insufficient_reasons: [],
   },
   quality_legend: {
-    REAL: "Dato tomado directamente de la factura",
-    ESTIMATED: "Estimación a partir de datos disponibles",
-    PROJECTED: "Proyección hacia el futuro",
+    REAL: "Dato tomado directamente de una factura mensual introducida.",
+    ESTIMATED: "Valor derivado de totales mensuales (promedios); no es una medición directa.",
+    PROJECTED: "Proyección lineal a partir del historial de facturas; no es un dato observado.",
   },
 } satisfies Dashboard;
 
-const DASHBOARD_EMPTY = (home: Home): Dashboard => ({
+const dashboardWithoutProjection = (home: Home): Dashboard => ({
   home: { id: home.id, code: home.code, name: home.name, distributor: home.distributor },
   latest_bill: null,
   comparison: null,
@@ -129,10 +130,10 @@ const DASHBOARD_EMPTY = (home: Home): Dashboard => ({
   data_status: {
     bills_count: 0,
     data_source: "none",
-    is_demo: true,
+    is_demo: false,
     resolution: "monthly",
     hourly_data_available: false,
-    insufficient_reasons: ["Aún no hay facturas registradas para esta vivienda (fixture demo)."],
+    insufficient_reasons: ["No hay facturas registradas: registre al menos una para ver consumo."],
   },
   quality_legend: DASHBOARD_A.quality_legend,
 });
@@ -165,7 +166,6 @@ export function createMockApi(): Api {
   };
 
   return {
-    mode: "mock",
     listHomes: async () => homes,
     listBills: async (homeId) => {
       requireHome(homeId);
@@ -199,9 +199,10 @@ export function createMockApi(): Api {
       requireBill(homeId, billId);
       bills = bills.filter((b) => b.id !== billId);
     },
+    // Estático a propósito: el cálculo del dashboard es del backend, no de la web.
     getDashboard: async (homeId) => {
       const home = requireHome(homeId);
-      return DashboardSchema.parse(homeId === HOME_A ? DASHBOARD_A : DASHBOARD_EMPTY(home));
+      return DashboardSchema.parse(homeId === HOME_A ? DASHBOARD_A : dashboardWithoutProjection(home));
     },
   };
 }

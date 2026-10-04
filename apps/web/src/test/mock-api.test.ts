@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createMockApi } from "./mock";
-import { ApiError } from "./types";
+import { createMockApi } from "./mock-api";
+import { ApiError } from "@/lib/api/types";
 
 const input = (start: string, end: string) => ({
   period_start: start,
@@ -12,11 +12,7 @@ const input = (start: string, end: string) => ({
   reading_current: null,
 });
 
-describe("createMockApi", () => {
-  it("declara explícitamente su modo mock", () => {
-    expect(createMockApi().mode).toBe("mock");
-  });
-
+describe("createMockApi (solo tests)", () => {
   it("lista viviendas y facturas ordenadas por período descendente", async () => {
     const api = createMockApi();
     const [home] = await api.listHomes();
@@ -36,11 +32,11 @@ describe("createMockApi", () => {
     const api = createMockApi();
     const [home] = await api.listHomes();
 
-    const created = await api.createBill(home.id, input("2026-08-01", "2026-08-31"));
+    const created = await api.createBill(home.id, input("2026-09-01", "2026-09-30"));
     expect(created.source).toBe("manual");
 
     const updated = await api.updateBill(home.id, created.id, {
-      ...input("2026-08-01", "2026-08-31"),
+      ...input("2026-09-01", "2026-09-30"),
       kwh: "150.00",
     });
     expect(updated.kwh).toBe("150.00");
