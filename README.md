@@ -70,6 +70,10 @@ energy-rd/
 
 ## 🚀 Primeros Pasos
 
+> **Piloto (5 viviendas):** la forma verificada de levantar el proyecto desde cero y hacer la demo está en
+> [`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md). Antes de cada release: [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+> Las instrucciones de abajo describen la visión completa y pueden no aplicar todavía.
+
 ### Prerrequisitos
 
 - Node.js 18+
