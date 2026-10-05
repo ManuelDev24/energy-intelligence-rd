@@ -16,7 +16,7 @@ Release: `________`  ·  Commit de Dev: `________`  ·  Fecha: `________`  ·  Q
 
 - [ ] `api (pytest + migrations)` ✅
 - [ ] `web + mobile (typecheck, lint, test, build)` ✅
-- [ ] `mobile e2e (recorrido piloto vs API real)` ✅
+- [ ] `web + mobile e2e (recorridos piloto vs API real)` ✅
 
 ```bash
 gh run list -R ManuelDev24/energy-intelligence-rd --branch Dev --limit 1
@@ -26,14 +26,15 @@ gh run list -R ManuelDev24/energy-intelligence-rd --branch Dev --limit 1
 
 - [ ] Desde base vacía: `alembic upgrade head` OK.
 - [ ] `alembic downgrade -1` y de nuevo `upgrade head` OK (lo cubre `test_migrations.py`).
-- [ ] Migraciones nuevas revisadas: reversibles y sin pérdida de datos existentes.
+- [ ] Migraciones nuevas revisadas; backup y restauración comprobados antes de tocar datos existentes.
+- [ ] Migración ejecutada una sola vez antes de iniciar réplicas; `MIGRATE_ON_START=false` fuera de desarrollo.
 - [ ] Seed idempotente: ejecutarlo dos veces no duplica viviendas, facturas ni equipos.
 
 ## 4. Levantar desde cero (clon limpio)
 
 Seguir `docs/DEMO_GUIDE.md` §2 en un directorio nuevo, **sin** reutilizar `node_modules` ni volúmenes:
 
-- [ ] `docker compose up -d --build --wait postgres api` → ambos *healthy*.
+- [ ] `SEED_PILOT=true docker compose up -d --build --wait postgres api` → ambos *healthy* (demo local).
 - [ ] `GET /health` → `{"status":"healthy","database":"ok"}`.
 - [ ] `GET /api/v1/homes` → exactamente 5 viviendas PILOT-01…05.
 - [ ] `GET /docs` (OpenAPI) carga.
@@ -57,6 +58,8 @@ Seguir `docs/DEMO_GUIDE.md` §2 en un directorio nuevo, **sin** reutilizar `node
 
 - [ ] Sin secretos en el repo (`.env` no versionado; `.env.example` solo con placeholders `change_me_local_only`).
 - [ ] `CORS_ORIGINS` explícito, nunca `*`.
+- [ ] Piloto sin autenticación accesible únicamente en loopback o red privada controlada.
+- [ ] Avisos de dependencias revisados según el informe de cierre; no asumir riesgo cero.
 - [ ] Los datos demo están marcados como demo (`source=seed`, aviso en dashboard).
 - [ ] Ningún log/captura incluye datos personales reales.
 
@@ -71,5 +74,5 @@ Seguir `docs/DEMO_GUIDE.md` §2 en un directorio nuevo, **sin** reutilizar `node
 ## 8. Rollback
 
 - Código: revertir el merge en `main` (`git revert -m 1 <merge-sha>`), nuevo PR.
-- Base de datos: `alembic downgrade <revisión-anterior>` **antes** de desplegar el código anterior.
-- Demo local: `docker compose down -v && docker compose up -d --build --wait postgres api` restaura el seed.
+- Base de datos: probar el rollback en una copia y coordinarlo con el código. No ejecutar downgrade a ciegas: eliminar `audit_events` pierde auditoría y reducir precisión puede fallar. Recuperar desde un backup comprobado cuando corresponda.
+- Demo local: `docker compose down -v && SEED_PILOT=true docker compose up -d --build --wait postgres api` borra datos locales y restaura el seed.

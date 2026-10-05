@@ -14,3 +14,21 @@ __pycache__/
 .venv/
 .pytest_cache/
 .expo/
+.local-backups/
+
+# Configuración local de editor/agentes (no compartida)
+.vscode/
+.claude/
+
+# Maestro Fase 2: solo se versionan las corridas finales citadas en docs/qa/ERD_PHASE2_NATIVE_2026-10-04.md.
+# Corridas intermedias, logcat y debug quedan locales (pesados y pueden contener datos de dispositivo).
+apps/mobile/maestro/evidence/phase2-2026-10-04/*
+!apps/mobile/maestro/evidence/phase2-2026-10-04/qa-summary.json
+!apps/mobile/maestro/evidence/phase2-2026-10-04/ios-run12-final/
+!apps/mobile/maestro/evidence/phase2-2026-10-04/ios-run13-repeat-final/
+!apps/mobile/maestro/evidence/phase2-2026-10-04/android-run9-final/
+!apps/mobile/maestro/evidence/phase2-2026-10-04/android-run10-repeat-final/
+apps/mobile/maestro/evidence/**/debug/
+apps/mobile/maestro/evidence/**/logs/
+apps/mobile/maestro/evidence/**/screen-hierarchy/
+apps/mobile/maestro/evidence/**/console.log

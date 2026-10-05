@@ -32,13 +32,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen
+      - run: uv run python -m scripts.generate_contracts --check
+      - run: python scripts/check_architecture.py
+        working-directory: .
       - run: uv run alembic upgrade head
       - run: uv run alembic downgrade -1 && uv run alembic upgrade head
       - run: uv run python -m app.seed && uv run python -m app.seed
       - run: uv run pytest -q
 
   web-mobile:
-    name: web + mobile (typecheck, lint, test, build)
+    name: web + mobile + core (typecheck, lint, test, build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,13 +50,19 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run typecheck --workspace apps/web --workspace apps/mobile
+      - run: npm run typecheck
       - run: npm run lint --workspace apps/web
-      - run: npm run test --workspace apps/web --workspace apps/mobile
+      - run: npm test
+      # Producción exige auth activa y orígenes HTTPS (next.config.mjs falla cerrado sin ellos).
+      # Valores de marcador solo para compilar; no apuntan a ningún servicio real.
       - run: npm run build --workspace apps/web
+        env:
+          NEXT_PUBLIC_AUTH_ENABLED: "true"
+          API_BASE_URL: https://api.example.invalid
+          WEB_ORIGIN: https://app.example.invalid
 
   mobile-e2e:
-    name: mobile e2e (recorrido piloto vs API real)
+    name: web + mobile (recorridos vs API real)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -81,7 +90,12 @@ jobs:
           uv run python -m app.seed
           nohup uv run uvicorn app.main:app --port 8000 > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:8000/health && break; sleep 1; done
+          curl --fail http://localhost:8000/health
       - run: npm ci
+      - name: Web contra API real (sin omisiones)
+        env:
+          LIVE_API_URL: http://localhost:8000
+        run: npm run test --workspace apps/web
       - name: Recorrido vivienda → factura → dashboard → alerta
         env:
           MOBILE_E2E_API_URL: http://localhost:8000

@@ -20,6 +20,10 @@ de las 5 viviendas piloto **sin ayuda**. Tiempo estimado: 20–30 min la primera
 | Expo Go (opcional) | SDK 57 | móvil en teléfono | App Store / Play Store |
 | uv + Python 3.12 (opcional) | solo para correr pruebas de la API fuera de Docker | | `uv --version` |
 
+La API solo escucha en loopback por defecto. Para un teléfono físico configura
+`API_BIND_ADDRESS=<IP de tu interfaz LAN privada>` en `.env`, recrea el servicio API y usa
+`EXPO_PUBLIC_API_URL=http://<esa IP>:8000`. No abras la API del piloto a Internet.
+
 Puertos que deben estar libres: **5433** (PostgreSQL), **8000** (API), **3000** (web), **8081** (Metro/Expo).
 
 > El PostgreSQL de Docker usa el puerto **5433** a propósito: muchos Mac ya tienen un PostgreSQL nativo en 5432.
@@ -36,8 +40,8 @@ git checkout Dev            # o main, según lo que se vaya a demostrar
 cp .env.example .env        # valores locales de desarrollo, sin secretos reales
 cp apps/web/.env.example apps/web/.env.local
 
-# Base de datos + API (migra y siembra las 5 viviendas automáticamente)
-docker compose up -d --build --wait postgres api
+# Base de datos + API; el seed demo es una opción explícita
+SEED_PILOT=true docker compose up -d --build --wait postgres api
 ```
 
 Comprobar que la API está bien:
@@ -65,10 +69,9 @@ npm run dev:web             # http://localhost:3000
 npm run dev:mobile          # abre Metro en :8081
 ```
 
-- **Teléfono con Expo Go:** escanear el QR. El teléfono y la computadora deben estar en la misma Wi-Fi;
-  la app usa automáticamente `http://<IP-de-la-computadora>:8000`.
-- **Simulador iOS:** tecla `i` (API en `localhost:8000`).
-- **Emulador Android:** tecla `a` (API en `10.0.2.2:8000`).
+- **Teléfono con Expo Go:** teléfono y computadora en la misma Wi-Fi. Como la API escucha solo en loopback por defecto, primero sigue el ajuste de `API_BIND_ADDRESS` en §1; luego configura `EXPO_PUBLIC_API_URL=http://<IP-LAN-privada>:8000` al iniciar Expo.
+- **Simulador iOS:** API en `localhost:8000`.
+- **Emulador Android:** API en `10.0.2.2:8000`.
 - Si la API está en otra dirección: `EXPO_PUBLIC_API_URL=http://<host>:8000 npm run dev:mobile`.
 
 ---
@@ -157,7 +160,7 @@ Smoke test de UI en simulador/emulador (requiere Maestro): ver `docs/qa/ERD-MOB-
 | La API no llega a *healthy* | La base aún arranca o falló la migración | `docker compose logs api` |
 | Web: “No se pudo conectar con la API” | API apagada o URL distinta | `curl localhost:8000/health`; revisar `apps/web/.env.local` |
 | Teléfono: error de red | Teléfono en otra red, o firewall | Misma Wi-Fi; o `EXPO_PUBLIC_API_URL=http://<IP>:8000` |
-| Números distintos a la tabla §3 | Quedaron facturas/equipos de una demo anterior | Reinicio limpio: `docker compose down -v && docker compose up -d --build --wait postgres api` |
+| Números distintos a la tabla §3 | Quedaron facturas/equipos de una demo anterior | Reinicio limpio (borra datos locales): `docker compose down -v && SEED_PILOT=true docker compose up -d --build --wait postgres api` |
 | Container name `energy-postgres` already in use | Hay otra copia del proyecto levantada | `docker compose down` en la otra copia |
 
 ## 7. Apagar
