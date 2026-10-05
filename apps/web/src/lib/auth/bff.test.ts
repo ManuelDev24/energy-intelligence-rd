@@ -84,7 +84,7 @@ describe("BFF security boundary", () => {
     const respond = (status: number, body: unknown) => vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }));
     const cases: [string, string, unknown, number, unknown, string][] = [
       ["auth/login", "POST", { email: "a@b.test", password: "long-password" }, 500, { detail: leak, code: leak, request_id: leak }, "Error del servidor. Inténtalo de nuevo más tarde."],
-      ["auth/register", "POST", { email: "a@b.test", password: "long-password" }, 409, { detail: leak, code: "conflict" }, "Ya existe una cuenta con este correo electrónico."],
+      ["auth/register", "POST", { email: "a@b.test", password: "long-password", accept_terms: true }, 409, { detail: leak, code: "conflict" }, "Ya existe una cuenta con este correo electrónico."],
       ["auth/login", "POST", { email: "a@b.test", password: "long-password" }, 401, { detail: leak, code: "http_401" }, "Credenciales inválidas."],
       ["auth/login", "POST", { email: "a@b.test", password: "long-password" }, 418, { detail: leak }, "No se pudo completar la solicitud."],
     ];
@@ -95,24 +95,39 @@ describe("BFF security boundary", () => {
       expect(text).not.toContain("psycopg2"); expect(text).not.toContain("<script>");
       expect(JSON.parse(text).detail).toBe(expected);
     }
-    const validation = await handleBff(req("auth/register", "POST", { email: "a@b.test", password: "long-password" }, { cookie: epochCookie }), config,
+    const validation = await handleBff(req("auth/register", "POST", { email: "a@b.test", password: "long-password", accept_terms: true }, { cookie: epochCookie }), config,
       respond(422, { detail: [{ loc: ["body", "password"], msg: leak }, { loc: ["body", "evil_field"], msg: leak }, { loc: ["body"], msg: leak }], code: "validation_error", request_id: "req-123" }));
     const parsed = JSON.parse(await validation.clone().text());
     expect(await validation.text()).not.toContain("psycopg2");
     expect(parsed).toEqual({ detail: [{ loc: ["body", "password"], msg: "La contraseña debe tener entre 12 y 128 caracteres." }], code: "validation_error", request_id: "req-123" });
   });
   it("maps the BFF's own validation errors to the local field table, never to library text", async () => {
-    const response = await handleBff(req("auth/register", "POST", { email: "not-an-email", password: "short" }), config, vi.fn());
+    const response = await handleBff(req("auth/register", "POST", { email: "not-an-email", password: "short", accept_terms: true }), config, vi.fn());
     expect(response.status).toBe(422);
     expect((await response.json()).detail).toEqual([
       { loc: ["body", "email"], msg: "Introduce un correo electrónico válido." },
       { loc: ["body", "password"], msg: "La contraseña debe tener entre 12 y 128 caracteres." },
     ]);
   });
+  it("rejects registration without explicit true consent and never sends a client-chosen terms version", async () => {
+    const upstream = vi.fn();
+    const bads = [{}, { accept_terms: false }, { accept_terms: "true" }, { accept_terms: 1 }, { terms_version: "2026-10-draft", accept_terms: true }];
+    for (const bad of bads) {
+      const response = await handleBff(req("auth/register", "POST", { email: "a@b.test", password: "long-password", ...bad }, { cookie: epochCookie }), config, upstream);
+      expect(response.status).toBe(422);
+    }
+    expect(upstream).not.toHaveBeenCalled();
+  });
+  it("forwards accept_terms: true to the API on a valid registration", async () => {
+    const upstream = vi.fn().mockResolvedValue(new Response(JSON.stringify({ access_token: "a", refresh_token: "b", token_type: "bearer", expires_in: 900 })));
+    const response = await handleBff(req("auth/register", "POST", { email: "a@b.test", password: "long-password", accept_terms: true }, { cookie: epochCookie }), config, upstream);
+    expect(response.status).toBe(200);
+    expect(JSON.parse(upstream.mock.calls[0][1].body)).toEqual({ email: "a@b.test", password: "long-password", accept_terms: true });
+  });
   it("requires a per-browser auth epoch before contacting upstream for login/register", async () => {
     const upstream = vi.fn();
     for (const path of ["auth/login", "auth/register"]) {
-      const response = await handleBff(req(path, "POST", { email: "a@b.test", password: "long-password" }), config, upstream);
+      const response = await handleBff(req(path, "POST", { email: "a@b.test", password: "long-password", ...(path === "auth/register" ? { accept_terms: true } : {}) }), config, upstream);
       expect(response.status).toBe(428);
       expect((await response.json()).code).toBe("auth_epoch_required");
       expect(response.headers.get("set-cookie")).toMatch(/erd-epoch=[0-9a-f]{32}; .*HttpOnly/i);

@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@energyrd/api-client";
-import { AccountSchema, accountRequest, authEnabled as configuredAuth, invalidateAccountRequests, type Account } from "./auth/client";
+import { AccountSchema, accountRequest, authEnabled as configuredAuth, deleteAccountRequest, invalidateAccountRequests, type Account } from "./auth/client";
 const STORAGE_KEY = "energyrd.homeId";
 const CHANGE_KEY = "energyrd.account-change";
 interface SessionValue {
@@ -14,7 +14,8 @@ interface SessionValue {
   error: string | null;
   signIn: (homeId: string) => void;
   signOut: () => Promise<void>;
-  authenticate: (mode: "login" | "register", email: string, password: string) => Promise<void>;
+  authenticate: (mode: "login" | "register", email: string, password: string, acceptTerms?: boolean) => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
 }
 const SessionContext = createContext<SessionValue | null>(null);
 export function SessionProvider({ children, authEnabled = configuredAuth }: { children: ReactNode; authEnabled?: boolean }) {
@@ -82,7 +83,7 @@ export function SessionProvider({ children, authEnabled = configuredAuth }: { ch
     catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo confirmar el cierre de sesión."); }
     finally { busy.current = false; setReady(true); announce(); }
   }, [authEnabled, reset, announce]);
-  const authenticate = useCallback(async (mode: "login" | "register", email: string, password: string) => {
+  const authenticate = useCallback(async (mode: "login" | "register", email: string, password: string, acceptTerms?: boolean) => {
     if (!authEnabled) throw new Error("El piloto no admite cuentas.");
     busy.current = true; reset(); announce(); setReady(false); setError(null);
     const current = sequence.current;
@@ -94,7 +95,7 @@ export function SessionProvider({ children, authEnabled = configuredAuth }: { ch
       throw new ApiError(409, "La sesión cambió en otra pestaña. Inicia sesión de nuevo.", {}, "account_changed");
     };
     try {
-      await accountRequest(mode, { email, password });
+      await accountRequest(mode, { email, password, acceptTerms });
       if (current !== sequence.current) return await stale();
       const account = AccountSchema.parse(await accountRequest("me"));
       if (current !== sequence.current) return await stale();
@@ -104,7 +105,16 @@ export function SessionProvider({ children, authEnabled = configuredAuth }: { ch
       throw cause;
     } finally { busy.current = false; if (current === sequence.current) setReady(true); }
   }, [authEnabled, reset, announce]);
-  const value = useMemo(() => ({ homeId, ready, authEnabled, user, error, signIn, signOut, authenticate }), [homeId, ready, authEnabled, user, error, signIn, signOut, authenticate]);
+  const deleteAccount = useCallback(async (password: string) => {
+    if (!authEnabled) throw new Error("El piloto no admite cuentas.");
+    // No session state is touched before upstream confirms: a wrong password or a blocked
+    // deletion (sole-owner of a shared home) must leave the current account fully intact.
+    await deleteAccountRequest(password);
+    busy.current = true;
+    reset(); announce(); setError(null); setReady(true);
+    busy.current = false;
+  }, [authEnabled, reset, announce]);
+  const value = useMemo(() => ({ homeId, ready, authEnabled, user, error, signIn, signOut, authenticate, deleteAccount }), [homeId, ready, authEnabled, user, error, signIn, signOut, authenticate, deleteAccount]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 export function useSession(): SessionValue {

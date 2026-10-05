@@ -55,14 +55,15 @@ def call(label, path, expected, method="GET", body=None, write_origin=origin):
 email = f"erd-web-test-{uuid.uuid4().hex}@example.com"
 password = secrets.token_urlsafe(32)
 credentials = {"email": email, "password": password}
+register_credentials = {**credentials, "accept_terms": True}
 call("anonymous me", "auth/me", 401)
 anonymous_page = client.open(origin + "/dashboard", timeout=20)
 assert anonymous_page.geturl().endswith("/login")
 print("anonymous protected navigation: redirected to /login")
 call("cross-origin login rejected", "auth/login", 403, "POST", credentials, "https://evil.example")
-epoch = call("auth epoch required before first login", "auth/register", 428, "POST", credentials)
+epoch = call("auth epoch required before first login", "auth/register", 428, "POST", register_credentials)
 assert epoch["code"] == "auth_epoch_required" and names(jar) == ["erd-epoch"]
-call("register", "auth/register", 201, "POST", credentials)
+call("register", "auth/register", 201, "POST", register_credentials)
 assert names(jar) == ["erd-access", "erd-epoch", "erd-logout"]
 assert all(cookie.has_nonstandard_attr("HttpOnly") and cookie.get_nonstandard_attr("SameSite") == "strict" for cookie in jar)
 print("cookie flags: HttpOnly / SameSite=strict / host-only verified")
@@ -93,7 +94,7 @@ call("revoked access rejected even before JWT expiry", "auth/me", 401)
 jar.clear()
 jar.set_cookie(new_epoch)
 old_session.clear()
-duplicate = call("duplicate registration", "auth/register", 409, "POST", credentials)
+duplicate = call("duplicate registration", "auth/register", 409, "POST", register_credentials)
 assert duplicate["detail"] == "Ya existe una cuenta con este correo electrónico."
 wrong = call("wrong credentials", "auth/login", 401, "POST", {"email": email, "password": secrets.token_urlsafe(32)})
 assert wrong["detail"] == "Credenciales inválidas."
@@ -104,7 +105,7 @@ call("delete only fresh test home", f"homes/{home_id}", 204, "DELETE", {})
 assert call("home deletion read back", "homes", 200) == []
 call("logout before account switch", "auth/logout", 200, "POST", {})
 other = {"email": f"erd-web-test-{uuid.uuid4().hex}@example.com", "password": secrets.token_urlsafe(32)}
-call("second account registration", "auth/register", 201, "POST", other)
+call("second account registration", "auth/register", 201, "POST", {**other, "accept_terms": True})
 assert call("second account cannot see first account homes", "homes", 200) == []
 call("final logout", "auth/logout", 200, "POST", {})
 # Late login: sent under the current epoch, its Set-Cookie lands after another tab's logout.

@@ -72,3 +72,45 @@ it("a login that completes after another tab changed the session never publishes
   expect(screen.getByText("anonymous")).toBeInTheDocument();
   expect(calls.slice(before).some(path => path.endsWith("/me"))).toBe(true); // stale session swept so the BFF revokes it
 });
+it("passes acceptTerms through to the register request", async () => {
+  const calls: { path: string; body: string }[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const path = String(input); calls.push({ path, body: String(init?.body ?? "") });
+    if (path.endsWith("/register")) return new Response(JSON.stringify({ ok: true }));
+    return new Response(JSON.stringify(user));
+  });
+  function Register() {
+    const session = useSession();
+    return <button onClick={() => void session.authenticate("register", user.email, "long-password", true)}>Register</button>;
+  }
+  render(<QueryClientProvider client={new QueryClient()}><SessionProvider authEnabled><Probe /><Register /></SessionProvider></QueryClientProvider>);
+  await screen.findByText("anonymous");
+  fireEvent.click(screen.getByText("Register"));
+  await waitFor(() => expect(screen.getByText(user.email)).toBeInTheDocument());
+  const register = calls.find(c => c.path.endsWith("/register"))!;
+  expect(JSON.parse(register.body)).toEqual({ email: user.email, password: "long-password", accept_terms: true });
+});
+it("deleteAccount clears session and cached data on success and rethrows on failure without clearing it", async () => {
+  const client = new QueryClient();
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const path = String(input);
+    if (path.endsWith("/me") && !path.includes("DELETE")) return new Response(JSON.stringify(user));
+    return new Response(JSON.stringify(user));
+  });
+  function Delete({ password }: { password: string }) {
+    const session = useSession();
+    return <button onClick={() => { session.deleteAccount(password).catch(() => {}); }}>Delete</button>;
+  }
+  render(<QueryClientProvider client={client}><SessionProvider authEnabled><Probe /><Delete password="correct-horse-battery" /></SessionProvider></QueryClientProvider>);
+  await screen.findByText(user.email);
+  client.setQueryData(["private"], "secret");
+  const deleteSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const path = String(input);
+    if (init?.method === "DELETE" && path.endsWith("/auth/me")) return new Response(null, { status: 204 });
+    return new Response(JSON.stringify(user));
+  });
+  fireEvent.click(screen.getByText("Delete"));
+  await waitFor(() => expect(screen.getByText("anonymous")).toBeInTheDocument());
+  expect(client.getQueryData(["private"])).toBeUndefined();
+  deleteSpy.mockRestore();
+});

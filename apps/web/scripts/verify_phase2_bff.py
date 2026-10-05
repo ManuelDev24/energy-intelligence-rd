@@ -54,8 +54,9 @@ def page(path):
 now = dt.datetime.now(RD).replace(second=0, microsecond=0)
 today = now.date()
 credentials = {"email": f"erd-web-phase2-{uuid.uuid4().hex}@example.com", "password": secrets.token_urlsafe(32)}
-call("epoch cookie (428 first)", "auth/register", 428, "POST", credentials)
-call("register disposable user", "auth/register", 201, "POST", credentials)
+register_credentials = {**credentials, "accept_terms": True}
+call("epoch cookie (428 first)", "auth/register", 428, "POST", register_credentials)
+call("register disposable user", "auth/register", 201, "POST", register_credentials)
 home_id = call("create home EDESUR", "homes", 201, "POST", {"name": "Disposable ERD phase 2 web", "distributor": "EDESUR"})["id"]
 for path in ("/readings", "/goal", "/consumption", "/dashboard"):
     page(path)

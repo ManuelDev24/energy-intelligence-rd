@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -19,6 +19,11 @@ export function readBffConfig(source: Record<string, string | undefined> = proce
 const UserSchema = UserOutSchema;
 const PairSchema = TokensOutSchema.extend({ access_token: z.string().min(1).max(4096).regex(/^[A-Za-z0-9._~-]+$/), refresh_token: z.string().min(1).max(4096).regex(/^[A-Za-z0-9._~-]+$/), expires_in: z.number().int().min(1).max(900) });
 const CredentialSchema = z.object({ email: z.string().email().max(254), password: z.string().min(12).max(128) }).strict();
+// ERD-AUTH-03: el registro exige accept_terms === true literal (nunca un string/1) y nunca admite
+// una versión de términos elegida por el cliente: la fija el servidor. El formato de correo se
+// valida igual que en login.
+const RegisterSchema = RegisterInSchema.extend({ email: z.string().email().max(254) }).strict();
+const AccountDeletionSchema = AccountDeletionInSchema.strict();
 const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const accessName = (config: BffConfig) => config.secure ? "__Host-erd-access" : "erd-access";
 const logoutName = (config: BffConfig) => config.secure ? "__Host-erd-logout" : "erd-logout";
@@ -181,10 +186,14 @@ const FIELD_MESSAGES: Record<string, string> = {
   label: "Revisa el concepto (obligatorio, máximo 200 caracteres).",
   kind: "Selecciona cargo o descuento.",
   items: "Revisa los conceptos (máximo 100).",
+  accept_terms: "Debes aceptar los términos y la política de privacidad.",
 };
 const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|http_[1-5]\d\d)$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 function statusMessage(status: number, path: string, code?: unknown) {
+  // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
+  if (status === 403 && code === "reauthentication_failed") return "La contraseña no es correcta.";
+  if (status === 409 && code === "ownership_transfer_required") return "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad antes de continuar (todavía no existe una función para transferirla).";
   // Fase 2: mensajes propios por ruta (el texto de la API nunca se reenvía).
   if (status === 409 && /\/readings$/.test(path)) return "Ya existe una lectura con esa fecha y hora.";
   if (status === 422 && code === "invalid_input" && /\/readings$/.test(path)) return "La lectura debe ser mayor o igual que la anterior y menor o igual que la siguiente.";
@@ -235,25 +244,28 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
     if (request.headers.get("origin") !== config.origin || (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) return reply({ detail: "Origen no permitido." }, 403);
     if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
   }
-  const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && method === "GET";
-  const phase2 = auth ? null : phase2Route(path, method);
-  const schema = phase2 ? phase2.response : domainRoute(path, method);
-  if (!auth && !schema) return reply({ detail: "Ruta no permitida." }, 404);
+  const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
+  const legal = path === "/legal" && method === "GET";
+  const phase2 = auth || legal ? null : phase2Route(path, method);
+  const schema = legal ? LegalOutSchema : phase2 ? phase2.response : domainRoute(path, method);
+  if (!auth && !legal && !schema) return reply({ detail: "Ruta no permitida." }, 404);
   if (new RegExp(`^/homes/${UUID}$`).test(path) && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   if (phase2 && !phase2QueryOk(phase2, url.searchParams)) return reply({ detail: "Consulta no permitida." }, 400);
-  if (!phase2) for (const [key, value] of url.searchParams) {
+  if (!phase2 && !legal) for (const [key, value] of url.searchParams) {
     if (auth || !["limit", "offset", "include_dismissed"].includes(key) || (key === "include_dismissed" ? !["true", "false"].includes(value) : !/^\d{1,6}$/.test(value)) || url.searchParams.getAll(key).length !== 1) return reply({ detail: "Consulta no permitida." }, 400);
   }
+  if (legal && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   const headers: Record<string, string> = { Accept: "application/json" };
   let body: string | undefined;
   const logout = path === "/auth/logout";
+  const deleteAccount = path === "/auth/me" && method === "DELETE";
   if (method !== "GET") {
     try {
       const text = await request.text();
       if (text.length > 32_768) return reply({ detail: "Solicitud demasiado grande." }, 413);
       const value = JSON.parse(text || "{}");
       if (path === "/auth/login" || path === "/auth/register") {
-        const credentials = CredentialSchema.safeParse(value);
+        const credentials = (path === "/auth/register" ? RegisterSchema : CredentialSchema).safeParse(value);
         if (!credentials.success) return invalid(credentials.error.issues);
         if (!EPOCH.test(cookie(request, epochName(config)) || "")) return setEpoch(reply({ detail: "Activa las cookies de este sitio e inténtalo de nuevo.", code: "auth_epoch_required" }, 428), config);
         body = JSON.stringify(credentials.data);
@@ -262,6 +274,10 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
         const token = bound(request, logoutName(config))?.token;
         if (!token) return setEpoch(clear(reply({ ok: true }), config), config);
         body = JSON.stringify({ refresh_token: token });
+      } else if (deleteAccount) {
+        const parsed = AccountDeletionSchema.safeParse(value);
+        if (!parsed.success) return invalid(parsed.error.issues);
+        body = JSON.stringify(parsed.data);
       } else {
         const parsed = (phase2 ? phase2.body ?? z.object({}).strict() : writeSchema(path, method)).safeParse(value);
         if (!parsed.success) return invalid(parsed.error.issues);
@@ -270,7 +286,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       headers["Content-Type"] = "application/json";
     } catch { return reply({ detail: "JSON inválido." }, 400); }
   }
-  if (!auth || path === "/auth/me") {
+  if ((!auth || path === "/auth/me") && !legal) {
     const epoch = cookie(request, epochName(config));
     const access = bound(request, accessName(config));
     const refresh = bound(request, logoutName(config));
@@ -311,11 +327,14 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       response.cookies.set(logoutName(config), `${epoch}~${pair.refresh_token}`, options);
       return response;
     }
-    const parsed = upstream.status === 204 && method === "DELETE" ? undefined : (path === "/auth/me" ? UserSchema : schema!).parse(data);
+    const parsed = upstream.status === 204 && method === "DELETE" ? undefined : (legal ? LegalOutSchema : path === "/auth/me" ? UserSchema : schema!).parse(data);
     if (parsed !== undefined && phase2 && new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path) && !ownsBill(path, parsed)) throw new Error("Mismatched bill");
     if (parsed !== undefined && phase2 && /\/contract$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched home");
     if (parsed !== undefined && new RegExp(`^/homes/${UUID}$`).test(path) && (parsed as { id: string }).id !== path.split("/")[2]) throw new Error("Mismatched home");
-    if (parsed === undefined) return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+    if (parsed === undefined) {
+      const response = new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+      return deleteAccount ? setEpoch(clear(response, config), config) : response;
+    }
     return reply(parsed, upstream.status);
   } catch {
     const response = reply({ detail: "No se pudo confirmar la respuesta de la API. No se reintentó la operación." }, 502);
