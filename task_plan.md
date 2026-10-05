@@ -97,3 +97,13 @@ Bloqueo detectado: Claude Code informa `loggedIn: false`; usar agentes disponibl
   Gates: API 510 (+5 regresión real PostgreSQL con deadlock reproducido y corregido), web 469 (+9), typecheck/lint/diff-check 0.
   Live re-verificado con API+BFF reales (puertos 8041/3041, BD desechable borrada): sesión B intacta tras reset tardío de A, A no puede reusar contraseña vieja. Dos subagentes de la ronda anterior fueron limitados por cuota de Anthropic tras aplicar ya los cambios; completé manualmente lo que faltaba (log GREEN de R2, integración, re-verificación en vivo).
   Pendiente (no bloqueante para commit): O1 cliente móvil valida solo estado HTTP de forgot, no el cuerpo; límite de intentos por IP compartido detrás de Render (ERD-SEC-PROXY-01, ya identificado); QA visual/nativa.
+- 🔄 deleg_76cdc4b5 (3 en paralelo): ERD-SEC-PROXY-01 (IP confiable detrás de Render), O1 móvil (validar cuerpo de forgotPassword), QA visual real (capturas de pantalla) de onboarding/perfil/factura/recuperación.
+- ✅ ERD-SEC-PROXY-01 integrado y verificado: client_ip.py (firma HMAC ±60s), CLIENT_IP_SOURCE=cf-connecting-ip con fallback a socket logueado, BFF firma X-Forwarded-Client-Ip. Ajuste propio: BffConfig.bffApiSharedSecret opcional (el worker no tocó los demás tests de bff.ts que construían el literal). Modelo de amenaza: depende de que Cloudflare esté delante de Render (documentado, no es confianza universal en cabeceras).
+- ✅ O1 móvil corregido: forgotPassword valida PasswordForgotAcceptedSchema del cuerpo, no solo el 202.
+- ✅ QA visual real (capturas Chrome headless, cuenta/vivienda/factura reales vía BFF) de onboarding/perfil/factura/recuperación: 8 hallazgos. Corregí los 3 no triviales (TDD real, no cosmético):
+  · Ubicación vacía en onboarding no daba ningún feedback (validación nativa HTML bloqueaba el submit antes de que corriera el mensaje en español ya escrito) → `noValidate` en el form.
+  · `/account` mostraba "La recuperación de contraseña no está disponible" (falso, ERD-AUTH-05 ya la implementa) → enlace real a /olvide-contrasena.
+  · Tras un reset exitoso, el login mostraba a la vez "¡restablecida!" en verde y "La sesión venció" en rojo → se suprime el error de sesión cuando viene de un reset propio (prop `suppressSessionError`).
+  5 hallazgos de baja severidad (contraste de botones, mensajes de éxito poco visibles, layout del wizard, indicador dev de Next.js) quedan documentados sin corregir, cosméticos.
+  Gates finales repo completo: API 541, core 29, contratos 16, cliente 32, web 476 (+3 regresión), móvil 365, typecheck/lint/diff-check 0.
+  Pendiente: QA visual/nativa en simulador (no se arrancó, se priorizó web); los 5 hallazgos de baja severidad.
