@@ -112,3 +112,16 @@ export function describeError(error: unknown) {
     : UNEXPECTED;
   return { offline, message };
 }
+
+/** ERD-AUTH-05: recuperación de contraseña. Solo texto local por estado/código; nunca el detalle. */
+export const FORGOT_RATE_LIMITED_MESSAGE =
+  'Demasiadas solicitudes de recuperación. Espere unos minutos e intente de nuevo.';
+export const FORGOT_INVALID_EMAIL_MESSAGE = 'Ingrese un correo válido (máximo 254 caracteres).';
+const FORGOT_GENERIC_MESSAGE = 'No se pudo enviar la solicitud. Intente de nuevo.';
+export function forgotPasswordErrorMessage(error: unknown): string {
+  if (!(error instanceof ApiError)) return FORGOT_GENERIC_MESSAGE;
+  if (error.status === 429 || error.code === 'rate_limited') return FORGOT_RATE_LIMITED_MESSAGE;
+  if (error.status === 0) return NETWORK_MESSAGE;
+  if (error.status === 422) return FORGOT_INVALID_EMAIL_MESSAGE;
+  return FORGOT_GENERIC_MESSAGE;
+}

@@ -9,6 +9,7 @@ import { Checkbox } from '../../components/Checkbox';
 import { Field, formStyles } from '../../components/Field';
 import { Button } from '../../components/ui';
 import { colors, font, spacing } from '../../theme';
+import { ForgotPasswordView } from './ForgotPasswordView';
 
 export function AuthScreen() {
   const state = useAuth();
@@ -19,7 +20,8 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [fields, setFields] = useState<CredentialErrors>({});
   const [error, setError] = useState<string | null>(null);
-  const [recovery, setRecovery] = useState(false);
+  // ERD-AUTH-05: vista de "Olvidé mi contraseña" (solo modo login; AuthScreen solo existe con AUTH_ENABLED).
+  const [forgot, setForgot] = useState(false);
   // ERD-AUTH-03: aceptación explícita de términos/privacidad, exigida solo al registrarse.
   const [accepted, setAccepted] = useState(false);
   const [acceptError, setAcceptError] = useState<string | undefined>(undefined);
@@ -51,6 +53,12 @@ export function AuthScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
           <Text style={s.brand}>Energy RD</Text>
+          {forgot ? (
+            <>
+              <Text accessibilityRole="header" style={s.title}>Restablecer contraseña</Text>
+              <ForgotPasswordView initialEmail={email} onBack={() => setForgot(false)} />
+            </>
+          ) : (<>
           <Text accessibilityRole="header" style={s.title}>{mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</Text>
           <Text style={s.body}>Sus viviendas y facturas están vinculadas a su cuenta.</Text>
           {state.message && !error ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={s.body}>{state.message}</Text> : null}
@@ -79,12 +87,11 @@ export function AuthScreen() {
             ) : null}
             <Button title={busy ? 'Procesando…' : mode === 'login' ? 'Entrar' : 'Crear cuenta'} disabled={busy} onPress={() => void submit()} testID="auth-submit" />
             <Button title={mode === 'login' ? 'Crear una cuenta nueva' : 'Ya tengo cuenta'} variant="secondary" disabled={busy} testID="auth-mode"
-              onPress={() => { setMode(mode === 'login' ? 'register' : 'login'); setFields({}); setError(null); setPassword(''); setRecovery(false); setAccepted(false); setAcceptError(undefined); }} />
-            <Button title="¿Olvidó su contraseña?" variant="secondary" disabled={busy} testID="auth-recovery" onPress={() => setRecovery(true)} />
+              onPress={() => { setMode(mode === 'login' ? 'register' : 'login'); setFields({}); setError(null); setPassword(''); setAccepted(false); setAcceptError(undefined); }} />
+            {mode === 'login' ? <Button title="Olvidé mi contraseña" variant="secondary" disabled={busy} testID="auth-forgot-link"
+              onPress={() => { setForgot(true); setPassword(''); setError(null); setFields({}); }} /> : null}
           </View>
-          {recovery ? <Text testID="auth-recovery-unavailable" accessibilityLiveRegion="polite" style={s.body}>
-            La recuperación de contraseña aún no está disponible. No podemos enviar un enlace ni cambiar su contraseña desde esta aplicación. Si recuerda su contraseña, vuelva a iniciar sesión.
-          </Text> : null}
+          </>)}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
