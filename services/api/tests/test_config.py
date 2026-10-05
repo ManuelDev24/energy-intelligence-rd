@@ -126,3 +126,44 @@ def test_unknown_email_backend_is_rejected():
 def test_bounded_recovery_settings(field, value):
     with pytest.raises(ValidationError):
         config(**{field: value})
+
+
+# ---------- ERD-SEC-PROXY-01: fuente de IP de cliente detrás de Render/Cloudflare ----------
+def test_client_ip_source_defaults_to_socket():
+    assert config().CLIENT_IP_SOURCE == "socket"
+
+
+def test_unknown_client_ip_source_is_rejected():
+    with pytest.raises(ValidationError):
+        config(CLIENT_IP_SOURCE="x-forwarded-for")
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_cf_connecting_ip_requires_shared_secret_in_deployment(environment):
+    with pytest.raises(ValidationError, match="BFF_API_SHARED_SECRET"):
+        config(**(PRODUCTION | {"ENVIRONMENT": environment, "CLIENT_IP_SOURCE": "cf-connecting-ip"}))
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+@pytest.mark.parametrize("secret", ["", "short", "x" * 64, "change_me_local_only_" * 4])
+def test_cf_connecting_ip_rejects_weak_shared_secret(environment, secret):
+    with pytest.raises(ValidationError, match="BFF_API_SHARED_SECRET"):
+        config(**(PRODUCTION | {"ENVIRONMENT": environment, "CLIENT_IP_SOURCE": "cf-connecting-ip",
+                                 "BFF_API_SHARED_SECRET": secret}))
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_cf_connecting_ip_accepts_strong_shared_secret(environment):
+    settings = config(**(PRODUCTION | {"ENVIRONMENT": environment, "CLIENT_IP_SOURCE": "cf-connecting-ip",
+                                        "BFF_API_SHARED_SECRET": secrets.token_urlsafe(48)}))
+    assert settings.CLIENT_IP_SOURCE == "cf-connecting-ip"
+
+
+def test_socket_client_ip_source_does_not_require_shared_secret_in_deployment():
+    assert config(**PRODUCTION).CLIENT_IP_SOURCE == "socket"
+
+
+def test_bff_api_shared_secret_is_not_in_repr():
+    secret = secrets.token_urlsafe(48)
+    settings = config(**(PRODUCTION | {"CLIENT_IP_SOURCE": "cf-connecting-ip", "BFF_API_SHARED_SECRET": secret}))
+    assert secret not in repr(settings)

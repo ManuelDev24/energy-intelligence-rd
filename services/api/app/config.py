@@ -49,6 +49,15 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = Field(default=10, gt=0, le=120)
     # Orígenes permitidos por CORS, separados por coma. Nunca "*" con credenciales.
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8081,http://localhost:19006"
+    # ERD-SEC-PROXY-01: uvicorn corre con --no-proxy-headers a propósito (Render solo
+    # AGREGA a un X-Forwarded-For suministrado por el cliente, por lo que es falsificable).
+    # 'cf-connecting-ip' solo es seguro porque esta topología garantiza que Cloudflare está
+    # directamente delante de Render y Cloudflare sobrescribe ese header en su borde; nunca
+    # generalizar esta confianza a otra topología sin volver a verificarlo.
+    CLIENT_IP_SOURCE: Literal["socket", "cf-connecting-ip"] = "socket"
+    # Secreto compartido BFF<->API para firmar X-Forwarded-Client-Ip (la IP real del
+    # navegador, distinta de la IP del propio BFF en la conexión servidor-a-servidor).
+    BFF_API_SHARED_SECRET: str = Field(default="", repr=False)
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -73,6 +82,15 @@ class Settings(BaseSettings):
                 for origin in self.cors_origins_list
             ):
                 raise ValueError("Production/staging requires explicit HTTPS CORS origins")
+            if self.CLIENT_IP_SOURCE == "cf-connecting-ip" and (
+                len(self.BFF_API_SHARED_SECRET) < 43
+                or len(set(self.BFF_API_SHARED_SECRET)) < 16
+                or any(s in self.BFF_API_SHARED_SECRET.lower() for s in ("change_me", "changeme", "secret", "password"))
+            ):
+                raise ValueError(
+                    "BFF_API_SHARED_SECRET requires a securely generated random key (at least 32 bytes) "
+                    "when CLIENT_IP_SOURCE is cf-connecting-ip"
+                )
         reset_url = urlsplit(self.PASSWORD_RESET_URL)
         if reset_url.query or reset_url.fragment or "#" in self.PASSWORD_RESET_URL or "?" in self.PASSWORD_RESET_URL:
             raise ValueError("PASSWORD_RESET_URL must not contain query or fragment; the token is appended as #token=")
