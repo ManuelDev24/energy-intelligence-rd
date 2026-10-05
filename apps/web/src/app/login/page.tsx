@@ -17,7 +17,7 @@ export default function LoginPage() {
         </p>
       ) : null}
       {reset ? <p role="status" className="mx-auto mt-6 max-w-md text-center text-sm text-foreground">Tu contraseña se restableció correctamente. Inicia sesión con tu contraseña nueva.</p> : null}
-      <AccountForm mode="login" />
+      <AccountForm mode="login" suppressSessionError={reset} />
     </>
   );
 }

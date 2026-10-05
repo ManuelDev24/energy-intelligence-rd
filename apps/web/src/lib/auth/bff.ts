@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { createHmac } from "crypto";
 import { z } from "zod";
 import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema } from "@energyrd/api-contracts";
 
-export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean }
+export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
   const development = source.NODE_ENV === "development" || source.NODE_ENV === "test";
   if (source.NEXT_PUBLIC_AUTH_ENABLED && !["true", "false"].includes(source.NEXT_PUBLIC_AUTH_ENABLED)) throw new Error("NEXT_PUBLIC_AUTH_ENABLED must be true or false");
@@ -14,7 +15,7 @@ export function readBffConfig(source: Record<string, string | undefined> = proce
     if (url.username || url.password || url.search || url.hash || url.pathname !== "/" || !["http:", "https:"].includes(url.protocol)) throw new Error("Only credential-free HTTP origins are allowed");
     if (!development && url.protocol !== "https:") throw new Error("Production requires HTTPS API_BASE_URL and WEB_ORIGIN");
   }
-  return { enabled, apiBase: api.origin, origin: origin.origin, secure: !development || origin.protocol === "https:" };
+  return { enabled, apiBase: api.origin, origin: origin.origin, secure: !development || origin.protocol === "https:", bffApiSharedSecret: source.BFF_API_SHARED_SECRET || "" };
 }
 const UserSchema = UserOutSchema;
 const PairSchema = TokensOutSchema.extend({ access_token: z.string().min(1).max(4096).regex(/^[A-Za-z0-9._~-]+$/), refresh_token: z.string().min(1).max(4096).regex(/^[A-Za-z0-9._~-]+$/), expires_in: z.number().int().min(1).max(900) });
@@ -59,6 +60,23 @@ function setEpoch(response: NextResponse, config: BffConfig) {
 }
 function reply(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store, private", "Vary": "Cookie", "X-Content-Type-Options": "nosniff" } });
+}
+// ERD-SEC-PROXY-01: the BFF<->API connection is server-to-server, so the API would otherwise see
+// only the BFF's own socket IP for every browser. Sign the REAL browser IP (first hop of the
+// incoming X-Forwarded-For) so the API can budget auth abuse per browser instead of per proxy.
+// Topology-dependent, not a general trust rule: this assumes Next.js on Render sees Cloudflare's
+// already-trusted X-Forwarded-For chain (Cloudflare sets/appends it at the edge in front of Render);
+// it must not be reused behind a proxy that lets a client set its own X-Forwarded-For unchecked.
+const CLIENT_IP_DOMAIN = "energy-rd:client-ip:v1";
+function firstForwardedIp(request: Request): string | undefined {
+  const header = request.headers.get("x-forwarded-for");
+  const ip = header?.split(",")[0]?.trim();
+  return ip || undefined;
+}
+function signClientIp(ip: string, secret: string, now: number = Date.now() / 1000): string {
+  const ts = Math.floor(now);
+  const mac = createHmac("sha256", secret).update(`${CLIENT_IP_DOMAIN}:${ip}:${ts}`).digest("hex");
+  return `${ip}.${ts}.${mac}`;
 }
 function clear(response: NextResponse, config: BffConfig) {
   for (const name of [accessName(config), logoutName(config)]) response.cookies.set(name, "", { httpOnly: true, secure: config.secure, sameSite: "strict", path: "/", maxAge: 0 });
@@ -270,6 +288,8 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   }
   if (legal && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   const headers: Record<string, string> = { Accept: "application/json" };
+  const forwardedIp = firstForwardedIp(request);
+  if (config.bffApiSharedSecret && forwardedIp) headers["X-Forwarded-Client-Ip"] = signClientIp(forwardedIp, config.bffApiSharedSecret);
   let body: string | undefined;
   const logout = path === "/auth/logout";
   const deleteAccount = path === "/auth/me" && method === "DELETE";

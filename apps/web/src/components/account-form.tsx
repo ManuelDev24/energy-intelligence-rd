@@ -7,8 +7,9 @@ import { Button } from "./ui/button";
 import { Field } from "./ui/field";
 import { Card, CardTitle, CardDescription } from "./ui/card";
 import { useSession } from "@/lib/session";
-export function AccountForm({ mode }: { mode: "login" | "register" }) {
+export function AccountForm({ mode, suppressSessionError = false }: { mode: "login" | "register"; suppressSessionError?: boolean }) {
   const { authenticate, error: sessionError } = useSession();
+  const effectiveSessionError = suppressSessionError ? null : sessionError;
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +45,7 @@ export function AccountForm({ mode }: { mode: "login" | "register" }) {
             </label>
           </div>
         ) : null}
-        {error || sessionError ? <p role="alert" className="text-sm text-danger">{error || sessionError} Revisa tus datos o inicia sesión de nuevo.</p> : null}
+        {error || effectiveSessionError ? <p role="alert" className="text-sm text-danger">{error || effectiveSessionError} Revisa tus datos o inicia sesión de nuevo.</p> : null}
         <Button type="submit" disabled={pending || blocked}>{pending ? `${label} · Verificando…` : label}</Button>
       </form>
       {mode === "login" ? <p className="mt-4 text-sm"><Link className="text-primary underline focus-visible:ring-2 focus-visible:ring-primary" href="/olvide-contrasena">Olvidé mi contraseña</Link></p> : null}

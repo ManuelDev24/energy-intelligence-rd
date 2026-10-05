@@ -1,5 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/lib/session";
@@ -77,7 +78,7 @@ export default function AccountPage() {
       <Card>
         <h1 className="text-2xl font-bold">Mi cuenta</h1>
         <p className="my-4 break-words">{user?.email}</p>
-        <p className="mb-4 text-sm text-muted-foreground">La sesión vence sin renovación automática. Inicia sesión de nuevo cuando se solicite. La recuperación de contraseña no está disponible.</p>
+        <p className="mb-4 text-sm text-muted-foreground">La sesión vence sin renovación automática. Inicia sesión de nuevo cuando se solicite. ¿Olvidaste tu contraseña? <Link href="/olvide-contrasena" className="underline">Recupérala aquí</Link>.</p>
         {error ? <p role="alert">{error}</p> : null}
         <Button onClick={() => void logout()} disabled={pending}>{pending ? "Cerrando…" : "Cerrar sesión"}</Button>
       </Card>
