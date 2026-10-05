@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, Ref } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, spacing } from '../theme';
@@ -7,20 +7,23 @@ export function Field({
   label,
   error,
   testID,
+  inputRef,
   ...props
-}: { label: string; error?: string; testID: string } & ComponentProps<typeof TextInput>) {
+}: { label: string; error?: string; testID: string; inputRef?: Ref<TextInput> } & ComponentProps<typeof TextInput>) {
   return (
     <View style={{ gap: 4 }}>
       <Text style={s.label}>{label}</Text>
       <TextInput
+        ref={inputRef}
         {...props}
         testID={testID}
-        accessibilityLabel={label}
+        accessibilityLabel={error ? `${label}. ${error}` : label}
+        accessibilityHint={error ? 'Revise este campo e intente de nuevo.' : props.accessibilityHint}
         style={[s.input, error ? s.inputErr : null]}
         placeholderTextColor={colors.muted}
       />
       {error ? (
-        <Text style={s.err} testID={`${testID}-error`}>
+        <Text style={s.err} accessibilityLiveRegion="polite" testID={`${testID}-error`}>
           {error}
         </Text>
       ) : null}

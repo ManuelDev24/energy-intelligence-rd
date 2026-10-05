@@ -65,7 +65,10 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     id: "demo-banner"
 - assertNotVisible:
     id: "alert-banner"
-- assertVisible: "PROYECTADO"
+- assertVisible:
+    id: "badge-PROJECTED"
+- assertVisible:
+    id: "hero"
 - takeScreenshot: evidence/02-dashboard-inicial
 
 # 3. Historial y registro de factura (primero un dato inválido)
@@ -96,8 +99,20 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     id: "f-amount"
 - eraseText: 10
 - inputText: "5200"
-# Cerrar teclado tocando una etiqueta (el teclado numérico de iOS no tiene "return").
-- tapOn: "Días"
+# El teclado decimal de iOS no trae Return: usar el botón accesible del formulario.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "keyboard-done"
+          # Solo existe con el teclado en pantalla; si iOS no lo muestra no hay nada que cerrar.
+          optional: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "Días"
 - scrollUntilVisible:
     element:
       id: "save-bill"
@@ -112,8 +127,20 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     id: "f-kwh"
 - eraseText: 10
 - inputText: "400"
-# Cerrar teclado tocando una etiqueta (el teclado numérico de iOS no tiene "return").
-- tapOn: "Días"
+# El teclado decimal de iOS no trae Return: usar el botón accesible del formulario.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "keyboard-done"
+          # Solo existe con el teclado en pantalla; si iOS no lo muestra no hay nada que cerrar.
+          optional: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "Días"
 - scrollUntilVisible:
     element:
       id: "save-bill"
@@ -133,8 +160,9 @@ appId: ${APP_ID || 'host.exp.Exponent'}
       id: "alert-banner"
     timeout: 20000
 - assertVisible: ".*Alerta crítica.*"
-- assertVisible:
-    id: "card-projection"
+- scrollUntilVisible:          # el gráfico empuja la proyección hacia abajo
+    element:
+      id: "card-projection"
 - takeScreenshot: evidence/05-dashboard-alerta
 
 # 5. Alertas: descartar
@@ -154,7 +182,8 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     visible:
       id: "estimate-summary"
     timeout: 20000
-- assertVisible: "ESTIMADO"
+- assertVisible:
+    id: "badge-ESTIMATED"
 - takeScreenshot: evidence/07-equipos
 
 # 7. Limpieza: borrar la factura creada
@@ -164,8 +193,7 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     element:
       id: "bill-2026-08-01"
 - tapOn:
-    text: "Eliminar"
-    index: 0
+    text: "Eliminar la factura de 1–31 ago 2026"
 - extendedWaitUntil:     # diálogo de confirmación
     visible: ".*¿Eliminar la factura.*"
     timeout: 10000

@@ -1,21 +1,51 @@
+// Tema del móvil derivado de los tokens de marca compartidos con la web (@energyrd/core).
+import { tokens } from '@energyrd/core';
+
+const c = tokens.color;
+
 export const colors = {
-  bg: '#F5F7FA',
-  card: '#FFFFFF',
-  text: '#0F172A',
-  muted: '#64748B',
-  border: '#E2E8F0',
-  primary: '#0B6E4F',
+  bg: c.bg,
+  card: c.card,
+  text: c.text,
+  muted: c.muted,
+  border: c.border,
+  primary: c.brand[600],
   primaryText: '#FFFFFF',
-  danger: '#B91C1C',
-  dangerBg: '#FEE2E2',
-  warning: '#B45309',
-  warningBg: '#FEF3C7',
-  real: '#0B6E4F',
-  realBg: '#DCFCE7',
-  estimated: '#1D4ED8',
-  estimatedBg: '#DBEAFE',
-  projected: '#7C3AED',
-  projectedBg: '#EDE9FE',
+  brandDark: c.brand[900],
+  brandSoft: c.brand[50],
+  accent: c.accent,
+  // Texto sobre la cabecera de marca (brand 900): blanco y blanco atenuado (ambos ≥ 9:1).
+  onBrand: '#FFFFFF',
+  onBrandMuted: 'rgba(255,255,255,0.78)',
+  info: c.info, // azul técnico: solo gráficos/información, no texto sobre fondos tintados
+  danger: c.danger,
+  dangerBg: c.dangerBg,
+  dangerBorder: c.dangerBorder,
+  warning: c.warning,
+  warningBg: c.warningBg,
+  warningBorder: c.warningBorder,
+  notice: c.notice,
+  noticeBg: c.noticeBg,
+  noticeBorder: c.noticeBorder,
+  success: c.success,
+  successBg: c.successBg,
+  successBorder: c.successBorder,
+  real: c.quality.real,
+  realBg: c.quality.realBg,
+  estimated: c.quality.estimated,
+  estimatedBg: c.quality.estimatedBg,
+  projected: c.quality.projected,
+  projectedBg: c.quality.projectedBg,
+  inferred: c.quality.inferred,
+  inferredBg: c.quality.inferredBg,
+  // Superficie de los esqueletos de carga (mismo gris que los bordes).
+  skeleton: c.border,
 };
 
-export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };
+/** Series de gráficos: real verde, info azul, proyectado morado, estimado azul oscuro. */
+export const chartColors = c.chart;
+
+export const spacing = tokens.space;
+export const radius = tokens.radius;
+export const font = tokens.font;
+export const TOUCH = tokens.touchTarget;

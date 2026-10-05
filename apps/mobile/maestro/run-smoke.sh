@@ -2,8 +2,11 @@
 # Smoke test móvil (ERD-MOB-QUALITY) sobre Expo Go con Maestro.
 #
 # Requisitos previos:
-#   - API sembrada:      docker compose up -d --wait postgres api   (seed automático)
-#   - Metro:             cd apps/mobile && EXPO_PUBLIC_API_URL=<url> npx expo start --port 8081
+#   - API demo local:    SEED_PILOT=true docker compose up -d --wait postgres api
+#   - Metro iOS local:   NODE_OPTIONS=--dns-result-order=ipv4first EXPO_PUBLIC_AUTH_ENABLED=false EXPO_PUBLIC_API_URL=<url> npx expo start --localhost --port 8081
+#   - Metro Android:     EXPO_PUBLIC_AUTH_ENABLED=false EXPO_PUBLIC_API_URL=<url> npx expo start --port 8081
+#   - EXPO_PUBLIC_AUTH_ENABLED=false es obligatorio: este recorrido cubre el piloto sin cuentas
+#     (solo disponible en desarrollo). Sin esa variable la app arranca en la pantalla de login.
 #   - Simulador/emulador con Expo Go instalado (expo start --android / --ios lo instala)
 #   - Maestro:           brew install mobile-dev-inc/tap/maestro
 #
