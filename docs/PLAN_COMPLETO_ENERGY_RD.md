@@ -155,7 +155,7 @@ Se crean en `packages/ui` (web) y `apps/mobile/src/components` con la **misma AP
 |---|---|---|
 | ERD-AUTH-01 | **Fundación backend integrada y probada (196 tests):** `users`, registro/login/refresh/logout/me, Argon2id, JWT y rotación de sesiones. **Pendiente:** recuperación/email y controles de abuso; no cerrar tarea integral | `/auth/register`, `/auth/login` |
 | ERD-AUTH-02 | **Integrado y probado:** membresía por vivienda en todas las rutas privadas, sin bypass de admin/support; errores 404 indistinguibles entre vivienda ajena e inexistente | "roles y permisos" |
-| ERD-AUTH-03 | Términos y privacidad, borrado de cuenta, política de retención (P14) | Perfil → eliminar cuenta |
+| ERD-AUTH-03 | **Implementado y verificado localmente (2026-10-05):** aceptación de términos en el registro (migración 0012, versión `2026-10-draft`), `GET /legal` público, `DELETE /auth/me` con reautenticación (403/409/429), borrado transaccional y auditoría seudonimizada; UI web (BFF) y móvil. Revisión independiente: 0 Critical; R1 (presupuesto de login gastado sin token) corregido con regresión. Pendiente: texto legal final (revisión Ley 172-13), QA visual/nativa, y **ERD-AUTH-04** transferencia de propiedad (sin ella el 409 bloquea el borrado) | Perfil → eliminar cuenta |
 | ERD-DB-02 | Migraciones 0007+ (0006 reservada para auth): `contracts`, `tariffs`, `meter_readings`, `bill_items` + `documents` | modelo §6 |
 | ERD-DEPLOY-01 | Neon (prod) + Render/Fly (API) + Vercel (web) + EAS (móvil), secretos, dominio | presupuesto US$10–45/mes |
 | ERD-OBS-01 | Sentry + logs estructurados + health | monitoreo |
