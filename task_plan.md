@@ -78,3 +78,22 @@ Bloqueo detectado: Claude Code informa `loggedIn: false`; usar agentes disponibl
   Gates: API 436, contratos --check 0, arquitectura OK, core29/contratos14/cliente25/web374+5/móvil341+11, typecheck/lint/diff-check 0, build web CI-env 0, export iOS/Android 0.
   Live (API :8011 + next dev :3011, BD desechable borrada, puertos cerrados): borrado vía BFF PASS (legal, 422 sin términos, 201, 403 sesión intacta, 204, cookies borradas, 401 after), verify_auth_bff PASS, verify_phase2_bff PASS, e2e móvil auth+Fase2 3/3.
   Pendiente: QA visual/nativa (Maestro sin ejecutar), texto legal final. Sin commit.
+- ✅ 2026-10-05 Decisiones delegadas por el owner ("elige la mejor opción"):
+  - Email: Resend (Free 3.000/mes, 100/día → Pro US$20 al crecer). Requiere dominio propio con SPF/DKIM.
+  - Despliegue: Render (API Docker + web Next.js, región Virginia) + Neon (proyecto existente, misma región us-east) + EAS (móvil) + Sentry Free. Staging gratis (Render Free duerme a los 15 min); producción ≈ US$14 Render Starter×2 + Neon Launch por uso (~US$5–25). Vercel descartado para producción: Hobby prohíbe uso comercial y Pro cuesta US$20.
+  - Dependencias braces/node-forge: aceptar riesgo (solo build/dev, sin parche), revisar 2026-11-04.
+  - ERD-AUTH-04 (transferencia) depende de compartir viviendas (no existe alta de miembros; 409 inalcanzable hoy): se mueve junto a ERD-SHARE-01.
+  - No se crea cuenta ni se gasta nada sin confirmación del owner.
+- 🔄 Siguiente: ERD-AUTH-05 recuperación de contraseña (backend con backend de email intercambiable: console en dev, Resend en prod) + ERD-DEPLOY-01 preparación (blueprint Render, eas.json, guía, checklist de variables) en paralelo.
+- ✅ [ERD-AUTH-05] backend integrado (28 archivos, sin conflictos; respaldo scratch/erd-auth-05/canonical-backup-before-backend). Coordinador: API 505, contratos --check 0, arquitectura OK, uv lock --check OK, core29/contratos16/cliente32/web374+5/móvil341+11, typecheck/lint/diff-check 0. Sin commit.
+- ✅ [ERD-DEPLOY-01] preparado sin desplegar: render.yaml (staging Dev Free / prod main Starter, Virginia, preDeploy alembic), apps/mobile/eas.json, docs/deploy/{DEPLOY_GUIDE,ENV_CHECKLIST}.md, infrastructure/deploy/check_deploy_config.py (0 errores 0 avisos tras integrar AUTH-05), entrypoint con ${PORT}. docker build verificado por el worker. Sin commit.
+- 🔄 deleg_56911894: UI recuperación web (BFF + /olvide-contrasena + /restablecer-contrasena) y móvil (olvidé contraseña; reset vía enlace web).
+- ⛔ Bloqueante prod ERD-SEC-PROXY-01: detrás de Render+Cloudflare la API ve IP de proxy y, vía BFF, todos los usuarios web comparten bucket. Render solo AÑADE a X-Forwarded-For (spoofable). Diseño: API lee CF-Connecting-IP (Cloudflare lo fija y rechaza el del cliente) con setting CLIENT_IP_SOURCE=socket|cf-connecting-ip; BFF reenvía la IP del navegador en cabecera firmada HMAC (secreto compartido BFF↔API, con timestamp) que la API solo acepta si la firma es válida. Hacer tras la UI de recuperación (toca bff.ts).
+- ✅ [ERD-AUTH-05] correcciones de seguridad integradas (revisión Critical+Required):
+  - C1 (login con contraseña antigua tras reset): auth.py relee el hash bajo lock antes de emitir sesión.
+  - R1 (borrado de cuenta con contraseña obsoleta tras reset): account.py revalida el hash bajo lock.
+  - R2 (deadlock purga↔borrado): purga de tokens vencidos en transacción independiente, commit antes de bloquear al usuario.
+  - R3 (reset tardío borraba sesión de otra cuenta en el navegador): BFF ya no limpia cookies/epoch en el 204 público; servidor revoca solo las sesiones de esa cuenta, el 401 normal cierra sesión local. Página de reset añade guardia de montaje/generación.
+  Gates: API 510 (+5 regresión real PostgreSQL con deadlock reproducido y corregido), web 469 (+9), typecheck/lint/diff-check 0.
+  Live re-verificado con API+BFF reales (puertos 8041/3041, BD desechable borrada): sesión B intacta tras reset tardío de A, A no puede reusar contraseña vieja. Dos subagentes de la ronda anterior fueron limitados por cuota de Anthropic tras aplicar ya los cambios; completé manualmente lo que faltaba (log GREEN de R2, integración, re-verificación en vivo).
+  Pendiente (no bloqueante para commit): O1 cliente móvil valida solo estado HTTP de forgot, no el cuerpo; límite de intentos por IP compartido detrás de Render (ERD-SEC-PROXY-01, ya identificado); QA visual/nativa.

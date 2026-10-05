@@ -21,7 +21,7 @@
 ## Estado
 ERD-SEC-DEPS PARCIAL. No cerrar mientras persistan los avisos altos o hasta documentar formalmente una aceptación de riesgo. Mantener herramientas de desarrollo en entorno confiable y vigilar upstream. No usar downgrades incompatibles para forzar una auditoría verde.
 
-## Revisión 2026-10-05 — propuesta de aceptación de riesgo (pendiente de firma del owner)
+## Revisión 2026-10-05 — aceptación de riesgo (aprobada por el owner 2026-10-05)
 - Auditoría repetida: 21 altos, 0 críticos; todos derivan de **2 paquetes**:
   - `braces@3.0.3` (GHSA-vfj7-8cjw-p6xm, DoS por patrones anidados) ← `tailwindcss@3.4.19` (chokidar/micromatch). Solo compilación web; no se incluye en el bundle ni en la API.
   - `node-forge@1.4.0` (GHSA-86w9-cpqp-85rv, verificación PKCS#1 v1.5) ← `@expo/cli` / `@expo/code-signing-certificates`. Solo herramienta de desarrollo Expo; no se incluye en la app compilada.
