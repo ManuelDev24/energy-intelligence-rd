@@ -78,8 +78,21 @@ def test_private_route_inventory_remains_covered(auth_client):
     # Únicas rutas públicas fuera de /homes: auth, tarifas publicadas y versiones legales.
     public = {path for path in paths if path.startswith('/api/v1/') and not path.startswith('/api/v1/homes')}
     assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal'}
+    # Rutas /auth sin access token (las credenciales o el token opaco van en el cuerpo).
+    assert {p for p in public if p.startswith('/api/v1/auth/')} == PUBLIC_AUTH_ROUTES | {'/api/v1/auth/me'}
     # /legal solo expone GET, nunca escrituras.
     assert set(paths['/api/v1/legal']) == {'get'}
+
+
+PUBLIC_AUTH_ROUTES = {'/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout',
+                      '/api/v1/auth/password/forgot', '/api/v1/auth/password/reset'}
+
+
+def test_public_auth_routes_never_require_bearer(auth_client):
+    for path in PUBLIC_AUTH_ROUTES:
+        response = auth_client.post(path, json={})
+        assert response.status_code == 422, path
+        assert 'www-authenticate' not in response.headers, path
 
 
 def test_member_read_write_owner_only_home_delete_and_revocation(auth_client, migrated):

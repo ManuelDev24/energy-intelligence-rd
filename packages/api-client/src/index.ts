@@ -3,6 +3,7 @@ import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
   type Distributor, type BillItemsReplace, type RegisterIn,
 } from "@energyrd/api-contracts";
@@ -46,6 +47,12 @@ function localValidation(error: z.ZodError, messages: Record<string, string>): A
   return new ApiError(422, "Revise los campos indicados.", fields, "validation_error");
 }
 
+const RESET_MESSAGES = {
+  email: "Introduce un correo electrónico válido.",
+  token: "El enlace de recuperación no es válido. Solicita uno nuevo.",
+  new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
+};
+
 const CREDENTIAL_MESSAGES = {
   email: "Introduce un correo electrónico válido.",
   password: "La contraseña debe tener entre 12 y 128 caracteres.",
@@ -76,7 +83,7 @@ function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 
 export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch, timeoutMs = 10_000) {
   const root = `${baseUrl.replace(/\/+$/, "")}/api/v1`;
-  async function request<S extends z.ZodTypeAny>(path: string, schema: S, init?: RequestInit): Promise<z.output<S>> {
+  async function request<S extends z.ZodTypeAny>(path: string, schema: S, init?: RequestInit, expectedStatus?: number): Promise<z.output<S>> {
     const ctrl = new AbortController();
     const cancel = () => ctrl.abort(init?.signal?.reason);
     if (init?.signal?.aborted) cancel();
@@ -96,6 +103,7 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
         }
       }
       if (!response.ok) throw parseErrorBody(response.status, body);
+      if (expectedStatus !== undefined && response.status !== expectedStatus) throw new ContractError();
       const parsed = schema.safeParse(body);
       if (!parsed.success) throw new ContractError();
       const home = path.match(/^\/homes\/([^/?]+)/)?.[1];
@@ -188,6 +196,21 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       const parsed = AccountDeletionInSchema.strict().safeParse({ password });
       if (!parsed.success) throw localValidation(parsed.error, CREDENTIAL_MESSAGES);
       return request("/auth/me", z.undefined(), write("DELETE", parsed.data));
+    },
+    // ERD-AUTH-05: recuperación. forgot siempre 202 (exista o no la cuenta); reset 204 sin cuerpo.
+    // El token viaja solo en el cuerpo JSON, nunca en la URL de la API.
+    forgotPassword: async (emailAddress: string) => {
+      // El contrato generado no impone formato de email (solo longitud): validación básica local.
+      const parsed = PasswordForgotInSchema.strict()
+        .refine(body => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email), { path: ["email"] })
+        .safeParse({ email: emailAddress.trim().toLowerCase() });
+      if (!parsed.success) throw localValidation(parsed.error, RESET_MESSAGES);
+      await request("/auth/password/forgot", PasswordForgotAcceptedSchema, write("POST", parsed.data), 202);
+    },
+    resetPassword: async (token: string, newPassword: string) => {
+      const parsed = PasswordResetInSchema.strict().safeParse({ token, new_password: newPassword });
+      if (!parsed.success) throw localValidation(parsed.error, RESET_MESSAGES);
+      return request("/auth/password/reset", z.undefined(), write("POST", parsed.data), 204);
     },
     listTariffs: async (opts?: { distributor?: Distributor; on?: string }, signal?: AbortSignal) =>
       list(`/tariffs${query({ distributor: opts?.distributor, on: opts?.on === undefined ? undefined : isoDate.parse(opts.on) })}`,

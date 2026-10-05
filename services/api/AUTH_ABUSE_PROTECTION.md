@@ -37,6 +37,10 @@ resolución de dependencias también consumen presupuesto; JSON mal formado pued
 ser rechazado por FastAPI antes de las dependencias, así que el borde debe limitar
 bytes/peticiones antes de parsear. No se mantiene bloqueo mientras Argon2 trabaja.
 
+ERD-AUTH-05 añade los presupuestos `forgot` y `reset` (`/auth/password/forgot` y `/reset`) con
+el mismo mecanismo; el cooldown por cuenta de recuperación vive en `password_reset_tokens`, no aquí
+(ver `PASSWORD_RECOVERY.md`).
+
 ## Variables y comportamiento fail-closed
 
 | Variable | Default | Rango |
@@ -44,6 +48,8 @@ bytes/peticiones antes de parsear. No se mantiene bloqueo mientras Argon2 trabaj
 | `AUTH_REGISTER_LIMIT` | 10 | 1–10000 |
 | `AUTH_LOGIN_LIMIT` | 20 | 1–10000 |
 | `AUTH_REFRESH_LIMIT` | 60 | 1–10000 |
+| `AUTH_FORGOT_LIMIT` (ERD-AUTH-05) | 5 | 1–10000 |
+| `AUTH_RESET_LIMIT` (ERD-AUTH-05) | 10 | 1–10000 |
 | `AUTH_ABUSE_WINDOW_SECONDS` | 60 | 1–86400 |
 
 No existe switch para desactivar límites cuando auth está activo. Config inválida

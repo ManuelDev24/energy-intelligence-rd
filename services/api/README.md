@@ -76,6 +76,8 @@ el acceso de clientes externos. La selección de vivienda no es una credencial.
 
 `ENVIRONMENT=production` o `staging` exige credenciales de DB no locales, orígenes CORS HTTPS
 explícitos y `SEED_PILOT=false`. Estas validaciones no sustituyen autenticación ni autorización.
+Fuera de `development` también exige `EMAIL_BACKEND=resend`, `RESEND_API_KEY`, `EMAIL_FROM` y
+`PASSWORD_RESET_URL` HTTPS (recuperación de contraseña, ver `PASSWORD_RECOVERY.md`).
 
 Las pruebas recrean el schema de una base desechable. `TEST_DATABASE_URL` debe usar PostgreSQL,
 un nombre con letras/dígitos/guiones bajos terminado en `_test`, y distinto de la base de aplicación.

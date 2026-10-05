@@ -16,3 +16,5 @@ def budget(operation):
 login_budget = budget("login")
 register_budget = budget("register")
 refresh_budget = budget("refresh")
+forgot_budget = budget("forgot")
+reset_budget = budget("reset")

@@ -14,12 +14,13 @@ dependencies = [
     "argon2-cffi>=23.1,<26",
     "PyJWT>=2.10.1,<3",
     "email-validator>=2.2,<3",
+    # ERD-AUTH-05: cliente HTTP del backend de correo Resend (también lo usa TestClient en dev).
+    "httpx>=0.27,<1",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8,<9",
-    "httpx>=0.27,<1",
 ]
 
 [tool.pytest.ini_options]

@@ -19,5 +19,8 @@ RUN chmod +x docker-entrypoint.sh \
 # Sin privilegios de root dentro del contenedor.
 USER app
 
+# Puerto por defecto en local; en Render escucha en $PORT (lo inyecta la plataforma).
 EXPOSE 8000
+# Sin argumentos arranca la API; con argumentos ejecuta ese comando tras validar la configuración
+# (p. ej. `alembic upgrade head` como paso de release).
 ENTRYPOINT ["./docker-entrypoint.sh"]

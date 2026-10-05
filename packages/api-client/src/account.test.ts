@@ -71,3 +71,55 @@ describe("ERD-AUTH-03 register payload", () => {
       .toThrow(expect.objectContaining({ fieldErrors: { password: expect.any(String) } }));
   });
 });
+
+describe("ERD-AUTH-05 password recovery", () => {
+  const TOKEN = "A".repeat(43);
+  it("forgotPassword posts only the normalized email and resolves on 202", async () => {
+    const fetcher = vi.fn().mockResolvedValue(json({ status: "accepted" }, 202));
+    await expect(createApiClient("http://api.test", fetcher).forgotPassword(" Alice@Example.COM ")).resolves.toBeUndefined();
+    const [url, init] = fetcher.mock.calls[0];
+    expect(url).toBe("http://api.test/api/v1/auth/password/forgot");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ email: "alice@example.com" });
+  });
+  it("forgotPassword rejects an invalid email locally", async () => {
+    const fetcher = vi.fn();
+    await expect(createApiClient("http://api.test", fetcher).forgotPassword("nope"))
+      .rejects.toMatchObject({ status: 422, fieldErrors: { email: expect.any(String) } });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("forgotPassword treats any status other than 202 as contract drift", async () => {
+    for (const response of [json({ status: "accepted" }, 200), new Response(null, { status: 204 }), json({ status: "sent" }, 202)]) {
+      const fetcher = vi.fn().mockResolvedValue(response);
+      await expect(createApiClient("http://api.test", fetcher).forgotPassword("a@b.test")).rejects.toBeInstanceOf(ContractError);
+    }
+  });
+  it("forgotPassword surfaces rate limiting", async () => {
+    const fetcher = vi.fn().mockResolvedValue(json({ detail: "x", code: "auth_rate_limited" }, 429));
+    await expect(createApiClient("http://api.test", fetcher).forgotPassword("a@b.test"))
+      .rejects.toMatchObject({ status: 429, code: "auth_rate_limited" });
+  });
+  it("resetPassword sends the token in the body (never the URL) and resolves on 204", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    await expect(createApiClient("http://api.test", fetcher).resetPassword(TOKEN, ` ${PASSWORD} `)).resolves.toBeUndefined();
+    const [url, init] = fetcher.mock.calls[0];
+    expect(url).toBe("http://api.test/api/v1/auth/password/reset");
+    expect(url).not.toContain(TOKEN);
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ token: TOKEN, new_password: ` ${PASSWORD} ` });
+  });
+  it("resetPassword validates token and password locally", async () => {
+    const fetcher = vi.fn();
+    const client = createApiClient("http://api.test", fetcher);
+    await expect(client.resetPassword("short", PASSWORD)).rejects.toMatchObject({ status: 422, fieldErrors: { token: expect.any(String) } });
+    await expect(client.resetPassword(TOKEN, "short")).rejects.toMatchObject({ status: 422, fieldErrors: { new_password: expect.any(String) } });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("resetPassword exposes reset_token_invalid and rejects a body on success", async () => {
+    const invalid = vi.fn().mockResolvedValue(json({ detail: "x", code: "reset_token_invalid" }, 400));
+    await expect(createApiClient("http://api.test", invalid).resetPassword(TOKEN, PASSWORD))
+      .rejects.toMatchObject({ status: 400, code: "reset_token_invalid" });
+    const drift = vi.fn().mockResolvedValue(json({ ok: true }));
+    await expect(createApiClient("http://api.test", drift).resetPassword(TOKEN, PASSWORD)).rejects.toBeInstanceOf(ContractError);
+  });
+});

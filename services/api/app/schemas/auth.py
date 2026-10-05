@@ -76,3 +76,31 @@ class TokensOut(BaseModel):
     refresh_token: str
     token_type: Literal["bearer"] = "bearer"
     expires_in: int
+
+
+class PasswordForgotIn(BaseModel):
+    """ERD-AUTH-05: solicitud de enlace; la respuesta es idéntica exista o no la cuenta."""
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr = Field(max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        return str(value).lower()
+
+
+class PasswordForgotAccepted(BaseModel):
+    """Cuerpo fijo del 202: nunca dice si la cuenta existe ni si se envió correo."""
+    status: Literal["accepted"]
+
+
+class PasswordResetIn(BaseModel):
+    """Token opaco (43 caracteres URL-safe) solo en el cuerpo; misma política de contraseña que el registro."""
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+    new_password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)

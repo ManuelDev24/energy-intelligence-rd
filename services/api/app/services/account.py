@@ -44,6 +44,7 @@ def _audit(db, home_id, entity, operation):
 
 
 def delete_account(db, user, password):
+    verified_hash = user.password_hash
     if not verify_password(user, password):
         raise ReauthenticationFailed(str(unauthorized()))
     with write_transaction(db):
@@ -51,6 +52,9 @@ def delete_account(db, user, password):
                            .execution_options(populate_existing=True))
         if locked is None:
             raise unauthorized()
+        # Reset may have committed after the dependency loaded this user or after verification.
+        if not locked.active or locked.password_hash != verified_hash:
+            raise ReauthenticationFailed(str(unauthorized()))
         home_ids = sorted(db.scalars(select(HomeMember.home_id).where(HomeMember.user_id == user.id)))
         erase, leave = [], []
         # Same home row lock as authorize_home() for writes, in a fixed order to avoid deadlocks.

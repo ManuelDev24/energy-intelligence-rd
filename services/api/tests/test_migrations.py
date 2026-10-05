@@ -114,7 +114,7 @@ def test_percentage_downgrade_refuses_loss_of_extreme_values(migrated, alembic_c
         command.downgrade(alembic_cfg, "0003")
     with migrated.connect() as c:
         assert str(c.execute(text("SELECT kwh_pct FROM alerts")).scalar()) == "99999999999800.00"
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0012"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0013"
 
 
 PHASE2_TABLES = {"meter_readings", "home_goals", "tariffs", "tariff_fixed_charges", "tariff_blocks"}

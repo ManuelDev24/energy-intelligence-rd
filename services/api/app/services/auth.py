@@ -74,10 +74,16 @@ def register(db, credentials):
 
 def login(db, credentials):
     user = db.scalar(select(User).where(User.email == credentials.email))
+    verified_hash = user.password_hash if user else None
     valid = verify_password(user, credentials.password.get_secret_value())
     if not valid or user is None or not user.active:
         raise unauthorized()
     with write_transaction(db):
+        # Serialize issuance with reset/erasure; refresh the identity-map copy.
+        user = db.scalar(select(User).where(User.id == user.id).with_for_update()
+                         .execution_options(populate_existing=True))
+        if user is None or not user.active or user.password_hash != verified_hash:
+            raise unauthorized()
         if password_hasher.check_needs_rehash(user.password_hash):
             user.password_hash = password_hasher.hash(credentials.password.get_secret_value())
         tokens = new_session(db, user)

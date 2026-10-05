@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from sqlalchemy.orm import Session
 
 from app.api.auth_deps import auth_required, current_user
-from app.api.auth_abuse import login_budget, register_budget, refresh_budget
+from app.api.auth_abuse import forgot_budget, login_budget, register_budget, refresh_budget, reset_budget
 from app.database import get_db
-from app.schemas.auth import AccountDeletionIn, Credentials, RefreshIn, RegisterIn, TokensOut, UserOut
-from app.services import account, auth
+from app.schemas.auth import (AccountDeletionIn, Credentials, PasswordForgotAccepted, PasswordForgotIn, PasswordResetIn,
+                              RefreshIn, RegisterIn, TokensOut, UserOut)
+from app.services import account, auth, email, password_recovery
 
 router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(auth_required)])
 
@@ -49,4 +50,24 @@ def _authenticated_login_budget(user=Depends(current_user), _=Depends(login_budg
 @router.delete("/me", status_code=204)
 def delete_me(payload: AccountDeletionIn, user=Depends(_authenticated_login_budget), db: Session = Depends(get_db)):
     account.delete_account(db, user, payload.password.get_secret_value())
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+# ERD-AUTH-05: recuperación de contraseña. Respuesta 202 idéntica exista o no la cuenta; el correo se
+# entrega en segundo plano DESPUÉS de enviar la respuesta, así su latencia o fallo no la delata.
+@router.post("/password/forgot", status_code=202, response_model=PasswordForgotAccepted,
+             dependencies=[Depends(forgot_budget)])
+def forgot_password(payload: PasswordForgotIn, request: Request, background: BackgroundTasks, response: Response,
+                    db: Session = Depends(get_db)):
+    peer = request.client.host if request.client else "unknown-peer"
+    message = password_recovery.request_reset(db, payload.email, peer)
+    if message is not None:
+        background.add_task(email.deliver, message)
+    response.headers["Cache-Control"] = "no-store"
+    return PasswordForgotAccepted(status="accepted")
+
+
+@router.post("/password/reset", status_code=204, dependencies=[Depends(reset_budget)])
+def reset_password(payload: PasswordResetIn, db: Session = Depends(get_db)):
+    password_recovery.reset_password(db, payload.token, payload.new_password.get_secret_value())
     return Response(status_code=204, headers={"Cache-Control": "no-store"})

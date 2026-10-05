@@ -471,3 +471,19 @@ export const LegalOutSchema = z.object({
   "status": z.literal("draft")
 });
 export type LegalOut = z.infer<typeof LegalOutSchema>;
+
+export const PasswordForgotInSchema = z.object({
+  "email": z.string().max(254)
+});
+export type PasswordForgotIn = z.infer<typeof PasswordForgotInSchema>;
+
+export const PasswordForgotAcceptedSchema = z.object({
+  "status": z.literal("accepted")
+});
+export type PasswordForgotAccepted = z.infer<typeof PasswordForgotAcceptedSchema>;
+
+export const PasswordResetInSchema = z.object({
+  "token": z.string().regex(new RegExp("^[A-Za-z0-9_-]{43}$")).min(43).max(43),
+  "new_password": z.string().min(12).max(128)
+});
+export type PasswordResetIn = z.infer<typeof PasswordResetInSchema>;

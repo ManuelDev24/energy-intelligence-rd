@@ -36,7 +36,7 @@ app.include_router(api_router)
 @app.exception_handler(ApplicationError)
 async def application_error(request: Request, exc: ApplicationError):
     headers = {"WWW-Authenticate": "Bearer"} if exc.status_code == 401 else {}
-    if exc.status_code in {429, 503}:
+    if exc.status_code in {429, 503} or getattr(exc, "no_store", False):
         headers["Cache-Control"] = "no-store"
     if isinstance(exc, RateLimited):
         headers["Retry-After"] = str(exc.retry_after)

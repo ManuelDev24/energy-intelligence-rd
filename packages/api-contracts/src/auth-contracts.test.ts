@@ -49,3 +49,23 @@ describe('ERD-AUTH-03 consent, legal and account deletion contracts', () => {
     expect(LegalOutSchema.safeParse({ ...legal, terms_version: undefined }).success).toBe(false);
   });
 });
+
+describe('ERD-AUTH-05 password recovery contracts', () => {
+  it('forgot carries only an email and is accepted with a fixed body', async () => {
+    const { PasswordForgotInSchema, PasswordForgotAcceptedSchema } = await import('./index');
+    expect(PasswordForgotInSchema.safeParse({ email: 'a@b.test' }).success).toBe(true);
+    expect(PasswordForgotInSchema.safeParse({}).success).toBe(false);
+    expect(PasswordForgotInSchema.safeParse({ email: 'x'.repeat(255) }).success).toBe(false);
+    expect(PasswordForgotAcceptedSchema.safeParse({ status: 'accepted' }).success).toBe(true);
+    expect(PasswordForgotAcceptedSchema.safeParse({ status: 'sent' }).success).toBe(false);
+  });
+  it('reset requires a 43-char url-safe token and a bounded new password', async () => {
+    const { PasswordResetInSchema } = await import('./index');
+    const body = { token: 'A'.repeat(43), new_password: 'x'.repeat(12) };
+    expect(PasswordResetInSchema.safeParse(body).success).toBe(true);
+    for (const bad of [{ ...body, token: 'A'.repeat(42) }, { ...body, token: 'A'.repeat(42) + '!' },
+      { ...body, new_password: 'short' }, { ...body, new_password: 'x'.repeat(129) }, { token: body.token }]) {
+      expect(PasswordResetInSchema.safeParse(bad).success).toBe(false);
+    }
+  });
+});
