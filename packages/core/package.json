@@ -1,0 +1,13 @@
+{
+  "name": "@energyrd/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lógica de presentación compartida por web y móvil: formato, calidad del dato y tokens de marca. TS puro, sin React.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}
