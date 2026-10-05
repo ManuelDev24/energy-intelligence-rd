@@ -43,7 +43,8 @@ class Alert(Base):
     )
     basis_period_start: Mapped[date | None] = mapped_column(Date)
     basis_period_end: Mapped[date | None] = mapped_column(Date)
-    kwh_pct: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    # Valid bill values can produce 14 integer digits when the baseline is 0.01.
+    kwh_pct: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
     threshold_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     severity: Mapped[str] = mapped_column(String(20), nullable=False)

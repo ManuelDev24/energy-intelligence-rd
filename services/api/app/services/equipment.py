@@ -8,6 +8,42 @@ from app.models import Bill, Equipment, Home
 from app.schemas.dashboard import Metric
 from app.schemas.equipment import EquipmentEstimateItem, EquipmentEstimateOut
 from app.services import calculations as calc
+from app.services.audit import record_change, snapshot
+from app.services.errors import NotFound
+from app.services.transactions import require_home, write_transaction
+
+
+def get_equipment(db, home_id, equipment_id):
+    item = db.scalar(select(Equipment).where(Equipment.id == equipment_id, Equipment.home_id == home_id))
+    if item is None:
+        raise NotFound("Equipo no encontrado para esta vivienda")
+    return item
+
+
+def list_equipment(db, home_id, limit=100, offset=0):
+    require_home(db, home_id)
+    return list(db.scalars(select(Equipment).where(Equipment.home_id == home_id)
+                          .order_by(Equipment.room, Equipment.name, Equipment.id).limit(limit).offset(offset)))
+
+
+def save_equipment(db, home_id, payload, equipment_id=None):
+    with write_transaction(db):
+        require_home(db, home_id, lock=True)
+        item = get_equipment(db, home_id, equipment_id) if equipment_id else Equipment(home_id=home_id)
+        before = snapshot(item) if equipment_id else None
+        for key, value in payload.model_dump().items():
+            setattr(item, key, value)
+        db.add(item)
+        record_change(db, home_id, item, "update" if equipment_id else "create", before)
+    return item
+
+
+def delete_equipment(db, home_id, equipment_id):
+    with write_transaction(db):
+        require_home(db, home_id, lock=True)
+        item = get_equipment(db, home_id, equipment_id)
+        record_change(db, home_id, item, "delete", snapshot(item))
+        db.delete(item)
 
 NOTE = ("Estimación por potencia nominal × horas de uso declaradas × 30 días. "
         "No es una medición: el consumo real depende del uso, la eficiencia y el ciclo de cada equipo.")

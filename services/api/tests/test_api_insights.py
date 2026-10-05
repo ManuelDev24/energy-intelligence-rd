@@ -1,5 +1,6 @@
 """ERD-API-INSIGHTS: equipos declarados (ESTIMATED) y alertas por variación de factura."""
 import uuid
+from decimal import Decimal
 
 import pytest
 
@@ -167,6 +168,30 @@ def test_alert_settings_change_thresholds_and_recompute(client):
     assert a["severity"] == "critical" and float(a["threshold_pct"]) == 15
     dash = client.get(f"/api/v1/homes/{h['id']}/dashboard").json()
     assert dash["alert"]["severity"] == "critical"                            # dashboard usa los mismos umbrales
+
+
+def test_reading_default_settings_does_not_persist(client, migrated):
+    from sqlalchemy.orm import Session
+    from app.models import AlertSettings
+
+    h = mk_home(client)
+    url = f"/api/v1/homes/{h['id']}/alert-settings"
+    for _ in range(2):
+        r = client.get(url)
+        assert r.status_code == 200
+        assert Decimal(r.json()["warning_pct"]) == 20
+    with Session(migrated) as db:
+        assert db.get(AlertSettings, uuid.UUID(h["id"])) is None
+
+
+def test_extreme_valid_variation_persists_with_bill(client):
+    h = mk_home(client)
+    add_bill(client, h["id"], "2026-06-01", "2026-06-30", "0.01")
+    bill = add_bill(client, h["id"], "2026-07-01", "2026-07-30", "9999999999.99")
+    [alert] = alerts(client, h["id"])
+    assert alert["bill_id"] == bill["id"]
+    assert Decimal(alert["kwh_pct"]) == Decimal("99999999999800.00")
+    assert alert["severity"] == "critical"
 
 
 @pytest.mark.parametrize("body", [

@@ -9,12 +9,15 @@ Reglas:
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import select, case
 from sqlalchemy.orm import Session
 
 from app.models import Alert, AlertSettings, Bill
 from app.models.alert import ALERT_TYPE_BILL_VARIATION
 from app.services import calculations as calc
+from app.services.transactions import require_home, write_transaction
+from app.services.audit import record_change, snapshot
+from app.services.errors import NotFound
 
 
 def get_settings(db: Session, home_id: uuid.UUID) -> AlertSettings:
@@ -75,3 +78,37 @@ def recompute_alerts(db: Session, home_id: uuid.UUID) -> None:
         if bill_id not in wanted:
             db.delete(alert)
     db.flush()
+
+
+def update_settings(db, home_id, payload):
+    with write_transaction(db):
+        require_home(db, home_id, lock=True)
+        settings = get_settings(db, home_id)
+        before = snapshot(settings)
+        settings.warning_pct, settings.critical_pct = payload.warning_pct, payload.critical_pct
+        record_change(db, home_id, settings, "update", before)
+        recompute_alerts(db, home_id)
+    return settings
+
+
+def update_status(db, home_id, alert_id, payload):
+    with write_transaction(db):
+        require_home(db, home_id, lock=True)
+        alert = db.scalar(select(Alert).where(Alert.id == alert_id, Alert.home_id == home_id))
+        if alert is None:
+            raise NotFound("Alerta no encontrada para esta vivienda")
+        before = snapshot(alert)
+        alert.status = payload.status
+        record_change(db, home_id, alert, "update", before)
+    return alert
+
+
+def list_alert_records(db, home_id, status=None, include_dismissed=False, limit=100, offset=0):
+    q = select(Alert).where(Alert.home_id == home_id)
+    if status is not None:
+        q = q.where(Alert.status == status)
+    elif not include_dismissed:
+        q = q.where(Alert.status != "dismissed")
+    unread_first = case((Alert.status == "unread", 0), else_=1)
+    return list(db.scalars(q.order_by(unread_first, Alert.basis_period_end.desc(), Alert.created_at.desc(), Alert.id)
+                           .limit(limit).offset(offset)))

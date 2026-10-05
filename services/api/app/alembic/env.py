@@ -9,7 +9,8 @@ import app.models  # noqa: F401  (registra tablas en Base.metadata)
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # No deshabilitar loggers ya creados (p. ej. "energyrd.api" cuando se migra en el mismo proceso).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
