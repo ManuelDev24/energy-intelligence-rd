@@ -5,8 +5,9 @@ import DashboardPage from "@/app/(app)/dashboard/page";
 import GoalPage from "@/app/(app)/goal/page";
 import ReadingsPage from "@/app/(app)/readings/page";
 import { getApi } from "@/lib/api";
+import { ConsumptionSchema } from "@/lib/api/schemas";
 import { ApiError } from "@/lib/api/types";
-import { HOME_A, HOME_B, NO_COVERAGE_REASON } from "./mock-api";
+import { CONSUMPTION_A, CONSUMPTION_WITH_COMPARISON, HOME_A, HOME_B, NO_COVERAGE_REASON } from "./mock-api";
 import { renderWithApp } from "./render";
 
 vi.mock("@/lib/api", async () => {
@@ -105,6 +106,55 @@ describe("Consumo por lecturas", () => {
     renderWithApp(<ConsumptionPage />, HOME_A);
     expect(await screen.findByText("Rango de fechas inválido: máximo 366 días.")).toBeInTheDocument();
     expect(screen.queryByText(/SERVER-TEXT/)).toBeNull();
+  });
+
+  it("costo estimado: muestra el valor en RD$ con su etiqueta ESTIMADO", async () => {
+    renderWithApp(<ConsumptionPage />, HOME_A);
+    await screen.findByText("Total del rango");
+    expectValueWithBadge("RD$ 450.00", "ESTIMADO");
+    expect(screen.getByText("Costo estimado")).toBeInTheDocument();
+  });
+
+  it("costo estimado sin datos: 'Sin datos' sin inventar un mensaje nuevo", async () => {
+    vi.spyOn(getApi(), "getConsumption").mockResolvedValue(ConsumptionSchema.parse({ ...CONSUMPTION_A, estimated_cost: null }));
+    renderWithApp(<ConsumptionPage />, HOME_A);
+    await screen.findByText("Total del rango");
+    const card = screen.getByText("Costo estimado").parentElement!;
+    expect(within(card).getByText("Sin datos")).toBeInTheDocument();
+    expect(within(card).getByText(CONSUMPTION_A.insufficient_reasons[0])).toBeInTheDocument();
+  });
+
+  it("comparación: un aumento de consumo se muestra con flecha y tono de advertencia", async () => {
+    vi.spyOn(getApi(), "getConsumption").mockResolvedValue(ConsumptionSchema.parse(CONSUMPTION_WITH_COMPARISON));
+    renderWithApp(<ConsumptionPage />, HOME_A);
+    await screen.findByText("Total del rango");
+    const total = screen.getByText("Total del rango").parentElement!;
+    expect(within(total).getByText("+40.00%")).toBeInTheDocument();
+    expect(within(total).getByText("vs. 10 ago – 6 sep 2026")).toBeInTheDocument();
+    const deltaRow = within(total).getByText("+40.00%").closest("p")!;
+    expect(deltaRow.className).toContain("text-warning");
+    expect(within(deltaRow).getByText("▲")).toBeInTheDocument();
+    expect(within(deltaRow).getByText("Sube")).toBeInTheDocument();
+  });
+
+  it("comparación sin pct (período anterior en 0 kWh): delta en kWh, nunca NaN/Infinity", async () => {
+    const withoutPct = {
+      ...CONSUMPTION_WITH_COMPARISON,
+      comparison: { ...CONSUMPTION_WITH_COMPARISON.comparison!, kwh_pct: null, kwh_delta: { value: "140.00", unit: "kWh", quality: "ESTIMATED" } },
+    };
+    vi.spyOn(getApi(), "getConsumption").mockResolvedValue(ConsumptionSchema.parse(withoutPct));
+    renderWithApp(<ConsumptionPage />, HOME_A);
+    await screen.findByText("Total del rango");
+    expect(screen.getByText("+140 kWh")).toBeInTheDocument();
+    expect(screen.queryByText(/NaN/)).toBeNull();
+    expect(screen.queryByText(/Infinity/)).toBeNull();
+  });
+
+  it("sin comparación (poco historial): no muestra nada extra junto al total", async () => {
+    renderWithApp(<ConsumptionPage />, HOME_A);
+    await screen.findByText("Total del rango");
+    const total = screen.getByText("Total del rango").parentElement!;
+    expect(within(total).queryByText(/vs\./)).toBeNull();
   });
 });
 

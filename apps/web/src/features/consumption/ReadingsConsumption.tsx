@@ -122,18 +122,45 @@ function Controls({
   );
 }
 
+function ComparisonKwhDelta({ comparison }: { comparison: NonNullable<Consumption["comparison"]> }) {
+  const n = Number(comparison.kwh_delta.value);
+  const dir = !Number.isFinite(n) || n === 0 ? "flat" : n > 0 ? "up" : "down";
+  const good = dir !== "flat" && dir === "down";
+  const tone = dir === "flat" ? "text-muted-foreground" : good ? "text-success" : "text-warning";
+  const arrow = dir === "up" ? "▲" : dir === "down" ? "▼" : "=";
+  const words = dir === "up" ? "Sube" : dir === "down" ? "Baja" : "Sin cambio";
+  return (
+    <p className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-medium", tone)}>
+      <span aria-hidden>{arrow}</span>
+      <span className="sr-only">{words}</span>
+      <span className="tabular-nums">{formatMetric(comparison.kwh_delta.value, comparison.kwh_delta.unit, { signed: true })}</span>
+      <span className="font-normal text-muted-foreground">
+        vs. período anterior ({formatPeriod(comparison.previous_from, comparison.previous_to)}); sin variación % porque fue 0 kWh.
+      </span>
+    </p>
+  );
+}
+
 function Summary({ data }: { data: Consumption }) {
   const missing = data.insufficient_reasons[0] ?? "No hay lecturas que cubran este rango.";
   const peak = data.peak_bucket;
+  const comparison = data.comparison;
+  const totalDelta = comparison?.kwh_pct
+    ? { pct: comparison.kwh_pct.value, label: `vs. ${formatPeriod(comparison.previous_from, comparison.previous_to)}`, quality: comparison.kwh_pct.quality, goodWhen: "down" as const }
+    : null;
   return (
     <section aria-label="Resumen del rango" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <MetricCard
-        label="Total del rango"
-        value={data.totals.kwh ? formatMetric(data.totals.kwh.value, data.totals.kwh.unit) : "Sin datos"}
-        quality={data.totals.kwh?.quality}
-        alwaysLabel
-        helper={data.totals.kwh ? "Solo los períodos cubiertos por lecturas; lo demás no se rellena." : missing}
-      />
+      <div className="flex flex-col gap-1.5">
+        <MetricCard
+          label="Total del rango"
+          value={data.totals.kwh ? formatMetric(data.totals.kwh.value, data.totals.kwh.unit) : "Sin datos"}
+          quality={data.totals.kwh?.quality}
+          alwaysLabel
+          delta={totalDelta}
+          helper={data.totals.kwh ? "Solo los períodos cubiertos por lecturas; lo demás no se rellena." : missing}
+        />
+        {comparison && !comparison.kwh_pct ? <ComparisonKwhDelta comparison={comparison} /> : null}
+      </div>
       <MetricCard
         label="Promedio diario"
         value={data.average_daily_kwh ? formatMetric(data.average_daily_kwh.value, data.average_daily_kwh.unit) : "Sin datos"}
@@ -156,6 +183,13 @@ function Summary({ data }: { data: Consumption }) {
         label="Cobertura"
         value={coveragePct(data.totals.coverage_ratio)}
         helper={`Parte del rango cubierta por lecturas · ${data.readings_used === 1 ? "1 lectura usada" : `${data.readings_used} lecturas usadas`}.`}
+      />
+      <MetricCard
+        label="Costo estimado"
+        value={data.estimated_cost ? formatMetric(data.estimated_cost.value, data.estimated_cost.unit) : "Sin datos"}
+        quality={data.estimated_cost?.quality}
+        alwaysLabel
+        helper={data.estimated_cost ? "Estimado con el consumo del rango y la tarifa vigente del distribuidor." : missing}
       />
     </section>
   );

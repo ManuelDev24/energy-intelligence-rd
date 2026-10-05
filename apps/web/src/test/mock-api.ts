@@ -414,11 +414,26 @@ export const CONSUMPTION_A = {
   totals: { kwh: { value: "140.00", unit: "kWh", quality: "ESTIMATED" }, covered_days: "13.5000", coverage_ratio: "0.4821" },
   average_daily_kwh: { value: "10.37", unit: "kWh/día", quality: "ESTIMATED" },
   peak_bucket: { start: "2026-09-21", end: "2026-09-27", kwh: "70.50", quality: "REAL", coverage_ratio: "1.0000", reason_code: null, reason: null },
+  estimated_cost: { value: "450.00", unit: "RD$", quality: "ESTIMATED" },
+  comparison: null,
   readings_used: 3,
   resolution: "meter_readings",
   hourly_data_available: false,
   insufficient_reasons: ["Parte del rango no está cubierta por lecturas; esos períodos no tienen valor."],
   quality_legend: LEGEND,
+} satisfies Consumption;
+
+// Variante con comparación real (CH-02/CH-03): mismo rango que CONSUMPTION_A pero con un
+// período anterior completo y un kwh_pct significativo, para probar el badge de variación.
+export const CONSUMPTION_WITH_COMPARISON = {
+  ...CONSUMPTION_A,
+  comparison: {
+    previous_from: "2026-08-10",
+    previous_to: "2026-09-06",
+    previous_kwh: { value: "100.00", unit: "kWh", quality: "REAL" },
+    kwh_delta: { value: "40.00", unit: "kWh", quality: "ESTIMATED" },
+    kwh_pct: { value: "40.00", unit: "%", quality: "ESTIMATED" },
+  },
 } satisfies Consumption;
 
 const EMPTY_CONSUMPTION = {
@@ -427,6 +442,8 @@ const EMPTY_CONSUMPTION = {
   totals: { kwh: null, covered_days: "0.0000", coverage_ratio: "0.0000" },
   average_daily_kwh: null,
   peak_bucket: null,
+  estimated_cost: null,
+  comparison: null,
   readings_used: 0,
   insufficient_reasons: ["Se necesitan al menos 2 lecturas del medidor para calcular consumo."],
 } satisfies Consumption;
