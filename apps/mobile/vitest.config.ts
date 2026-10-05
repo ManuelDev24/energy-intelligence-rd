@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       'react-native': new URL('./src/test/mocks/react-native.ts', import.meta.url).pathname,
       'expo-constants': new URL('./src/test/mocks/expo-constants.ts', import.meta.url).pathname,
+      'expo-secure-store': new URL('./src/test/mocks/expo-secure-store.ts', import.meta.url).pathname,
     },
   },
   test: {

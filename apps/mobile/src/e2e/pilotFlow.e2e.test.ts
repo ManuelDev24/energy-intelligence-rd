@@ -21,6 +21,10 @@ run('recorrido piloto contra API real', () => {
   let equipmentId: string | null = null;
 
   beforeAll(async () => {
+    // El piloto corre en Metro (__DEV__) con autenticación desactivada; en Node no existe __DEV__,
+    // así que se reproduce ese modo explícitamente antes de importar el cliente.
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    process.env.EXPO_PUBLIC_AUTH_ENABLED = 'false';
     process.env.EXPO_PUBLIC_API_URL = URL;
     ({ api } = await import('../api/client'));
     homes = await api.listHomes();
