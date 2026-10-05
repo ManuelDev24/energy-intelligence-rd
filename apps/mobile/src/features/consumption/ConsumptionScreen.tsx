@@ -1,5 +1,6 @@
 import type { ConsumptionBucketItem, Granularity } from '@energyrd/api-contracts';
 import { fmtMetric, fmtPeriod } from '@energyrd/core';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -13,7 +14,7 @@ import { todayRD } from '../../lib/rdTime';
 import { useSession } from '../../store/session';
 import { colors, radius, spacing, TOUCH } from '../../theme';
 import { isEndpointUnavailable } from '../goals/model';
-import { bucketLongLabel, bucketValueText, consumptionNotices, reasonText } from './model';
+import { bucketLongLabel, bucketValueText, comparisonView, consumptionNotices, reasonText } from './model';
 import { GRANULARITIES, PRESETS, rangeForPreset, type PresetKey } from './range';
 
 function Card({ title, children, testID }: { title: string; children: ReactNode; testID?: string }) {
@@ -38,6 +39,24 @@ function AggregateRow({ label, value, quality, testID }: { label: string; value:
         </Text>
         <DataStatusBadge quality={quality} testID={`${testID}-quality`} />
       </View>
+    </View>
+  );
+}
+
+const TONE_COLOR: Record<'warning' | 'success' | 'neutral', string> = {
+  warning: colors.warning,
+  success: colors.success,
+  neutral: colors.muted,
+};
+
+/** Nota compacta de comparación vs. el período anterior (CH-03); null = sin historial, no renderiza nada. */
+function ComparisonNote({ view, testID }: { view: ReturnType<typeof comparisonView>; testID: string }) {
+  if (!view) return null;
+  const color = TONE_COLOR[view.tone];
+  return (
+    <View style={[s.row, { gap: 6, justifyContent: 'flex-start' }]} testID={testID}>
+      <Ionicons name={view.icon} size={14} color={color} importantForAccessibility="no" accessibilityElementsHidden />
+      <Text style={[s.note, { color }]}>{view.text}</Text>
     </View>
   );
 }
@@ -127,6 +146,7 @@ export function ConsumptionScreen({ onAddReading, onOpenReadings }: { onAddReadi
           {c.totals.kwh ? (
             <AggregateRow label="Total" value={fmtMetric(c.totals.kwh.value, c.totals.kwh.unit)} quality={c.totals.kwh.quality} testID="consumption-total" />
           ) : null}
+          <ComparisonNote view={comparisonView(c.comparison)} testID="consumption-comparison" />
           {c.average_daily_kwh ? (
             <AggregateRow
               label="Promedio diario"
@@ -141,6 +161,14 @@ export function ConsumptionScreen({ onAddReading, onOpenReadings }: { onAddReadi
               value={fmtMetric(c.peak_bucket.kwh, 'kWh')}
               quality={c.peak_bucket.quality}
               testID="consumption-peak"
+            />
+          ) : null}
+          {c.estimated_cost ? (
+            <AggregateRow
+              label="Costo estimado"
+              value={fmtMetric(c.estimated_cost.value, c.estimated_cost.unit)}
+              quality={c.estimated_cost.quality}
+              testID="consumption-cost"
             />
           ) : null}
           <Text style={s.note} testID="consumption-coverage">
