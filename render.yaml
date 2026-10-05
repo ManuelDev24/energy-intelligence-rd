@@ -1,0 +1,172 @@
+# Energy RD — Render Blueprint (ERD-DEPLOY-01)
+# Guía paso a paso: docs/deploy/DEPLOY_GUIDE.md · Variables: docs/deploy/ENV_CHECKLIST.md
+#
+# Un proyecto con dos entornos:
+#   staging    → rama Dev,  instancias Free (duermen tras 15 min sin tráfico), auto-deploy por commit.
+#   production → rama main, instancias Starter, auto-deploy APAGADO (deploy manual), migración
+#                como paso único de release (preDeployCommand). Render solo permite preDeployCommand
+#                en servicios de pago: en staging la migración se ejecuta a mano (ver la guía).
+#
+# Secretos: SIEMPRE `sync: false` (Render los pide solo al crear el Blueprint y luego los ignora
+# en cada sincronización). Ningún valor real vive en este archivo.
+# Las URLs públicas también son `sync: false`: dependen del subdominio que asigne Render o del
+# dominio propio, y no deben revertirse en cada sincronización del Blueprint.
+
+previews:
+  generation: "off"
+
+projects:
+  - name: energy-rd
+    environments:
+      # ------------------------------------------------------------------ STAGING
+      - name: staging
+        envVarGroups:
+          - name: energyrd-api-staging-config
+            envVars:
+              - key: ENVIRONMENT
+                value: staging
+              - key: AUTH_ENABLED
+                value: "true"
+              - key: MIGRATE_ON_START
+                value: "false"
+              - key: SEED_PILOT
+                value: "false"
+              - key: DB_POOL_SIZE
+                value: "5"
+              - key: DB_MAX_OVERFLOW
+                value: "5"
+              - key: DB_POOL_TIMEOUT
+                value: "10"
+              # Recuperación de contraseña (variables leídas por la API cuando se integre ese trabajo).
+              - key: EMAIL_BACKEND
+                value: resend
+        services:
+          - type: web
+            name: energyrd-api-staging
+            runtime: docker
+            plan: free
+            region: virginia
+            branch: Dev
+            dockerfilePath: ./services/api/Dockerfile
+            dockerContext: ./services/api
+            healthCheckPath: /health
+            autoDeployTrigger: commit
+            buildFilter:
+              paths:
+                - services/api/**
+            envVars:
+              - fromGroup: energyrd-api-staging-config
+              - key: DATABASE_URL # Neon, rama `staging`: postgresql+psycopg://…?sslmode=require
+                sync: false
+              - key: AUTH_SIGNING_KEY # ≥43 caracteres aleatorios; distinta de producción
+                sync: false
+              - key: CORS_ORIGINS # https://<web-staging>.onrender.com
+                sync: false
+              - key: RESEND_API_KEY
+                sync: false
+              - key: EMAIL_FROM # p. ej. "Energy RD <no-reply@staging.TU-DOMINIO>"
+                sync: false
+              - key: PASSWORD_RESET_URL # https://<web-staging>.onrender.com/<ruta de restablecimiento>
+                sync: false
+
+          - type: web
+            name: energyrd-web-staging
+            runtime: node
+            plan: free
+            region: virginia
+            branch: Dev
+            # Monorepo npm workspaces: se instala desde la raíz con el único package-lock.json.
+            buildCommand: npm ci --include=dev && npm run build --workspace apps/web
+            startCommand: npm run start --workspace apps/web
+            healthCheckPath: /login
+            autoDeployTrigger: commit
+            buildFilter:
+              paths:
+                - apps/web/**
+                - packages/**
+                - package.json
+                - package-lock.json
+            envVars:
+              - key: NODE_VERSION
+                value: "24"
+              - key: NEXT_TELEMETRY_DISABLED
+                value: "1"
+              - key: NEXT_PUBLIC_AUTH_ENABLED # se incrusta en build: cambiarla exige redeploy
+                value: "true"
+              - key: API_BASE_URL # https://<api-staging>.onrender.com (origen, sin ruta)
+                sync: false
+              - key: WEB_ORIGIN # https://<web-staging>.onrender.com (origen, sin ruta)
+                sync: false
+
+      # --------------------------------------------------------------- PRODUCTION
+      - name: production
+        envVarGroups:
+          - name: energyrd-api-production-config
+            envVars:
+              - key: ENVIRONMENT
+                value: production
+              - key: AUTH_ENABLED
+                value: "true"
+              - key: MIGRATE_ON_START
+                value: "false"
+              - key: SEED_PILOT
+                value: "false"
+              - key: DB_POOL_SIZE
+                value: "5"
+              - key: DB_MAX_OVERFLOW
+                value: "5"
+              - key: DB_POOL_TIMEOUT
+                value: "10"
+              - key: EMAIL_BACKEND
+                value: resend
+        services:
+          - type: web
+            name: energyrd-api-prod
+            runtime: docker
+            plan: starter
+            region: virginia
+            branch: main
+            dockerfilePath: ./services/api/Dockerfile
+            dockerContext: ./services/api
+            healthCheckPath: /health
+            # Paso único de release: corre en una instancia aparte ANTES de enrutar tráfico a la
+            # versión nueva. Si falla, el deploy se cancela y la versión anterior sigue sirviendo.
+            # El ENTRYPOINT valida la configuración y luego ejecuta este comando (no arranca la API).
+            preDeployCommand: alembic upgrade head
+            autoDeployTrigger: "off"
+            envVars:
+              - fromGroup: energyrd-api-production-config
+              - key: DATABASE_URL # Neon, rama principal (production), rol propio
+                sync: false
+              - key: AUTH_SIGNING_KEY
+                sync: false
+              - key: CORS_ORIGINS # https://<web-prod> (dominio propio o .onrender.com)
+                sync: false
+              - key: RESEND_API_KEY
+                sync: false
+              - key: EMAIL_FROM # p. ej. "Energy RD <no-reply@TU-DOMINIO>"
+                sync: false
+              - key: PASSWORD_RESET_URL
+                sync: false
+
+          - type: web
+            name: energyrd-web-prod
+            runtime: node
+            plan: starter
+            region: virginia
+            branch: main
+            buildCommand: npm ci --include=dev && npm run build --workspace apps/web
+            startCommand: npm run start --workspace apps/web
+            healthCheckPath: /login
+            autoDeployTrigger: "off"
+            envVars:
+              - key: NODE_VERSION
+                value: "24"
+              - key: NEXT_TELEMETRY_DISABLED
+                value: "1"
+              - key: NEXT_PUBLIC_AUTH_ENABLED
+                value: "true"
+              - key: API_BASE_URL
+                sync: false
+              - key: WEB_ORIGIN
+                sync: false
