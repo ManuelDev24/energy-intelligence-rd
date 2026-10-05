@@ -168,8 +168,8 @@ Se crean en `packages/ui` (web) y `apps/mobile/src/components` con la **misma AP
 | ERD-CONS-01 | `meter_readings` + `POST /consumption/readings` + `GET /consumption` con agregación día/semana/mes/año | M03 · CH-02, CH-03 |
 | ERD-TARIFF-01 | `tariffs` versionadas por distribuidora (EDESUR/EDENORTE/EDEESTE, SIE) y cálculo de costo | cálculo de tarifas |
 | ERD-BILL-02 | **Implementado y revisado localmente:** `bill_items` manual (cargos/descuentos), `POST /validate` de solo lectura (nunca aprueba), snapshot original inmutable con legado marcado "origen desconocido", UI web/móvil; revisión independiente con 3 Required corregidos. Pendiente live/visual/nativo. Ver `services/api/BILL_DETAIL_VALIDATION.md` | M04 |
-| ERD-DASH-02 | `GET /dashboard` ampliado: consumo, factura, proyección, meta, alertas, ahorro, service_status | M02 · CH-06, CH-07 |
-| ERD-FCST-01 | Forecast de consumo y de factura (método documentado; PROJECTED) | M05 · CH-06 |
+| ERD-DASH-02 | **Implementado y verificado:** `GET /dashboard` con factura, comparación, proyección, alerta, recomendación y data_status; meta (GoalProgressSection/GoalCard) y gráfico de consumo integrados en la misma pantalla web/móvil. Pendiente: QA visual/nativa real | M02 · CH-06, CH-07 |
+| ERD-FCST-01 | **Implementado y verificado:** proyección lineal de próxima factura (kWh + RD$) con método documentado y calidad PROJECTED, en `/dashboard` y UI web/móvil | M05 · CH-06 |
 | ERD-GOAL-01 | **Implementado y verificado localmente:** objetivos RD$/kWh + progreso web/móvil, proyección etiquetada y costo estimado con tarifa oficial; integración real y Maestro Android/iOS 2× por plataforma. Sin publicación; QA en `docs/qa/ERD_PHASE2_NATIVE_2026-10-04.md` | M23 · CH-07 |
 | ERD-PROF-01 | Perfil, Mi vivienda, Mi servicio, Configuración, notificaciones | M25–27 |
 | ERD-UI-KIT | Los 12 componentes de §2.4 en web y móvil + estados loading/empty/error/offline | §2 |
