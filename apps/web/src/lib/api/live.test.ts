@@ -29,7 +29,7 @@ describe("createLiveApi", () => {
 
     const bills = await api.listBills(HOME);
 
-    expect(fetchMock.mock.calls[0][0]).toBe(`http://api.test/api/v1/homes/${HOME}/bills`);
+    expect(fetchMock.mock.calls[0][0]).toBe(`http://api.test/api/v1/homes/${HOME}/bills?limit=100&offset=0`);
     expect(bills[0].kwh).toBe("410.00");
   });
 

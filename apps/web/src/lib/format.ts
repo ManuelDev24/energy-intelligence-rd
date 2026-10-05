@@ -1,43 +1,19 @@
-// Solo formato de presentación; nunca aritmética de negocio.
-//
-// Los decimales llegan de la API como texto (p. ej. "5600.00"). Se muestran con los
-// mismos dígitos que envía el backend (mínimo 2): solo se añade el separador de miles,
-// de modo que la web y la API enseñan exactamente el mismo valor.
+// Formato de presentación de la web: adaptador sobre @energyrd/core (el mismo que usa el móvil),
+// para que web y móvil muestren los números exactamente igual. Nunca aritmética de negocio.
+import { fmtDate, fmtDop, fmtMetric, fmtNumber, fmtPeriod } from "@energyrd/core";
 
-const formatters = new Map<number, Intl.NumberFormat>();
-
-function formatterFor(decimals: number): Intl.NumberFormat {
-  let f = formatters.get(decimals);
-  if (!f) {
-    f = new Intl.NumberFormat("es-DO", {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    });
-    formatters.set(decimals, f);
-  }
-  return f;
-}
-
+/** Separador de miles; conserva los decimales que envía la API (mínimo 2). */
 export function formatNumber(value: string): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return value;
-  const decimals = Math.max(2, (value.split(".")[1] ?? "").length);
-  return formatterFor(decimals).format(n);
+  return fmtNumber(n, Math.max(2, (value.split(".")[1] ?? "").length));
 }
 
-export function formatMetric(value: string, unit: string): string {
-  return `${formatNumber(value)} ${unit}`;
+/** Valor + unidad de la API con la convención común: "RD$ 5,600.00", "420 kWh", "+50.00%". */
+export function formatMetric(value: string, unit: string, opts: { signed?: boolean } = {}): string {
+  return Number.isFinite(Number(value)) ? fmtMetric(value, unit, opts) : `${value} ${unit}`;
 }
 
-export function formatDop(value: string): string {
-  return `RD$ ${formatNumber(value)}`;
-}
-
-export function formatDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return y && m && d ? `${d}/${m}/${y}` : iso;
-}
-
-export function formatPeriod(start: string, end: string): string {
-  return `${formatDate(start)} – ${formatDate(end)}`;
-}
+export const formatDop = (value: string) => fmtDop(value);
+export const formatDate = (iso: string) => fmtDate(iso);
+export const formatPeriod = (start: string, end: string) => fmtPeriod(start, end);

@@ -1,0 +1,118 @@
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { beforeEach, expect, it, vi } from "vitest";
+import ProfilePage from "@/app/(app)/profile/page";
+import { ApiError } from "@energyrd/api-client";
+import { invalidateAccountRequests } from "@/lib/auth/client";
+it("al guardar invalida lista y derivados de esta vivienda, no de otra", async () => {
+  mount(); await screen.findByDisplayValue("Casa A");
+  qc.setQueryData(["homes"], [home]);
+  qc.setQueryData(["homes", home.id, "dashboard"], {});
+  qc.setQueryData(["homes", "other", "dashboard"], {});
+  fireEvent.change(screen.getByLabelText("Nombre de la vivienda"), { target: { value: "Nueva" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar vivienda" }));
+  await screen.findByText("Vivienda guardada.");
+  expect(qc.getQueryState(["homes"])?.isInvalidated).toBe(true);
+  expect(qc.getQueryState(["homes", home.id, "dashboard"])?.isInvalidated).toBe(true);
+  expect(qc.getQueryState(["homes", "other", "dashboard"])?.isInvalidated).toBe(false);
+});
+it("cambiar cuenta y vivienda no muestra datos previos ni comparte claves de perfil", async () => {
+  const mounted = mount(); await screen.findByDisplayValue("Casa A");
+  vi.mocked(readProfileHome).mockResolvedValue({ ...home, id: "22222222-2222-4222-8222-222222222222", name: "Casa B" } as never);
+  state.homeId = "22222222-2222-4222-8222-222222222222"; state.user = { id: "account-b", email: "b@example.test" };
+  mounted.rerender(<QueryClientProvider client={qc}><ProfilePage /></QueryClientProvider>);
+  expect(screen.queryByDisplayValue("Casa A")).not.toBeInTheDocument();
+  await screen.findByDisplayValue("Casa B");
+  expect(qc.getQueryData(["profile", "account-b", state.homeId, "home"])).toMatchObject({ name: "Casa B" });
+  expect(qc.getQueryData(["profile", "account-a", home.id, "home"])).toMatchObject({ name: "Casa A" });
+});
+it("una escritura tardía de cuenta anterior no confirma éxito ni invalida caché nueva", async () => {
+  let resolve!: (value: never) => void;
+  vi.mocked(saveOnboardingHome).mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+  mount(); await screen.findByDisplayValue("Casa A");
+  const invalidation = vi.spyOn(qc, "invalidateQueries");
+  fireEvent.change(screen.getByLabelText("Nombre de la vivienda"), { target: { value: "Nueva" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar vivienda" }));
+  invalidateAccountRequests();
+  await act(async () => resolve(home as never));
+  await screen.findByText(/La cuenta cambió durante la solicitud/);
+  expect(screen.queryByText("Vivienda guardada.")).not.toBeInTheDocument();
+  expect(invalidation).not.toHaveBeenCalled();
+  expect(readProfileHome).toHaveBeenCalledTimes(1);
+});
+it("permite registrar un servicio ausente (404) sin afirmar titularidad ni mostrar detalle", async () => {
+  vi.mocked(readProfileContract).mockRejectedValueOnce(new ApiError(404, "SECRETO"));
+  vi.mocked(readProfileContract).mockResolvedValue({ home_id: home.id, account_number: "NEW", updated_at: "2026-01-01T00:00:00Z" });
+  vi.mocked(saveOnboardingContract).mockResolvedValue({ home_id: home.id, account_number: "NEW", updated_at: "2026-01-01T00:00:00Z" });
+  mount();
+  await screen.findByText(/Servicio no encontrado o sin acceso/);
+  expect(screen.queryByText("SECRETO")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Número de cuenta"), { target: { value: "NEW" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar servicio" }));
+  await screen.findByText("Servicio guardado.");
+});
+import { readProfileHome, saveOnboardingHome, readProfileContract, saveOnboardingContract } from "@/lib/auth/onboarding";
+it("Mi servicio lee y guarda contrato real, luego confirma por GET", async () => {
+  const contract = { home_id: home.id, account_number: "ABC-123", updated_at: "2026-01-01T00:00:00Z" };
+  vi.mocked(readProfileContract).mockResolvedValue(contract);
+  vi.mocked(saveOnboardingContract).mockResolvedValue({ ...contract, account_number: "NUEVO" });
+  mount();
+  await screen.findByDisplayValue("ABC-123");
+  fireEvent.change(screen.getByLabelText("Número de cuenta"), { target: { value: " NUEVO " } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar servicio" }));
+  await screen.findByText("Servicio guardado.");
+  expect(saveOnboardingContract).toHaveBeenCalledWith(home.id, "NUEVO");
+  expect(readProfileContract).toHaveBeenCalledTimes(2);
+});
+const state = vi.hoisted(() => ({ homeId: "11111111-1111-4111-8111-111111111111", ready: true, authEnabled: true, user: { id: "account-a", email: "a@example.test" } }));
+vi.mock("@/lib/session", () => ({ useSession: () => state }));
+vi.mock("@/lib/auth/onboarding", () => ({ readProfileHome: vi.fn(), saveOnboardingHome: vi.fn(), readProfileContract: vi.fn().mockResolvedValue(null), saveOnboardingContract: vi.fn() }));
+const home = { id: state.homeId, code: null, name: "Casa A", address: "Calle 1", city: "Santiago", distributor: "EDESUR", created_at: "2026-01-01T00:00:00Z", province: "Santiago", municipality: "Santiago", sector: "Centro", user_type: "Residencial", occupants: 2, has_ac: null, has_water_heater: null, has_pool: false, has_solar: true, has_inverter: null };
+let qc: QueryClient;
+it("rechaza un número de cuenta vacío localmente", async () => {
+  vi.mocked(readProfileContract).mockResolvedValue({ home_id: home.id, account_number: "ABC", updated_at: "2026-01-01T00:00:00Z" });
+  mount(); await screen.findByDisplayValue("ABC");
+  const field = screen.getByLabelText("Número de cuenta");
+  fireEvent.change(field, { target: { value: "   " } });
+  fireEvent.submit(field.closest("form")!);
+  await screen.findByText("Indica un número de cuenta de 1 a 120 caracteres.");
+  expect(field).toHaveAttribute("aria-invalid", "true");
+  expect(field).toHaveFocus();
+  expect(saveOnboardingContract).not.toHaveBeenCalled();
+});
+it.each([["Nombre de la vivienda", "   "], ["Ocupantes", "1.5"], ["Provincia", "x".repeat(121)]])("valida %s localmente antes de escribir", async (label, value) => {
+  mount(); await screen.findByDisplayValue("Casa A");
+  const input = screen.getByLabelText(label);
+  fireEvent.change(input, { target: { value } });
+  fireEvent.submit(input.closest("form")!);
+  await screen.findByText(/Revisa los datos de la vivienda/);
+  expect(input).toHaveAttribute("aria-invalid", "true");
+  expect(input).toHaveFocus();
+  expect(saveOnboardingHome).not.toHaveBeenCalled();
+});
+it("puede borrar explícitamente un campo opcional sin restaurar el valor anterior", async () => {
+  vi.mocked(saveOnboardingHome).mockResolvedValue({ ...home, sector: null } as never);
+  mount(); await screen.findByDisplayValue("Casa A");
+  fireEvent.change(screen.getByLabelText("Sector"), { target: { value: "" } });
+  expect(screen.getByLabelText("Sector")).toHaveValue("");
+  fireEvent.click(screen.getByRole("button", { name: "Guardar vivienda" }));
+  await screen.findByText("Vivienda guardada.");
+  expect(saveOnboardingHome).toHaveBeenCalledWith(home.id, { sector: null });
+});
+function mount() { qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return render(<QueryClientProvider client={qc}><ProfilePage /></QueryClientProvider>); }
+beforeEach(() => { vi.clearAllMocks(); state.homeId = home.id; state.user = { id: "account-a", email: "a@example.test" }; vi.mocked(readProfileHome).mockResolvedValue(home as never); });
+it("lee Mi vivienda, conserva valores desconocidos y edita sin enviar campos omitidos", async () => {
+  vi.mocked(saveOnboardingHome).mockResolvedValue({ ...home, name: "Casa editada" } as never);
+  const mounted = mount();
+  await screen.findByDisplayValue("Casa A");
+  expect(screen.getByLabelText("Aire acondicionado")).toHaveValue("");
+  expect(screen.getByLabelText("Piscina")).toHaveValue("no");
+  expect(screen.getByLabelText("Paneles solares")).toHaveValue("yes");
+  expect(screen.getByText(/Preferencias de notificación no disponibles/)).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Nombre de la vivienda"), { target: { value: "Casa editada" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar vivienda" }));
+  await screen.findByText("Vivienda guardada.");
+  expect(saveOnboardingHome).toHaveBeenCalledWith(home.id, { name: "Casa editada" });
+  expect(readProfileHome).toHaveBeenCalledTimes(2);
+  mounted.unmount();
+});

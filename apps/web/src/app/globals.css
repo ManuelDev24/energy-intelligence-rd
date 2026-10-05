@@ -2,28 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tokens de marca (fuente: packages/core/src/tokens.ts). Solo modo claro por ahora:
+   el modo oscuro vuelve cuando existan tokens semánticos oscuros para alertas y calidad. */
 :root {
   --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
+  --foreground: 215 28% 17%; /* text #1F2937 */
   --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
+  --muted-foreground: 213 16% 40%; /* #566577 */
   --border: 214 32% 91%;
-  --primary: 221 83% 53%;
+  --primary: 155 66% 29%; /* brand-600 #197A52 */
   --primary-foreground: 0 0% 100%;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --border: 217 33% 20%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-  }
+  color-scheme: light;
 }
 
 body {
   @apply bg-background text-foreground antialiased;
+  font-feature-settings: "tnum" 1; /* cifras tabulares: los números se alinean en columnas */
 }
