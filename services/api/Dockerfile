@@ -12,7 +12,12 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY alembic.ini docker-entrypoint.sh ./
 COPY app ./app
-RUN chmod +x docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh \
+    && useradd --system --uid 10001 --home-dir /app app \
+    && chown -R app:app /app
+
+# Sin privilegios de root dentro del contenedor.
+USER app
 
 EXPOSE 8000
 ENTRYPOINT ["./docker-entrypoint.sh"]

@@ -56,11 +56,20 @@ def test_db_insert_ok(session):
              kwh=Decimal("250.5"), amount_dop=Decimal("3000"), days=31)
     session.add(b)
     session.flush()
-    a = Alert(home_id=h.id, bill_id=b.id, type="high_consumption", message="Consumo alto")
+    a = Alert(home_id=h.id, bill_id=b.id, type="bill_variation", severity="warning", message="Consumo alto")
     session.add(a)
     session.flush()
     session.refresh(a)
-    assert a.status == "open" and a.severity == "info"
+    assert a.status == "unread" and a.severity == "warning"
+
+
+@pytest.mark.parametrize("field,val", [("status", "open"), ("severity", "info")])
+def test_db_rejects_legacy_alert_values(session, field, val):
+    h = _home(session)
+    kw = {"home_id": h.id, "type": "bill_variation", "severity": "warning", "message": "x", field: val}
+    session.add(Alert(**kw))
+    with pytest.raises(IntegrityError):
+        session.flush()
 
 
 def test_db_rejects_bad_distributor(session):

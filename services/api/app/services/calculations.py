@@ -79,7 +79,53 @@ def project_next(bills_oldest_first: Sequence[BillLike]) -> Projection | None:
     )
 
 
-def severity_for(kwh_pct: Decimal | None) -> str | None:
-    if kwh_pct is None or kwh_pct < WARNING_PCT:
+def severity_for(kwh_pct: Decimal | None, warning_pct: Decimal = WARNING_PCT,
+                 critical_pct: Decimal = CRITICAL_PCT) -> str | None:
+    if kwh_pct is None or kwh_pct < warning_pct:
         return None
-    return "critical" if kwh_pct >= CRITICAL_PCT else "warning"
+    return "critical" if kwh_pct >= critical_pct else "warning"
+
+
+# ---------- Equipos declarados (siempre ESTIMATED) ----------
+DAYS_PER_MONTH = Decimal(30)
+
+
+def equipment_daily_kwh(power_w: Decimal, hours_per_day: Decimal) -> Decimal:
+    """kWh/día = W × h / 1000. Es una estimación: supone potencia nominal constante."""
+    return q2(power_w * hours_per_day / 1000)
+
+
+def equipment_monthly_kwh(power_w: Decimal, hours_per_day: Decimal) -> Decimal:
+    return q2(power_w * hours_per_day / 1000 * DAYS_PER_MONTH)
+
+
+# ---------- Metas mensuales (Fase 2) ----------
+MIN_RUN_RATE_DAYS = Decimal(1)
+GOAL_STATUS_PRIORITY = ("exceeded", "at_risk", "insufficient_data", "on_track")
+
+
+def goal_status(so_far: Decimal | None, projected: Decimal | None, target: Decimal) -> str:
+    """exceeded si lo observado ya supera la meta; si no, decide la proyección; sin proyección: insufficient_data."""
+    if so_far is not None and so_far > target:
+        return "exceeded"
+    if projected is None:
+        return "insufficient_data"
+    return "at_risk" if projected > target else "on_track"
+
+
+def goal_percent(value: Decimal | None, target: Decimal) -> Decimal | None:
+    return None if value is None else q2(value / target * 100)
+
+
+def run_rate(kwh: Decimal, covered_days: Decimal, days_in_month: int) -> Decimal | None:
+    """Proyección lineal por ritmo diario observado. None con menos de 1 día cubierto (muy ruidoso)."""
+    if covered_days < MIN_RUN_RATE_DAYS:
+        return None
+    return q2(kwh / covered_days * days_in_month)
+
+
+def worst_goal_status(statuses: Sequence[str]) -> str:
+    for status in GOAL_STATUS_PRIORITY:
+        if status in statuses:
+            return status
+    return "insufficient_data"

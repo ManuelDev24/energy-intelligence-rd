@@ -1,38 +1,178 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useEffect } from 'react';
+import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useEffect, type ComponentProps } from 'react';
+import { Pressable, Text } from 'react-native';
 
+import { useAlerts, useHomes } from '../api/hooks';
 import { Loading } from '../components/ui';
-import { BillFormScreen } from '../screens/BillFormScreen';
-import { BillsScreen } from '../screens/BillsScreen';
-import { DashboardScreen } from '../screens/DashboardScreen';
-import { HomesScreen } from '../screens/HomesScreen';
-import { OnboardingScreen } from '../screens/OnboardingScreen';
+import { AUTH_ENABLED } from '../config';
+import { authSession, useAuth } from '../auth/runtime';
+import { hasOwnedSelection } from '../auth/policy';
+import { AuthScreen } from '../features/auth/AuthScreen';
+import { AlertsScreen, unreadCount } from '../features/alerts/AlertsScreen';
+import { BillFormScreen } from '../features/bills/BillFormScreen';
+import { BillsScreen } from '../features/bills/BillsScreen';
+import { BillDetailScreen } from '../features/bills/detail/BillDetailScreen';
+import { BillItemsEditorScreen } from '../features/bills/detail/BillItemsEditorScreen';
+import { ConsumptionScreen } from '../features/consumption/ConsumptionScreen';
+import { DashboardScreen } from '../features/dashboard/DashboardScreen';
+import { EquipmentFormScreen } from '../features/equipment/EquipmentFormScreen';
+import { EquipmentScreen } from '../features/equipment/EquipmentScreen';
+import { GoalFormScreen } from '../features/goals/GoalFormScreen';
+import { HomesScreen } from '../features/homes/HomesScreen';
+import { OnboardingScreen } from '../features/homes/OnboardingScreen';
+import { ReadingFormScreen } from '../features/readings/ReadingFormScreen';
+import { ReadingsScreen } from '../features/readings/ReadingsScreen';
 import { useSession } from '../store/session';
-import { colors } from '../theme';
+import { ProfileScreen } from '../features/profile/ProfileScreen';
+import { HomeProfileScreen } from '../features/profile/HomeProfileScreen';
+import { ServiceProfileScreen } from '../features/profile/ServiceProfileScreen';
+import { colors, TOUCH } from '../theme';
 
-export type RootStackParams = { Tabs: undefined; BillForm: undefined };
-export type TabParams = { Dashboard: undefined; Bills: undefined; Homes: undefined };
+export type RootStackParams = {
+  Tabs: undefined;
+  BillForm: undefined;
+  BillDetail: { homeId: string; billId: string; saved?: boolean };
+  BillItemsEditor: { homeId: string; billId: string };
+  EquipmentForm: { equipmentId?: string } | undefined;
+  Homes: undefined;
+  Readings: undefined;
+  ReadingForm: undefined;
+  GoalForm: undefined;
+  Profile: undefined;
+  HomeProfile: undefined;
+  ServiceProfile: undefined;
+};
+// 5 pestañas: cambiar de vivienda es poco frecuente y vive en el encabezado (hoja "Homes").
+export type TabParams = { Dashboard: undefined; Consumption: undefined; Bills: undefined; Equipment: undefined; Alerts: undefined };
 
+const AccountStack = createNativeStackNavigator<{ Account: undefined; AccountHomes: undefined }>();
 const Stack = createNativeStackNavigator<RootStackParams>();
 const Tab = createBottomTabNavigator<TabParams>();
 
-function Tabs({ navigation }: { navigation: { navigate: (r: 'BillForm') => void } }) {
+type IconName = ComponentProps<typeof Ionicons>['name'];
+const TAB_ICONS: Record<keyof TabParams, [IconName, IconName]> = {
+  Dashboard: ['home', 'home-outline'],
+  Consumption: ['bar-chart', 'bar-chart-outline'],
+  Bills: ['receipt', 'receipt-outline'],
+  Equipment: ['flash', 'flash-outline'],
+  Alerts: ['notifications', 'notifications-outline'],
+};
+
+/** Botón del encabezado con la vivienda activa: un toque para cambiarla. */
+function HomeSwitcherButton({ onPress }: { onPress: () => void }) {
+  const homeId = useSession((st) => st.selectedHomeId);
+  const home = useHomes().data?.find((h) => h.id === homeId);
+  const label = home ? home.name.replace(' (demo)', '') : 'Elegir vivienda';
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Vivienda: ${label}. Cambiar vivienda`}
+      testID="home-switcher"
+      hitSlop={8}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        minHeight: TOUCH,
+        paddingHorizontal: 8,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Ionicons name="business-outline" size={16} color={colors.primary} />
+      <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15, maxWidth: 200 }} numberOfLines={1}>
+        {label}
+      </Text>
+      <Ionicons name="chevron-down" size={14} color={colors.muted} />
+    </Pressable>
+  );
+}
+
+function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
+  const homeId = useSession((st) => st.selectedHomeId);
+  const unread = unreadCount(useAlerts(homeId).data);
+  const openHomes = () => navigation.navigate('Homes');
   return (
     <Tab.Navigator
-      screenOptions={{ tabBarActiveTintColor: colors.primary, headerTitleAlign: 'center' }}
+      screenOptions={({ route }) => ({
+        tabBarActiveTintColor: colors.primary,
+        headerTitleAlign: 'center',
+        tabBarButtonTestID: `tab-${route.name}`,
+        tabBarIcon: ({ color, size, focused }) => (
+          <Ionicons name={TAB_ICONS[route.name][focused ? 0 : 1]} size={size} color={color} />
+        ),
+        headerTitle: () => <HomeSwitcherButton onPress={openHomes} />,
+        headerRight: route.name === 'Dashboard' ? () => <Pressable testID="profile-entry" accessibilityRole="button" accessibilityLabel="Abrir Perfil" onPress={() => navigation.navigate('Profile')} style={{ minHeight: TOUCH, minWidth: TOUCH, justifyContent: 'center', paddingHorizontal: 12 }}><Ionicons name="person-circle-outline" size={26} color={colors.primary} /></Pressable> : undefined,
+      })}
     >
-      <Tab.Screen name="Dashboard" options={{ title: 'Inicio' }} component={DashboardScreen} />
-      <Tab.Screen name="Bills" options={{ title: 'Facturas' }}>
-        {() => <BillsScreen onAdd={() => navigation.navigate('BillForm')} />}
+      <Tab.Screen name="Dashboard" options={{ title: 'Inicio' }}>
+        {({ navigation: tabs }) => (
+          <DashboardScreen
+            onAddBill={() => navigation.navigate('BillForm')}
+            onOpenAlerts={() => tabs.navigate('Alerts')}
+            onAddReading={() => navigation.navigate('ReadingForm')}
+            onEditGoal={() => navigation.navigate('GoalForm')}
+          />
+        )}
       </Tab.Screen>
-      <Tab.Screen name="Homes" options={{ title: 'Viviendas' }} component={HomesScreen} />
+      <Tab.Screen name="Consumption" options={{ title: 'Consumo' }}>
+        {() => (
+          <ConsumptionScreen
+            onAddReading={() => navigation.navigate('ReadingForm')}
+            onOpenReadings={() => navigation.navigate('Readings')}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="Bills" options={{ title: 'Facturas' }}>
+        {() => <BillsScreen onAdd={() => navigation.navigate('BillForm')} onOpen={(homeId, billId) => navigation.navigate('BillDetail', { homeId, billId })} />}
+      </Tab.Screen>
+      <Tab.Screen name="Equipment" options={{ title: 'Equipos' }}>
+        {() => (
+          <EquipmentScreen
+            onAdd={() => navigation.navigate('EquipmentForm')}
+            onEdit={(equipmentId) => navigation.navigate('EquipmentForm', { equipmentId })}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Alerts"
+        component={AlertsScreen}
+        options={{ title: 'Alertas', tabBarBadge: unread > 0 ? unread : undefined }}
+      />
     </Tab.Navigator>
   );
 }
 
 export function AppNavigator() {
+  const account = useAuth();
+  useEffect(() => { if (AUTH_ENABLED) void authSession.hydrate(); }, []);
+  if (!AUTH_ENABLED) return <LegacyApp />;
+  if (account.status === 'hydrating') return <Loading label="Verificando sesión…" />;
+  if (account.status !== 'authenticated') return <NavigationContainer key="account">
+    <AccountStack.Navigator><AccountStack.Screen name="Account" component={AuthScreen} options={{ headerShown: false }} /></AccountStack.Navigator>
+  </NavigationContainer>;
+  return <AuthenticatedApp key={account.epoch} />;
+}
+
+function AuthenticatedApp() {
+  const homes = useHomes();
+  const selected = useSession((st) => st.selectedHomeId);
+  const ownsSelection = hasOwnedSelection(selected, homes.data ?? []);
+  useEffect(() => {
+    if (homes.isSuccess && selected && !ownsSelection) useSession.getState().reset();
+  }, [homes.isSuccess, selected, ownsSelection]);
+  if (!ownsSelection) return <NavigationContainer key="choose-own-home">
+    <AccountStack.Navigator><AccountStack.Screen name="AccountHomes" options={{ title: 'Mis viviendas' }}>
+      {() => <HomesScreen onPicked={() => useSession.getState().completeOnboarding()} />}
+    </AccountStack.Screen></AccountStack.Navigator>
+  </NavigationContainer>;
+  return <DomainNavigator />;
+}
+
+function LegacyApp() {
   const hydrated = useSession((st) => st.hydrated);
   const onboardingDone = useSession((st) => st.onboardingDone);
   const hydrate = useSession((st) => st.hydrate);
@@ -43,13 +183,60 @@ export function AppNavigator() {
 
   if (!hydrated) return <Loading label="Iniciando…" />;
   if (!onboardingDone) return <OnboardingScreen />;
+  return <DomainNavigator />;
+}
 
+function DomainNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        <Stack.Screen name="Tabs" component={Tabs as never} options={{ headerShown: false }} />
+        <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
         <Stack.Screen name="BillForm" options={{ title: 'Nueva factura' }}>
           {({ navigation }) => <BillFormScreen onDone={() => navigation.goBack()} />}
+        </Stack.Screen>
+        <Stack.Screen name="BillDetail" options={{ title: 'Detalle de factura' }}>
+          {({ navigation, route }) => (
+            <BillDetailScreen
+              homeId={route.params.homeId}
+              billId={route.params.billId}
+              saved={route.params.saved}
+              onEdit={() => navigation.navigate('BillItemsEditor', { homeId: route.params.homeId, billId: route.params.billId })}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="BillItemsEditor" options={{ title: 'Editar ítems' }}>
+          {({ navigation, route }) => (
+            <BillItemsEditorScreen
+              homeId={route.params.homeId}
+              billId={route.params.billId}
+              onSaved={() => navigation.popTo('BillDetail', { homeId: route.params.homeId, billId: route.params.billId, saved: true })}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="EquipmentForm"
+          options={({ route }) => ({ title: route.params?.equipmentId ? 'Editar equipo' : 'Nuevo equipo' })}
+        >
+          {({ navigation, route }) => (
+            <EquipmentFormScreen equipmentId={route.params?.equipmentId} onDone={() => navigation.goBack()} />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="Readings" options={{ title: 'Lecturas del medidor' }}>
+          {({ navigation }) => <ReadingsScreen onAdd={() => navigation.navigate('ReadingForm')} />}
+        </Stack.Screen>
+        <Stack.Screen name="ReadingForm" options={{ title: 'Nueva lectura' }}>
+          {({ navigation }) => <ReadingFormScreen onDone={() => navigation.goBack()} />}
+        </Stack.Screen>
+        <Stack.Screen name="GoalForm" options={{ title: 'Meta mensual' }}>
+          {({ navigation }) => <GoalFormScreen onDone={() => navigation.goBack()} />}
+        </Stack.Screen>
+        <Stack.Screen name="Profile" options={{ title: 'Perfil' }}>
+          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} />}
+        </Stack.Screen>
+        <Stack.Screen name="HomeProfile" component={HomeProfileScreen} options={{ title: 'Mi vivienda' }} />
+        <Stack.Screen name="ServiceProfile" component={ServiceProfileScreen} options={{ title: 'Mi servicio' }} />
+        <Stack.Screen name="Homes" options={{ title: 'Elegir vivienda', presentation: 'modal' }}>
+          {({ navigation }) => <HomesScreen onPicked={() => navigation.goBack()} />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>

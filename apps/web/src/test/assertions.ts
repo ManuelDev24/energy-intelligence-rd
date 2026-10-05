@@ -1,3 +1,4 @@
+import { QUALITY, type Quality } from "@energyrd/core";
 import { screen, within } from "@testing-library/react";
 import { expect } from "vitest";
 import { formatMetric } from "@/lib/format";
@@ -10,18 +11,26 @@ interface DashboardPayload {
   quality_legend: Record<string, string>;
 }
 
-// El dashboard renderizado debe contener, sin cambios, lo que entregó el backend:
-// cada métrica con su valor (mismos dígitos) y su etiqueta de calidad, y los textos
-// que redacta el backend (proyección, aviso, recomendación, leyenda).
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// El dashboard renderizado debe contener lo que entregó el backend: cada métrica con su valor
+// (formato común web/móvil; los deltas llevan signo) y, si NO es REAL, su etiqueta de calidad en
+// español junto al valor. Lo REAL no se etiqueta (es el caso normal). También los textos que
+// redacta el backend (proyección, aviso, recomendación, leyenda).
 export function expectDashboardRendered(raw: DashboardPayload) {
   const metrics = collectMetrics(raw);
   for (const m of metrics) {
-    const matches = screen.getAllByText(formatMetric(m.value, m.unit));
-    const rows = matches.map((el) => el.parentElement as HTMLElement);
-    expect(
-      rows.some((row) => within(row).queryByText(m.quality) !== null),
-      `${m.value} ${m.unit} debe mostrarse con la etiqueta ${m.quality}`,
-    ).toBe(true);
+    const candidates = [formatMetric(m.value, m.unit), formatMetric(m.value, m.unit, { signed: true })];
+    const matches = screen.getAllByText(new RegExp(`^(${candidates.map(escape).join("|")})$`));
+    expect(matches.length, `${m.value} ${m.unit} debe mostrarse`).toBeGreaterThan(0);
+    const q = m.quality as Quality;
+    if (q !== "REAL") {
+      const rows = matches.map((el) => el.parentElement as HTMLElement);
+      expect(
+        rows.some((row) => within(row).queryByText(QUALITY[q].label) !== null),
+        `${m.value} ${m.unit} debe mostrarse con la etiqueta ${QUALITY[q].label}`,
+      ).toBe(true);
+    }
   }
 
   if (raw.projection) expect(screen.getByText(raw.projection.note)).toBeInTheDocument();

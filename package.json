@@ -9,11 +9,13 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspace apps/web --workspace apps/mobile --if-present",
+    "test": "npm run test --workspace packages/core --workspace packages/api-contracts --workspace packages/api-client --workspace apps/web --workspace apps/mobile",
     "test:api": "cd services/api && uv run pytest",
     "test:all": "npm test && npm run test:api",
-    "db:migrate": "cd services/api && alembic upgrade head",
-    "db:generate": "cd services/api && alembic revision --autogenerate"
+    "db:migrate": "cd services/api && uv run alembic upgrade head",
+    "db:generate": "cd services/api && uv run alembic revision --autogenerate",
+    "contracts:generate": "cd services/api && uv run python -m scripts.generate_contracts",
+    "contracts:check": "cd services/api && uv run python -m scripts.generate_contracts --check"
   },
   "workspaces": [
     "apps/*",
@@ -23,8 +25,16 @@
   ],
   "overrides": {
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "vite": "7.3.6",
+    "postcss": "8.5.28",
+    "xcode@3.0.1": {
+      "uuid": "11.1.1"
+    }
   },
   "devDependencies": {},
-  "dependencies": {}
+  "dependencies": {},
+  "engines": {
+    "node": ">=24 <25"
+  }
 }

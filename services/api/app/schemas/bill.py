@@ -13,6 +13,7 @@ _Money = Field(ge=0, max_digits=12, decimal_places=2)
 
 
 class _BillFields(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     period_start: date
     period_end: date
     kwh: Decimal = Field(ge=0, max_digits=12, decimal_places=2)

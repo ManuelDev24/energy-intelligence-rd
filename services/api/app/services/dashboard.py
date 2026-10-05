@@ -1,14 +1,15 @@
 """Arma el dashboard de una vivienda a partir de sus facturas mensuales."""
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import select, func, true
 from sqlalchemy.orm import Session
 
 from app.models import Bill, Home
 from app.schemas.dashboard import (
-    AlertOut, Comparison, DashboardHome, DashboardOut, DataStatus, LatestBill, Metric, ProjectionOut,
+    DashboardAlertSummary, Comparison, DashboardHome, DashboardOut, DataStatus, LatestBill, Metric, ProjectionOut,
 )
 from app.services import calculations as calc
+from app.services.alerts import thresholds as alert_thresholds
 
 QUALITY_LEGEND = {
     "REAL": "Dato tomado directamente de una factura mensual introducida.",
@@ -22,14 +23,22 @@ def _m(value: Decimal, unit: str, quality: str) -> Metric:
 
 
 def build_dashboard(db: Session, home: Home) -> DashboardOut:
-    bills = list(db.scalars(
-        select(Bill).where(Bill.home_id == home.id).order_by(Bill.period_end.asc(), Bill.period_start.asc())
-    ))
+    # Only six recent bills are needed for projection/comparison. Metadata covers all history.
+    stats = select(
+        func.count(Bill.id).filter(Bill.source == "manual").label("manual_count"),
+        func.count(Bill.id).filter(Bill.source == "seed").label("seed_count"),
+    ).where(Bill.home_id == home.id).subquery()
+    rows = list(db.execute(select(Bill, stats.c.manual_count, stats.c.seed_count).join(stats, true())
+                          .where(Bill.home_id == home.id).order_by(Bill.period_end.desc(), Bill.id.desc())
+                          .limit(calc.PROJECTION_WINDOW)))
+    bills = [row[0] for row in reversed(rows)]
+    # A single PostgreSQL snapshot keeps totals and the latest bill consistent.
+    counts = {source: count for source, count in zip(("manual", "seed"), rows[0][1:] if rows else (0, 0)) if count}
     reasons: list[str] = []
-    sources = {b.source for b in bills}
+    sources = set(counts)
     data_source = "none" if not bills else (next(iter(sources)) if len(sources) == 1 else "mixed")
     def status() -> DataStatus:  # se construye al final: pydantic copia la lista de motivos
-        return DataStatus(bills_count=len(bills), data_source=data_source, is_demo="seed" in sources,
+        return DataStatus(bills_count=sum(counts.values()), data_source=data_source, is_demo="seed" in sources,
                           insufficient_reasons=list(reasons))
 
     head = DashboardHome(id=home.id, code=home.code, name=home.name, distributor=home.distributor)
@@ -61,9 +70,10 @@ def build_dashboard(db: Session, home: Home) -> DashboardOut:
         )
         if v.kwh_pct is None:
             reasons.append("El período anterior tiene 0 kWh: no se calcula variación porcentual.")
-        sev = calc.severity_for(v.kwh_pct)
+        warning_pct, critical_pct = alert_thresholds(db, home.id)
+        sev = calc.severity_for(v.kwh_pct, warning_pct, critical_pct)
         if sev:
-            alert = AlertOut(
+            alert = DashboardAlertSummary(
                 severity=sev,
                 message=(f"El consumo subió {v.kwh_pct}% frente al período anterior "
                          f"({prev.kwh} kWh → {latest.kwh} kWh)."),

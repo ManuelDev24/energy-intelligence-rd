@@ -45,7 +45,7 @@ class ProjectionOut(BaseModel):
     note: str
 
 
-class AlertOut(BaseModel):
+class DashboardAlertSummary(BaseModel):
     severity: Severity
     message: str
     basis_period_start: date
@@ -73,7 +73,7 @@ class DashboardOut(BaseModel):
     latest_bill: LatestBill | None
     comparison: Comparison | None
     projection: ProjectionOut | None
-    alert: AlertOut | None
+    alert: DashboardAlertSummary | None
     recommendation: str | None
     data_status: DataStatus
     quality_legend: dict[str, str]

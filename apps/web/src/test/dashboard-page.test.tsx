@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/app/(app)/dashboard/page";
 import { expectDashboardRendered } from "./assertions";
@@ -25,6 +25,17 @@ describe("DashboardPage", () => {
     renderWithApp(<DashboardPage />, HOME_A);
     await waitFor(() => expect(screen.getByText("Estado de los datos")).toBeInTheDocument());
 
-    expect(screen.getByText(/3 facturas · fuente: seed/)).toBeInTheDocument();
+    expect(screen.getByText(/3 facturas · fuente: demo/)).toBeInTheDocument();
+  });
+
+  it("CH-01 y CH-05: gráfica accesible con la proyección y deltas con flecha frente al período anterior", async () => {
+    renderWithApp(<DashboardPage />, HOME_A);
+    expect(
+      await screen.findByRole("img", { name: /ago 2026: 420 kWh; sep 2026: 486.67 kWh \(proyectado\)/ }),
+    ).toBeInTheDocument();
+    const compare = screen.getByRole("region", { name: "Vs. período anterior" });
+    expect(within(compare).getByText("+50.00%").parentElement).toHaveTextContent("▲Sube+50.00%vs. período anterior");
+    expect(within(compare).getByText("+57.30%")).toBeInTheDocument();
+    expect(screen.getByRole("alert", { name: "Crítica" })).toHaveTextContent(DASHBOARD_A.alert.message);
   });
 });

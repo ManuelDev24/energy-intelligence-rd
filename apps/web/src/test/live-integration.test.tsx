@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import BillsPage from "@/app/(app)/bills/page";
 import DashboardPage from "@/app/(app)/dashboard/page";
 import { createLiveApi } from "@/lib/api/live";
-import { formatDop, formatNumber } from "@/lib/format";
+import { formatDop, formatMetric } from "@/lib/format";
 import { expectDashboardRendered } from "./assertions";
 import { collectMetrics, renderWithApp } from "./render";
 
@@ -109,7 +109,7 @@ describe.skipIf(!API_URL)("web ↔ API real", () => {
         );
         const links = screen.getAllByRole("link", { name: /kWh/ }).map((l) => l.textContent ?? "");
         for (const b of rawBills) {
-          const expected = `${formatNumber(b.kwh)} kWh · ${formatDop(b.amount_dop)}`;
+          const expected = `${formatMetric(b.kwh, "kWh")} · ${formatDop(b.amount_dop)}`;
           expect(links.some((t) => t.includes(expected)), expected).toBe(true);
         }
       }

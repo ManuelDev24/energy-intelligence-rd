@@ -1,143 +1,73 @@
-# ⚡ Energy RD — Plataforma Nacional de Inteligencia y Gestión Energética
+# Energy RD — piloto de inteligencia energética
 
-**Energy RD** es una plataforma de gestión energética para República Dominicana que permite a hogares, familias, comercios, condominios, hoteles y empresas:
+Monorepo con web, móvil y una API compartida para registrar facturas mensuales,
+comparar consumo, proyectar la siguiente factura, declarar equipos y gestionar alertas.
+El piloto es privado y no tiene autenticación. La selección de vivienda es una preferencia demo.
 
-- Conocer su consumo eléctrico
-- Registrar y analizar sus facturas
-- Estimar cuánto pagarán
-- Detectar anomalías
-- Identificar patrones de consumo
-- Recibir recomendaciones de ahorro
-- Establecer objetivos de consumo/costo
-- Registrar y analizar interrupciones
-- Integrar smart meters
-- Integrar dispositivos IoT
-- Monitorear sistemas solares
-- Monitorear baterías e inversores
-- Utilizar un asistente de IA especializado en energía
-- Construir una plataforma de inteligencia energética agregada para República Dominicana
+## Implementado
 
-## 🏗 Arquitectura
+- Web: Next.js 15, React 19, TypeScript, Tailwind y React Query.
+- Móvil: Expo 57, React Native, TypeScript, React Navigation, React Query y Zustand.
+- API: Python 3.12, FastAPI/Pydantic, SQLAlchemy, psycopg y Alembic.
+- Datos: PostgreSQL 16; períodos sin solapamientos, escrituras coordinadas por vivienda,
+  precisión Decimal y auditoría de mutaciones.
+- Paquetes: `core` para presentación, `api-contracts` generado desde Pydantic y
+  `api-client` con validación runtime, paginación y cancelación.
 
-```
-                    ENERGY RD
-                       │
-         ┌─────────────┼─────────────┐
-         │             │             │
-         ▼             ▼             ▼
-      MOBILE          WEB          PLATFORM
-   iOS/Android     Dashboard     Backend/API
-```
+No hay telemetría horaria, OCR, IA, integración IoT, solar ni almacenamiento de archivos.
+Redis es opcional; no se utiliza en el flujo del piloto.
 
-### Stack
+## Inicio local
 
-- **Mobile:** React Native + Expo + TypeScript
-- **Web:** Next.js + React + TypeScript + Tailwind CSS + shadcn/ui
-- **Backend:** Python + FastAPI + Pydantic + SQLAlchemy + Alembic
-- **Database:** PostgreSQL + Neon (MVP) → TimescaleDB + pgvector (futuro)
-- **Cache/Jobs:** Redis
-- **IA:** LLM API + MCP + Hermes + energy-rd-mcp
-
-## 📁 Estructura del Repositorio
-
-```
-energy-rd/
-├── apps/
-│   ├── mobile/          # React Native + Expo
-│   ├── web/            # Next.js dashboard
-│   └── admin/          # Next.js admin panel
-├── services/
-│   ├── api/            # FastAPI backend
-│   ├── energy-engine/  # Motor de consumo, forecast, anomalías
-│   ├── ai/             # Energy Copilot, LLMs
-│   ├── ingestion/      # OCR, smart meters, IoT, external data
-│   └── workers/        # Background jobs, processing
-├── packages/
-│   ├── ui/             # Design System compartido
-│   ├── types/          # Types compartidos
-│   ├── config/         # Configuración compartida
-│   └── validation/     # Zod schemas compartidos
-├── mcp/
-│   └── energy-rd-mcp/  # MCP Server para Hermes
-├── database/
-│   ├── migrations/     # Alembic migrations
-│   ├── seeds/          # Seed data
-│   └── schemas/        # Database schemas
-├── infrastructure/     # Docker, infra config
-├── docs/               # Documentación
-└── docker-compose.yml
-```
-
-## 🚀 Primeros Pasos
-
-### Prerrequisitos
-
-- Node.js 18+
-- Python 3.10+
-- Docker + Docker Compose
-- pnpm (recomendado) o npm
-
-### Instalación
+Requisitos: Node.js 24, npm, Docker Compose; uv/Python 3.12 para desarrollo y pruebas API fuera de Docker.
 
 ```bash
-# Instalar dependencias
-pnpm install
-
-# Levantar servicios (PostgreSQL, Redis)
-docker compose up -d
-
-# Correr migraciones
-cd services/api && alembic upgrade head
-
-# Correr backend
-pnpm dev:api
-
-# En otra terminal, correr web
-pnpm dev:web
-
-# En otra terminal, correr mobile
-pnpm dev:mobile
+npm ci
+cp .env.example .env
+cp apps/web/.env.example apps/web/.env.local
+SEED_PILOT=true docker compose up -d --build --wait postgres api
+npm run dev:web
 ```
 
-## 🧠 MVP
+La API se publica en `http://127.0.0.1:8000` y PostgreSQL en loopback, puerto 5433.
+En otra terminal: `npm run dev:mobile`. Para teléfono físico configurar la API en una interfaz
+LAN privada y `EXPO_PUBLIC_API_URL`; ver la guía de demo.
 
-Los 10 módulos del MVP:
+## Verificaciones
 
-1. Onboarding
-2. Dashboard/Home
-3. Consumo
-4. Facturas
-5. Proyección de factura
-6. Ahorro
-7. Alertas
-8. Equipos
-9. Energy Copilot
-10. Perfil
-
-## 🔄 Core Loop
-
-```
-FACTURA → CONSUMO → ANÁLISIS → PROYECCIÓN → ALERTA → AHORRO → NUEVO CONSUMO
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build --workspace apps/web
+npm run contracts:check
+python3 scripts/check_architecture.py
+npm run test:api
 ```
 
-## 📄 Documentación
+Las pruebas locales contra API real requieren `LIVE_API_URL` (web) y `MOBILE_E2E_API_URL`
+(móvil); el CI las configura. PostgreSQL es obligatorio en CI. El test de cliente móvil
+no sustituye la interacción nativa con Maestro.
 
-- [Especificación General](docs/specification.md)
-- [Master Project Context](docs/master-context.md)
-- [Data Architecture](docs/data-architecture.md)
-- [API Reference](docs/api.md)
-- [Database Schema](database/schemas/README.md)
+## Migraciones y backups
 
-## 🏢 Distribuidoras Soportadas
+```bash
+npm run db:migrate
+scripts/backup_pilot.sh
+scripts/restore_drill.sh .local-backups/<archivo>.dump
+```
 
-- EDESUR
-- EDENORTE
-- EDEESTE
+Para un release con varias réplicas, ejecutar una sola vez `docker compose run --rm migrate`
+y arrancar con `MIGRATE_ON_START=false`. El seed demo es opt-in y se rechaza en staging/production.
+Los dumps se guardan fuera de Git y el restore drill solo usa una base desechable nueva.
 
-## ⚠️ Nota Legal
+## Documentación
 
-Energy RD es una plataforma de inteligencia energética. Las proyecciones, estimaciones y recomendaciones son calculadas por modelos estadísticos y IA, y deben usarse como guía, no como garantía financiera o técnica.
+- [Arquitectura implementada](docs/architecture/CURRENT_ARCHITECTURE.md)
+- [Auditoría original](docs/architecture/AUDIT_2026-10-04.md)
+- [Guía de demo](docs/DEMO_GUIDE.md)
+- [Checklist de release](docs/RELEASE_CHECKLIST.md)
+- [API y reglas de datos](services/api/README.md)
+- [Visión del producto](docs/SPECIFICATION.md)
 
-## 📄 Licencia
-
-Ver [LICENSE](LICENSE).
+Las proyecciones son orientación calculada sobre facturas introducidas; no son garantía de consumo o importe futuro.

@@ -1,0 +1,328 @@
+# ERD-CONS-01 / ERD-GOAL-01 — recorrido de Fase 2 del móvil (cuenta nueva, API dedicada :8011).
+# cuenta → vivienda → meta → lecturas → consumo (rangos/granularidad, huecos) → progreso → borrar lectura.
+#
+# NO forma parte del recorrido piloto (pilot-flow.yaml no cambia y sigue apuntando a :8000).
+# Requisitos:
+#   - API dedicada con tarifas oficiales en :8011 (cuentas desechables; nunca la piloto :8000).
+#   - Metro con autenticación y la API dedicada, en un puerto propio:
+#       EXPO_PUBLIC_AUTH_ENABLED=true EXPO_PUBLIC_API_URL=http://<IP-LAN>:8011 npx expo start --port 8083
+#   - Credenciales efímeras generadas por quien lo ejecuta (no se guardan en el repo):
+#       maestro test -e EMAIL=mobile-p2-$(uuidgen)@example.com -e PASSWORD=$(openssl rand -base64 18) \
+#         -e EXPO_URL=exp://127.0.0.1:8083 apps/mobile/maestro/phase2-flow.yaml
+#   - Fechas de lectura: deben ser pasadas (la API rechaza lecturas futuras). Por defecto 1–3 oct 2026.
+appId: ${APP_ID || 'host.exp.Exponent'}
+env:
+  R1_DATE: ${R1_DATE || '2026-10-01'}
+  R2_DATE: ${R2_DATE || '2026-10-03'}
+---
+- launchApp:
+    stopApp: true
+- waitForAnimationToEnd
+- openLink: ${EXPO_URL || 'exp://127.0.0.1:8083'}
+- runFlow:
+    when:
+      visible: "Development servers"
+    commands:
+      - openLink: ${EXPO_URL || 'exp://127.0.0.1:8083'}
+- extendedWaitUntil:
+    visible: "(Crear una cuenta nueva|This is the developer menu.*|Cerrar sesión|Vivienda:.*)"
+    timeout: 120000
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - tapOn: "Continue"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "Toggle performance monitor"
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      visible: "Toggle performance monitor"
+      platform: iOS
+    commands:
+      - tapOn:
+          point: "50%,15%"
+
+# Reruns sign out only the disposable session on this isolated authenticated Metro.
+- runFlow:
+    when:
+      visible:
+        id: "home-switcher"
+    commands:
+      - tapOn:
+          id: "home-switcher"
+- runFlow:
+    when:
+      visible:
+        id: "auth-logout"
+    commands:
+      - tapOn:
+          id: "auth-logout"
+      - tapOn:
+          text: "(?i)cerrar sesión"
+          below: "¿Cerrar sesión?"
+- extendedWaitUntil:
+    visible:
+      id: "auth-mode"
+    timeout: 20000
+
+# 1. Cuenta nueva y vivienda propia
+- tapOn:
+    id: "auth-mode"
+- extendedWaitUntil:
+    visible: "Ya tengo cuenta"
+    timeout: 10000
+- tapOn:
+    id: "auth-email"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "auth-password"
+- inputText: ${PASSWORD}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "auth-submit"
+- tapOn:
+    id: "auth-submit"
+- extendedWaitUntil:
+    visible:
+      id: "auth-add-home"
+    timeout: 20000
+- tapOn:
+    id: "auth-add-home"
+- tapOn:
+    id: "auth-home-name"
+- inputText: "Casa Fase 2"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "return"
+          optional: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "auth-home-create"
+- tapOn:
+    id: "auth-distributor-EDESUR"
+- tapOn:
+    id: "auth-home-create"
+
+# 2. Dashboard: tarjeta de meta sin meta → definirla
+- extendedWaitUntil:
+    visible:
+      id: "goal-card"
+    timeout: 20000
+- assertNotVisible:
+    id: "goal-card-unavailable"
+- tapOn:
+    id: "goal-set"
+- tapOn:
+    id: "f-goal-amount"
+- inputText: "3000"
+- tapOn:
+    id: "f-goal-kwh"
+- inputText: "300"
+- tapOn:
+    id: "keyboard-done"
+    optional: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn:
+    id: "save-goal"
+- extendedWaitUntil:
+    visible:
+      id: "goal-status-insufficient_data"
+    timeout: 20000
+- assertVisible:
+    id: "goal-add-reading"
+- assertVisible:
+    id: "goal-add-bill"
+- takeScreenshot: evidence/p2-01-meta-sin-datos
+
+# 3. Lecturas: una inválida (negativa) y dos válidas
+- tapOn:
+    id: "goal-add-reading"
+- tapOn:
+    id: "f-reading-date"
+- eraseText: 20
+- inputText: ${R1_DATE}
+- tapOn:
+    id: "f-reading-time"
+- eraseText: 10
+- inputText: "08:00"
+- tapOn:
+    id: "f-reading-kwh"
+- inputText: "-5"
+- takeScreenshot: evidence/p2-00-reading-keyboard
+- tapOn:
+    id: "keyboard-done"
+    optional: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "save-reading"
+    centerElement: true
+- tapOn:
+    id: "save-reading"
+- assertVisible:
+    id: "f-reading-kwh-error"
+- tapOn:
+    id: "f-reading-kwh"
+- eraseText: 10
+- inputText: "1000"
+- tapOn:
+    id: "keyboard-done"
+    optional: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "save-reading"
+    centerElement: true
+- tapOn:
+    id: "save-reading"
+- extendedWaitUntil:
+    visible:
+      id: "goal-card"
+    timeout: 20000
+
+- tapOn:
+    id: "tab-Consumption"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "consumption-screen"
+    timeout: 20000
+- tapOn:
+    id: "add-reading"
+- tapOn:
+    id: "f-reading-date"
+- eraseText: 20
+- inputText: ${R2_DATE}
+- tapOn:
+    id: "f-reading-time"
+- eraseText: 10
+- inputText: "20:00"
+- tapOn:
+    id: "f-reading-kwh"
+- inputText: "1030.5"
+- tapOn:
+    id: "keyboard-done"
+    optional: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- assertVisible:
+    id: "reading-hint"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "save-reading"
+    centerElement: true
+- tapOn:
+    id: "save-reading"
+
+# 4. Consumo: rangos, granularidad, resumen con calidad y huecos visibles
+- extendedWaitUntil:
+    visible:
+      id: "consumption-summary"
+    timeout: 20000
+- assertVisible:
+    id: "consumption-total-quality"
+- assertVisible:
+    id: "consumption-average-quality"
+- assertVisible:
+    id: "consumption-chart"
+- assertVisible:
+    id: "consumption-gaps"          # 30 días con 2 lecturas: hay días sin dato (no 0)
+- takeScreenshot: evidence/p2-02-consumo-30d
+- tapOn:
+    id: "range-7d"
+- tapOn:
+    id: "gran-week"
+- tapOn:
+    id: "range-12m"
+- extendedWaitUntil:
+    visible:
+      id: "consumption-summary"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: "consumption-detail-toggle"
+    centerElement: true
+- tapOn:
+    id: "consumption-detail-toggle"
+- assertVisible: "Ocultar detalle por período"
+- assertVisible:
+    id: "bucket-2025-11-01"
+- takeScreenshot: evidence/p2-03-consumo-12m
+- tapOn:
+    id: "consumption-detail-toggle"
+- assertVisible: "Ver detalle por período \\(12\\)"
+
+# 5. Progreso de la meta con datos
+- tapOn:
+    id: "tab-Dashboard"
+- extendedWaitUntil:
+    visible:
+      id: "goal-kwh"
+    timeout: 20000
+- assertVisible:
+    id: "goal-kwh-projected"
+- takeScreenshot: evidence/p2-04-meta-progreso
+
+# 6. Limpieza: borrar una lectura con confirmación
+- tapOn:
+    id: "tab-Consumption"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "consumption-screen"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: "open-readings"
+- tapOn:
+    id: "open-readings"
+- extendedWaitUntil:
+    visible: ".*1,030.50 kWh.*"
+    timeout: 20000
+- tapOn:
+    text: "Eliminar la lectura del .*20:00"
+- extendedWaitUntil:
+    visible: ".*¿Eliminar la lectura.*"
+    timeout: 10000
+- tapOn:
+    text: "(?i)eliminar"
+    below: ".*¿Eliminar la lectura.*"
+- extendedWaitUntil:
+    notVisible: ".*1,030.50 kWh.*"
+    timeout: 20000

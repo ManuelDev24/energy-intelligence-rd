@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { AUTH_ENABLED } from '../config';
 
 const KEY = 'energyrd.session.v1';
 
@@ -16,13 +17,15 @@ interface SessionState extends Persisted {
   reset: () => void;
 }
 
-const persist = (s: Persisted) => AsyncStorage.setItem(KEY, JSON.stringify(s)).catch(() => undefined);
+// Authenticated home selection is in-memory only, never restored from the pilot account.
+const persist = (s: Persisted) => AUTH_ENABLED ? Promise.resolve() : AsyncStorage.setItem(KEY, JSON.stringify(s)).catch(() => undefined);
 
 export const useSession = create<SessionState>((set, get) => ({
   selectedHomeId: null,
   onboardingDone: false,
   hydrated: false,
   hydrate: async () => {
+    if (AUTH_ENABLED) { set({ selectedHomeId: null, onboardingDone: false, hydrated: true }); return; }
     try {
       const raw = await AsyncStorage.getItem(KEY);
       if (raw) {
@@ -47,7 +50,7 @@ export const useSession = create<SessionState>((set, get) => ({
     void persist({ selectedHomeId: get().selectedHomeId, onboardingDone: true });
   },
   reset: () => {
-    set({ selectedHomeId: null, onboardingDone: false });
+    set({ selectedHomeId: null, onboardingDone: false, hydrated: true });
     void AsyncStorage.removeItem(KEY).catch(() => undefined);
   },
 }));

@@ -2,8 +2,9 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, UniqueConstraint, func, literal_column
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -25,6 +26,9 @@ class Bill(Base):
         CheckConstraint("source IN ('manual', 'seed')", name="ck_bills_source"),
         UniqueConstraint("home_id", "period_start", "period_end", name="uq_bills_home_period"),
         Index("ix_bills_home_period", "home_id", "period_start"),
+        Index("ix_bills_home_recent", "home_id", "period_end", "id"),
+        ExcludeConstraint(("home_id", "="), (literal_column("daterange(period_start, period_end, '[]')"), "&&"),
+                          name="ex_bills_home_period_overlap", using="gist"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -41,6 +45,8 @@ class Bill(Base):
     # manual = introducida por el usuario; seed = dato demo de los pilotos.
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual", server_default="manual")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                               onupdate=func.now(), nullable=False)
 
     home = relationship("Home", back_populates="bills")
-    alerts = relationship("Alert", back_populates="bill")
+    alerts = relationship("Alert", back_populates="bill", foreign_keys="Alert.bill_id", passive_deletes=True)

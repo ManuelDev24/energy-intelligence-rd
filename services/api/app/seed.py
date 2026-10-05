@@ -10,7 +10,8 @@ from decimal import Decimal as D
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Bill, Home
+from app.models import Bill, Equipment, Home
+from app.services.alerts import recompute_alerts
 
 # (code, nombre, ciudad, distribuidora, [(inicio, fin, días, kWh, RD$)])
 PILOT_HOMES = [
@@ -39,9 +40,21 @@ PILOT_HOMES = [
     ]),
 ]
 
+# Equipos declarados demo por vivienda: (nombre, habitación, W, horas/día). Su consumo es ESTIMATED.
+PILOT_EQUIPMENT = {
+    "PILOT-01": [("Aire acondicionado 12000 BTU", "Dormitorio principal", D("1100"), D("6")),
+                 ("Nevera", "Cocina", D("150"), D("24")), ("Televisor", "Sala", D("100"), D("5"))],
+    "PILOT-02": [("Nevera", "Cocina", D("180"), D("24")), ("Abanico de techo", "Sala", D("75"), D("8")),
+                 ("Lavadora", "Lavado", D("500"), D("1"))],
+    "PILOT-03": [("Nevera", "Cocina", D("140"), D("24")), ("Bombillos LED (8)", "Toda la casa", D("80"), D("6"))],
+    "PILOT-04": [("Aire acondicionado 18000 BTU", "Sala", D("1600"), D("5")),
+                 ("Calentador eléctrico", "Baño", D("1500"), D("1")), ("Nevera", "Cocina", D("200"), D("24"))],
+    "PILOT-05": [("Nevera", "Cocina", D("150"), D("24")), ("Computadora", "Oficina", D("120"), D("8"))],
+}
+
 
 def seed_pilot(db: Session) -> dict[str, int]:
-    created_homes = created_bills = 0
+    created_homes = created_bills = created_equipment = 0
     for code, name, city, distributor, bills in PILOT_HOMES:
         home = db.scalar(select(Home).where(Home.code == code))
         if home is None:
@@ -55,8 +68,16 @@ def seed_pilot(db: Session) -> dict[str, int]:
                 db.add(Bill(home_id=home.id, period_start=start, period_end=end, days=days,
                             kwh=kwh, amount_dop=amount, source="seed"))
                 created_bills += 1
+        for eq_name, room, power_w, hours in PILOT_EQUIPMENT.get(code, []):
+            exists = db.scalar(select(Equipment.id).where(Equipment.home_id == home.id, Equipment.name == eq_name))
+            if exists is None:
+                db.add(Equipment(home_id=home.id, name=eq_name, room=room, power_w=power_w, hours_per_day=hours))
+                created_equipment += 1
+        db.flush()
+        recompute_alerts(db, home.id)  # idempotente: conserva estados read/dismissed
     db.commit()
-    return {"homes_created": created_homes, "bills_created": created_bills}
+    return {"homes_created": created_homes, "bills_created": created_bills,
+            "equipment_created": created_equipment}
 
 
 def main() -> None:
