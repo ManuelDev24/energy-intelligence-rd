@@ -52,7 +52,17 @@ const FIELD_MESSAGES: Record<string, string> = {
   monthly_amount_rd: 'Revise la meta de monto (RD$, mayor que 0).',
   monthly_kwh: 'Revise la meta de consumo (kWh, mayor que 0).',
 };
-const KNOWN_CODES = new Set(['validation_error', 'invalid_input', 'not_found', 'conflict', 'invalid_response']);
+const KNOWN_CODES = new Set([
+  'validation_error', 'invalid_input', 'not_found', 'conflict', 'invalid_response',
+  // ERD-AUTH-03: eliminación de cuenta.
+  'reauthentication_failed', 'ownership_transfer_required',
+]);
+/** ERD-AUTH-03: mensajes locales específicos por código, nunca el detalle del servidor. */
+const CODE_MESSAGES: Record<string, string> = {
+  reauthentication_failed: 'La contraseña no es correcta. Vuelva a escribirla e intente de nuevo.',
+  ownership_transfer_required:
+    'No se puede eliminar la cuenta: usted es la única propietaria de una vivienda compartida. Transfiera la propiedad antes de continuar (función aún no disponible).',
+};
 const own = (table: Record<string | number, string>, key: string | number) =>
   Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
 
@@ -76,7 +86,8 @@ export function sanitizeApiError(error: unknown): unknown {
   }
   const code = error.code && (KNOWN_CODES.has(error.code) || /^http_\d{3}$/.test(error.code)) ? error.code : undefined;
   const requestId = error.requestId && /^[A-Za-z0-9_-]{1,64}$/.test(error.requestId) ? error.requestId : undefined;
-  return localApiError(error.status, messageForStatus(error.status), fields, code, requestId);
+  const message = (code && own(CODE_MESSAGES, code)) ?? messageForStatus(error.status);
+  return localApiError(error.status, message, fields, code, requestId);
 }
 /** Local replacement for the shared parser at the HTTP boundary. */
 export const serverError = (status: number, body: unknown) => sanitizeApiError(parseErrorBody(status, body)) as ApiError;

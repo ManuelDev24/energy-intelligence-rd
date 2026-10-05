@@ -2,8 +2,10 @@ import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../../api/client';
+import { LEGAL_DRAFT_NOTICE, requiresAcceptance } from '../../auth/acceptance';
 import { validateCredentials, type CredentialErrors } from '../../auth/client';
 import { authSession, useAuth } from '../../auth/runtime';
+import { Checkbox } from '../../components/Checkbox';
 import { Field, formStyles } from '../../components/Field';
 import { Button } from '../../components/ui';
 import { colors, font, spacing } from '../../theme';
@@ -18,20 +20,28 @@ export function AuthScreen() {
   const [fields, setFields] = useState<CredentialErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [recovery, setRecovery] = useState(false);
+  // ERD-AUTH-03: aceptación explícita de términos/privacidad, exigida solo al registrarse.
+  const [accepted, setAccepted] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | undefined>(undefined);
   const busy = state.status === 'busy';
   const submit = async () => {
     if (busy) return;
     const validation = validateCredentials(email, password);
+    const acceptance = requiresAcceptance(mode, accepted);
     setFields(validation);
+    setAcceptError(acceptance);
     setError(null);
     if (Object.keys(validation).length) {
       (validation.email ? emailRef : passwordRef).current?.focus();
       return;
     }
+    if (acceptance) return;
     const secret = password;
     setPassword(''); // Only transient input memory. Never persist or log credentials.
-    try { await authSession[mode](email, secret); }
-    catch (failure) {
+    try {
+      if (mode === 'register') await authSession.register(email, secret, accepted);
+      else await authSession.login(email, secret);
+    } catch (failure) {
       setError(failure instanceof ApiError ? failure.message : 'No se pudo iniciar sesión. Intente de nuevo.');
       if (failure instanceof ApiError) setFields(failure.fieldErrors);
     }
@@ -54,9 +64,22 @@ export function AuthScreen() {
               // Keep secure entry + password autofill; the full native Phase 2 flow guards registration.
               textContentType="password" editable={!busy} onSubmitEditing={() => void submit()} />
             <Text style={s.body}>Use entre 12 y 128 caracteres. El correo no se verifica en esta versión.</Text>
+            {mode === 'register' ? (
+              <View style={{ gap: spacing.xs }}>
+                <Text style={s.legalNotice}>{LEGAL_DRAFT_NOTICE}</Text>
+                <Checkbox
+                  testID="auth-accept-terms"
+                  checked={accepted}
+                  disabled={busy}
+                  onChange={(next) => { setAccepted(next); if (next) setAcceptError(undefined); }}
+                  label="Acepto los Términos de Servicio y la Política de Privacidad."
+                />
+                {acceptError ? <Text testID="auth-accept-terms-error" accessibilityLiveRegion="polite" style={s.err}>{acceptError}</Text> : null}
+              </View>
+            ) : null}
             <Button title={busy ? 'Procesando…' : mode === 'login' ? 'Entrar' : 'Crear cuenta'} disabled={busy} onPress={() => void submit()} testID="auth-submit" />
             <Button title={mode === 'login' ? 'Crear una cuenta nueva' : 'Ya tengo cuenta'} variant="secondary" disabled={busy} testID="auth-mode"
-              onPress={() => { setMode(mode === 'login' ? 'register' : 'login'); setFields({}); setError(null); setPassword(''); setRecovery(false); }} />
+              onPress={() => { setMode(mode === 'login' ? 'register' : 'login'); setFields({}); setError(null); setPassword(''); setRecovery(false); setAccepted(false); setAcceptError(undefined); }} />
             <Button title="¿Olvidó su contraseña?" variant="secondary" disabled={busy} testID="auth-recovery" onPress={() => setRecovery(true)} />
           </View>
           {recovery ? <Text testID="auth-recovery-unavailable" accessibilityLiveRegion="polite" style={s.body}>
@@ -73,4 +96,6 @@ const s = StyleSheet.create({
   brand: { fontSize: font.md, fontWeight: '700', color: colors.primary },
   title: { fontSize: font.xl, fontWeight: '700', color: colors.text },
   body: { fontSize: font.md, lineHeight: 23, color: colors.muted },
+  legalNotice: { fontSize: 12, lineHeight: 18, color: colors.muted },
+  err: { color: colors.danger, fontSize: 12 },
 });

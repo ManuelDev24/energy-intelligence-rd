@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useHomes } from '../../api/hooks';
 import { AUTH_ENABLED } from '../../config';
+import { AccountDeletionSection } from './AccountDeletionSection';
 import { AccountSummary } from '../auth/AccountSummary';
 import { Button } from '../../components/ui';
 import { useSession } from '../../store/session';
@@ -20,8 +21,9 @@ export function ProfileScreen({ onHome, onService, onHomes }: { onHome: () => vo
     </View>
     <View style={s.card}>
       <Text style={s.subtitle} accessibilityRole="header">Ajustes de cuenta</Text>
-      <Text style={s.hint}>Notificaciones, preferencias, cambio de correo o contraseña y eliminación de cuenta: No disponible. La API aún no ofrece estos ajustes; no se guardan preferencias simuladas en el dispositivo.</Text>
+      <Text style={s.hint}>Notificaciones, preferencias y cambio de correo o contraseña: No disponible. La API aún no ofrece estos ajustes; no se guardan preferencias simuladas en el dispositivo.</Text>
     </View>
+    {AUTH_ENABLED ? <AccountDeletionSection /> : null}
     <Text style={s.hint}>El perfil describe su vivienda. No calcula consumo, ahorro ni tarifas automáticamente.</Text>
   </ScrollView>;
 }

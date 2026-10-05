@@ -42,7 +42,7 @@ if (pilot && !['http://127.0.0.1:8000', 'http://localhost:8000'].includes(pilot)
     let homeId: string | null = null;
     try {
       await session.hydrate();
-      await session.register(`mobile-phase2-${randomUUID()}@example.com`, randomBytes(24).toString('base64url'));
+      await session.register(`mobile-phase2-${randomUUID()}@example.com`, randomBytes(24).toString('base64url'), true);
       const home = await api.createHome({ name: 'Mobile phase2 e2e', distributor: 'EDESUR' });
       homeId = home.id;
       const now = new Date();

@@ -29,7 +29,7 @@ if (url && !['http://127.0.0.1:8011', 'http://localhost:8011'].includes(url))
     let outsiderRefresh: string | null = null;
     try {
       await session.hydrate();
-      await session.register(email, password);
+      await session.register(email, password, true);
       expect(session.getSnapshot().user?.email).toBe(email);
       expect(selected).toBeNull();
       expect(await api.listHomes()).toEqual([]);
@@ -41,7 +41,7 @@ if (url && !['http://127.0.0.1:8011', 'http://localhost:8011'].includes(url))
       const oldAccess = await session.getAccessToken();
       await session.refreshAccess(oldAccess);
       expect((await session.getAccessToken()) !== oldAccess).toBe(true);
-      const outsider = await client.register(`mobile-isolation-${randomUUID()}@example.com`, password);
+      const outsider = await client.register(`mobile-isolation-${randomUUID()}@example.com`, password, true);
       outsiderRefresh = outsider.refresh_token;
       const denied = await fetch(`${url}/api/v1/homes/${own.id}/dashboard`, { headers: { Authorization: `Bearer ${outsider.access_token}` } });
       expect(denied.status).toBe(404);

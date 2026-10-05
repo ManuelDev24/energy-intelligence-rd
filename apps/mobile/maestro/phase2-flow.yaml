@@ -87,6 +87,12 @@ env:
       platform: Android
     commands:
       - hideKeyboard
+# ERD-AUTH-03: el registro exige aceptar términos/privacidad (casilla desmarcada por defecto).
+- scrollUntilVisible:
+    element:
+      id: "auth-accept-terms"
+- tapOn:
+    id: "auth-accept-terms"
 - scrollUntilVisible:
     element:
       id: "auth-submit"

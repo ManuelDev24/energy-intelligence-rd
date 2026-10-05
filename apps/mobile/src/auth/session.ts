@@ -70,13 +70,13 @@ export function createAuthSession({ client, store, origin, onBoundary, now = Dat
     try { await storage(store.clear); }
     catch { publish({ message: 'No se pudo limpiar el almacenamiento seguro. Cierre y vuelva a abrir la aplicación antes de iniciar sesión.' }); }
   }
-  async function signIn(mode: 'login' | 'register', email: string, password: string) {
+  async function signIn(mode: 'login' | 'register', email: string, password: string, acceptTerms = false) {
     if (snapshot.status !== 'signedOut') throw new ApiError(409, 'Espere a que termine la solicitud actual.');
     const epoch = boundary('busy');
     let issued: TokenPair | null = null;
     try {
       await storage(store.clear);
-      issued = await client[mode](email, password);
+      issued = mode === 'login' ? await client.login(email, password) : await client.register(email, password, acceptTerms);
       checkEpoch(epoch);
       const user = await client.me(issued.access_token);
       checkEpoch(epoch);
@@ -162,7 +162,7 @@ export function createAuthSession({ client, store, origin, onBoundary, now = Dat
       return hydration;
     },
     login: (email: string, password: string) => signIn('login', email, password),
-    register: (email: string, password: string) => signIn('register', email, password),
+    register: (email: string, password: string, acceptTerms: boolean) => signIn('register', email, password, acceptTerms),
     invalidate,
     checkEpoch,
     logout,

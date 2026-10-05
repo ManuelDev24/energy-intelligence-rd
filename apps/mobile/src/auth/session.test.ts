@@ -3,7 +3,7 @@ import { createAuthClient } from './client';
 import { createAuthSession, type SecureTokenStore } from './session';
 
 const pair = { access_token: 'access-test', refresh_token: 'refresh-test', token_type: 'bearer' as const, expires_in: 900 };
-const user = { id: '11111111-1111-4111-8111-111111111111', email: 'a@b.com', role: 'user', created_at: '2026-10-04T00:00:00Z' };
+const user = { id: '11111111-1111-4111-8111-111111111111', email: 'a@b.com', role: 'user', created_at: '2026-10-04T00:00:00Z', terms_version: '2026-10-01', terms_accepted_at: '2026-10-04T00:00:00Z' };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 function setup(saved: string | null = null) {
   let value = saved;
@@ -37,7 +37,7 @@ describe('secure account session', () => {
     await session.hydrate();
     vi.mocked(store.write).mockRejectedValueOnce(new Error('locked'));
     fetcher.mockResolvedValueOnce(json(pair)).mockResolvedValueOnce(json(user)).mockResolvedValueOnce(new Response(null, { status: 204 }));
-    await expect(session.register('a@b.com', 'a'.repeat(12))).rejects.toMatchObject({ status: 0 });
+    await expect(session.register('a@b.com', 'a'.repeat(12), true)).rejects.toMatchObject({ status: 0 });
     expect(session.getSnapshot().status).toBe('signedOut');
     expect(fetcher.mock.calls[2][0]).toContain('/logout');
   });
