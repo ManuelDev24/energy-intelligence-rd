@@ -1,4 +1,5 @@
 import { ApiError, buildRegisterPayload } from '@energyrd/api-client';
+import { PasswordForgotAcceptedSchema } from '@energyrd/api-contracts';
 
 export interface TokenPair {
   access_token: string;
@@ -105,7 +106,10 @@ export function createAuthClient(baseUrl: string, fetchImpl: typeof fetch = fetc
     // llega por correo como enlace WEB; el móvil no implementa el restablecimiento nativo todavía.
     forgotPassword: async (email: string) => {
       if (!isValidEmail(email)) throw new ApiError(422, 'Revise los campos indicados.', { email: INVALID_EMAIL_MESSAGE });
-      await request('/password/forgot', { email: email.trim().toLowerCase() }, undefined, 202);
+      const body = await request('/password/forgot', { email: email.trim().toLowerCase() }, undefined, 202);
+      // Contrato de body: un 202 con un cuerpo distinto de {status:'accepted'} no debe mostrar éxito.
+      if (!PasswordForgotAcceptedSchema.safeParse(body).success)
+        throw new ApiError(502, 'Respuesta de sesión inválida. Inicie sesión de nuevo.');
     },
   };
 }

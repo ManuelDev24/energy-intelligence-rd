@@ -25,6 +25,15 @@ describe('ERD-AUTH-05 forgotPassword (cliente de auth sin sesión)', () => {
     const client = createAuthClient('https://api.test', vi.fn().mockResolvedValue(accepted(200)));
     await expect(client.forgotPassword('a@b.com')).rejects.toMatchObject({ status: 502 });
   });
+  it('trata un 202 con cuerpo malformado/inesperado como respuesta inválida (contrato de body)', async () => {
+    const malformedBodies = [{}, null, { status: 'unexpected' }, { status: 'ACCEPTED' }];
+    for (const body of malformedBodies) {
+      const client = createAuthClient('https://api.test', vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(body), { status: 202 }),
+      ));
+      await expect(client.forgotPassword('a@b.com')).rejects.toMatchObject({ status: 502 });
+    }
+  });
   it('propaga 429 con su estado y nunca el detalle del servidor', async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'secret upstream echo', code: 'rate_limited' }), { status: 429, headers: { 'Retry-After': '60' } }));
     const failure = await createAuthClient('https://api.test', fetcher).forgotPassword('a@b.com').catch((e) => e);
