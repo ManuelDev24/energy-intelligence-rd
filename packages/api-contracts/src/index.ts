@@ -1,7 +1,7 @@
 export * from "./generated";
 import {
   HomeOutSchema, BillOutSchema, DashboardOutSchema, EquipmentOutSchema,
-  EquipmentEstimateOutSchema, AlertRecordSchema, BillUpdateSchema, EquipmentInSchema, MetricSchema,
+  EquipmentEstimateOutSchema, AlertRecordSchema, AnomalyRecordSchema, BillUpdateSchema, EquipmentInSchema, MetricSchema,
 } from "./generated";
 import type { z } from "zod";
 
@@ -23,6 +23,9 @@ export type Equipment = z.infer<typeof EquipmentSchema>;
 export type EquipmentEstimate = z.infer<typeof EquipmentEstimateSchema>;
 export type AlertItem = z.infer<typeof AlertItemSchema>;
 export type Alert = AlertItem;
+export const AnomalySchema = AnomalyRecordSchema;
+export const AnomaliesSchema = AnomalySchema.array();
+export type Anomaly = z.infer<typeof AnomalySchema>;
 export type Distributor = Home["distributor"];
 export type Quality = z.infer<typeof QualitySchema>;
 export type AlertStatus = AlertItem["status"];

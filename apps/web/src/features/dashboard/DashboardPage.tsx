@@ -13,7 +13,8 @@ import { MetricCard } from "@/components/metric-card";
 import { QueryState } from "@/components/query-state";
 import { Card, CardTitle } from "@/components/ui/card";
 import { GoalProgressSection } from "@/features/goal/GoalProgressCard";
-import { useBills, useDashboard } from "@/lib/api/hooks";
+import { AnomalySection } from "@/features/anomalies/AnomalySection";
+import { useBills, useDashboard, useAnomalies } from "@/lib/api/hooks";
 import type { Dashboard, Metric } from "@/lib/api/schemas";
 import { formatMetric, formatPeriod } from "@/lib/format";
 import { useSession } from "@/lib/session";
@@ -113,6 +114,7 @@ const DashboardSkeleton = (
 export default function DashboardPage() {
   const { homeId } = useSession();
   const { data, isLoading, error, refetch } = useDashboard(homeId ?? "");
+  const anomalies = useAnomalies(homeId ?? "");
   const bills = useBills(homeId ?? "");
 
   return (
@@ -169,6 +171,8 @@ export default function DashboardPage() {
                 {data.alert.message}
               </AlertCard>
             ) : null}
+
+            <AnomalySection anomalies={anomalies.data} isLoading={anomalies.isLoading} />
 
             <GoalProgressSection homeId={homeId ?? ""} />
 

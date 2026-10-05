@@ -113,3 +113,24 @@ Bloqueo detectado: Claude Code informa `loggedIn: false`; usar agentes disponibl
 - ✅ CH-02/CH-03 UI integrada y verificada (sin commit): web añade tarjeta "Costo estimado" y comparación con el período anterior (flecha + % o delta en kWh, reutilizando el componente/colores existentes de MetricCard; nada si no hay comparación). Móvil añade la misma fila de costo y una nota de comparación con los mismos tonos que "metas" (warning=sube, success=baja). Lógica de formato en función pura con tests.
   Gates finales repo completo: API 547, core 29, contratos 16, cliente 32, web 481 (+5), móvil 369 (+4), typecheck/lint/diff-check 0, export iOS/Android OK.
   Pendiente: botón "Comparar" explícito (se decidió mostrar la comparación automáticamente, sin ese control); QA visual/nativa real de estas pantallas nuevas.
+- ✅ ERD-OCR-01 backend (sin commit): `POST /homes/{home_id}/bills/ocr` (multipart, Tesseract spa+eng,
+  parser puro `parse_bill_text` con confianza high/inferred/none y advertencias en español). "Nunca OCR
+  → DB": solo devuelve un borrador; el único camino real sigue siendo el POST /bills ya existente.
+  RED→GREEN: 7 pruebas del parser + 3 de integración del endpoint (multipart real con imagen renderizada).
+  Corregí también el inventario cerrado de rutas (test_authorization.py) para que siga cubriendo la ruta
+  nueva con auth real (401/404), no solo agregarla sin probar.
+  Gates: API 557 (+10), contratos --check 0 (agregué OcrDraft a MODELS, faltaba), arquitectura OK,
+  web 481/móvil 369 sin regresión, typecheck/lint/diff-check 0.
+  Pendiente documentado: sin storage (imagen se procesa en memoria y se descarta), sin worker/cola,
+  sin QA con fotos reales de facturas dominicanas. Ver services/api/OCR_BILL_UPLOAD.md.
+- 🔄 ERD-OCR-02 UI integrada sin commit: web añade selección de foto, POST multipart OCR, borrador editable con confianza/warnings/raw excerpt y confirmación explícita al POST /bills; conserva entrada manual. Móvil añade ruta BillOcr desde BillForm, mismo borrador editable y confirmación; no se instaló picker nativo porque no existía dependencia aprobada: la seam `pickImage` queda explícitamente no disponible en esta build y dirige a entrada manual (pendiente añadir expo-image-picker/camera con decisión de dependencia).
+  Gates canónicos tras integración: API 557, web 482 (+1), móvil 371 (+2), api-client 33, core 29, contratos 16; typecheck/lint/diff-check 0; Expo export iOS/Android OK. No commit/push todavía.
+  Revisión: el worker web reportó 99 fallos en copia aislada por aislamiento de tests; en repo canónico completo no se reprodujo: 482 passed/5 skipped.
+- 🔄 ERD-OCR-02 actualización: se añadió `expo-image-picker ~57.0.20` con `npx expo install` y se conectó `BillOcrScreen` al selector real de galería (permiso, cancelación y MIME/nombre). La seam inyectable se conserva para tests. Restauré dependencias hoisted con `npm install` desde la raíz después de que Expo install aislado removiera paquetes del workspace web.
+  Gates posteriores: API 557, web 482/5 skipped, móvil 371/11 skipped, api-client 33, typecheck/lint/diff-check 0, exports iOS/Android OK. `expo-doctor`: 20/21; queda 1 warning preexistente de schema en app.json (`splash` como propiedad adicional), no causado por OCR.
+- 🔄 ERD-OCR-02 cierre de captura móvil: además de galería, `BillOcrScreen` ofrece `Tomar foto` usando `expo-image-picker` (permiso de cámara, cancelación, MIME/nombre). La revisión humana sigue siendo obligatoria antes de POST /bills.
+  Gates después del cambio: typecheck 0, suite repo web 482/5 skipped, móvil 371/11 skipped, api-client 33, exports iOS/Android 0. Sin simulador/dispositivo real todavía.
+- 🔄 ERD-ANOM-01 backend integrado sin commit: `GET /api/v1/homes/{home_id}/anomalies` read-only, granularidad day/month, baseline median de buckets comparables, thresholds configurables, warning/critical, explicación en español, sin inserts ni duplicados y con autorización existente. Worker: 8 focused; canónico combinado OCR+anomaly: API 565 (+8), contratos/arquitectura OK, web 482/5 skipped, móvil 371/11 skipped, typecheck/lint/diff-check 0.
+  Pendiente: UI web/móvil para mostrar severidad, observado vs baseline, delta y estados sin historial.
+- 🔄 ERD-ANOM-01 UI integrada sin commit: web y móvil consumen `/anomalies?granularity=month` con caché por vivienda/granularidad; muestran severidad, observado vs baseline, delta, período y explicación, con estado vacío calmado. No calculan anomalías localmente ni atribuyen a equipos.
+  Gates canónicos OCR+anomalías: API 565 (+8), core 29, contratos 16, api-client 34, web 485 (+3), móvil 372 (+1), typecheck/lint/diff-check 0, exports iOS/Android OK. Falta QA visual/dispositivo real.

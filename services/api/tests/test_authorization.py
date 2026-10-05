@@ -39,14 +39,26 @@ def cases(h, bill, eq, alert, reading):
             ('GET',u+'/bills/'+bill,None),('PUT',u+'/bills/'+bill,BILL),('DELETE',u+'/bills/'+bill,None),
             ('GET',u+'/bills/'+bill+'/items',None),('PUT',u+'/bills/'+bill+'/items',{'items': []}),
             ('POST',u+'/bills/'+bill+'/validate',{}),
+            ('POST',u+'/bills/ocr',MULTIPART),
             ('GET',u+'/equipment',None),('POST',u+'/equipment',EQ),('GET',u+'/equipment/estimate',None),
             ('GET',u+'/equipment/'+eq,None),('PUT',u+'/equipment/'+eq,EQ),('DELETE',u+'/equipment/'+eq,None),
-            ('GET',u+'/alerts',None),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
+            ('GET',u+'/alerts',None),('GET',u+'/anomalies',None),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
             ('GET',u+'/alert-settings',None),('PUT',u+'/alert-settings',{'warning_pct':'10','critical_pct':'40'}),
             ('GET',u+'/dashboard',None),
             ('GET',u+'/readings',None),('POST',u+'/readings',READING),('DELETE',u+'/readings/'+reading,None),
             ('GET',u+'/consumption'+CONSUMPTION_QUERY,None),
             ('GET',u+'/goal',None),('PUT',u+'/goal',GOAL),('GET',u+'/goal/progress?on=2026-09-15',None)]
+
+
+def _call(client, method, url, body, headers=None):
+    """Mismo helper para las dos pasadas del inventario: el caso OCR manda multipart, no JSON."""
+    if body is MULTIPART:
+        png = b'\x89PNG\r\n\x1a\n' + b'0' * 32  # no necesita ser una imagen válida: solo probar auth
+        return client.request(method, url, files={'file': ('x.png', png, 'image/png')}, headers=headers)
+    return client.request(method, url, json=body, headers=headers)
+
+
+MULTIPART = object()
 
 
 @pytest.mark.parametrize('role', ['user','admin','support'])
@@ -55,12 +67,12 @@ def test_all_private_routes_require_membership_and_token(auth_client, migrated, 
     with migrated.begin() as c:
         c.execute(text('UPDATE users SET role=:r WHERE email=:e'), {'r':role,'e':'bob@example.com'})
     for method,url,body in cases(homes[0],bill,eq,alert,reading):
-        assert auth_client.request(method,url,json=body).status_code == 401, (method,url)
-        assert auth_client.request(method,url,json=body,headers=bearer(b)).status_code == 404, (method,url)
+        assert _call(auth_client, method, url, body).status_code == 401, (method,url)
+        assert _call(auth_client, method, url, body, headers=bearer(b)).status_code == 404, (method,url)
     # Authorized parent must not allow child IDs from another home.
     for method,url,body in cases(homes[1],bill,eq,alert,reading):
         if any('/'+child in url for child in [bill,eq,alert,reading]):
-            assert auth_client.request(method,url,json=body,headers=bearer(a)).status_code == 404, (method,url)
+            assert _call(auth_client, method, url, body, headers=bearer(a)).status_code == 404, (method,url)
     # Verify denied mutations did not change private records.
     assert auth_client.get(f'/api/v1/homes/{homes[0]}',headers=bearer(a)).json()['name'] == 'one'
     assert auth_client.get(f'/api/v1/homes/{homes[0]}/bills/{bill}',headers=bearer(a)).status_code == 200

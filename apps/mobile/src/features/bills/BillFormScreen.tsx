@@ -41,7 +41,7 @@ function Field({
   );
 }
 
-export function BillFormScreen({ onDone }: { onDone: () => void }) {
+export function BillFormScreen({ onDone, onOcr }: { onDone: () => void; onOcr?: () => void }) {
   const homeId = useSession((st) => st.selectedHomeId);
   const create = useCreateBill(homeId ?? '');
   const bills = useBills(homeId);
@@ -121,6 +121,7 @@ export function BillFormScreen({ onDone }: { onDone: () => void }) {
           </Text>
         ) : null}
         <Button title={create.isPending ? 'Guardando…' : 'Guardar factura'} onPress={submit} disabled={create.isPending} testID="save-bill" />
+        {onOcr ? <Button title="Leer desde una foto (borrador)" onPress={onOcr} variant="secondary" testID="open-bill-ocr" /> : null}
       </ScrollView>
       {keyboardHeight > 0 ? (
         <View style={[s.keyboardToolbar, { bottom: keyboardHeight }]}>

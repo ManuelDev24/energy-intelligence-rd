@@ -219,6 +219,9 @@ export function createMockApi(): Api {
       bills = [...bills, created];
       return created;
     },
+    ocrBill: async () => {
+      throw new ApiError(501, "OCR no disponible en el mock");
+    },
     updateBill: async (homeId, billId, input) => {
       const current = requireBill(homeId, billId);
       assertNoOverlap(homeId, input, billId);
@@ -235,6 +238,7 @@ export function createMockApi(): Api {
       const home = requireHome(homeId);
       return DashboardSchema.parse(homeId === HOME_A ? DASHBOARD_A : dashboardWithoutProjection(home));
     },
+    listAnomalies: async () => [],
 
     listEquipment: async (homeId) => {
       requireHome(homeId);

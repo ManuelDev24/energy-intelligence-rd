@@ -235,6 +235,73 @@
         "title": "AlertStatusUpdate",
         "type": "object"
       },
+      "AnomalyRecord": {
+        "properties": {
+          "baseline_kwh": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Baseline Kwh",
+            "type": "string"
+          },
+          "delta_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Delta Pct",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "granularity": {
+            "enum": [
+              "day",
+              "month"
+            ],
+            "title": "Granularity",
+            "type": "string"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "observed_kwh": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Observed Kwh",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "warning",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "home_id",
+          "granularity",
+          "severity",
+          "observed_kwh",
+          "baseline_kwh",
+          "delta_pct",
+          "period_start",
+          "period_end",
+          "explanation"
+        ],
+        "title": "AnomalyRecord",
+        "type": "object"
+      },
       "BillAssessment": {
         "properties": {
           "approval": {
@@ -872,6 +939,20 @@
         "additionalProperties": false,
         "properties": {},
         "title": "BillValidationRequest",
+        "type": "object"
+      },
+      "Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post",
         "type": "object"
       },
       "Comparison": {
@@ -2708,6 +2789,85 @@
         "title": "Metric",
         "type": "object"
       },
+      "OcrDraft": {
+        "properties": {
+          "amount_dop": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "days": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "kwh": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "period_end": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "period_start": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "raw_text_excerpt": {
+            "title": "Raw Text Excerpt",
+            "type": "string"
+          },
+          "reading_current": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "reading_previous": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end",
+          "days",
+          "kwh",
+          "amount_dop",
+          "reading_previous",
+          "reading_current",
+          "warnings",
+          "raw_text_excerpt"
+        ],
+        "title": "OcrDraft",
+        "type": "object"
+      },
+      "OcrField": {
+        "properties": {
+          "confidence": {
+            "enum": [
+              "high",
+              "inferred",
+              "none"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "confidence"
+        ],
+        "title": "OcrField",
+        "type": "object"
+      },
       "PasswordForgotAccepted": {
         "description": "Cuerpo fijo del 202: nunca dice si la cuenta existe ni si se envi\u00f3 correo.",
         "properties": {
@@ -4171,6 +4331,113 @@
         ]
       }
     },
+    "/api/v1/homes/{home_id}/anomalies": {
+      "get": {
+        "description": "Detecta solo el \u00faltimo per\u00edodo comparable; no crea alertas persistentes.",
+        "operationId": "get_anomalies_api_v1_homes__home_id__anomalies_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "default": "month",
+              "enum": [
+                "day",
+                "month"
+              ],
+              "title": "Granularity",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warning_delta_pct",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0.0,
+                  "maximum": 1000.0,
+                  "type": "number"
+                },
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                }
+              ],
+              "default": "50",
+              "title": "Warning Delta Pct"
+            }
+          },
+          {
+            "in": "query",
+            "name": "critical_delta_pct",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0.0,
+                  "maximum": 1000.0,
+                  "type": "number"
+                },
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                }
+              ],
+              "default": "100",
+              "title": "Critical Delta Pct"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AnomalyRecord"
+                  },
+                  "title": "Response Get Anomalies Api V1 Homes  Home Id  Anomalies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Anomalies",
+        "tags": [
+          "anomalies"
+        ]
+      }
+    },
     "/api/v1/homes/{home_id}/bills": {
       "get": {
         "operationId": "list_bills_api_v1_homes__home_id__bills_get",
@@ -4297,6 +4564,65 @@
           }
         ],
         "summary": "Create Bill",
+        "tags": [
+          "bills"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/bills/ocr": {
+      "post": {
+        "description": "ERD-OCR-01/02: lee una foto de factura y devuelve un BORRADOR para que la persona lo confirme\no corrija. Nunca crea ni modifica una factura: el \u00fanico camino real a la base de datos sigue\nsiendo POST /homes/{home_id}/bills (ya validado), llamado despu\u00e9s de que alguien confirme.",
+        "operationId": "ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OcrDraft"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ocr Bill Photo",
         "tags": [
           "bills"
         ]

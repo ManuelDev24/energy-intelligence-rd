@@ -142,3 +142,46 @@ def test_delete_home_cascades_bills(client):
     client.post(bill_url(h["id"]), json=BILL)
     assert client.delete(f"/api/v1/homes/{h['id']}").status_code == 204
     assert client.get(bill_url(h["id"])).status_code == 404
+
+
+def _render_bill_image():
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (900, 400), "white")
+    d = ImageDraw.Draw(img)
+    d.text((20, 20), "EDESUR DOMINICANA", fill="black")
+    d.text((20, 60), "Periodo del 01/08/2026 al 31/08/2026 (31 dias)", fill="black")
+    d.text((20, 100), "Lectura anterior: 1000 kWh", fill="black")
+    d.text((20, 140), "Lectura actual: 1300 kWh", fill="black")
+    d.text((20, 180), "Consumo del periodo: 300 kWh", fill="black")
+    d.text((20, 220), "Total a pagar: RD$ 4520.75", fill="black")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_ocr_endpoint_returns_a_draft_never_creates_a_bill(client):
+    """ERD-OCR-01: 'nunca OCR -> BD'; el único camino real sigue siendo POST /bills ya existente."""
+    home = mk_home(client)["id"]
+    png = _render_bill_image()
+    before = client.get(f"/api/v1/homes/{home}/bills").json()
+    r = client.post(f"/api/v1/homes/{home}/bills/ocr", files={"file": ("factura.png", png, "image/png")})
+    assert r.status_code == 200
+    body = r.json()
+    assert "amount_dop" in body and "warnings" in body and "raw_text_excerpt" in body
+    after = client.get(f"/api/v1/homes/{home}/bills").json()
+    assert after == before
+
+
+def test_ocr_endpoint_rejects_unreadable_file(client):
+    home = mk_home(client)["id"]
+    r = client.post(f"/api/v1/homes/{home}/bills/ocr",
+                    files={"file": ("no-es-imagen.png", b"esto no es una imagen", "image/png")})
+    assert r.status_code == 422
+
+
+def test_ocr_endpoint_rejects_file_over_10mb(client):
+    home = mk_home(client)["id"]
+    huge = b"\x00" * (10 * 1024 * 1024 + 1)
+    r = client.post(f"/api/v1/homes/{home}/bills/ocr", files={"file": ("grande.png", huge, "image/png")})
+    assert r.status_code == 422

@@ -3,9 +3,9 @@ import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
-  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, AnomaliesSchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
-  type Distributor, type BillItemsReplace, type RegisterIn,
+  type Distributor, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
 
 export class ApiError extends Error {
@@ -24,6 +24,8 @@ export class ContractError extends ApiError {
 
 export const retryPolicy = (count: number, error: unknown) =>
   !(error instanceof ContractError || (error instanceof ApiError && error.status >= 400 && error.status < 500)) && count < 1;
+
+export type BillImage = { uri: string; name?: string; type?: string };
 
 export function parseErrorBody(status: number, body: unknown): ApiError {
   const parsed = z.object({ detail: z.unknown().optional(), code: z.string().optional(), request_id: z.string().optional() }).safeParse(body);
@@ -92,7 +94,10 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     try {
       const response = await abortable(fetchImpl(`${root}${path}`, {
         ...init, signal: ctrl.signal,
-        headers: { "Content-Type": "application/json", Accept: "application/json", ...init?.headers },
+        headers: {
+          ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+          Accept: "application/json", ...init?.headers,
+        },
       }), ctrl.signal);
       let body: unknown;
       if (response.status !== 204) {
@@ -160,6 +165,16 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     listBills: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/bills`, BillSchema, signal),
     getBill: (id: string, bill: string, signal?: AbortSignal) => request(`${homePath(id)}/bills/${idPath(bill)}`, BillSchema, { signal }),
     createBill: (id: string, input: BillInput) => request(`${homePath(id)}/bills`, BillSchema, write("POST", { ...input, source: "manual" })),
+    ocrBill: (id: string, image: BillImage | File) => {
+      const body = new FormData();
+      if (typeof File !== "undefined" && image instanceof File) {
+        body.append("file", image);
+      } else {
+        // React Native FormData accepts the `{uri,name,type}` upload object.
+        body.append("file", image as unknown as Blob);
+      }
+      return request(`${homePath(id)}/bills/ocr`, OcrDraftSchema, { method: "POST", body });
+    },
     updateBill: (id: string, bill: string, input: BillInput) => request(`${homePath(id)}/bills/${idPath(bill)}`, BillSchema, write("PUT", input)),
     deleteBill: (id: string, bill: string) => request(`${homePath(id)}/bills/${idPath(bill)}`, z.undefined(), write("DELETE")),
     // ERD-BILL-02: detalle manual (cargos/descuentos) y evaluación de solo lectura (nunca aprueba).
@@ -170,6 +185,8 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     assessBill: async (id: string, bill: string, signal?: AbortSignal) =>
       request(`${homePath(id)}/bills/${idPath(bill)}/validate`, BillAssessmentSchema, { ...write("POST", {}), signal }).then(ownBill(bill)),
     getDashboard: (id: string, signal?: AbortSignal) => request(`${homePath(id)}/dashboard`, DashboardSchema, { signal }),
+    listAnomalies: (id: string, granularity: "day" | "month", signal?: AbortSignal): Promise<Anomaly[]> =>
+      request(`${homePath(id)}/anomalies?granularity=${granularity}`, AnomaliesSchema, { signal }),
     listEquipment: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/equipment`, EquipmentSchema, signal),
     getEquipment: (id: string, item: string, signal?: AbortSignal) => request(`${homePath(id)}/equipment/${idPath(item)}`, EquipmentSchema, { signal }),
     createEquipment: (id: string, input: EquipmentInput) => request(`${homePath(id)}/equipment`, EquipmentSchema, write("POST", input)),

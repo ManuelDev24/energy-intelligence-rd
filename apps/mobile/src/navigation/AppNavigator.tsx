@@ -13,6 +13,7 @@ import { hasOwnedSelection } from '../auth/policy';
 import { AuthScreen } from '../features/auth/AuthScreen';
 import { AlertsScreen, unreadCount } from '../features/alerts/AlertsScreen';
 import { BillFormScreen } from '../features/bills/BillFormScreen';
+import { BillOcrScreen } from '../features/bills/BillOcrScreen';
 import { BillsScreen } from '../features/bills/BillsScreen';
 import { BillDetailScreen } from '../features/bills/detail/BillDetailScreen';
 import { BillItemsEditorScreen } from '../features/bills/detail/BillItemsEditorScreen';
@@ -34,6 +35,7 @@ import { colors, TOUCH } from '../theme';
 export type RootStackParams = {
   Tabs: undefined;
   BillForm: undefined;
+  BillOcr: undefined;
   BillDetail: { homeId: string; billId: string; saved?: boolean };
   BillItemsEditor: { homeId: string; billId: string };
   EquipmentForm: { equipmentId?: string } | undefined;
@@ -192,7 +194,10 @@ function DomainNavigator() {
       <Stack.Navigator>
         <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
         <Stack.Screen name="BillForm" options={{ title: 'Nueva factura' }}>
-          {({ navigation }) => <BillFormScreen onDone={() => navigation.goBack()} />}
+          {({ navigation }) => <BillFormScreen onDone={() => navigation.goBack()} onOcr={() => navigation.navigate('BillOcr')} />}
+        </Stack.Screen>
+        <Stack.Screen name="BillOcr" options={{ title: 'Leer factura' }}>
+          {({ navigation }) => <BillOcrScreen onManual={() => navigation.navigate('BillForm')} onDone={() => navigation.popTo('Tabs')} />}
         </Stack.Screen>
         <Stack.Screen name="BillDetail" options={{ title: 'Detalle de factura' }}>
           {({ navigation, route }) => (

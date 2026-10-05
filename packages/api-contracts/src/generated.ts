@@ -498,3 +498,35 @@ export const PasswordResetInSchema = z.object({
   "new_password": z.string().min(12).max(128)
 });
 export type PasswordResetIn = z.infer<typeof PasswordResetInSchema>;
+
+export const OcrFieldSchema = z.object({
+  "value": z.union([z.string(), z.null()]),
+  "confidence": z.enum(["high", "inferred", "none"])
+});
+export type OcrField = z.infer<typeof OcrFieldSchema>;
+
+export const OcrDraftSchema = z.object({
+  "period_start": OcrFieldSchema,
+  "period_end": OcrFieldSchema,
+  "days": OcrFieldSchema,
+  "kwh": OcrFieldSchema,
+  "amount_dop": OcrFieldSchema,
+  "reading_previous": OcrFieldSchema,
+  "reading_current": OcrFieldSchema,
+  "warnings": z.array(z.string()),
+  "raw_text_excerpt": z.string()
+});
+export type OcrDraft = z.infer<typeof OcrDraftSchema>;
+
+export const AnomalyRecordSchema = z.object({
+  "home_id": z.string().uuid(),
+  "granularity": z.enum(["day", "month"]),
+  "severity": z.enum(["warning", "critical"]),
+  "observed_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "baseline_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "delta_pct": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "period_start": z.string().date(),
+  "period_end": z.string().date(),
+  "explanation": z.string()
+});
+export type AnomalyRecord = z.infer<typeof AnomalyRecordSchema>;

@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useBills, useDashboard, useGoalProgress } from '../../api/hooks';
+import { useBills, useDashboard, useGoalProgress, useAnomalies } from '../../api/hooks';
 import type { Dashboard, Metric } from '../../api/types';
 import { AlertCard } from '../../components/AlertCard';
 import { ConsumptionChart } from '../../components/charts/ConsumptionChart';
@@ -13,6 +13,7 @@ import { EmptyState, ErrorState, LoadingSkeleton } from '../../components/states
 import { Button, QualityBadge } from '../../components/ui';
 import { fmtMetric, fmtPeriod } from '../../lib/format';
 import { GoalCard } from '../goals/GoalCard';
+import { AnomaliesSection } from './AnomaliesSection';
 import { metricParts } from '../../lib/metricParts';
 import { useSession } from '../../store/session';
 import { colors, radius, spacing, TOUCH } from '../../theme';
@@ -108,6 +109,7 @@ export function DashboardView({
   onAddBill,
   onOpenAlerts,
   goalSlot,
+  anomalies = [],
 }: {
   d: Dashboard;
   bills?: Parameters<typeof monthlySeries>[0];
@@ -115,6 +117,7 @@ export function DashboardView({
   onOpenAlerts?: () => void;
   /** Tarjeta de meta mensual (Fase 2); falla en suave si la API no la ofrece. */
   goalSlot?: ReactNode;
+  anomalies?: import('../../api/types').Anomaly[];
 }) {
   const { latest_bill: lb, comparison: c, projection: p, alert, recommendation, data_status: ds } = d;
   const [showLegend, setShowLegend] = useState(false);
@@ -141,6 +144,8 @@ export function DashboardView({
           testID="alert-banner"
         />
       ) : null}
+
+      <AnomaliesSection anomalies={anomalies} />
 
       {goalSlot}
 
@@ -269,6 +274,7 @@ export function DashboardScreen({
   const { data, isLoading, isError, error, refetch, isRefetching } = useDashboard(homeId);
   const bills = useBills(homeId);
   const goal = useGoalProgress(homeId);
+  const anomalies = useAnomalies(homeId);
 
   if (!homeId)
     return <EmptyState icon="home-outline" title="Seleccione una vivienda" hint="Toque el nombre de la vivienda arriba para elegirla." />;
@@ -287,6 +293,7 @@ export function DashboardScreen({
             void refetch();
             void bills.refetch();
             void goal.refetch();
+            void anomalies.refetch();
           }}
         />
       }
@@ -310,6 +317,7 @@ export function DashboardScreen({
         onAddBill={onAddBill}
         onOpenAlerts={onOpenAlerts}
         goalSlot={<GoalCard query={goal} onEdit={onEditGoal} onAddReading={onAddReading} onAddBill={onAddBill} />}
+        anomalies={anomalies.data ?? []}
       />
     </ScrollView>
   );
