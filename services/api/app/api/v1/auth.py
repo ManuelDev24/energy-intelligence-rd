@@ -4,14 +4,14 @@ from sqlalchemy.orm import Session
 from app.api.auth_deps import auth_required, current_user
 from app.api.auth_abuse import login_budget, register_budget, refresh_budget
 from app.database import get_db
-from app.schemas.auth import Credentials, RefreshIn, TokensOut, UserOut
-from app.services import auth
+from app.schemas.auth import AccountDeletionIn, Credentials, RefreshIn, RegisterIn, TokensOut, UserOut
+from app.services import account, auth
 
 router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(auth_required)])
 
 
 @router.post("/register", response_model=TokensOut, status_code=201, dependencies=[Depends(register_budget)])
-def register(payload: Credentials, response: Response, db: Session = Depends(get_db)):
+def register(payload: RegisterIn, response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
     return auth.register(db, payload)
 
@@ -38,3 +38,15 @@ def logout(payload: RefreshIn, db: Session = Depends(get_db)):
 def me(response: Response, user=Depends(current_user)):
     response.headers["Cache-Control"] = "no-store"
     return user
+
+
+# Reautenticación con contraseña; los intentos consumen el mismo presupuesto que /login, pero solo
+# después de validar el token: una petición sin sesión no puede agotar el /login de esa IP.
+def _authenticated_login_budget(user=Depends(current_user), _=Depends(login_budget)):
+    return user
+
+
+@router.delete("/me", status_code=204)
+def delete_me(payload: AccountDeletionIn, user=Depends(_authenticated_login_budget), db: Session = Depends(get_db)):
+    account.delete_account(db, user, payload.password.get_secret_value())
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})

@@ -75,9 +75,11 @@ def test_private_route_inventory_remains_covered(auth_client):
     actual = {(method.upper(), path) for path, operations in paths.items()
               if path.startswith('/api/v1/homes/') for method in operations if method != 'parameters'}
     assert actual == {(method, path.split('?')[0]) for method, path, _ in tested}
-    # Únicas rutas públicas fuera de /homes: auth y tarifas publicadas.
+    # Únicas rutas públicas fuera de /homes: auth, tarifas publicadas y versiones legales.
     public = {path for path in paths if path.startswith('/api/v1/') and not path.startswith('/api/v1/homes')}
-    assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs'}
+    assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal'}
+    # /legal solo expone GET, nunca escrituras.
+    assert set(paths['/api/v1/legal']) == {'get'}
 
 
 def test_member_read_write_owner_only_home_delete_and_revocation(auth_client, migrated):
@@ -100,7 +102,7 @@ def test_member_read_write_owner_only_home_delete_and_revocation(auth_client, mi
 
 def test_concurrent_registration_unique_email(auth_client, migrated):
     def signup(_):
-        return auth_client.post(AUTH+'/register',json={'email':'same@example.com','password':PASSWORD})
+        return auth_client.post(AUTH+'/register',json={'email':'same@example.com','password':PASSWORD,'accept_terms':True})
     with ThreadPoolExecutor(max_workers=2) as pool:
         result = list(pool.map(signup, range(2)))
     assert sorted(r.status_code for r in result) == [201,409]

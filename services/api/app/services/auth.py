@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.models.auth import AuthSession, RefreshToken, User
 from app.services.errors import Unauthorized
+from app.services.legal import LEGAL_TERMS_VERSION
 from app.services.transactions import write_transaction
 
 password_hasher = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
@@ -51,10 +52,20 @@ def new_session(db, user):
     return issue_tokens(db, user, session)
 
 
+def verify_password(user, password):
+    """Constant-shape Argon2 check; never raises on malformed hashes."""
+    try:
+        return password_hasher.verify(user.password_hash if user else _dummy_hash, password)
+    except (VerificationError, InvalidHashError):
+        return False
+
+
 def register(db, credentials):
+    # accept_terms=True is enforced by the schema; the accepted version is always the server's.
     with write_transaction(db):
         user = User(email=credentials.email,
-                    password_hash=password_hasher.hash(credentials.password.get_secret_value()), role="user")
+                    password_hash=password_hasher.hash(credentials.password.get_secret_value()), role="user",
+                    terms_version=LEGAL_TERMS_VERSION, terms_accepted_at=now())
         db.add(user)
         db.flush()
         tokens = new_session(db, user)
@@ -63,11 +74,7 @@ def register(db, credentials):
 
 def login(db, credentials):
     user = db.scalar(select(User).where(User.email == credentials.email))
-    try:
-        valid = password_hasher.verify(user.password_hash if user else _dummy_hash,
-                                       credentials.password.get_secret_value())
-    except (VerificationError, InvalidHashError):
-        valid = False
+    valid = verify_password(user, credentials.password.get_secret_value())
     if not valid or user is None or not user.active:
         raise unauthorized()
     with write_transaction(db):

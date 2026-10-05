@@ -22,7 +22,7 @@ def auth_client(client, monkeypatch):
 
 
 def register(client, email='alice@example.com'):
-    r = client.post(AUTH + '/register', json={'email': email, 'password': PASSWORD})
+    r = client.post(AUTH + '/register', json={'email': email, 'password': PASSWORD, 'accept_terms': True})
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -83,7 +83,7 @@ def test_missing_malformed_expired_forged_tokens(auth_client, path):
 @pytest.mark.parametrize('field,value', [('role','admin'),('role','support'),('home_id',str(uuid.uuid4())),
                                        ('password','short'),('password','x'*129),('email','invalid')])
 def test_registration_validation_and_no_secret_echo(auth_client, field, value):
-    body = {'email':'alice@example.com','password':PASSWORD,field:value}
+    body = {'email':'alice@example.com','password':PASSWORD,'accept_terms':True,field:value}
     r = auth_client.post(AUTH+'/register', json=body)
     assert r.status_code == 422
     assert PASSWORD not in r.text and 'x'*129 not in r.text
@@ -175,7 +175,7 @@ def test_health_engine_uses_only_isolated_database(client,migrated):
 
 
 def test_auth_endpoints_disabled_in_legacy(client):
-    assert client.post(AUTH+'/register',json={'email':'alice@example.com','password':PASSWORD}).status_code == 404
+    assert client.post(AUTH+'/register',json={'email':'alice@example.com','password':PASSWORD,'accept_terms':True}).status_code == 404
     assert client.get(AUTH+'/me').status_code == 404
 
 
@@ -185,7 +185,7 @@ def test_login_generic_duplicate_and_invalid_refresh(auth_client):
                  for email in ['alice@example.com','missing@example.com']]
     assert all(r.status_code == 401 for r in responses)
     assert responses[0].json()['detail'] == responses[1].json()['detail']
-    assert auth_client.post(AUTH+'/register', json={'email':'ALICE@example.com','password':PASSWORD}).status_code == 409
+    assert auth_client.post(AUTH+'/register', json={'email':'ALICE@example.com','password':PASSWORD,'accept_terms':True}).status_code == 409
     assert auth_client.post(AUTH+'/refresh', json={'refresh_token':'z'*43}).status_code == 401
     assert auth_client.post(AUTH+'/refresh', json={'refresh_token':'invalid'}).status_code == 422
 

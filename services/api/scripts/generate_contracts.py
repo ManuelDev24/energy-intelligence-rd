@@ -13,7 +13,7 @@ from app.schemas.bill import BillOut, BillCreate, BillUpdate
 from app.schemas.dashboard import DashboardOut
 from app.schemas.equipment import EquipmentOut, EquipmentEstimateOut, EquipmentIn
 from app.schemas.alert import AlertRecord, AlertSettingsOut, AlertSettingsIn, AlertStatusUpdate
-from app.schemas.auth import UserOut, TokensOut
+from app.schemas.auth import UserOut, TokensOut, RegisterIn, AccountDeletionIn, LegalOut
 from app.schemas.reading import ReadingCreate, ReadingOut
 from app.schemas.consumption import ConsumptionOut
 from app.schemas.goal import GoalIn, GoalOut, GoalProgressOut
@@ -25,7 +25,8 @@ ROOT = Path(__file__).resolve().parents[3]
 MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, AlertRecord,
           AlertSettingsOut, BillCreate, BillUpdate, EquipmentIn, AlertSettingsIn, AlertStatusUpdate,
           UserOut, TokensOut, ReadingOut, ReadingCreate, ConsumptionOut, GoalOut, GoalIn, GoalProgressOut,
-          TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment]
+          TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
+          RegisterIn, AccountDeletionIn, LegalOut]
 
 
 def generate():

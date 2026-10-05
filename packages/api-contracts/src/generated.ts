@@ -218,7 +218,9 @@ export const UserOutSchema = z.object({
   "id": z.string().uuid(),
   "email": z.string(),
   "role": z.enum(["user", "admin", "support"]),
-  "created_at": z.string().datetime({ offset: true })
+  "created_at": z.string().datetime({ offset: true }),
+  "terms_version": z.union([z.string(), z.null()]).default(null),
+  "terms_accepted_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
 });
 export type UserOut = z.infer<typeof UserOutSchema>;
 
@@ -450,3 +452,22 @@ export const BillAssessmentSchema = z.object({
   "detail": BillItemsOutSchema
 });
 export type BillAssessment = z.infer<typeof BillAssessmentSchema>;
+
+export const RegisterInSchema = z.object({
+  "email": z.string().max(254),
+  "password": z.string().min(12).max(128),
+  "accept_terms": z.literal(true)
+});
+export type RegisterIn = z.infer<typeof RegisterInSchema>;
+
+export const AccountDeletionInSchema = z.object({
+  "password": z.string().min(12).max(128)
+});
+export type AccountDeletionIn = z.infer<typeof AccountDeletionInSchema>;
+
+export const LegalOutSchema = z.object({
+  "terms_version": z.string(),
+  "privacy_version": z.string(),
+  "status": z.literal("draft")
+});
+export type LegalOut = z.infer<typeof LegalOutSchema>;

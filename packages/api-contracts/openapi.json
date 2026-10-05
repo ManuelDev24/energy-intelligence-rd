@@ -1,6 +1,25 @@
 {
   "components": {
     "schemas": {
+      "AccountDeletionIn": {
+        "additionalProperties": false,
+        "description": "Reautenticaci\u00f3n para borrar la cuenta; mismos l\u00edmites que Credentials.",
+        "properties": {
+          "password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "AccountDeletionIn",
+        "type": "object"
+      },
       "AlertRecord": {
         "properties": {
           "basis_bill_id": {
@@ -2577,6 +2596,30 @@
         "title": "LatestBill",
         "type": "object"
       },
+      "LegalOut": {
+        "properties": {
+          "privacy_version": {
+            "title": "Privacy Version",
+            "type": "string"
+          },
+          "status": {
+            "const": "draft",
+            "title": "Status",
+            "type": "string"
+          },
+          "terms_version": {
+            "title": "Terms Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "terms_version",
+          "privacy_version",
+          "status"
+        ],
+        "title": "LegalOut",
+        "type": "object"
+      },
       "Metric": {
         "properties": {
           "quality": {
@@ -2754,6 +2797,38 @@
           "refresh_token"
         ],
         "title": "RefreshIn",
+        "type": "object"
+      },
+      "RegisterIn": {
+        "additionalProperties": false,
+        "description": "Registro: aceptaci\u00f3n expl\u00edcita (booleano estricto). La versi\u00f3n la fija el servidor.",
+        "properties": {
+          "accept_terms": {
+            "const": true,
+            "title": "Accept Terms",
+            "type": "boolean"
+          },
+          "email": {
+            "format": "email",
+            "maxLength": 254,
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "accept_terms"
+        ],
+        "title": "RegisterIn",
         "type": "object"
       },
       "TariffBlockOut": {
@@ -3047,6 +3122,29 @@
             ],
             "title": "Role",
             "type": "string"
+          },
+          "terms_accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terms Accepted At"
+          },
+          "terms_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terms Version"
           }
         },
         "required": [
@@ -3205,6 +3303,43 @@
       }
     },
     "/api/v1/auth/me": {
+      "delete": {
+        "operationId": "delete_me_api_v1_auth_me_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountDeletionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Me",
+        "tags": [
+          "auth"
+        ]
+      },
       "get": {
         "operationId": "me_api_v1_auth_me_get",
         "responses": {
@@ -3278,7 +3413,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Credentials"
+                "$ref": "#/components/schemas/RegisterIn"
               }
             }
           },
@@ -5284,6 +5419,27 @@
         "summary": "Delete Reading",
         "tags": [
           "readings"
+        ]
+      }
+    },
+    "/api/v1/legal": {
+      "get": {
+        "operationId": "get_legal_api_v1_legal_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Legal",
+        "tags": [
+          "legal"
         ]
       }
     },

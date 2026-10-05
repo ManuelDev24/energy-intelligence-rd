@@ -14,6 +14,11 @@ class InvalidInput(ApplicationError):
     code = "invalid_input"
 
 
+class Forbidden(ApplicationError):
+    status_code = 403
+    code = "forbidden"
+
+
 class Unauthorized(ApplicationError):
     """Generic authentication failure; the HTTP layer adds WWW-Authenticate."""
     status_code = 401

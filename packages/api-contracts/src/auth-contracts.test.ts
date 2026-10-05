@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { UserOutSchema, TokensOutSchema } from './index';
+import { UserOutSchema, TokensOutSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema } from './index';
 
 describe('generated auth response contracts', () => {
   it('accepts an API user and rejects unsupported roles', () => {
-    const user = { id: '00000000-0000-4000-8000-000000000001', email: 'contract@example.com', role: 'user', created_at: '2026-10-04T00:00:00Z' };
+    const user = { id: '00000000-0000-4000-8000-000000000001', email: 'contract@example.com', role: 'user', created_at: '2026-10-04T00:00:00Z',
+      terms_version: '2026-10-draft', terms_accepted_at: '2026-10-04T00:00:00Z' };
     expect(UserOutSchema.safeParse(user).success).toBe(true);
     expect(UserOutSchema.safeParse({ ...user, role: 'superuser' }).success).toBe(false);
   });
@@ -14,5 +15,37 @@ describe('generated auth response contracts', () => {
     const { refresh_token: omitted, ...incomplete } = pair;
     expect(omitted).toBe('test-refresh');
     expect(TokensOutSchema.safeParse(incomplete).success).toBe(false);
+  });
+});
+
+describe('ERD-AUTH-03 consent, legal and account deletion contracts', () => {
+  const user = { id: '00000000-0000-4000-8000-000000000001', email: 'contract@example.com', role: 'user', created_at: '2026-10-04T00:00:00Z' };
+  it('exposes consent on /auth/me and allows legacy users without it', () => {
+    expect(UserOutSchema.safeParse({ ...user, terms_version: null, terms_accepted_at: null }).success).toBe(true);
+    expect(UserOutSchema.safeParse({ ...user, terms_version: '2026-10-draft', terms_accepted_at: 'yesterday' }).success).toBe(false);
+    // Un API piloto sin reconstruir omite los campos: se materializan como null (compatibilidad), no como fallo.
+    const legacy = UserOutSchema.safeParse(user);
+    expect(legacy.success && legacy.data.terms_version === null && legacy.data.terms_accepted_at === null).toBe(true);
+  });
+  it('register requires accept_terms === true and bounded credentials', () => {
+    const body = { email: 'a@b.test', password: 'x'.repeat(12), accept_terms: true };
+    expect(RegisterInSchema.safeParse(body).success).toBe(true);
+    expect(RegisterInSchema.safeParse({ ...body, accept_terms: false }).success).toBe(false);
+    const { accept_terms: omitted, ...missing } = body;
+    expect(omitted).toBe(true);
+    expect(RegisterInSchema.safeParse(missing).success).toBe(false);
+    expect(RegisterInSchema.safeParse({ ...body, password: 'short' }).success).toBe(false);
+    expect(RegisterInSchema.safeParse({ ...body, password: 'x'.repeat(129) }).success).toBe(false);
+  });
+  it('account deletion carries only a bounded password', () => {
+    expect(AccountDeletionInSchema.safeParse({ password: 'x'.repeat(12) }).success).toBe(true);
+    expect(AccountDeletionInSchema.safeParse({ password: 'x'.repeat(129) }).success).toBe(false);
+    expect(AccountDeletionInSchema.safeParse({}).success).toBe(false);
+  });
+  it('legal versions are draft-only', () => {
+    const legal = { terms_version: '2026-10-draft', privacy_version: '2026-10-draft', status: 'draft' };
+    expect(LegalOutSchema.safeParse(legal).success).toBe(true);
+    expect(LegalOutSchema.safeParse({ ...legal, status: 'final' }).success).toBe(false);
+    expect(LegalOutSchema.safeParse({ ...legal, terms_version: undefined }).success).toBe(false);
   });
 });

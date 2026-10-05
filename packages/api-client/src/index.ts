@@ -2,9 +2,9 @@ import { z } from "zod";
 import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
-  BillItemsOutSchema, BillAssessmentSchema,
+  BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
-  type Distributor, type BillItemsReplace,
+  type Distributor, type BillItemsReplace, type RegisterIn,
 } from "@energyrd/api-contracts";
 
 export class ApiError extends Error {
@@ -35,6 +35,34 @@ export function parseErrorBody(status: number, body: unknown): ApiError {
     return issue.msg;
   }).join("; ") : status >= 500 ? "Error del servidor. Intente de nuevo." : `Error ${status}`;
   return new ApiError(status, message, fields, value.code, value.request_id);
+}
+
+function localValidation(error: z.ZodError, messages: Record<string, string>): ApiError {
+  const fields: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const field = String(issue.path[0] ?? "body");
+    fields[field] = messages[field] ?? "Valor inválido";
+  }
+  return new ApiError(422, "Revise los campos indicados.", fields, "validation_error");
+}
+
+const CREDENTIAL_MESSAGES = {
+  email: "Introduce un correo electrónico válido.",
+  password: "La contraseña debe tener entre 12 y 128 caracteres.",
+  accept_terms: "Debes aceptar los términos y la política de privacidad.",
+};
+
+/**
+ * ERD-AUTH-03: único constructor del cuerpo de POST /auth/register para web y móvil.
+ * Exige aceptación explícita (`true` literal) y nunca envía la versión de términos: la fija el servidor.
+ * La contraseña se envía exacta (sin recortar).
+ */
+export function buildRegisterPayload(input: { email: string; password: string; acceptTerms: boolean | undefined }): RegisterIn {
+  const parsed = RegisterInSchema.strict().safeParse({
+    email: input.email.trim().toLowerCase(), password: input.password, accept_terms: input.acceptTerms,
+  });
+  if (!parsed.success) throw localValidation(parsed.error, CREDENTIAL_MESSAGES);
+  return parsed.data;
 }
 
 function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -154,6 +182,13 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     getGoalProgress: async (id: string, opts?: { on?: string }, signal?: AbortSignal) =>
       request(`${homePath(id)}/goal/progress${query({ on: opts?.on === undefined ? undefined : isoDate.parse(opts.on) })}`,
         GoalProgressSchema, { signal }),
+    // ERD-AUTH-03: versiones legales públicas y borrado de cuenta con reautenticación (204 sin cuerpo).
+    getLegal: (signal?: AbortSignal) => request("/legal", LegalOutSchema, { signal }),
+    deleteAccount: async (password: string) => {
+      const parsed = AccountDeletionInSchema.strict().safeParse({ password });
+      if (!parsed.success) throw localValidation(parsed.error, CREDENTIAL_MESSAGES);
+      return request("/auth/me", z.undefined(), write("DELETE", parsed.data));
+    },
     listTariffs: async (opts?: { distributor?: Distributor; on?: string }, signal?: AbortSignal) =>
       list(`/tariffs${query({ distributor: opts?.distributor, on: opts?.on === undefined ? undefined : isoDate.parse(opts.on) })}`,
         TariffSchema, signal),

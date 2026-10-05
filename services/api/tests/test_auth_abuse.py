@@ -34,7 +34,7 @@ def test_login_budget_survives_auth_failure(auth_client, monkeypatch):
 def test_registration_budget(auth_client, monkeypatch):
     from app.config import settings
     monkeypatch.setitem(settings.__dict__, 'AUTH_REGISTER_LIMIT', 1)
-    body = {'email': 'alice@example.com', 'password': PASSWORD}
+    body = {'email': 'alice@example.com', 'password': PASSWORD, 'accept_terms': True}
     assert auth_client.post(AUTH+'/register', json=body).status_code == 201
     body['email'] = 'bob@example.com'
     assert auth_client.post(AUTH+'/register', json=body).status_code == 429

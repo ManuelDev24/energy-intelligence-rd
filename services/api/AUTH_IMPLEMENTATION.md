@@ -175,3 +175,13 @@ This is a backend foundation, **not a complete production account system**:
   handling would be a separate contract change, not an undocumented default here.
 - Legacy mutation audit does not yet attribute actions to the authenticated user.
 - No independently delegated support/admin access to private home data.
+
+## ERD-AUTH-03: consentimiento y borrado de cuenta
+
+- `POST /auth/register` exige `accept_terms: true` (literal JSON `true`; `false`, `1`, `"true"` o ausente → 422).
+  El servidor guarda `LEGAL_TERMS_VERSION` (`app/services/legal.py`) y la fecha en `users.terms_version` /
+  `users.terms_accepted_at` (migración 0012; NULL para cuentas legadas). El cliente no puede elegir versión.
+- `GET /auth/me` expone `terms_version` y `terms_accepted_at`.
+- `GET /api/v1/legal` (público, solo GET) devuelve `{terms_version, privacy_version, status: "draft"}`.
+- `DELETE /auth/me` con `{password}`: ver `ACCOUNT_DELETION.md`. Borrador de privacidad y retención:
+  `docs/legal/PRIVACY_AND_RETENTION_DRAFT.md`.
