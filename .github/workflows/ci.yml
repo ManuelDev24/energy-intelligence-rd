@@ -118,7 +118,8 @@ jobs:
         env:
           MOBILE_E2E_API_URL: http://localhost:8000
           AUTH_E2E_API_URL: http://localhost:8011
-          PHASE2_PILOT_PROBE_URL: http://localhost:8000
+          # Sin PHASE2_PILOT_PROBE_URL: esa sonda exige la API piloto ANTIGUA (sin Fase 2);
+          # aquí :8000 corre el código actual, que sí tiene Fase 2. Se ejecuta solo en local.
         run: npx vitest run src/e2e
         working-directory: apps/mobile
       - if: failure()
