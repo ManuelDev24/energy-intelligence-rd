@@ -1014,6 +1014,45 @@
         "title": "ConsumptionBucket",
         "type": "object"
       },
+      "ConsumptionComparison": {
+        "properties": {
+          "kwh_delta": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "kwh_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_from": {
+            "format": "date",
+            "title": "Previous From",
+            "type": "string"
+          },
+          "previous_kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "previous_to": {
+            "format": "date",
+            "title": "Previous To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "previous_from",
+          "previous_to",
+          "previous_kwh",
+          "kwh_delta",
+          "kwh_pct"
+        ],
+        "title": "ConsumptionComparison",
+        "type": "object"
+      },
       "ConsumptionOut": {
         "properties": {
           "average_daily_kwh": {
@@ -1032,6 +1071,26 @@
             },
             "title": "Buckets",
             "type": "array"
+          },
+          "comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConsumptionComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estimated_cost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "from_date": {
             "format": "date",

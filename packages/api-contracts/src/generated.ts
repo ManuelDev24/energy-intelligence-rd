@@ -262,6 +262,15 @@ export const ConsumptionBucketSchema = z.object({
 });
 export type ConsumptionBucket = z.infer<typeof ConsumptionBucketSchema>;
 
+export const ConsumptionComparisonSchema = z.object({
+  "previous_from": z.string().date(),
+  "previous_to": z.string().date(),
+  "previous_kwh": MetricSchema,
+  "kwh_delta": MetricSchema,
+  "kwh_pct": z.union([MetricSchema, z.null()])
+});
+export type ConsumptionComparison = z.infer<typeof ConsumptionComparisonSchema>;
+
 export const ConsumptionTotalsSchema = z.object({
   "kwh": z.union([MetricSchema, z.null()]),
   "covered_days": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
@@ -279,6 +288,8 @@ export const ConsumptionOutSchema = z.object({
   "totals": ConsumptionTotalsSchema,
   "average_daily_kwh": z.union([MetricSchema, z.null()]),
   "peak_bucket": z.union([ConsumptionBucketSchema, z.null()]),
+  "estimated_cost": z.union([MetricSchema, z.null()]).default(null),
+  "comparison": z.union([ConsumptionComparisonSchema, z.null()]).default(null),
   "readings_used": z.number().finite().int(),
   "resolution": z.literal("meter_readings").default("meter_readings"),
   "hourly_data_available": z.boolean().default(false),
