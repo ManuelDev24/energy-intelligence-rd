@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { SessionProvider, useSession } from "../session";
+import { bffFetch } from "./client";
+import { resetPassword } from "./recovery";
 const user = { id: "11111111-1111-4111-8111-111111111111", email: "a@b.test", role: "user", created_at: "2026-01-01T00:00:00Z" };
 afterEach(() => { vi.restoreAllMocks(); window.localStorage.clear(); });
 function Probe() {
@@ -35,6 +37,29 @@ it("clears home and cached data on expiry without calling refresh", async () => 
   expect(client.getQueryData(["private"])).toBeUndefined();
   expect(fetcher.mock.calls.some(([path]) => String(path).includes("refresh"))).toBe(false);
 });
+it("a post-reset 401 still clears the revoked account and cache without a second logout", async () => {
+  let revoked = false;
+  const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async input => {
+    if (String(input).endsWith("/password/reset")) { revoked = true; return new Response(null, { status: 204 }); }
+    return revoked ? new Response(JSON.stringify({ code: "http_401" }), { status: 401 }) : new Response(JSON.stringify(user));
+  });
+  const client = new QueryClient();
+  render(<QueryClientProvider client={client}><SessionProvider authEnabled><Probe /></SessionProvider></QueryClientProvider>);
+  await screen.findByText(user.email);
+  fireEvent.click(screen.getByText("Select"));
+  client.setQueryData(["private"], "revoked account data");
+  await act(async () => {
+    await resetPassword("A".repeat(43), "new-long-password");
+    // The real transport dispatches expiry; the provider advances the generation, so
+    // the same response is discarded instead of leaking old account data.
+    await expect(bffFetch("/api/v1/homes")).rejects.toMatchObject({ code: "account_changed" });
+  });
+  expect(screen.getByText("anonymous")).toBeInTheDocument();
+  expect(screen.getByText("no home")).toBeInTheDocument();
+  expect(client.getQueryData(["private"])).toBeUndefined();
+  expect(fetcher.mock.calls.some(([url]) => /logout|refresh/.test(String(url)))).toBe(false);
+});
+
 it("drops private data immediately when another tab changes account", async () => {
   vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(user)));
   const client = new QueryClient();

@@ -3,9 +3,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@energyrd/api-client";
-import { AccountSchema, accountRequest, authEnabled as configuredAuth, deleteAccountRequest, invalidateAccountRequests, type Account } from "./auth/client";
+import { ACCOUNT_CHANGE_KEY, AccountSchema, accountRequest, authEnabled as configuredAuth, deleteAccountRequest, invalidateAccountRequests, type Account } from "./auth/client";
 const STORAGE_KEY = "energyrd.homeId";
-const CHANGE_KEY = "energyrd.account-change";
+const CHANGE_KEY = ACCOUNT_CHANGE_KEY;
 interface SessionValue {
   homeId: string | null;
   ready: boolean;

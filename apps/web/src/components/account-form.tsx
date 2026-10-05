@@ -47,8 +47,9 @@ export function AccountForm({ mode }: { mode: "login" | "register" }) {
         {error || sessionError ? <p role="alert" className="text-sm text-danger">{error || sessionError} Revisa tus datos o inicia sesión de nuevo.</p> : null}
         <Button type="submit" disabled={pending || blocked}>{pending ? `${label} · Verificando…` : label}</Button>
       </form>
+      {mode === "login" ? <p className="mt-4 text-sm"><Link className="text-primary underline focus-visible:ring-2 focus-visible:ring-primary" href="/olvide-contrasena">Olvidé mi contraseña</Link></p> : null}
       <p className="mt-4 text-sm"><Link className="text-primary underline focus-visible:ring-2 focus-visible:ring-primary" href={mode === "login" ? "/register" : "/login"}>{mode === "login" ? "¿Sin cuenta? Crear cuenta" : "Ya tengo cuenta"}</Link></p>
     </Card>
-    <Card><CardTitle>Antes de continuar</CardTitle><p className="mt-2 text-sm text-muted-foreground">La recuperación de contraseña no está disponible. Guarda tu contraseña de forma segura. No verificamos la propiedad del correo electrónico.</p></Card>
+    <Card><CardTitle>Antes de continuar</CardTitle><p className="mt-2 text-sm text-muted-foreground">Guarda tu contraseña de forma segura. No verificamos la propiedad del correo electrónico al crear una cuenta.</p></Card>
   </main>;
 }

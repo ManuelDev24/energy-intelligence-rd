@@ -1,6 +1,8 @@
 import { ApiError, ContractError, parseErrorBody, buildRegisterPayload } from "@energyrd/api-client";
 import { UserOutSchema, LegalOutSchema, type UserOut, type LegalOut } from "@energyrd/api-contracts";
 export const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
+/** Clave de localStorage cuyo cambio hace que las demás pestañas vuelvan a verificar la sesión. */
+export const ACCOUNT_CHANGE_KEY = "energyrd.account-change";
 export const AccountSchema = UserOutSchema;
 export type Account = UserOut;
 let generation = 0;

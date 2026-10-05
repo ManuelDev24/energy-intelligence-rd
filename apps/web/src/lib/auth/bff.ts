@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -24,6 +24,14 @@ const CredentialSchema = z.object({ email: z.string().email().max(254), password
 // valida igual que en login.
 const RegisterSchema = RegisterInSchema.extend({ email: z.string().email().max(254) }).strict();
 const AccountDeletionSchema = AccountDeletionInSchema.strict();
+// ERD-AUTH-05: recuperación de contraseña. Rutas públicas (sin sesión ni Authorization) que no emiten
+// cookies de sesión, así que no necesitan el apretón de manos de época; sí conservan Origin/CSRF/JSON.
+// El token solo viaja en el cuerpo JSON (nunca en la URL de la API) y tiene exactamente 43 caracteres
+// base64url, igual que el contrato.
+const FORGOT = "/auth/password/forgot";
+const RESET = "/auth/password/reset";
+const ForgotSchema = PasswordForgotInSchema.extend({ email: z.string().email().max(254) }).strict();
+const ResetSchema = PasswordResetInSchema.strict();
 const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const accessName = (config: BffConfig) => config.secure ? "__Host-erd-access" : "erd-access";
 const logoutName = (config: BffConfig) => config.secure ? "__Host-erd-logout" : "erd-logout";
@@ -187,11 +195,16 @@ const FIELD_MESSAGES: Record<string, string> = {
   kind: "Selecciona cargo o descuento.",
   items: "Revisa los conceptos (máximo 100).",
   accept_terms: "Debes aceptar los términos y la política de privacidad.",
+  token: "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.",
+  new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
 };
-const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|http_[1-5]\d\d)$/;
+const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|http_[1-5]\d\d)$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
+  // ERD-AUTH-05: token de recuperación inválido, caducado o ya usado (sin distinguir cuál).
+  if (status === 400 && code === "reset_token_invalid") return "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.";
+  if (status === 429 && (path === FORGOT || path === RESET)) return "Demasiadas solicitudes de recuperación. Espera unos minutos e inténtalo de nuevo.";
   if (status === 403 && code === "reauthentication_failed") return "La contraseña no es correcta.";
   if (status === 409 && code === "ownership_transfer_required") return "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad antes de continuar (todavía no existe una función para transferirla).";
   // Fase 2: mensajes propios por ruta (el texto de la API nunca se reenvía).
@@ -246,13 +259,14 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   }
   const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
   const legal = path === "/legal" && method === "GET";
-  const phase2 = auth || legal ? null : phase2Route(path, method);
+  const recovery = method === "POST" && (path === FORGOT || path === RESET);
+  const phase2 = auth || legal || recovery ? null : phase2Route(path, method);
   const schema = legal ? LegalOutSchema : phase2 ? phase2.response : domainRoute(path, method);
-  if (!auth && !legal && !schema) return reply({ detail: "Ruta no permitida." }, 404);
+  if (!auth && !legal && !recovery && !schema) return reply({ detail: "Ruta no permitida." }, 404);
   if (new RegExp(`^/homes/${UUID}$`).test(path) && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   if (phase2 && !phase2QueryOk(phase2, url.searchParams)) return reply({ detail: "Consulta no permitida." }, 400);
   if (!phase2 && !legal) for (const [key, value] of url.searchParams) {
-    if (auth || !["limit", "offset", "include_dismissed"].includes(key) || (key === "include_dismissed" ? !["true", "false"].includes(value) : !/^\d{1,6}$/.test(value)) || url.searchParams.getAll(key).length !== 1) return reply({ detail: "Consulta no permitida." }, 400);
+    if (auth || recovery || !["limit", "offset", "include_dismissed"].includes(key) || (key === "include_dismissed" ? !["true", "false"].includes(value) : !/^\d{1,6}$/.test(value)) || url.searchParams.getAll(key).length !== 1) return reply({ detail: "Consulta no permitida." }, 400);
   }
   if (legal && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -269,6 +283,10 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
         if (!credentials.success) return invalid(credentials.error.issues);
         if (!EPOCH.test(cookie(request, epochName(config)) || "")) return setEpoch(reply({ detail: "Activa las cookies de este sitio e inténtalo de nuevo.", code: "auth_epoch_required" }, 428), config);
         body = JSON.stringify(credentials.data);
+      } else if (recovery) {
+        const parsed = (path === RESET ? ResetSchema : ForgotSchema).safeParse(value);
+        if (!parsed.success) return invalid(parsed.error.issues);
+        body = JSON.stringify(parsed.data);
       } else if (logout) {
         if (Object.keys(value).length) return reply({ detail: "No se aceptan credenciales del navegador." }, 422);
         const token = bound(request, logoutName(config))?.token;
@@ -286,7 +304,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       headers["Content-Type"] = "application/json";
     } catch { return reply({ detail: "JSON inválido." }, 400); }
   }
-  if ((!auth || path === "/auth/me") && !legal) {
+  if ((!auth || path === "/auth/me") && !legal && !recovery) {
     const epoch = cookie(request, epochName(config));
     const access = bound(request, accessName(config));
     const refresh = bound(request, logoutName(config));
@@ -316,6 +334,18 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
         response.headers.set("Retry-After", retryAfter);
       }
       return response;
+    }
+    if (path === FORGOT) {
+      // Siempre 202 {status:"accepted"} (sin enumeración); cualquier otra forma es un error de contrato.
+      if (upstream.status !== 202) throw new Error("Unexpected status");
+      return reply(PasswordForgotAcceptedSchema.strict().parse(data), 202);
+    }
+    if (path === RESET) {
+      if (upstream.status !== 204) throw new Error("Unexpected status");
+      // Public reset revokes only the token owner's sessions in the API. A late response
+      // must never erase cookies belonging to a newer login (possibly another account).
+      // Revoked sessions are rejected by the normal 401 path; no second logout write.
+      return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store, private", "Vary": "Cookie" } });
     }
     if (path === "/auth/login" || path === "/auth/register") {
       const pair = PairSchema.parse(data);

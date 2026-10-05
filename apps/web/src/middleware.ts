@@ -3,6 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 // so cookie values cannot reach any dev-mode RSC debug serialization.
 const PROTECTED = ["/dashboard", "/consumption", "/readings", "/goal", "/bills", "/equipment", "/alerts", "/homes", "/account", "/profile"];
 export async function middleware(request: NextRequest) {
+  // ERD-AUTH-05: recuperación pública. El token es un fragmento (no llega al servidor), pero
+  // reforzamos el encabezado para que ni la ruta ni futuras variantes viajen como Referer.
+  if (request.nextUrl.pathname === "/restablecer-contrasena") {
+    const response = NextResponse.next();
+    response.headers.set("Referrer-Policy", "no-referrer");
+    response.headers.set("Cache-Control", "no-store");
+    return response;
+  }
   if (!PROTECTED.some(prefix => request.nextUrl.pathname === prefix || request.nextUrl.pathname.startsWith(`${prefix}/`))) return NextResponse.next();
   if (process.env.NEXT_PUBLIC_AUTH_ENABLED !== "true") return NextResponse.next();
   const cookie = request.cookies.get("__Host-erd-access") ?? request.cookies.get("erd-access");
@@ -15,4 +23,4 @@ export async function middleware(request: NextRequest) {
   if (!probe.ok) return NextResponse.redirect(new URL("/login", request.url));
   return NextResponse.next();
 }
-export const config = { matcher: ["/dashboard/:path*", "/consumption/:path*", "/readings/:path*", "/goal/:path*", "/bills/:path*", "/equipment/:path*", "/alerts/:path*", "/homes/:path*", "/account/:path*", "/profile/:path*"] };
+export const config = { matcher: ["/dashboard/:path*", "/consumption/:path*", "/readings/:path*", "/goal/:path*", "/bills/:path*", "/equipment/:path*", "/alerts/:path*", "/homes/:path*", "/account/:path*", "/profile/:path*", "/restablecer-contrasena"] };
