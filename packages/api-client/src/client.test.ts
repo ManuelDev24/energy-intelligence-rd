@@ -8,6 +8,17 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 afterEach(() => vi.useRealTimers());
 
 describe("shared API transport", () => {
+  it("passes the selected bill and rejects a response for a different period", async () => {
+    const bill = "aaaaaaaa-0000-4000-8000-000000000001";
+    const fetcher = vi.fn().mockResolvedValue(json({
+      home: { id: HOME, code: null, name: "Home", distributor: "EDESUR" },
+      latest_bill: null, comparison: null, projection: null, alert: null, recommendation: null,
+      data_status: { bills_count: 0, data_source: "none", is_demo: false, insufficient_reasons: [] },
+      quality_legend: {},
+    }));
+    await expect(createApiClient("http://api.test", fetcher).getDashboard(HOME, undefined, bill)).rejects.toBeInstanceOf(ContractError);
+    expect(fetcher.mock.calls[0][0]).toBe(`http://api.test/api/v1/homes/${HOME}/dashboard?bill_id=${bill}`);
+  });
   it("loads all pages without silently cutting off after 100 records", async () => {
     const fetcher = vi.fn().mockResolvedValueOnce(json(Array.from({ length: 100 }, (_, n) => home(n))))
       .mockResolvedValueOnce(json([home(100)]));

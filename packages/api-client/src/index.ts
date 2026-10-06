@@ -184,7 +184,11 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       request(`${homePath(id)}/bills/${idPath(bill)}/items`, BillItemsOutSchema, write("PUT", input)).then(ownBill(bill)),
     assessBill: async (id: string, bill: string, signal?: AbortSignal) =>
       request(`${homePath(id)}/bills/${idPath(bill)}/validate`, BillAssessmentSchema, { ...write("POST", {}), signal }).then(ownBill(bill)),
-    getDashboard: (id: string, signal?: AbortSignal) => request(`${homePath(id)}/dashboard`, DashboardSchema, { signal }),
+    getDashboard: async (id: string, signal?: AbortSignal, billId?: string) => {
+      const data = await request(`${homePath(id)}/dashboard${query({ bill_id: billId === undefined ? undefined : idPath(billId) })}`, DashboardSchema, { signal });
+      if (billId !== undefined && data.latest_bill?.bill_id !== billId) throw new ContractError();
+      return data;
+    },
     listAnomalies: (id: string, granularity: "day" | "month", signal?: AbortSignal): Promise<Anomaly[]> =>
       request(`${homePath(id)}/anomalies?granularity=${granularity}`, AnomaliesSchema, { signal }),
     listEquipment: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/equipment`, EquipmentSchema, signal),

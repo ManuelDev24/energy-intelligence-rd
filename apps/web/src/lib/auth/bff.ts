@@ -121,6 +121,9 @@ function ownsBill(path: string, value: unknown) {
   return owns(value) && (nested === undefined || owns(nested));
 }
 function phase2Route(path: string, method: string): Phase2Route | null {
+  if (new RegExp(`^/homes/${UUID}/dashboard$`).test(path)) return method === "GET"
+    ? { response: DashboardSchema, query: { bill_id: { pattern: v => z.string().uuid().safeParse(v).success } } }
+    : null;
   const bill = billDetailRoute(path, method);
   if (bill || new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path)) return bill;
   if (new RegExp(`^/homes/${UUID}/contract$`).test(path)) return method === "GET" ? { response: ContractOutSchema, query: {} } : method === "PUT" ? { response: ContractOutSchema, body: ContractInSchema.strict(), query: {} } : null;
@@ -378,6 +381,11 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       return response;
     }
     const parsed = upstream.status === 204 && method === "DELETE" ? undefined : (legal ? LegalOutSchema : path === "/auth/me" ? UserSchema : schema!).parse(data);
+    if (parsed !== undefined && /\/dashboard$/.test(path)) {
+      const dashboard = parsed as z.infer<typeof DashboardSchema>;
+      if (dashboard.home.id !== path.split("/")[2] ||
+          (url.searchParams.has("bill_id") && dashboard.latest_bill?.bill_id !== url.searchParams.get("bill_id"))) throw new Error("Mismatched dashboard");
+    }
     if (parsed !== undefined && phase2 && new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path) && !ownsBill(path, parsed)) throw new Error("Mismatched bill");
     if (parsed !== undefined && phase2 && /\/contract$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched home");
     if (parsed !== undefined && new RegExp(`^/homes/${UUID}$`).test(path) && (parsed as { id: string }).id !== path.split("/")[2]) throw new Error("Mismatched home");
