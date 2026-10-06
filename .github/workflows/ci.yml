@@ -31,6 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+      - name: Instalar motor OCR e idiomas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng
+          tesseract --version
+          tesseract --list-langs
       - run: uv sync --frozen
       - run: uv run python -m scripts.generate_contracts --check
       - run: python scripts/check_architecture.py
