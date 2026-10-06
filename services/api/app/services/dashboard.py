@@ -2,8 +2,6 @@
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import HTTPException
-
 from sqlalchemy import select, func, true, or_, and_
 from sqlalchemy.orm import Session
 
@@ -13,6 +11,7 @@ from app.schemas.dashboard import (
 )
 from app.services import calculations as calc
 from app.services.alerts import thresholds as alert_thresholds
+from app.services.errors import NotFound
 
 QUALITY_LEGEND = {
     "REAL": "Dato tomado directamente de una factura mensual introducida.",
@@ -30,7 +29,7 @@ def build_dashboard(db: Session, home: Home, bill_id: UUID | None = None) -> Das
     if bill_id is not None:
         selected = db.scalar(select(Bill).where(Bill.id == bill_id, Bill.home_id == home.id))
         if selected is None:
-            raise HTTPException(status_code=404, detail="Factura no encontrada en esta vivienda.")
+            raise NotFound("Factura no encontrada en esta vivienda.")
         scope.append(or_(Bill.period_end < selected.period_end,
                          and_(Bill.period_end == selected.period_end, Bill.id <= selected.id)))
     # Only six recent bills are needed for projection/comparison. Metadata covers all history.
