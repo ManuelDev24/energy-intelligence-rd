@@ -6,6 +6,11 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
 
+# Tesseract is the native runtime used by pytesseract for bill OCR.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
 # Dependencias primero (cache de capas); versiones fijadas por uv.lock.
 COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
