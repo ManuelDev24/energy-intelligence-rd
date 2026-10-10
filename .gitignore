@@ -32,3 +32,6 @@ apps/mobile/maestro/evidence/**/debug/
 apps/mobile/maestro/evidence/**/logs/
 apps/mobile/maestro/evidence/**/screen-hierarchy/
 apps/mobile/maestro/evidence/**/console.log
+
+# Facturas reales para QA de OCR (datos personales): nunca versionar.
+qa-private/
