@@ -1,9 +1,11 @@
-import { screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/app/(app)/dashboard/page";
 import { expectDashboardRendered } from "./assertions";
-import { DASHBOARD_A, HOME_A } from "./mock-api";
+import { BILLS, DASHBOARD_A, HOME_A, HOME_B } from "./mock-api";
 import { renderWithApp } from "./render";
+import { getApi } from "@/lib/api";
+import { useSession } from "@/lib/session";
 
 vi.mock("@/lib/api", async () => {
   const { createMockApi } = await import("./mock-api");
@@ -13,6 +15,45 @@ vi.mock("@/lib/api", async () => {
 
 describe("DashboardPage", () => {
   beforeEach(() => window.localStorage.clear());
+  afterEach(() => vi.restoreAllMocks());
+
+  it("consulta el período elegido y no incluye facturas posteriores en la gráfica", async () => {
+    const historical = { ...DASHBOARD_A, latest_bill: {
+      ...DASHBOARD_A.latest_bill, bill_id: BILLS[0].id,
+      period_start: BILLS[0].period_start, period_end: BILLS[0].period_end,
+      kwh: { ...DASHBOARD_A.latest_bill.kwh, value: "250.00" },
+    }, comparison: null, projection: null, alert: null };
+    const dashboard = vi.spyOn(getApi(), "getDashboard").mockImplementation(async (_home, _signal, bill) =>
+      bill ? historical : DASHBOARD_A);
+    renderWithApp(<DashboardPage />, HOME_A);
+    const selector = await screen.findByRole("combobox", { name: "Período de facturación" });
+    await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(4));
+    fireEvent.change(selector, { target: { value: BILLS[0].id } });
+    expect(await screen.findByText("Factura del período")).toBeInTheDocument();
+    expect(dashboard).toHaveBeenLastCalledWith(HOME_A, expect.any(AbortSignal), BILLS[0].id);
+    expect(screen.getByRole("img", { name: /jun 2026: 250 kWh/ }).getAttribute("aria-label")).not.toMatch(/jul|ago|proyectado/);
+    expect(screen.getByText(/Sin período anterior para comparar/)).toBeInTheDocument();
+    fireEvent.change(selector, { target: { value: "" } });
+    expect(await screen.findByText("Última factura")).toBeInTheDocument();
+  });
+
+  it("restablece el período y no reutiliza el resumen al cambiar de vivienda", async () => {
+    function SwitchHome() {
+      const { signIn } = useSession();
+      return <button onClick={() => signIn(HOME_B)}>Cambiar vivienda</button>;
+    }
+    const dashboard = vi.spyOn(getApi(), "getDashboard");
+    renderWithApp(<><SwitchHome /><DashboardPage /></>, HOME_A);
+    const selector = await screen.findByRole("combobox", { name: "Período de facturación" });
+    await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(4));
+    fireEvent.change(selector, { target: { value: BILLS[0].id } });
+    await screen.findByRole("article", { name: "Información: Resumen histórico" });
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar vivienda" }));
+    expect(await screen.findByText("Aún no hay facturas")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Período de facturación" })).toHaveValue("");
+    expect(dashboard).toHaveBeenLastCalledWith(HOME_B, expect.any(AbortSignal), undefined);
+    expect(screen.queryByRole("article", { name: "Información: Resumen histórico" })).not.toBeInTheDocument();
+  });
 
   it("muestra cada métrica del backend con su valor y su etiqueta de calidad", async () => {
     renderWithApp(<DashboardPage />, HOME_A);

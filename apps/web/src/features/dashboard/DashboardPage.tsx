@@ -1,9 +1,9 @@
 "use client";
 
-import { QUALITY, fmtPct, monthlySeries, projectionDeltaPct, resolutionLabel, sourceLabel } from "@energyrd/core";
+import { QUALITY, fmtPct, monthlySeries, projectionDeltaPct, resolutionLabel, sourceLabel, suggestNextPeriod } from "@energyrd/core";
 import { ArrowRight, Plus, Receipt } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AlertCard } from "@/components/alert-card";
 import { ConsumptionChart } from "@/components/consumption-chart";
 import { DataStatusBadge } from "@/components/data-status-badge";
@@ -113,9 +113,18 @@ const DashboardSkeleton = (
 
 export default function DashboardPage() {
   const { homeId } = useSession();
-  const { data, isLoading, error, refetch } = useDashboard(homeId ?? "");
-  const anomalies = useAnomalies(homeId ?? "");
-  const bills = useBills(homeId ?? "");
+  return <HomeDashboard key={homeId} homeId={homeId ?? ""} />;
+}
+
+function HomeDashboard({ homeId }: { homeId: string }) {
+  const [billId, setBillId] = useState("");
+  const { data, isLoading, error, refetch } = useDashboard(homeId, billId || undefined);
+  const anomalies = useAnomalies(homeId);
+  const bills = useBills(homeId);
+  const periods = [...(bills.data ?? [])].sort((a, b) =>
+    b.period_end.localeCompare(a.period_end) || b.id.localeCompare(a.id));
+  const selectedIndex = periods.findIndex((bill) => bill.id === billId);
+  const history = billId ? (selectedIndex >= 0 ? periods.slice(selectedIndex) : []) : periods;
 
   return (
     <div className="flex flex-col gap-6">
@@ -128,9 +137,33 @@ export default function DashboardPage() {
         ) : null}
       </header>
 
+      <QueryState isLoading={bills.isLoading} error={bills.error} onRetry={() => void bills.refetch()}>
+        <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
+          Período de facturación
+          <select
+            value={billId}
+            onChange={(event) => setBillId(event.target.value)}
+            disabled={!periods.length}
+            className="h-11 rounded-lg border border-border bg-background px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <option value="">Último período disponible</option>
+            {billId && selectedIndex < 0 ? <option value={billId}>Período no disponible</option> : null}
+            {periods.map((bill) => (
+              <option key={bill.id} value={bill.id}>{formatPeriod(bill.period_start, bill.period_end)}</option>
+            ))}
+          </select>
+        </label>
+      </QueryState>
+
       <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()} skeleton={DashboardSkeleton}>
         {data ? (
           <>
+            {billId ? (
+              <AlertCard tone="info" title="Resumen histórico">
+                Comparación, alertas y proyección calculadas con las facturas hasta el período seleccionado.
+                La proyección estima la factura siguiente a ese período.
+              </AlertCard>
+            ) : null}
             {data.data_status.is_demo ? (
               <AlertCard tone="info" title="Datos de demostración">
                 No son facturas reales del hogar.
@@ -172,18 +205,22 @@ export default function DashboardPage() {
               </AlertCard>
             ) : null}
 
-            <AnomalySection anomalies={anomalies.data} isLoading={anomalies.isLoading} />
+            {!billId ? <AnomalySection anomalies={anomalies.data} isLoading={anomalies.isLoading} /> : null}
 
-            <GoalProgressSection homeId={homeId ?? ""} />
+            {!billId ? <GoalProgressSection homeId={homeId} /> : null}
 
-            {bills.data && bills.data.length > 0 ? (
+            {!bills.isLoading && !bills.error && history.length > 0 ? (
               <Card>
                 <CardTitle>Consumo por factura</CardTitle>
                 <div className="mt-4">
                   <ConsumptionChart
                     series={monthlySeries(
-                      bills.data,
-                      data.projection ? { kwh: data.projection.kwh.value, amount_dop: data.projection.amount_dop.value } : null,
+                      history,
+                      data.projection ? {
+                        kwh: data.projection.kwh.value,
+                        amount_dop: data.projection.amount_dop.value,
+                        period_end: suggestNextPeriod(data.latest_bill).period_end,
+                      } : null,
                     )}
                   />
                 </div>
@@ -192,7 +229,7 @@ export default function DashboardPage() {
 
             <Section
               id="dash-latest"
-              title="Última factura"
+              title={billId ? "Factura del período" : "Última factura"}
               description={
                 data.latest_bill
                   ? `${formatPeriod(data.latest_bill.period_start, data.latest_bill.period_end)} · ${data.latest_bill.days} días`

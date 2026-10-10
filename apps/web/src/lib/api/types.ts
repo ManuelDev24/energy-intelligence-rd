@@ -27,7 +27,7 @@ export interface Api {
   ocrBill(homeId: string, file: File): Promise<OcrDraft>;
   updateBill(homeId: string, billId: string, input: BillInput): Promise<Bill>;
   deleteBill(homeId: string, billId: string): Promise<void>;
-  getDashboard(homeId: string, signal?: AbortSignal): Promise<Dashboard>;
+  getDashboard(homeId: string, signal?: AbortSignal, billId?: string): Promise<Dashboard>;
   listAnomalies(homeId: string, granularity: "day" | "month", signal?: AbortSignal): Promise<Anomaly[]>;
   listEquipment(homeId: string, signal?: AbortSignal): Promise<Equipment[]>;
   createEquipment(homeId: string, input: EquipmentInput): Promise<Equipment>;

@@ -12,5 +12,5 @@ router = APIRouter(prefix="/homes/{home_id}/dashboard", tags=["dashboard"])
 
 
 @router.get("", response_model=DashboardOut)
-def get_dashboard(home_id: uuid.UUID, db: Session = Depends(get_db)):
-    return build_dashboard(db, get_home_or_404(db, home_id))
+def get_dashboard(home_id: uuid.UUID, bill_id: uuid.UUID | None = None, db: Session = Depends(get_db)):
+    return build_dashboard(db, get_home_or_404(db, home_id), bill_id)

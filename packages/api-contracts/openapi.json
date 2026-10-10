@@ -5193,6 +5193,23 @@
               "title": "Home Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "bill_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bill Id"
+            }
           }
         ],
         "responses": {

@@ -16,7 +16,9 @@ export const keys = {
   // invalidar la factura refresca su detalle y su evaluación, y ninguna otra.
   billItems: (homeId: string, billId: string, account: string) => ["homes", homeId, "bills", billId, "items", account] as const,
   billAssessment: (homeId: string, billId: string, account: string) => ["homes", homeId, "bills", billId, "assessment", account] as const,
-  dashboard: (homeId: string) => ["homes", homeId, "dashboard"] as const,
+  dashboard: (homeId: string, billId?: string) => billId
+    ? ["homes", homeId, "dashboard", billId] as const
+    : ["homes", homeId, "dashboard"] as const,
   anomalies: (homeId: string, granularity: "day" | "month") => ["homes", homeId, "anomalies", granularity] as const,
   equipment: (homeId: string) => ["homes", homeId, "equipment"] as const,
   estimate: (homeId: string) => ["homes", homeId, "estimate"] as const,
@@ -54,10 +56,10 @@ export const useBills = (homeId: string) =>
 export const useBill = (homeId: string, billId: string) =>
   useQuery({ queryKey: keys.bill(homeId, billId), queryFn: ({ signal }) => getApi().getBill(homeId, billId, signal), enabled: enabled(homeId) && !!billId });
 
-export const useDashboard = (homeId: string) =>
+export const useDashboard = (homeId: string, billId?: string) =>
   useQuery({
-    queryKey: keys.dashboard(homeId),
-    queryFn: ({ signal }) => getApi().getDashboard(homeId, signal),
+    queryKey: keys.dashboard(homeId, billId),
+    queryFn: ({ signal }) => getApi().getDashboard(homeId, signal, billId),
     enabled: enabled(homeId),
   });
 

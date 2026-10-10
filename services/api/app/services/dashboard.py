@@ -1,7 +1,8 @@
 """Arma el dashboard de una vivienda a partir de sus facturas mensuales."""
 from decimal import Decimal
+from uuid import UUID
 
-from sqlalchemy import select, func, true
+from sqlalchemy import select, func, true, or_, and_
 from sqlalchemy.orm import Session
 
 from app.models import Bill, Home
@@ -10,6 +11,7 @@ from app.schemas.dashboard import (
 )
 from app.services import calculations as calc
 from app.services.alerts import thresholds as alert_thresholds
+from app.services.errors import NotFound
 
 QUALITY_LEGEND = {
     "REAL": "Dato tomado directamente de una factura mensual introducida.",
@@ -22,14 +24,21 @@ def _m(value: Decimal, unit: str, quality: str) -> Metric:
     return Metric(value=value, unit=unit, quality=quality)
 
 
-def build_dashboard(db: Session, home: Home) -> DashboardOut:
+def build_dashboard(db: Session, home: Home, bill_id: UUID | None = None) -> DashboardOut:
+    scope = [Bill.home_id == home.id]
+    if bill_id is not None:
+        selected = db.scalar(select(Bill).where(Bill.id == bill_id, Bill.home_id == home.id))
+        if selected is None:
+            raise NotFound("Factura no encontrada en esta vivienda.")
+        scope.append(or_(Bill.period_end < selected.period_end,
+                         and_(Bill.period_end == selected.period_end, Bill.id <= selected.id)))
     # Only six recent bills are needed for projection/comparison. Metadata covers all history.
     stats = select(
         func.count(Bill.id).filter(Bill.source == "manual").label("manual_count"),
         func.count(Bill.id).filter(Bill.source == "seed").label("seed_count"),
-    ).where(Bill.home_id == home.id).subquery()
+    ).where(*scope).subquery()
     rows = list(db.execute(select(Bill, stats.c.manual_count, stats.c.seed_count).join(stats, true())
-                          .where(Bill.home_id == home.id).order_by(Bill.period_end.desc(), Bill.id.desc())
+                          .where(*scope).order_by(Bill.period_end.desc(), Bill.id.desc())
                           .limit(calc.PROJECTION_WINDOW)))
     bills = [row[0] for row in reversed(rows)]
     # A single PostgreSQL snapshot keeps totals and the latest bill consistent.

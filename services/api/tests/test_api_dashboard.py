@@ -83,6 +83,38 @@ def test_dashboard_unknown_home_404(client):
     assert client.get(f"/api/v1/homes/{uuid.uuid4()}/dashboard").status_code == 404
 
 
+def test_dashboard_selected_period_excludes_future_bills(client):
+    h = mk_home(client)
+    add_bill(client, h["id"], "2026-06-01", "2026-06-30", 30, "250", "3000")
+    add_bill(client, h["id"], "2026-07-01", "2026-07-31", 31, "300", "3600")
+    add_bill(client, h["id"], "2026-08-01", "2026-08-31", 31, "900", "10800")
+    bills = client.get(bill_url(h["id"])).json()
+    july = next(b for b in bills if b["period_end"] == "2026-07-31")
+    r = client.get(f'/api/v1/homes/{h["id"]}/dashboard', params={"bill_id": july["id"]})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["latest_bill"]["bill_id"] == july["id"]
+    assert d["comparison"]["kwh_delta"]["value"] == "50.00"
+    assert d["projection"]["kwh"]["value"] == "350.00"
+    assert d["projection"]["bills_used"] == 2
+    assert d["data_status"]["bills_count"] == 2
+    assert d["alert"]["severity"] == "warning"
+    june = next(b for b in bills if b["period_end"] == "2026-06-30")
+    first = client.get(f'/api/v1/homes/{h["id"]}/dashboard', params={"bill_id": june["id"]}).json()
+    assert first["comparison"] is None and first["projection"] is None
+
+
+def test_dashboard_selected_bill_must_belong_to_home(client):
+    import uuid
+    h, other = mk_home(client), mk_home(client)
+    add_bill(client, other["id"], "2026-08-01", "2026-08-31", 31, "100", "1000")
+    foreign = client.get(bill_url(other["id"])).json()[0]["id"]
+    url = f'/api/v1/homes/{h["id"]}/dashboard'
+    assert client.get(url, params={"bill_id": foreign}).status_code == 404
+    assert client.get(url, params={"bill_id": str(uuid.uuid4())}).status_code == 404
+    assert client.get(url, params={"bill_id": "invalid"}).status_code == 422
+
+
 def test_dashboard_seeded_pilots_are_labeled_demo(seeded_client):
     homes = seeded_client.get("/api/v1/homes").json()
     assert len(homes) == 5
