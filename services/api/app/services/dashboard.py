@@ -96,9 +96,11 @@ def build_dashboard(db: Session, home: Home, bill_id: UUID | None = None) -> Das
     projection = None
     proj = calc.project_next(bills)
     if proj is not None:
+        pct_vs_latest = calc.projection_vs_latest_pct(proj.kwh, latest.kwh)
         projection = ProjectionOut(
             method=proj.method, bills_used=proj.bills_used,
             kwh=_m(proj.kwh, "kWh", "PROJECTED"), amount_dop=_m(proj.amount_dop, "RD$", "PROJECTED"),
+            kwh_pct_vs_latest=(None if pct_vs_latest is None else _m(pct_vs_latest, "%", "PROJECTED")),
             note="Proyección de la próxima factura mensual por tendencia lineal; no incluye cambios de tarifa.",
         )
     else:

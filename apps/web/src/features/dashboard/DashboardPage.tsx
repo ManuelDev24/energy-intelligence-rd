@@ -1,6 +1,6 @@
 "use client";
 
-import { QUALITY, fmtPct, monthlySeries, projectionDeltaPct, resolutionLabel, sourceLabel, suggestNextPeriod } from "@energyrd/core";
+import { QUALITY, fmtPct, monthlySeries, resolutionLabel, sourceLabel, suggestNextPeriod } from "@energyrd/core";
 import { ArrowRight, Plus, Receipt } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -66,7 +66,8 @@ function Hero({ data }: { data: Dashboard }) {
   const p = data.projection;
   const last = data.latest_bill;
   if (!last) return null;
-  const delta = p ? projectionDeltaPct(p.kwh.value, last.kwh.value) : null;
+  // La variación de la proyección frente a la última factura la calcula la API (PROJECTED); aquí solo se muestra.
+  const delta = p?.kwh_pct_vs_latest ? Number(p.kwh_pct_vs_latest.value) : null;
   return (
     <section
       aria-label="Resumen"
@@ -81,10 +82,11 @@ function Hero({ data }: { data: Dashboard }) {
           {formatMetric((p ? p.kwh : last.kwh).value, "kWh")}
           {p ? <DataStatusBadge quality="PROJECTED" /> : null}
           {delta !== null ? (
-            <span className={delta > 0 ? "text-accent" : "text-white/80"}>
-              {delta !== 0 ? <span aria-hidden>{delta > 0 ? "▲ " : "▼ "}</span> : null}
-              {fmtPct(delta)} vs. la última factura
-            </span>
+            <>
+              {delta !== 0 ? <span aria-hidden className={delta > 0 ? "text-accent" : "text-white/80"}>{delta > 0 ? "▲" : "▼"}</span> : null}
+              <span className={delta > 0 ? "text-accent" : "text-white/80"}>{fmtPct(delta)}</span>
+              <span className="text-white/80">vs. la última factura</span>
+            </>
           ) : null}
         </p>
       </div>

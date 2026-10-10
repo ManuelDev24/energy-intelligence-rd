@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   QUALITY, SEVERITY, daysBetween, fmtDate, fmtDop, fmtKwh, fmtMetric, fmtMonth, fmtNumber, fmtPct, fmtPeriod,
-  fmtSigned, monthlySeries, projectionDeltaPct, resolutionLabel, shouldLabel, sourceLabel, suggestNextPeriod,
+  fmtSigned, monthlySeries, resolutionLabel, shouldLabel, sourceLabel, suggestNextPeriod,
 } from './index';
 
 describe('format', () => {
@@ -116,8 +116,8 @@ describe('insights', () => {
     expect(daysBetween('2026-08-01', '2026-08-31')).toBe(31);
     expect(daysBetween('2026-02-01', '2026-02-28')).toBe(28);
   });
-  it('projection delta vs last bill', () => {
-    expect(projectionDeltaPct('486.67', '420')).toBe(15.87);
-    expect(projectionDeltaPct('10', '0')).toBeNull();
+  it('does not derive business metrics: the projection delta comes from the API (ERD-PROJECTION-METRIC-API)', async () => {
+    const core = await import('./index');
+    expect('projectionDeltaPct' in core).toBe(false);
   });
 });

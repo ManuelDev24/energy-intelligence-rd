@@ -99,6 +99,7 @@ export const ProjectionOutSchema = z.object({
   "bills_used": z.number().finite().int(),
   "kwh": MetricSchema,
   "amount_dop": MetricSchema,
+  "kwh_pct_vs_latest": z.union([MetricSchema, z.null()]).default(null),
   "note": z.string()
 });
 export type ProjectionOut = z.infer<typeof ProjectionOutSchema>;

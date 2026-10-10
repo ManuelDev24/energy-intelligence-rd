@@ -1,4 +1,4 @@
-import { fmtMonth, fmtPct, monthlySeries, projectionDeltaPct } from '@energyrd/core';
+import { fmtMonth, fmtPct, monthlySeries } from '@energyrd/core';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -71,7 +71,8 @@ function Hero({ d, onAddBill }: { d: Dashboard; onAddBill?: () => void }) {
   const p = d.projection;
   const last = d.latest_bill;
   if (!last) return null;
-  const delta = p ? projectionDeltaPct(p.kwh.value, last.kwh.value) : null;
+  // La variación de la proyección frente a la última factura la calcula la API (PROJECTED); aquí solo se muestra.
+  const delta = p?.kwh_pct_vs_latest ? Number(p.kwh_pct_vs_latest.value) : null;
   const dd = delta !== null ? deltaDisplay(delta) : null;
   return (
     <View style={s.hero} testID="hero">

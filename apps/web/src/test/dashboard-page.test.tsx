@@ -79,4 +79,24 @@ describe("DashboardPage", () => {
     expect(within(compare).getByText("+57.30%")).toBeInTheDocument();
     expect(screen.getByRole("alert", { name: "Crítica" })).toHaveTextContent(DASHBOARD_A.alert.message);
   });
+
+  it("ERD-PROJECTION-METRIC-API: el titular muestra la variación que calcula la API, sin recalcularla", async () => {
+    // 99.00 es deliberadamente distinto de lo que daría la aritmética del cliente (486.67 vs 420 = 15.87):
+    // si la UI volviera a calcularlo, mostraría +15.87%.
+    const fromApi = { ...DASHBOARD_A, projection: { ...DASHBOARD_A.projection, kwh_pct_vs_latest: { value: "99.00", unit: "%", quality: "PROJECTED" as const } } };
+    vi.spyOn(getApi(), "getDashboard").mockResolvedValue(fromApi);
+    renderWithApp(<DashboardPage />, HOME_A);
+    const hero = await screen.findByRole("region", { name: "Resumen" });
+    expect(hero).toHaveTextContent(/\+99\.00%\s*vs\. la última factura/);
+    expect(hero).not.toHaveTextContent("15.87");
+  });
+
+  it("ERD-PROJECTION-METRIC-API: sin variación de la API (base 0 o API anterior) no se muestra ni se inventa", async () => {
+    const withoutDelta = { ...DASHBOARD_A, projection: { ...DASHBOARD_A.projection, kwh_pct_vs_latest: null } };
+    vi.spyOn(getApi(), "getDashboard").mockResolvedValue(withoutDelta);
+    renderWithApp(<DashboardPage />, HOME_A);
+    const hero = await screen.findByRole("region", { name: "Resumen" });
+    expect(hero).toHaveTextContent("PROYECTADO");
+    expect(hero).not.toHaveTextContent("vs. la última factura");
+  });
 });

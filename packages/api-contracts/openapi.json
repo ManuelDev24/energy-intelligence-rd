@@ -3091,6 +3091,16 @@
           "kwh": {
             "$ref": "#/components/schemas/Metric"
           },
+          "kwh_pct_vs_latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "method": {
             "title": "Method",
             "type": "string"
@@ -3790,6 +3800,30 @@
           }
         ],
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me/export": {
+      "get": {
+        "operationId": "export_me_api_v1_auth_me_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Me",
         "tags": [
           "auth"
         ]

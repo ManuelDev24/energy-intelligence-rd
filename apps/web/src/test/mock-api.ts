@@ -120,6 +120,7 @@ export const DASHBOARD_A = {
     bills_used: 3,
     kwh: { value: "486.67", unit: "kWh", quality: "PROJECTED" },
     amount_dop: { value: "6553.33", unit: "RD$", quality: "PROJECTED" },
+    kwh_pct_vs_latest: { value: "15.87", unit: "%", quality: "PROJECTED" },
     note: "Proyección de la próxima factura mensual por tendencia lineal; no incluye cambios de tarifa.",
   },
   alert: {

@@ -91,11 +91,3 @@ export function suggestNextPeriod(
   const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
   return { period_start: toIso(start), period_end: toIso(end), days: end.getUTCDate() };
 }
-
-/** Variación relativa de la proyección frente a la última factura, para el titular del dashboard. */
-export function projectionDeltaPct(projectedKwh: string | number, lastKwh: string | number): number | null {
-  const p = Number(projectedKwh);
-  const l = Number(lastKwh);
-  if (!Number.isFinite(p) || !Number.isFinite(l) || l <= 0) return null;
-  return Math.round(((p - l) / l) * 10000) / 100;
-}
