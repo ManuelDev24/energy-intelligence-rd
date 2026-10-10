@@ -28,3 +28,16 @@ export function rangeForPreset(preset: PresetKey, today: string): { from: string
   const { from, to } = presetRange(preset, today);
   return { from, to };
 }
+
+/**
+ * Rango recibido por navegación (p. ej. al investigar una desviación). Cualquier valor ausente o inválido (mismas reglas
+ * que la API) devuelve null: nunca se adivina.
+ */
+export function initialRangeFromParams(params: { from?: unknown; to?: unknown; granularity?: unknown } | undefined | null):
+  { from: string; to: string; granularity: Granularity } | null {
+  if (!params) return null;
+  const { from, to, granularity } = params;
+  if (typeof from !== 'string' || typeof to !== 'string') return null;
+  if (granularity !== 'day' && granularity !== 'week' && granularity !== 'month') return null;
+  return validateRange(from, to) === null ? { from, to, granularity } : null;
+}

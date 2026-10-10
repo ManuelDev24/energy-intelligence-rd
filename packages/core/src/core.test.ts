@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   QUALITY, SEVERITY, daysBetween, fmtDate, fmtDop, fmtKwh, fmtMetric, fmtMonth, fmtNumber, fmtPct, fmtPeriod,
-  billDaysLabel, currentCycle, fmtSigned, investigationRange, monthlySeries, validateRange, resolutionLabel, shouldLabel, sourceLabel, suggestNextPeriod,
+  billDaysLabel, currentCycle, sparkline, sparklineSummary, trendValues, fmtSigned, investigationRange, monthlySeries, validateRange, resolutionLabel, shouldLabel, sourceLabel, suggestNextPeriod,
 } from './index';
 
 describe('format', () => {
@@ -173,5 +173,32 @@ describe('ciclo de facturación actual (ERD-CHARTS-01)', () => {
     expect(currentCycle({ period_start: '2026-07-15', period_end: '2026-08-14', days: 31 }, '2026-08-20')).toMatchObject({
       start: '2026-08-15', end: '2026-09-14', days: 31, elapsed: 6, state: 'active',
     });
+  });
+});
+
+describe('mini-tendencias (ERD-CHARTS-01)', () => {
+  const bar = (kwh: number, kind: 'REAL' | 'PROJECTED' = 'REAL', amountDop: number | null = kwh * 10) => ({ key: String(kwh), periodEnd: '2026-01-01', kwh, amountDop, kind });
+  it('usa solo facturas reales: la proyección nunca entra en la tendencia', () => {
+    expect(trendValues([bar(100), bar(200), bar(300, 'PROJECTED')], 'kwh')).toEqual([100, 200]);
+    expect(trendValues([bar(1, 'REAL', null), bar(2)], 'amountDop')).toEqual([20]);
+  });
+  it('no dibuja con menos de 3 puntos y no inventa los que faltan', () => {
+    expect(sparkline([])).toBeNull();
+    expect(sparkline([1, 2])).toBeNull();
+    expect(sparkline([1, NaN, 3])).toBeNull();
+  });
+  it('normaliza: el valor más alto queda arriba (y = 0) y el más bajo abajo (y = 1)', () => {
+    const line = sparkline([100, 300, 200])!;
+    expect(line.points).toEqual([{ x: 0, y: 1 }, { x: 0.5, y: 0 }, { x: 1, y: 0.5 }]);
+    expect([line.first, line.last, line.min, line.max]).toEqual([100, 200, 100, 300]);
+  });
+  it('una serie constante es una línea al centro, sin dividir entre cero', () => {
+    expect(sparkline([5, 5, 5])!.points.map((p) => p.y)).toEqual([0.5, 0.5, 0.5]);
+  });
+  it('el resumen accesible dice la dirección y los extremos', () => {
+    const f = (n: number) => `${n} kWh`;
+    expect(sparklineSummary('consumo', sparkline([100, 150, 200])!, f)).toBe('Tendencia de consumo en las últimas 3 facturas: subió, de 100 kWh a 200 kWh.');
+    expect(sparklineSummary('consumo', sparkline([200, 150, 100])!, f)).toContain('bajó');
+    expect(sparklineSummary('consumo', sparkline([100, 150, 100])!, f)).toContain('se mantuvo');
   });
 });

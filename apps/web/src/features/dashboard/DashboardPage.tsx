@@ -1,6 +1,6 @@
 "use client";
 
-import { QUALITY, fmtPct, monthlySeries, resolutionLabel, sourceLabel, suggestNextPeriod } from "@energyrd/core";
+import { QUALITY, fmtDop, fmtKwh, fmtPct, monthlySeries, resolutionLabel, sourceLabel, suggestNextPeriod, trendValues, type ChartBar } from "@energyrd/core";
 import { ArrowRight, Plus, Receipt } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -30,6 +30,7 @@ function ApiMetricCard({
   signed = false,
   deltaPct,
   helper,
+  trend,
 }: {
   label: string;
   metric: Metric | null;
@@ -37,6 +38,7 @@ function ApiMetricCard({
   /** Variación % de la API frente al período anterior. */
   deltaPct?: Metric | null;
   helper?: string;
+  trend?: import("@/components/sparkline").TrendInput | null;
 }) {
   if (!metric) return null;
   return (
@@ -46,6 +48,7 @@ function ApiMetricCard({
       quality={metric.quality}
       delta={deltaPct ? { pct: deltaPct.value, label: "vs. período anterior", quality: deltaPct.quality } : null}
       helper={helper}
+      trend={trend}
     />
   );
 }
@@ -129,6 +132,10 @@ function HomeDashboard({ homeId }: { homeId: string }) {
     b.period_end.localeCompare(a.period_end) || b.id.localeCompare(a.id));
   const selectedIndex = periods.findIndex((bill) => bill.id === billId);
   const history = billId ? (selectedIndex >= 0 ? periods.slice(selectedIndex) : []) : periods;
+  // Mini-tendencias: solo facturas reales (nunca la proyección); con menos de 3 no se dibujan.
+  const realBars: ChartBar[] = monthlySeries(history, null);
+  const kwhTrend = { values: trendValues(realBars, "kwh"), label: "consumo", format: fmtKwh };
+  const amountTrend = { values: trendValues(realBars, "amountDop"), label: "monto", format: fmtDop };
 
   return (
     <div className="flex flex-col gap-6">
@@ -249,11 +256,13 @@ function HomeDashboard({ homeId }: { homeId: string }) {
                     label="Consumo"
                     metric={data.latest_bill.kwh}
                     helper="kWh: la energía que usó tu hogar en el período."
+                    trend={kwhTrend}
                   />
                   <ApiMetricCard
                     label="Monto"
                     metric={data.latest_bill.amount_dop}
                     helper="Lo que cobró la distribuidora, en pesos (RD$)."
+                    trend={amountTrend}
                   />
                   <ApiMetricCard
                     label="Promedio diario"

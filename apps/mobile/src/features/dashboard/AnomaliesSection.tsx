@@ -1,10 +1,12 @@
 import type { Anomaly } from '../../api/types';
 import { AlertCard } from '../../components/AlertCard';
+import { investigationRange } from '@energyrd/core';
+import { Button } from '../../components/Button';
 import { formatAnomaly } from '../../lib/anomaly';
 import { colors, radius, spacing } from '../../theme';
 import { StyleSheet, Text, View } from 'react-native';
 
-export function AnomaliesSection({ anomalies }: { anomalies: Anomaly[] }) {
+export function AnomaliesSection({ anomalies, onInvestigate }: { anomalies: Anomaly[]; onInvestigate?: (range: { from: string; to: string; granularity: 'day' }) => void }) {
   return (
     <View style={styles.section} testID="anomalies-section">
       <Text style={styles.title} accessibilityRole="header">Desviaciones detectadas</Text>
@@ -16,7 +18,8 @@ export function AnomaliesSection({ anomalies }: { anomalies: Anomaly[] }) {
         </View>
       ) : anomalies.map((anomaly) => {
         const view = formatAnomaly(anomaly);
-        return <AlertCard key={`${anomaly.period_start}-${anomaly.period_end}-${anomaly.granularity}`} tone={anomaly.severity} title="Consumo fuera de lo habitual" message={view.explanation} trailing={view.delta} meta={`${view.period} · Observado: ${view.observed} · Línea base: ${view.baseline}`} />;
+        return <AlertCard key={`${anomaly.period_start}-${anomaly.period_end}-${anomaly.granularity}`} tone={anomaly.severity} title="Consumo fuera de lo habitual" message={view.explanation} trailing={view.delta} meta={`${view.period} · Observado: ${view.observed} · Línea base: ${view.baseline}`}
+          actions={onInvestigate ? <Button title="Investigar en Consumo" variant="secondary" accessibilityLabel={`Investigar en Consumo la desviación de ${view.period}`} onPress={() => onInvestigate(investigationRange(anomaly))} /> : undefined} />;
       })}
     </View>
   );

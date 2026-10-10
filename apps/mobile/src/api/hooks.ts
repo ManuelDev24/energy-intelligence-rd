@@ -109,16 +109,20 @@ export function useSetAlertStatus(homeId: string) {
 export const useReadings = (homeId: string | null) =>
   useQuery(perHome(keys.phase2.readings(homeId ?? 'none'), homeId, api.listReadings));
 
-export const useConsumption = (homeId: string | null, granularity: Granularity, from: string, to: string) =>
-  useQuery({
-    ...perHome(keys.phase2.consumption(homeId ?? 'none', granularity, from, to), homeId,
-      (id, signal) => api.getConsumption(id, { granularity, from, to }, signal)),
+/** `from`/`to` null = no consultar (p. ej. un ciclo que aún no empieza). */
+export const useConsumption = (homeId: string | null, granularity: Granularity, from: string | null, to: string | null) => {
+  const base = perHome(keys.phase2.consumption(homeId ?? 'none', granularity, from ?? '', to ?? ''), homeId,
+    (id, signal) => api.getConsumption(id, { granularity, from: from ?? '', to: to ?? '' }, signal));
+  return useQuery({
+    ...base,
+    enabled: (base.enabled ?? true) && from !== null && to !== null,
     // Al cambiar de rango no parpadea a vacío; solo se reutiliza el dato de la MISMA cuenta y vivienda.
     placeholderData: (previous, previousQuery) => {
       const prefix = keys.phase2.consumptionAll(homeId ?? 'none');
       return previousQuery && prefix.every((p, i) => Object.is(previousQuery.queryKey[i], p)) ? previous : undefined;
     },
   });
+};
 
 export const useGoal = (homeId: string | null) =>
   useQuery(perHome(keys.phase2.goal(homeId ?? 'none'), homeId, api.getGoal));

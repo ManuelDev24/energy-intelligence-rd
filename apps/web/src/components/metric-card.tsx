@@ -1,5 +1,6 @@
 import { fmtMetric, type Quality } from "@energyrd/core";
 import { DataStatusBadge } from "@/components/data-status-badge";
+import { Sparkline, type TrendInput } from "@/components/sparkline";
 import { cn } from "@/lib/cn";
 
 export interface MetricDelta {
@@ -26,6 +27,8 @@ interface MetricCardProps {
   helper?: string;
   /** Etiquetar también REAL (p. ej. donde conviven REAL y ESTIMADO y conviene distinguirlos). */
   alwaysLabel?: boolean;
+  /** Mini-tendencia de las últimas facturas reales; no se dibuja con menos de 3. */
+  trend?: TrendInput | null;
   className?: string;
 }
 
@@ -51,7 +54,7 @@ function DeltaLine({ pct, label, quality, goodWhen = "down" }: MetricDelta) {
  * Tarjeta de una métrica: etiqueta, valor grande con cifras tabulares, calidad del dato
  * (solo si no es REAL), variación opcional con flecha + signo + texto y una ayuda corta.
  */
-export function MetricCard({ label, value, unit, quality, delta, helper, alwaysLabel = false, className }: MetricCardProps) {
+export function MetricCard({ label, value, unit, quality, delta, helper, alwaysLabel = false, trend, className }: MetricCardProps) {
   return (
     <div className={cn("flex flex-col gap-1.5 rounded-xl border border-border bg-background p-4", className)}>
       <p className="text-sm text-muted-foreground">{label}</p>
@@ -63,6 +66,7 @@ export function MetricCard({ label, value, unit, quality, delta, helper, alwaysL
         {quality ? <DataStatusBadge quality={quality} always={alwaysLabel} /> : null}
       </p>
       {delta ? <DeltaLine {...delta} /> : null}
+      {trend ? <Sparkline trend={trend} /> : null}
       {helper ? <p className="text-pretty text-xs text-muted-foreground">{helper}</p> : null}
     </div>
   );

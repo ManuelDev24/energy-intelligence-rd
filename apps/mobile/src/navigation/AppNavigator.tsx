@@ -18,6 +18,7 @@ import { BillsScreen } from '../features/bills/BillsScreen';
 import { BillDetailScreen } from '../features/bills/detail/BillDetailScreen';
 import { BillItemsEditorScreen } from '../features/bills/detail/BillItemsEditorScreen';
 import { ConsumptionScreen } from '../features/consumption/ConsumptionScreen';
+import { initialRangeFromParams } from '../features/consumption/range';
 import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { EquipmentFormScreen } from '../features/equipment/EquipmentFormScreen';
 import { EquipmentScreen } from '../features/equipment/EquipmentScreen';
@@ -52,7 +53,7 @@ export type RootStackParams = {
   ShareHome: undefined;
 };
 // 5 pestañas: cambiar de vivienda es poco frecuente y vive en el encabezado (hoja "Homes").
-export type TabParams = { Dashboard: undefined; Consumption: undefined; Bills: undefined; Equipment: undefined; Alerts: undefined };
+export type TabParams = { Dashboard: undefined; Consumption: { from?: string; to?: string; granularity?: string } | undefined; Bills: undefined; Equipment: undefined; Alerts: undefined };
 
 const AccountStack = createNativeStackNavigator<{ Account: undefined; AccountHomes: undefined }>();
 const Stack = createNativeStackNavigator<RootStackParams>();
@@ -121,12 +122,14 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
             onOpenAlerts={() => tabs.navigate('Alerts')}
             onAddReading={() => navigation.navigate('ReadingForm')}
             onEditGoal={() => navigation.navigate('GoalForm')}
+            onInvestigate={(range) => tabs.navigate('Consumption', range)}
           />
         )}
       </Tab.Screen>
       <Tab.Screen name="Consumption" options={{ title: 'Consumo' }}>
-        {() => (
+        {({ route }) => (
           <ConsumptionScreen
+            initialRange={initialRangeFromParams(route.params)}
             onAddReading={() => navigation.navigate('ReadingForm')}
             onOpenReadings={() => navigation.navigate('Readings')}
           />

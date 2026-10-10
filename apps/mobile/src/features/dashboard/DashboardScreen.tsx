@@ -1,4 +1,4 @@
-import { fmtMonth, fmtPct, monthlySeries } from '@energyrd/core';
+import { fmtDop, fmtKwh, fmtMonth, fmtPct, monthlySeries, trendValues } from '@energyrd/core';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -15,6 +15,7 @@ import { Button, QualityBadge } from '../../components/ui';
 import { fmtMetric, fmtPeriod } from '../../lib/format';
 import { GoalCard } from '../goals/GoalCard';
 import { AnomaliesSection } from './AnomaliesSection';
+import { CycleCard } from './CycleCard';
 import { metricParts } from '../../lib/metricParts';
 import { useSession } from '../../store/session';
 import { colors, radius, spacing, TOUCH } from '../../theme';
@@ -111,7 +112,9 @@ export function DashboardView({
   onAddBill,
   onOpenAlerts,
   goalSlot,
+  cycleSlot,
   anomalies = [],
+  onInvestigate,
 }: {
   d: Dashboard;
   bills?: Parameters<typeof monthlySeries>[0];
@@ -119,11 +122,16 @@ export function DashboardView({
   onOpenAlerts?: () => void;
   /** Tarjeta de meta mensual (Fase 2); falla en suave si la API no la ofrece. */
   goalSlot?: ReactNode;
+  /** Tarjeta del ciclo actual (ERD-CHARTS-01). */
+  cycleSlot?: ReactNode;
   anomalies?: import('../../api/types').Anomaly[];
+  onInvestigate?: (range: { from: string; to: string; granularity: 'day' }) => void;
 }) {
   const { latest_bill: lb, comparison: c, projection: p, alert, recommendation, data_status: ds } = d;
   const [showLegend, setShowLegend] = useState(false);
   const series = bills ? monthlySeries(bills, p ? { kwh: p.kwh.value } : null) : [];
+  const kwhTrend = { values: trendValues(series, 'kwh'), label: 'consumo', format: fmtKwh };
+  const amountTrend = { values: trendValues(series, 'amountDop'), label: 'monto', format: fmtDop };
   const vsPrev = c ? `vs. ${fmtMonth(c.previous_period_end)}` : undefined;
 
   return (
@@ -137,6 +145,8 @@ export function DashboardView({
 
       <Hero d={d} onAddBill={onAddBill} />
 
+      {cycleSlot}
+
       {alert ? (
         <AlertCard
           tone={alert.severity}
@@ -147,7 +157,7 @@ export function DashboardView({
         />
       ) : null}
 
-      <AnomaliesSection anomalies={anomalies} />
+      <AnomaliesSection anomalies={anomalies} onInvestigate={onInvestigate} />
 
       {goalSlot}
 
@@ -160,6 +170,7 @@ export function DashboardView({
               quality={lb.kwh.quality}
               delta={c?.kwh_pct ? { value: c.kwh_pct.value, text: fmtPct(c.kwh_pct.value), context: vsPrev, quality: c.kwh_pct.quality } : null}
               helper="kWh: la energía que marcó su contador."
+              trend={kwhTrend}
               testID="metric-kwh"
             />
             <MetricCard
@@ -172,6 +183,7 @@ export function DashboardView({
                   : null
               }
               helper="Lo que cobró la distribuidora, en pesos (RD$)."
+              trend={amountTrend}
               testID="metric-amount"
             />
             {lb.avg_daily_kwh ? (
@@ -262,11 +274,13 @@ export function DashboardScreen({
   onOpenAlerts,
   onAddReading,
   onEditGoal,
+  onInvestigate,
 }: {
   onAddBill?: () => void;
   onOpenAlerts?: () => void;
   onAddReading?: () => void;
   onEditGoal?: () => void;
+  onInvestigate?: (range: { from: string; to: string; granularity: 'day' }) => void;
 }) {
   const homeId = useSession((st) => st.selectedHomeId);
   const { data, isLoading, isError, error, refetch, isRefetching } = useDashboard(homeId);
@@ -315,7 +329,9 @@ export function DashboardScreen({
         onAddBill={onAddBill}
         onOpenAlerts={onOpenAlerts}
         goalSlot={<GoalCard query={goal} onEdit={onEditGoal} onAddReading={onAddReading} onAddBill={onAddBill} />}
+        cycleSlot={data.latest_bill ? <CycleCard homeId={homeId} lastBill={data.latest_bill} /> : null}
         anomalies={anomalies.data ?? []}
+        onInvestigate={onInvestigate}
       />
     </ScrollView>
   );
