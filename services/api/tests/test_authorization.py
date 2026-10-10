@@ -99,7 +99,7 @@ def test_private_route_inventory_remains_covered(auth_client):
     assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal', '/api/v1/invitations/accept'}
     # Rutas /auth sin access token (las credenciales o el token opaco van en el cuerpo) más las que lo exigen
     # (/me y el cambio de contraseña, que además reautentica).
-    assert {p for p in public if p.startswith('/api/v1/auth/')} == PUBLIC_AUTH_ROUTES | {'/api/v1/auth/me', '/api/v1/auth/password/change'}
+    assert {p for p in public if p.startswith('/api/v1/auth/')} == PUBLIC_AUTH_ROUTES | {'/api/v1/auth/me', '/api/v1/auth/me/export', '/api/v1/auth/password/change'}
     # /legal solo expone GET, nunca escrituras.
     assert set(paths['/api/v1/legal']) == {'get'}
 

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.auth_deps import auth_required, current_user
@@ -6,7 +7,7 @@ from app.api.auth_abuse import forgot_budget, login_budget, register_budget, ref
 from app.database import get_db
 from app.schemas.auth import (AccountDeletionIn, Credentials, PasswordChangeIn, PasswordForgotAccepted,
                               PasswordForgotIn, PasswordResetIn, RefreshIn, RegisterIn, TokensOut, UserOut)
-from app.services import account, auth, email, password_recovery
+from app.services import account, auth, data_export, email, password_recovery
 
 router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(auth_required)])
 
@@ -51,6 +52,15 @@ def _authenticated_login_budget(user=Depends(current_user), _=Depends(login_budg
 def delete_me(payload: AccountDeletionIn, user=Depends(_authenticated_login_budget), db: Session = Depends(get_db)):
     account.delete_account(db, user, payload.password.get_secret_value())
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+# ERD-LEGAL-FINAL: derecho de acceso/portabilidad. Comparte el presupuesto de /login (es una lectura pesada y sensible).
+@router.get("/me/export")
+def export_me(user=Depends(_authenticated_login_budget), db: Session = Depends(get_db)):
+    data = data_export.export_user_data(db, user)
+    stamp = data["generated_at"][:10]
+    return JSONResponse(data, headers={"Cache-Control": "no-store",
+                                       "Content-Disposition": f'attachment; filename="energyrd-datos-{stamp}.json"'})
 
 
 # ERD-AUTH-05: recuperación de contraseña. Respuesta 202 idéntica exista o no la cuenta; el correo se
