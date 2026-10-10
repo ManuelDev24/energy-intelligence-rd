@@ -1,5 +1,7 @@
 # Energy RD — Trabajo restante del MVP (ordenado)
 
+> **Orden vigente (10-oct-2026):** el cierre previo a los módulos nuevos está en [CLOSURE_PLAN_2026-10-10.md](CLOSURE_PLAN_2026-10-10.md). Este archivo queda como histórico del MVP.
+
 > Lista histórica de asignaciones. Para el estado técnico del checkout al 4 de octubre de 2026,
 > consultar [cierre de estabilización](architecture/COMPLETION_2026-10-04.md).
 > Las asignaciones y la aprobación del equipo no se cierran automáticamente por cambios locales.
