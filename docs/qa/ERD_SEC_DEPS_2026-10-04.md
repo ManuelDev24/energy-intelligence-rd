@@ -60,3 +60,22 @@ react-native@0.72, eslint-config-next@14, tailwind 4) y se rechazan.
   mitigaciones. **Confirmada por Manuel el 2026-10-10** con el recuento actual (20 altos, 0 críticos).
 - Salida definitiva sin cambios: Tailwind 4 (tarea propia) y Expo cuando upstream publique `node-forge` corregido.
 - Próxima revisión: 2026-11-04 o en la próxima actualización de dependencias.
+
+## Revisión 2026-10-10 (segunda) — ERD-SEC-DEPS-MONITOR (Claude)
+
+### Hallazgo: la API Python tenía avisos que ningún recuento anterior incluía
+Todos los recuentos previos ("20 altos") eran **solo de npm**. `pip-audit` sobre `services/api/uv.lock` dio **28 avisos
+en `pillow 11.3.0`** (la librería que decodifica las fotos que suben los usuarios a `/bills/ocr`) y 1 en `pytest 8.4.2`
+(solo desarrollo). Todos tenían versión corregida, pero `pyproject.toml` fijaba `pillow<12`.
+
+**Corregido:** `pillow>=12.3,<13` (resuelve a 12.3.0) y `pytest>=9.0.3,<10` (9.1.1). Suite completa de la API con
+PostgreSQL real y Tesseract: **614 pasan, 0 fallan** (incluye OCR). `pip-audit` después: *No known vulnerabilities found*.
+
+### Vigilancia automatizada (nueva)
+- `docs/security/accepted-advisories.json`: los 2 avisos aceptados (braces, node-forge) con alcance, salida y `review_by`.
+- `npm run audit:monitor` (`scripts/audit-monitor.mjs`): falla si hay un aviso alto/crítico **no aceptado**, si una
+  aceptación **venció** (`review_by`), si el aviso **ya no existe** (retirar la entrada) o si el registro npm ya publica
+  una versión fuera del rango vulnerable (**actualizar**). Nunca ejecuta `npm audit fix`. 8 pruebas: `npm run test:scripts`.
+- `.github/workflows/deps-monitor.yml`: lunes 11:17 UTC, manual y en PRs que toquen lockfiles; incluye `pip-audit` de la API.
+  No se ha ejecutado en GitHub Actions (solo local); ver el estado en la pestaña Actions tras fusionar.
+- Estado hoy: 20 altos npm, 2 avisos únicos, ambos aceptados y vigentes hasta **2026-11-04**; ningún parche publicado.

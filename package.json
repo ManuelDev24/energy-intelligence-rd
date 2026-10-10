@@ -15,7 +15,9 @@
     "db:migrate": "cd services/api && uv run alembic upgrade head",
     "db:generate": "cd services/api && uv run alembic revision --autogenerate",
     "contracts:generate": "cd services/api && uv run python -m scripts.generate_contracts",
-    "contracts:check": "cd services/api && uv run python -m scripts.generate_contracts --check"
+    "contracts:check": "cd services/api && uv run python -m scripts.generate_contracts --check",
+    "audit:monitor": "node scripts/audit-monitor.mjs",
+    "test:scripts": "node --test scripts/audit-monitor.test.mjs"
   },
   "workspaces": [
     "apps/*",

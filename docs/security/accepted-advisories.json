@@ -1,0 +1,27 @@
+{
+  "note": "Avisos altos/críticos de npm aceptados con riesgo documentado. Cada entrada caduca en review_by; npm run audit:monitor falla si caduca, si el aviso desaparece o si ya existe un parche. Detalle en docs/qa/ERD_SEC_DEPS_2026-10-04.md.",
+  "accepted": [
+    {
+      "ghsa": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "vulnerable_range": "<=3.0.3",
+      "patched_query": ">3.0.3",
+      "accepted_on": "2026-10-05",
+      "confirmed_on": "2026-10-10",
+      "review_by": "2026-11-04",
+      "scope": "Solo compilación/lint/Metro en desarrollo (tailwindcss@3, eslint-config-next, metro-file-map); no llega al bundle web, a la app ni a la API.",
+      "exit": "Migrar a Tailwind 4 (elimina micromatch→braces) o publicación de braces corregido."
+    },
+    {
+      "ghsa": "GHSA-86w9-cpqp-85rv",
+      "package": "node-forge",
+      "vulnerable_range": "<=1.4.0",
+      "patched_query": ">1.4.0",
+      "accepted_on": "2026-10-05",
+      "confirmed_on": "2026-10-10",
+      "review_by": "2026-11-04",
+      "scope": "Solo Expo CLI (firma de actualizaciones OTA, no usada); no se incluye en la app compilada.",
+      "exit": "Actualizar Expo cuando upstream publique node-forge corregido."
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+name: Dependency monitor
+
+# ERD-SEC-DEPS-MONITOR: vigila los avisos altos aceptados (docs/security/accepted-advisories.json) y audita la API.
+# No ejecuta `npm audit fix` ni `--force`: solo informa y falla cuando hace falta una decisión.
+on:
+  schedule:
+    - cron: '17 11 * * 1'   # lunes, 11:17 UTC
+  workflow_dispatch:
+  pull_request:
+    paths: ['package-lock.json', 'package.json', 'services/api/uv.lock', 'services/api/pyproject.toml',
+            'docs/security/accepted-advisories.json', 'scripts/audit-monitor*']
+
+permissions:
+  contents: read
+
+jobs:
+  npm:
+    name: npm (avisos aceptados, vigencia y parches)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run test:scripts
+      - run: npm run audit:monitor
+
+  api:
+    name: api (pip-audit sobre uv.lock)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv export --frozen --no-hashes --no-emit-project > /tmp/requirements.txt
+      - run: uvx pip-audit -r /tmp/requirements.txt --no-deps --disable-pip
