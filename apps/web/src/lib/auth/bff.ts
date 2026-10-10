@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -267,6 +267,11 @@ function safeError(body: unknown, status: number, path: string) {
     ...(typeof value.request_id === "string" && SAFE_REQUEST_ID.test(value.request_id) ? { request_id: value.request_id } : {}),
   };
 }
+// ERD-BILL-LIVE-QA: única ruta multipart. La foto va tal cual a la API (que valida tipo y tamaño de imagen);
+// aquí solo se acota el total (10 MiB de imagen + sobre multipart) para no leer cuerpos arbitrarios en memoria.
+const OCR_MAX_BYTES = 10 * 1024 * 1024 + 4096;
+const OCR_TIMEOUT_MS = 45_000; // Tesseract tarda más que una consulta normal
+const MULTIPART = /^multipart\/form-data;\s*boundary=[^\s;]+$/i;
 /** Server-only boundary. No refresh endpoint: expiry always requires a fresh login. */
 export async function handleBff(request: Request, config: BffConfig, fetchImpl: typeof fetch = fetch): Promise<NextResponse> {
   if (!config.enabled) return reply({ detail: "Autenticación no disponible en el piloto local." }, 404);
@@ -274,15 +279,18 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const path = url.pathname.slice("/api/bff".length);
   const method = request.method;
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) return reply({ detail: "Método no permitido." }, 405);
+  const ocr = method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr$`).test(path);
   if (method !== "GET") {
     if (request.headers.get("origin") !== config.origin || (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) return reply({ detail: "Origen no permitido." }, 403);
-    if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
+    if (ocr) {
+      if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: "Se requiere una imagen." }, 415);
+    } else if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
   }
   const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
   const legal = path === "/legal" && method === "GET";
   const recovery = method === "POST" && (path === FORGOT || path === RESET);
   const phase2 = auth || legal || recovery ? null : phase2Route(path, method);
-  const schema = legal ? LegalOutSchema : phase2 ? phase2.response : domainRoute(path, method);
+  const schema = legal ? LegalOutSchema : ocr ? OcrDraftSchema : phase2 ? phase2.response : domainRoute(path, method);
   if (!auth && !legal && !recovery && !schema) return reply({ detail: "Ruta no permitida." }, 404);
   if (new RegExp(`^/homes/${UUID}$`).test(path) && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   if (phase2 && !phase2QueryOk(phase2, url.searchParams)) return reply({ detail: "Consulta no permitida." }, 400);
@@ -293,10 +301,18 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const headers: Record<string, string> = { Accept: "application/json" };
   const forwardedIp = firstForwardedIp(request);
   if (config.bffApiSharedSecret && forwardedIp) headers["X-Forwarded-Client-Ip"] = signClientIp(forwardedIp, config.bffApiSharedSecret);
-  let body: string | undefined;
+  let body: string | ArrayBuffer | undefined;
   const logout = path === "/auth/logout";
   const deleteAccount = path === "/auth/me" && method === "DELETE";
-  if (method !== "GET") {
+  if (ocr) {
+    if (Number(request.headers.get("content-length") || 0) > OCR_MAX_BYTES) return reply({ detail: "Solicitud demasiado grande." }, 413);
+    try {
+      const bytes = await request.arrayBuffer();
+      if (bytes.byteLength > OCR_MAX_BYTES) return reply({ detail: "Solicitud demasiado grande." }, 413);
+      body = bytes;
+      headers["Content-Type"] = request.headers.get("content-type")!;
+    } catch { return reply({ detail: "Solicitud inválida." }, 400); }
+  } else if (method !== "GET") {
     try {
       const text = await request.text();
       if (text.length > 32_768) return reply({ detail: "Solicitud demasiado grande." }, 413);
@@ -343,7 +359,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
     headers.Authorization = `Bearer ${access.token}`;
   }
   try {
-    const upstream = await fetchImpl(`${config.apiBase}/api/v1${path}${url.search}`, { method, headers, body, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(10_000) });
+    const upstream = await fetchImpl(`${config.apiBase}/api/v1${path}${url.search}`, { method, headers, body, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(ocr ? OCR_TIMEOUT_MS : 10_000) });
     if (upstream.status >= 300 && upstream.status < 400) throw new Error("Redirect rejected");
     const data: unknown = upstream.status === 204 ? undefined : await upstream.json();
     if (logout) return setEpoch(clear(reply(upstream.ok ? { ok: true } : safeError(data, upstream.status, path), upstream.ok ? 200 : upstream.status), config), config);
