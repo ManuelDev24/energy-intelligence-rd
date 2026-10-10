@@ -236,15 +236,54 @@
         "type": "object"
       },
       "AnomalyRecord": {
+        "description": "Un hallazgo persistido del motor de anomal\u00edas. `baseline_kwh` est\u00e1 expresado sobre los MISMOS d\u00edas que\n`observed_kwh` (l\u00ednea base \u00d7 d\u00edas cubiertos), as\u00ed que `delta_pct` se lee directamente. `delta_pct` es nulo en las\nanomal\u00edas nocturnas (ah\u00ed `baseline_kwh` es lo que habr\u00eda marcado el medidor al ritmo promedio).",
         "properties": {
           "baseline_kwh": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Baseline Kwh",
             "type": "string"
           },
-          "delta_pct": {
+          "bill_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bill Id"
+          },
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "days": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Delta Pct",
+            "title": "Days",
+            "type": "string"
+          },
+          "delta_pct": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pct"
+          },
+          "detected_at": {
+            "format": "date-time",
+            "title": "Detected At",
             "type": "string"
           },
           "explanation": {
@@ -254,7 +293,8 @@
           "granularity": {
             "enum": [
               "day",
-              "month"
+              "month",
+              "billing"
             ],
             "title": "Granularity",
             "type": "string"
@@ -262,6 +302,26 @@
           "home_id": {
             "format": "uuid",
             "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "increase",
+              "drop",
+              "peak",
+              "night"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
             "type": "string"
           },
           "observed_kwh": {
@@ -281,25 +341,72 @@
           },
           "severity": {
             "enum": [
+              "info",
               "warning",
               "critical"
             ],
             "title": "Severity",
             "type": "string"
+          },
+          "source": {
+            "enum": [
+              "readings",
+              "bills"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "acknowledged",
+              "dismissed",
+              "resolved"
+            ],
+            "title": "Status",
+            "type": "string"
           }
         },
         "required": [
+          "id",
           "home_id",
+          "bill_id",
+          "kind",
+          "source",
           "granularity",
           "severity",
+          "confidence",
+          "status",
           "observed_kwh",
           "baseline_kwh",
           "delta_pct",
+          "days",
           "period_start",
           "period_end",
-          "explanation"
+          "explanation",
+          "detected_at",
+          "last_seen_at"
         ],
         "title": "AnomalyRecord",
+        "type": "object"
+      },
+      "AnomalyStatusIn": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "open",
+              "acknowledged",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "AnomalyStatusIn",
         "type": "object"
       },
       "BillAssessment": {
@@ -3620,6 +3727,20 @@
         "title": "RegisterIn",
         "type": "object"
       },
+      "ScanQueuedOut": {
+        "properties": {
+          "status": {
+            "const": "queued",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "ScanQueuedOut",
+        "type": "object"
+      },
       "SessionOut": {
         "properties": {
           "created_at": {
@@ -5105,7 +5226,7 @@
     },
     "/api/v1/homes/{home_id}/anomalies": {
       "get": {
-        "description": "Detecta solo el \u00faltimo per\u00edodo comparable; no crea alertas persistentes.",
+        "description": "Anomal\u00edas persistidas (por defecto las vigentes: abiertas o revisadas). Solo lectura: las crea el escaneo.",
         "operationId": "get_anomalies_api_v1_homes__home_id__anomalies_get",
         "parameters": [
           {
@@ -5120,56 +5241,75 @@
           },
           {
             "in": "query",
-            "name": "granularity",
+            "name": "status",
             "required": false,
             "schema": {
-              "default": "month",
+              "default": "active",
               "enum": [
-                "day",
-                "month"
+                "active",
+                "open",
+                "acknowledged",
+                "dismissed",
+                "resolved",
+                "all"
               ],
-              "title": "Granularity",
+              "title": "Status",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "warning_delta_pct",
+            "name": "granularity",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "exclusiveMinimum": 0.0,
-                  "maximum": 1000.0,
-                  "type": "number"
+                  "enum": [
+                    "day",
+                    "month",
+                    "billing"
+                  ],
+                  "type": "string"
                 },
                 {
-                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                  "type": "string"
+                  "type": "null"
                 }
               ],
-              "default": "50",
-              "title": "Warning Delta Pct"
+              "title": "Granularity"
             }
           },
           {
             "in": "query",
-            "name": "critical_delta_pct",
+            "name": "kind",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "exclusiveMinimum": 0.0,
-                  "maximum": 1000.0,
-                  "type": "number"
+                  "enum": [
+                    "increase",
+                    "drop",
+                    "peak",
+                    "night"
+                  ],
+                  "type": "string"
                 },
                 {
-                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                  "type": "string"
+                  "type": "null"
                 }
               ],
-              "default": "100",
-              "title": "Critical Delta Pct"
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
             }
           }
         ],
@@ -5205,6 +5345,124 @@
           }
         ],
         "summary": "Get Anomalies",
+        "tags": [
+          "anomalies"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/anomalies/scan": {
+      "post": {
+        "description": "Pide un escaneo en segundo plano (una solicitud por minuto y vivienda; las repetidas se funden en una).",
+        "operationId": "request_scan_api_v1_homes__home_id__anomalies_scan_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanQueuedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Scan",
+        "tags": [
+          "anomalies"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/anomalies/{anomaly_id}": {
+      "patch": {
+        "description": "Marcar como revisada, descartar (no reaparece) o reabrir.",
+        "operationId": "update_anomaly_api_v1_homes__home_id__anomalies__anomaly_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anomaly_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Anomaly Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnomalyStatusIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnomalyRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Anomaly",
         "tags": [
           "anomalies"
         ]

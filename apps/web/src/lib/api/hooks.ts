@@ -21,7 +21,7 @@ export const keys = {
   dashboard: (homeId: string, billId?: string) => billId
     ? ["homes", homeId, "dashboard", billId] as const
     : ["homes", homeId, "dashboard"] as const,
-  anomalies: (homeId: string, granularity: "day" | "month") => ["homes", homeId, "anomalies", granularity] as const,
+  anomalies: (homeId: string) => ["homes", homeId, "anomalies"] as const,
   equipment: (homeId: string) => ["homes", homeId, "equipment"] as const,
   estimate: (homeId: string) => ["homes", homeId, "estimate"] as const,
   alerts: (homeId: string) => ["homes", homeId, "alerts"] as const,
@@ -67,12 +67,21 @@ export const useDashboard = (homeId: string, billId?: string) =>
     enabled: enabled(homeId),
   });
 
-export const useAnomalies = (homeId: string, granularity: "day" | "month" = "month") =>
+/** ERD-ANOM-01-COMPLETE: anomalías vigentes persistidas (abiertas o revisadas); descartarlas las saca de la lista. */
+export const useAnomalies = (homeId: string) =>
   useQuery({
-    queryKey: keys.anomalies(homeId, granularity),
-    queryFn: ({ signal }) => getApi().listAnomalies(homeId, granularity, signal),
+    queryKey: keys.anomalies(homeId),
+    queryFn: ({ signal }) => getApi().listAnomalies(homeId, undefined, signal),
     enabled: enabled(homeId),
   });
+
+export const useUpdateAnomaly = (homeId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "open" | "acknowledged" | "dismissed" }) => getApi().updateAnomaly(homeId, id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.anomalies(homeId) }),
+  });
+};
 
 export const useEquipment = (homeId: string) =>
   useQuery({

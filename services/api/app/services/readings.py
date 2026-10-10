@@ -2,6 +2,7 @@
 from sqlalchemy import select
 
 from app.models import MeterReading
+from app.services.anomaly_scan import scan_after_write
 from app.services.audit import record_change, snapshot
 from app.services.errors import InvalidInput, NotFound
 from app.services.transactions import require_home, write_transaction
@@ -40,6 +41,7 @@ def create_reading(db, home_id, payload):
         reading = MeterReading(home_id=home_id, **payload.model_dump())
         db.add(reading)
         record_change(db, home_id, reading, "create")
+        scan_after_write(db, home_id)
     return reading
 
 
@@ -50,3 +52,5 @@ def delete_reading(db, home_id, reading_id):
         reading = get_reading(db, home_id, reading_id)
         record_change(db, home_id, reading, "delete", snapshot(reading))
         db.delete(reading)
+        db.flush()
+        scan_after_write(db, home_id)

@@ -1,6 +1,7 @@
 from app.models.auth_abuse import AuthAbuseBucket
 from app.models.auth import User, HomeMember, AuthSession, RefreshToken, PasswordResetToken, HomeInvitation, NotificationPreference
 from app.models.alert import Alert
+from app.models.anomaly import Anomaly
 from app.models.audit import AuditEvent
 from app.models.bill import Bill
 from app.models.bill_detail import BillItem, BillSnapshot
@@ -13,5 +14,5 @@ from app.models.job import Job
 from app.models.reading import MeterReading
 from app.models.tariff import TARIFF_DISTRIBUTORS, Tariff, TariffBlock, TariffFixedCharge
 
-__all__ = ["Alert", "AlertSettings", "Bill", "Equipment", "Home", "Contract", "DISTRIBUTORS", "Document", "DocumentOcr", "StorageDeletion", "HomeGoal", "Job", "MeterReading",
+__all__ = ["Alert", "Anomaly", "AlertSettings", "Bill", "Equipment", "Home", "Contract", "DISTRIBUTORS", "Document", "DocumentOcr", "StorageDeletion", "HomeGoal", "Job", "MeterReading",
            "TARIFF_DISTRIBUTORS", "Tariff", "TariffBlock", "TariffFixedCharge"]

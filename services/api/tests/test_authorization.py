@@ -32,7 +32,7 @@ def setup_homes(client):
     return a, b, homes, bill, eq, alert, reading
 
 
-def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID):
+def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID, anomaly=OTHER_ID):
     u = f'/api/v1/homes/{h}'
     return [('GET',u,None),('PATCH',u,{'name':'changed'}),('DELETE',u,None),
             ('GET',u+'/contract',None),('PUT',u+'/contract',{'account_number':'123'}),
@@ -43,7 +43,8 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('POST',u+'/bills/ocr',MULTIPART),
             ('GET',u+'/equipment',None),('POST',u+'/equipment',EQ),('GET',u+'/equipment/estimate',None),
             ('GET',u+'/equipment/'+eq,None),('PUT',u+'/equipment/'+eq,EQ),('DELETE',u+'/equipment/'+eq,None),
-            ('GET',u+'/alerts',None),('GET',u+'/anomalies',None),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
+            ('GET',u+'/alerts',None),('GET',u+'/anomalies',None),('POST',u+'/anomalies/scan',None),
+            ('PATCH',u+'/anomalies/'+anomaly,{'status':'dismissed'}),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
             ('GET',u+'/alert-settings',None),('PUT',u+'/alert-settings',{'warning_pct':'10','critical_pct':'40'}),
             ('GET',u+'/dashboard',None),
             ('GET',u+'/readings',None),('POST',u+'/readings',READING),('DELETE',u+'/readings/'+reading,None),
@@ -94,7 +95,7 @@ def test_all_private_routes_require_membership_and_token(auth_client, migrated, 
 
 def test_private_route_inventory_remains_covered(auth_client):
     paths = auth_client.get('/openapi.json').json()['paths']
-    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}')
+    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}', '{anomaly_id}')
     actual = {(method.upper(), path) for path, operations in paths.items()
               if path.startswith('/api/v1/homes/') for method in operations if method != 'parameters'}
     assert actual == {(method, path.split('?')[0]) for method, path, _ in tested}

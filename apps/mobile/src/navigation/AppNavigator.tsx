@@ -123,6 +123,7 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
             onAddReading={() => navigation.navigate('ReadingForm')}
             onEditGoal={() => navigation.navigate('GoalForm')}
             onInvestigate={(range) => tabs.navigate('Consumption', range)}
+            onOpenBill={(homeId, billId) => navigation.navigate('BillDetail', { homeId, billId })}
           />
         )}
       </Tab.Screen>

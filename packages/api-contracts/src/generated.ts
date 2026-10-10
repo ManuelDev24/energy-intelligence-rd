@@ -595,14 +595,28 @@ export const OcrJobOutSchema = z.object({
 export type OcrJobOut = z.infer<typeof OcrJobOutSchema>;
 
 export const AnomalyRecordSchema = z.object({
+  "id": z.string().uuid(),
   "home_id": z.string().uuid(),
-  "granularity": z.enum(["day", "month"]),
-  "severity": z.enum(["warning", "critical"]),
+  "bill_id": z.union([z.string().uuid(), z.null()]),
+  "kind": z.enum(["increase", "drop", "peak", "night"]),
+  "source": z.enum(["readings", "bills"]),
+  "granularity": z.enum(["day", "month", "billing"]),
+  "severity": z.enum(["info", "warning", "critical"]),
+  "confidence": z.enum(["low", "medium", "high"]),
+  "status": z.enum(["open", "acknowledged", "dismissed", "resolved"]),
   "observed_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
   "baseline_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "delta_pct": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "delta_pct": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "days": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
   "period_start": z.string().date(),
   "period_end": z.string().date(),
-  "explanation": z.string()
+  "explanation": z.string(),
+  "detected_at": z.string().datetime({ offset: true }),
+  "last_seen_at": z.string().datetime({ offset: true })
 });
 export type AnomalyRecord = z.infer<typeof AnomalyRecordSchema>;
+
+export const AnomalyStatusInSchema = z.object({
+  "status": z.enum(["open", "acknowledged", "dismissed"])
+});
+export type AnomalyStatusIn = z.infer<typeof AnomalyStatusInSchema>;

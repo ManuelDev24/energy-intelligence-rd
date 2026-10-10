@@ -16,7 +16,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { GoalProgressSection } from "@/features/goal/GoalProgressCard";
 import { CycleCard } from "@/features/dashboard/CycleCard";
 import { AnomalySection } from "@/features/anomalies/AnomalySection";
-import { useBills, useDashboard, useAnomalies } from "@/lib/api/hooks";
+import { useBills, useDashboard, useAnomalies, useUpdateAnomaly } from "@/lib/api/hooks";
 import type { Dashboard, Metric } from "@/lib/api/schemas";
 import { formatMetric, formatPeriod } from "@/lib/format";
 import { useSession } from "@/lib/session";
@@ -127,6 +127,7 @@ function HomeDashboard({ homeId }: { homeId: string }) {
   const [billId, setBillId] = useState("");
   const { data, isLoading, error, refetch } = useDashboard(homeId, billId || undefined);
   const anomalies = useAnomalies(homeId);
+  const updateAnomaly = useUpdateAnomaly(homeId);
   const bills = useBills(homeId);
   const periods = [...(bills.data ?? [])].sort((a, b) =>
     b.period_end.localeCompare(a.period_end) || b.id.localeCompare(a.id));
@@ -219,7 +220,7 @@ function HomeDashboard({ homeId }: { homeId: string }) {
               </AlertCard>
             ) : null}
 
-            {!billId ? <AnomalySection anomalies={anomalies.data} isLoading={anomalies.isLoading} /> : null}
+            {!billId ? <AnomalySection anomalies={anomalies.data} isLoading={anomalies.isLoading} pendingId={updateAnomaly.isPending ? updateAnomaly.variables?.id : null} onDismiss={(anomaly) => updateAnomaly.mutate({ id: anomaly.id, status: "dismissed" })} /> : null}
 
             {!billId ? <GoalProgressSection homeId={homeId} /> : null}
 

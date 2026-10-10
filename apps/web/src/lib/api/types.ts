@@ -32,7 +32,8 @@ export interface Api {
   updateBill(homeId: string, billId: string, input: BillInput): Promise<Bill>;
   deleteBill(homeId: string, billId: string): Promise<void>;
   getDashboard(homeId: string, signal?: AbortSignal, billId?: string): Promise<Dashboard>;
-  listAnomalies(homeId: string, granularity: "day" | "month", signal?: AbortSignal): Promise<Anomaly[]>;
+  listAnomalies(homeId: string, opts?: { status?: "active" | "all" | "dismissed" | "resolved" }, signal?: AbortSignal): Promise<Anomaly[]>;
+  updateAnomaly(homeId: string, anomalyId: string, status: "open" | "acknowledged" | "dismissed"): Promise<Anomaly>;
   listEquipment(homeId: string, signal?: AbortSignal): Promise<Equipment[]>;
   createEquipment(homeId: string, input: EquipmentInput): Promise<Equipment>;
   updateEquipment(homeId: string, id: string, input: EquipmentInput): Promise<Equipment>;

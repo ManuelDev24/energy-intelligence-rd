@@ -281,6 +281,9 @@ export function createMockApi(): Api {
       return DashboardSchema.parse(homeId === HOME_A ? DASHBOARD_A : dashboardWithoutProjection(home));
     },
     listAnomalies: async () => [],
+    updateAnomaly: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
 
     listEquipment: async (homeId) => {
       requireHome(homeId);

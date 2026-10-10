@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useBills, useDashboard, useGoalProgress, useAnomalies } from '../../api/hooks';
+import { useBills, useDashboard, useGoalProgress, useAnomalies, useUpdateAnomaly } from '../../api/hooks';
 import type { Dashboard, Metric } from '../../api/types';
 import { AlertCard } from '../../components/AlertCard';
 import { RecommendationCard } from '../../components/RecommendationCard';
@@ -115,6 +115,9 @@ export function DashboardView({
   cycleSlot,
   anomalies = [],
   onInvestigate,
+  onOpenBill,
+  onDismissAnomaly,
+  dismissingId,
 }: {
   d: Dashboard;
   bills?: Parameters<typeof monthlySeries>[0];
@@ -126,6 +129,9 @@ export function DashboardView({
   cycleSlot?: ReactNode;
   anomalies?: import('../../api/types').Anomaly[];
   onInvestigate?: (range: { from: string; to: string; granularity: 'day' }) => void;
+  onOpenBill?: (billId: string) => void;
+  onDismissAnomaly?: (anomaly: import('../../api/types').Anomaly) => void;
+  dismissingId?: string | null;
 }) {
   const { latest_bill: lb, comparison: c, projection: p, alert, recommendation, data_status: ds } = d;
   const [showLegend, setShowLegend] = useState(false);
@@ -157,7 +163,7 @@ export function DashboardView({
         />
       ) : null}
 
-      <AnomaliesSection anomalies={anomalies} onInvestigate={onInvestigate} />
+      <AnomaliesSection anomalies={anomalies} onInvestigate={onInvestigate} onOpenBill={onOpenBill} onDismiss={onDismissAnomaly} pendingId={dismissingId} />
 
       {goalSlot}
 
@@ -275,18 +281,21 @@ export function DashboardScreen({
   onAddReading,
   onEditGoal,
   onInvestigate,
+  onOpenBill,
 }: {
   onAddBill?: () => void;
   onOpenAlerts?: () => void;
   onAddReading?: () => void;
   onEditGoal?: () => void;
   onInvestigate?: (range: { from: string; to: string; granularity: 'day' }) => void;
+  onOpenBill?: (homeId: string, billId: string) => void;
 }) {
   const homeId = useSession((st) => st.selectedHomeId);
   const { data, isLoading, isError, error, refetch, isRefetching } = useDashboard(homeId);
   const bills = useBills(homeId);
   const goal = useGoalProgress(homeId);
   const anomalies = useAnomalies(homeId);
+  const updateAnomaly = useUpdateAnomaly(homeId);
 
   if (!homeId)
     return <EmptyState icon="home-outline" title="Seleccione una vivienda" hint="Toque el nombre de la vivienda arriba para elegirla." />;
@@ -332,6 +341,9 @@ export function DashboardScreen({
         cycleSlot={data.latest_bill ? <CycleCard homeId={homeId} lastBill={data.latest_bill} /> : null}
         anomalies={anomalies.data ?? []}
         onInvestigate={onInvestigate}
+        onOpenBill={onOpenBill ? (billId) => onOpenBill(homeId, billId) : undefined}
+        onDismissAnomaly={(anomaly) => updateAnomaly.mutate({ id: anomaly.id, status: 'dismissed' })}
+        dismissingId={updateAnomaly.isPending ? updateAnomaly.variables?.id : null}
       />
     </ScrollView>
   );

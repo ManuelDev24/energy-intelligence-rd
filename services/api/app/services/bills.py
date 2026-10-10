@@ -4,6 +4,7 @@ from app.models.bill_detail import BillSnapshot
 
 from app.models import Bill
 from app.services.alerts import recompute_alerts
+from app.services.anomaly_scan import scan_after_write
 from app.services.audit import record_change, snapshot
 from app.services.errors import ApplicationError, NotFound
 from app.services.ocr import jobs as ocr_jobs
@@ -50,6 +51,7 @@ def create_bill(db, home_id, payload):
             db.flush()
             ocr_jobs.confirm_document(db, home_id, document_id, bill.id)
         recompute_alerts(db, home_id)
+        scan_after_write(db, home_id)
     return bill
 
 
@@ -63,6 +65,7 @@ def update_bill(db, home_id, bill_id, payload):
             setattr(bill, key, value)
         record_change(db, home_id, bill, "update", before)
         recompute_alerts(db, home_id)
+        scan_after_write(db, home_id)
     return bill
 
 
@@ -76,3 +79,4 @@ def delete_bill(db, home_id, bill_id):
         # Expire identity-map alerts removed through PostgreSQL cascades.
         db.expire_all()
         recompute_alerts(db, home_id)
+        scan_after_write(db, home_id)

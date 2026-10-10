@@ -40,6 +40,7 @@ describe('format', () => {
     expect(fmtPeriod('2026-08-01', '2026-08-31')).toBe('1–31 ago 2026');
     expect(fmtPeriod('2026-07-15', '2026-08-14')).toBe('15 jul – 14 ago 2026');
     expect(fmtPeriod('2025-12-15', '2026-01-14')).toBe('15 dic 2025 – 14 ene 2026');
+    expect(fmtPeriod('2026-10-04', '2026-10-04')).toBe('4 oct 2026');
     expect(fmtMonth('2026-08-31')).toBe('ago 2026');
     expect(fmtMonth('2026-08-31', { short: true })).toBe('ago 26');
   });
