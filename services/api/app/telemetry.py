@@ -38,6 +38,11 @@ def _clean_text(value: str) -> str:
     return value
 
 
+def scrub_text(value: str) -> str:
+    """Redacta correos, JWT, `Bearer …` y tokens opacos de un texto libre (p. ej. el error de un trabajo)."""
+    return _clean_text(value)
+
+
 def _clean(value: Any) -> Any:
     if isinstance(value, str):
         return _clean_text(value)
@@ -120,4 +125,14 @@ def capture_unhandled(exc: BaseException, request_id: str) -> None:
         return
     with sentry_sdk.new_scope() as scope:
         scope.set_tag("request_id", request_id)
+        sentry_sdk.capture_exception(exc)
+
+
+def capture_dead_job(kind: str, job_id: int, exc: BaseException | None) -> None:
+    """Reporta un trabajo que agotó sus reintentos (sin su payload). No-op si Sentry no está activo."""
+    if exc is None or not sentry_sdk.get_client().is_active():
+        return
+    with sentry_sdk.new_scope() as scope:
+        scope.set_tag("job_kind", kind)
+        scope.set_tag("job_id", str(job_id))
         sentry_sdk.capture_exception(exc)

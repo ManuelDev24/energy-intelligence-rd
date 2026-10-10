@@ -143,3 +143,19 @@ def reencrypt_all(db: Session, *, limit: int = 500) -> dict:
         except (ObjectMissing, StorageFailure, DecryptionError):
             failed += 1
     return {"reencrypted": rotated, "already_current": skipped, "failed": failed}
+
+
+def run_maintenance(db: Session, *, reencrypt: bool = False, batch: int = 200) -> dict:
+    """Mantenimiento completo: expira originales sin factura, vacía la cola de borrado y limpia la ya hecha."""
+    report = {"expired": documents.expire_unconfirmed(db)}
+    drained = {"deleted": 0, "failed": 0}
+    while True:  # un lote por vuelta hasta vaciar la cola o hasta que un lote ya no avance
+        step = drain_storage_deletions(db, limit=batch)
+        drained = {key: drained[key] + step[key] for key in drained}
+        if step["deleted"] + step["failed"] < batch or step["deleted"] == 0:
+            break
+    report.update(drained)
+    report["purged"] = documents.purge_completed_deletions(db)
+    if reencrypt:
+        report["reencrypt"] = reencrypt_all(db)
+    return report

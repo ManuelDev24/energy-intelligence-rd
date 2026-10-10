@@ -11,23 +11,12 @@ import json
 import sys
 
 from app.database import SessionLocal
-from app.services import document_storage, documents
+from app.services import document_storage
 from app.services.errors import StorageUnavailable
 
 
 def run(db, *, reencrypt: bool = False, batch: int = 200) -> dict:
-    report = {"expired": documents.expire_unconfirmed(db)}
-    drained = {"deleted": 0, "failed": 0}
-    while True:  # una pasada por lote hasta vaciar la cola o hasta que un lote no avance
-        step = document_storage.drain_storage_deletions(db, limit=batch)
-        drained = {k: drained[k] + step[k] for k in drained}
-        if step["deleted"] + step["failed"] < batch or step["deleted"] == 0:
-            break
-    report.update(drained)
-    report["purged"] = documents.purge_completed_deletions(db)
-    if reencrypt:
-        report["reencrypt"] = document_storage.reencrypt_all(db)
-    return report
+    return document_storage.run_maintenance(db, reencrypt=reencrypt, batch=batch)
 
 
 def main(argv=None) -> int:

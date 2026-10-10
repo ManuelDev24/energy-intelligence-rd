@@ -31,11 +31,11 @@ El único camino real hacia la base de datos sigue siendo `POST /homes/{home_id}
   período baja a `inferred` con advertencia.
 
 ## Pendiente (fuera de este slice, documentado para no fingir que está resuelto)
-- **ERD-STORE-01** (almacenamiento S3/R2/MinIO) no existe todavía: la imagen subida se
+- **ERD-STORE-01** (almacenamiento privado, ver `services/api/STORAGE.md`) ya existe, pero el OCR aún no guarda el original (ERD-OCR-PROD): la imagen subida se
   procesa en memoria y se descarta; no se guarda ninguna copia de la factura original.
   Si se quiere guardar la foto para auditoría, hace falta resolver storage primero
   (nota: MinIO no pulleaba en este entorno de desarrollo).
-- **ERD-WORKER-01** (cola Redis/worker) no existe: el OCR corre síncrono dentro del
+- **ERD-WORKER-01** (cola en PostgreSQL, ver `docs/ops/JOBS.md`) ya existe, pero el OCR todavía no la usa (lo hace ERD-OCR-PROD): el OCR corre síncrono dentro del
   request. Para fotos grandes o distribuidoras con facturas de varias páginas, esto
   debería moverse a un worker antes de producción.
 - **ERD-OCR-03** (cola de OCR en el panel admin) no existe.

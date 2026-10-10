@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     STORAGE_ENCRYPTION_KEYS: str = Field(default="", repr=False)
     STORAGE_URL_SIGNING_KEY: str = Field(default="", repr=False)
     STORAGE_URL_TTL_SECONDS: int = Field(default=60, ge=10, le=300)
+    # ERD-WORKER-01: cola de trabajos en PostgreSQL (ver docs/ops/JOBS.md).
+    WORKER_POLL_SECONDS: float = Field(default=2.0, ge=0.2, le=60)
+    JOB_DEFAULT_MAX_ATTEMPTS: int = Field(default=5, ge=1, le=20)
+    JOB_BACKOFF_BASE_SECONDS: int = Field(default=30, ge=1, le=3600)
+    JOB_BACKOFF_CAP_SECONDS: int = Field(default=3600, ge=1, le=86400)
+    JOB_SUCCEEDED_RETENTION_DAYS: int = Field(default=7, ge=1, le=365)
+    JOB_DEAD_RETENTION_DAYS: int = Field(default=90, ge=1, le=730)
     EMAIL_BACKEND: Literal["console", "resend"] = "console"
     RESEND_API_KEY: str = Field(default="", repr=False)
     EMAIL_FROM: str = ""
