@@ -7,6 +7,7 @@ import { useSession } from "@/lib/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { AccountSettings } from "@/components/account-settings";
 
 function DeleteAccountSection() {
   const { deleteAccount } = useSession();
@@ -82,6 +83,7 @@ export default function AccountPage() {
         {error ? <p role="alert">{error}</p> : null}
         <Button onClick={() => void logout()} disabled={pending}>{pending ? "Cerrando…" : "Cerrar sesión"}</Button>
       </Card>
+      <AccountSettings />
       <DeleteAccountSection />
     </div>
   );

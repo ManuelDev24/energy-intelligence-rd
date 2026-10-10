@@ -51,17 +51,34 @@ const FIELD_MESSAGES: Record<string, string> = {
   note: 'La nota admite hasta 255 caracteres.',
   monthly_amount_rd: 'Revise la meta de monto (RD$, mayor que 0).',
   monthly_kwh: 'Revise la meta de consumo (kWh, mayor que 0).',
+  // ERD-PROF-01 / ERD-SHARE-01
+  email: 'Ingrese un correo válido que no sea el suyo.',
+  current_password: 'Ingrese su contraseña actual (12 a 128 caracteres).',
+  new_password: 'La nueva contraseña debe tener entre 12 y 128 caracteres y ser distinta de la actual.',
+  password: 'Ingrese su contraseña (12 a 128 caracteres).',
+  alerts_email: 'Indique si desea avisos por correo.',
+  alerts_push: 'Indique si desea avisos en el teléfono.',
+  token: 'El enlace de invitación no es válido.',
+  user_id: 'Seleccione a una persona integrante de la vivienda.',
 };
 const KNOWN_CODES = new Set([
   'validation_error', 'invalid_input', 'not_found', 'conflict', 'invalid_response',
   // ERD-AUTH-03: eliminación de cuenta.
   'reauthentication_failed', 'ownership_transfer_required',
+  // ERD-SHARE-01: compartir vivienda.
+  'invitation_invalid', 'invitation_pending', 'invitation_limit_reached', 'invitation_rate_limited', 'already_member',
 ]);
 /** ERD-AUTH-03: mensajes locales específicos por código, nunca el detalle del servidor. */
 const CODE_MESSAGES: Record<string, string> = {
   reauthentication_failed: 'La contraseña no es correcta. Vuelva a escribirla e intente de nuevo.',
+  // Mismo código para borrar la cuenta y para salir de una vivienda (ERD-SHARE-01: la transferencia ya existe).
   ownership_transfer_required:
-    'No se puede eliminar la cuenta: usted es la única propietaria de una vivienda compartida. Transfiera la propiedad antes de continuar (función aún no disponible).',
+    'No se puede continuar: usted es la única propietaria de la vivienda. Transfiera la propiedad a otra persona integrante o saque a las demás antes de continuar.',
+  invitation_invalid: 'La invitación no es válida o ha caducado. Pida a la persona propietaria que le envíe otra y ábrala con la cuenta del correo invitado.',
+  invitation_pending: 'Ya hay una invitación pendiente para ese correo. Revóquela para enviar otra.',
+  invitation_limit_reached: 'Hay demasiadas invitaciones pendientes en esta vivienda. Revoque alguna o espere a que caduquen.',
+  invitation_rate_limited: 'Envió demasiadas invitaciones hoy. Intente mañana.',
+  already_member: 'Esa persona ya es integrante de la vivienda.',
 };
 const own = (table: Record<string | number, string>, key: string | number) =>
   Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;

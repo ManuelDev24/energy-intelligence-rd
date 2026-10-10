@@ -7,7 +7,7 @@ import { Button } from '../../components/ui';
 import { useSession } from '../../store/session';
 import { colors, spacing } from '../../theme';
 
-export function ProfileScreen({ onHome, onService, onHomes }: { onHome: () => void; onService: () => void; onHomes: () => void }) {
+export function ProfileScreen({ onHome, onService, onHomes, onAccountSettings, onShare }: { onHome: () => void; onService: () => void; onHomes: () => void; onAccountSettings: () => void; onShare: () => void }) {
   const homeId = useSession(state => state.selectedHomeId);
   const home = useHomes().data?.find(item => item.id === homeId);
   return <ScrollView style={s.screen} contentContainerStyle={s.content}>
@@ -21,7 +21,11 @@ export function ProfileScreen({ onHome, onService, onHomes }: { onHome: () => vo
     </View>
     <View style={s.card}>
       <Text style={s.subtitle} accessibilityRole="header">Ajustes de cuenta</Text>
-      <Text style={s.hint}>Notificaciones, preferencias y cambio de correo o contraseña: No disponible. La API aún no ofrece estos ajustes; no se guardan preferencias simuladas en el dispositivo.</Text>
+      {AUTH_ENABLED ? <>
+        <Button title="Contraseña, avisos y sesiones" testID="profile-account-settings" variant="secondary" onPress={onAccountSettings} />
+        <Button title="Compartir vivienda" testID="profile-share" variant="secondary" disabled={!homeId} onPress={onShare} />
+        <Text style={s.hint}>La app solo está disponible en español y mide en kWh y RD$: no hay ajustes de idioma ni de unidades. Cambiar el correo de la cuenta todavía no es posible.</Text>
+      </> : <Text style={s.hint}>Modo piloto: sin cuenta personal, no hay ajustes de cuenta.</Text>}
     </View>
     {AUTH_ENABLED ? <AccountDeletionSection /> : null}
     <Text style={s.hint}>El perfil describe su vivienda. No calcula consumo, ahorro ni tarifas automáticamente.</Text>

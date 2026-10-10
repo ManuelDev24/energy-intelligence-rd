@@ -42,7 +42,7 @@ export function AccountDeletionSection() {
       <Text style={s.hint}>
         Esta acción es permanente. Las viviendas donde usted es la única integrante se eliminarán junto con sus
         lecturas, facturas y equipos. Si usted es la única propietaria de una vivienda compartida, no podrá
-        eliminar su cuenta hasta transferir la propiedad (función aún no disponible).
+        eliminar su cuenta hasta transferir la propiedad o sacar a las demás personas (Perfil → Compartir vivienda).
       </Text>
       {draft.step === 'closed' ? (
         <Button title="Eliminar cuenta" variant="secondary" testID="profile-delete-account"

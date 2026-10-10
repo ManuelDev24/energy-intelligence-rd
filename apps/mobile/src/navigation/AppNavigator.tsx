@@ -30,6 +30,8 @@ import { useSession } from '../store/session';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { HomeProfileScreen } from '../features/profile/HomeProfileScreen';
 import { ServiceProfileScreen } from '../features/profile/ServiceProfileScreen';
+import { AccountSettingsScreen } from '../features/profile/AccountSettingsScreen';
+import { ShareHomeScreen } from '../features/profile/ShareHomeScreen';
 import { colors, TOUCH } from '../theme';
 
 export type RootStackParams = {
@@ -46,6 +48,8 @@ export type RootStackParams = {
   Profile: undefined;
   HomeProfile: undefined;
   ServiceProfile: undefined;
+  AccountSettings: undefined;
+  ShareHome: undefined;
 };
 // 5 pestañas: cambiar de vivienda es poco frecuente y vive en el encabezado (hoja "Homes").
 export type TabParams = { Dashboard: undefined; Consumption: undefined; Bills: undefined; Equipment: undefined; Alerts: undefined };
@@ -236,10 +240,12 @@ function DomainNavigator() {
           {({ navigation }) => <GoalFormScreen onDone={() => navigation.goBack()} />}
         </Stack.Screen>
         <Stack.Screen name="Profile" options={{ title: 'Perfil' }}>
-          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} />}
+          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} onAccountSettings={() => navigation.navigate('AccountSettings')} onShare={() => navigation.navigate('ShareHome')} />}
         </Stack.Screen>
         <Stack.Screen name="HomeProfile" component={HomeProfileScreen} options={{ title: 'Mi vivienda' }} />
         <Stack.Screen name="ServiceProfile" component={ServiceProfileScreen} options={{ title: 'Mi servicio' }} />
+        <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} options={{ title: 'Ajustes de cuenta' }} />
+        <Stack.Screen name="ShareHome" component={ShareHomeScreen} options={{ title: 'Compartir vivienda' }} />
         <Stack.Screen name="Homes" options={{ title: 'Elegir vivienda', presentation: 'modal' }}>
           {({ navigation }) => <HomesScreen onPicked={() => navigation.goBack()} />}
         </Stack.Screen>

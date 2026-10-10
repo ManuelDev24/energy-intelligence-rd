@@ -52,6 +52,30 @@ it('formularios reales con estados, errores locales y guardado confirmado', () =
     expect(screen.includes('isEndpointUnavailable')).toBe(true);
     expect(screen.includes('error.message')).toBe(false);
   }
+  // ERD-PROF-01 / ERD-SHARE-01: los ajustes ya existen (API real); lo que sigue sin existir se dice sin controles falsos.
   const profile = readFileSync(file('./ProfileScreen.tsx'), 'utf8');
-  expect(profile.includes('No disponible')).toBe(true);
+  expect(profile).toContain('testID="profile-account-settings"');
+  expect(profile).toContain('testID="profile-share"');
+  expect(profile).toContain('Cambiar el correo de la cuenta todavía no es posible');
+  expect(profile).not.toContain('No disponible. La API aún no ofrece');
+  expect(profile).not.toMatch(/<Switch/);
+});
+it('las pantallas de ajustes y de compartir están registradas y usan la API real, sin preferencias simuladas', () => {
+  const nav = readFileSync(file('../../navigation/AppNavigator.tsx'), 'utf8');
+  expect(nav).toContain('<Stack.Screen name="AccountSettings"');
+  expect(nav).toContain('<Stack.Screen name="ShareHome"');
+  const settings = readFileSync(file('./AccountSettingsScreen.tsx'), 'utf8');
+  for (const call of ['api.changePassword', 'authSession.replaceTokens', 'api.getPreferences', 'api.savePreferences', 'api.listSessions', 'api.revokeSession', 'api.revokeOtherSessions']) expect(settings).toContain(call);
+  expect(settings).not.toContain('AsyncStorage');
+  expect(settings).toContain('textContentType="newPassword"');
+  expect(settings).toContain('secureTextEntry');
+  expect(settings).not.toContain('error.message}');
+  const share = readFileSync(file('./ShareHomeScreen.tsx'), 'utf8');
+  for (const call of ['api.listMembers', 'api.createInvitation', 'api.revokeInvitation', 'api.removeMember', 'api.leaveHome', 'api.transferOwnership']) expect(share).toContain(call);
+  expect(share).toContain('isNotOwnerError');
+  expect(share).not.toContain('error.message}');
+  const accept = readFileSync(file('../homes/AcceptInvitationSection.tsx'), 'utf8');
+  expect(accept).toContain('api.acceptInvitation');
+  expect(accept).toContain('parseInvitationLink');
+  expect(readFileSync(file('../homes/HomesScreen.tsx'), 'utf8')).toMatch(/AUTH_ENABLED \? <View[^>]*><AcceptInvitationSection/);
 });

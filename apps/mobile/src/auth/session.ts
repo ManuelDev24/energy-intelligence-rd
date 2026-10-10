@@ -161,6 +161,16 @@ export function createAuthSession({ client, store, origin, onBoundary, now = Dat
       })();
       return hydration;
     },
+    /**
+     * ERD-PROF-01: el cambio de contraseña revoca todas las sesiones, también ésta, y entrega un par nuevo. Se adopta
+     * y persiste con la misma garantía de época que cualquier otro guardado; no revive una sesión ya cerrada.
+     */
+    replaceTokens: async (issued: unknown) => {
+      if (snapshot.status !== 'authenticated') throw expired();
+      const epoch = snapshot.epoch;
+      const pair = parsePair(issued);
+      await save(pair, epoch);
+    },
     login: (email: string, password: string) => signIn('login', email, password),
     register: (email: string, password: string, acceptTerms: boolean) => signIn('register', email, password, acceptTerms),
     invalidate,

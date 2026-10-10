@@ -15,7 +15,7 @@ Fecha: 2026-10-10 · Rama `claude/elegant-ptolemy-sdr69r`. Diseño y reglas: `se
 | Token fuera de la URL y del DOM; sin sesión no se guarda | ✅ | `app/invitacion/page.test.tsx` |
 | BFF: rutas y cuerpos estrictos, mensajes locales sin texto de la API | ✅ | `bff-sharing.test.ts` (41) |
 | Panel: propietario vs. miembro, confirmaciones, errores | ✅ | `share-panel.test.tsx` (11); se verificó con mutaciones que las pruebas fallan si se rompe |
-| Móvil (iOS/Android) | ⛔ sin pantallas | se hace con ERD-PROF-01; sin dispositivo en esta sesión |
+| Móvil (iOS/Android) | 🔶 construido, sin verificar en dispositivo | `ShareHomeScreen` y `AcceptInvitationSection` (ver `ERD-PROF-01.md`): typecheck, pruebas de la API móvil y de sus modelos y compilación Metro de Android; **sin simulador** |
 | Correo real (Resend) y enlace de producción | ⛔ | requiere ERD-DEPLOY-01 (dominio verificado) |
 
 ## Hallazgos durante la implementación

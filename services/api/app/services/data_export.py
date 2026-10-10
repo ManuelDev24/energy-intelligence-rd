@@ -5,9 +5,8 @@ tokens ni sus hashes, claves de almacenamiento, auditoría interna, invitaciones
 (correos de otros miembros o viviendas ajenas). Las viviendas compartidas se exportan con el rol del solicitante.
 """
 from datetime import datetime, timezone
-from decimal import Decimal
 
-from fastapi.encoders import jsonable_encoder
+from pydantic_core import to_jsonable_python
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
@@ -16,13 +15,12 @@ from app.models.bill_detail import BillItem
 from app.models.auth import AuthSession, HomeMember, User
 
 FORMAT_VERSION = 1
-# Los montos y kWh son Decimal: se exportan como texto exacto (igual que la API), nunca como float.
-_ENCODERS = {Decimal: str}
+# Los montos y kWh son Decimal: pydantic los serializa como texto exacto (igual que la API), nunca como float.
 
 
 def _row(record, *, exclude: frozenset = frozenset()) -> dict:
-    return jsonable_encoder({column.key: getattr(record, column.key) for column in inspect(record).mapper.column_attrs
-                             if column.key not in exclude}, custom_encoder=_ENCODERS)
+    return to_jsonable_python({column.key: getattr(record, column.key) for column in inspect(record).mapper.column_attrs
+                               if column.key not in exclude})
 
 
 def _rows(db: Session, model, home_id, order, *, exclude: frozenset = frozenset(), key="home_id") -> list[dict]:
@@ -60,7 +58,7 @@ def export_user_data(db: Session, user: User, now: datetime | None = None) -> di
         select(AuthSession).where(AuthSession.user_id == user.id).order_by(AuthSession.created_at))]
     return {
         "format_version": FORMAT_VERSION,
-        "generated_at": jsonable_encoder(now or datetime.now(timezone.utc)),
+        "generated_at": to_jsonable_python(now or datetime.now(timezone.utc)),
         "account": _row(user, exclude=frozenset({"password_hash", "active"})),
         "homes": homes,
         "sessions": sessions,

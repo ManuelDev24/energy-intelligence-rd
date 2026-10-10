@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AUTH_ENABLED } from '../../config';
 import { AccountSummary } from '../auth/AccountSummary';
+import { AcceptInvitationSection } from './AcceptInvitationSection';
 import { AccountOnboardingScreen } from './AccountOnboardingScreen';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
@@ -66,6 +67,7 @@ export function HomesScreen({ onPicked }: { onPicked?: (home: Home) => void }) {
       {AUTH_ENABLED ? <AccountSummary /> : null}
       {creating ? <AccountOnboardingScreen onCancel={() => setCreating(false)} onDone={(home) => { setCreating(false); onPicked?.(home); }} /> : <>
         {AUTH_ENABLED ? <View style={{ paddingHorizontal: spacing.lg }}><Button title="Crear vivienda" testID="auth-add-home" onPress={() => setCreating(true)} /></View> : null}
+        {AUTH_ENABLED ? <View style={{ marginTop: spacing.md }}><AcceptInvitationSection onAccepted={onPicked} /></View> : null}
         <HomeList onPicked={onPicked} />
       </>}
     </View>

@@ -221,4 +221,31 @@ describe('secure account session', () => {
     expect(JSON.stringify(session.getSnapshot())).not.toContain('access-test');
     expect(stored()).not.toContain('aaaaaaaaaaaa');
   });
+  it('replaceTokens adopts and persists the pair issued by a password change (ERD-PROF-01)', async () => {
+    const { session, stored } = await authenticated();
+    const changed = { ...pair, access_token: 'changed-access', refresh_token: 'changed-refresh' };
+    await session.replaceTokens(changed);
+    expect(await session.getAccessToken()).toBe('changed-access');
+    expect(JSON.parse(stored()!).pair).toEqual(changed);
+    expect(session.getSnapshot()).toMatchObject({ status: 'authenticated', user: { email: 'a@b.com' } });
+  });
+  it('replaceTokens needs an authenticated session and never resurrects a logged-out one', async () => {
+    const out = setup();
+    await out.session.hydrate();
+    await expect(out.session.replaceTokens(rotated)).rejects.toMatchObject({ status: 401 });
+    expect(out.stored()).toBeNull();
+    const { session, fetcher, stored } = await authenticated();
+    fetcher.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await session.logout();
+    await expect(session.replaceTokens(rotated)).rejects.toMatchObject({ status: 401 });
+    expect(stored()).toBeNull();
+    expect(session.getSnapshot().status).toBe('signedOut');
+  });
+  it('replaceTokens rejects a malformed pair without touching the stored one', async () => {
+    const { session, stored } = await authenticated();
+    const before = stored();
+    await expect(session.replaceTokens({ access_token: 'x' } as never)).rejects.toBeTruthy();
+    expect(stored()).toBe(before);
+    expect(await session.getAccessToken()).toBe('access-test');
+  });
 });

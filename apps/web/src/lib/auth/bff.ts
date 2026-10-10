@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -33,6 +33,12 @@ const FORGOT = "/auth/password/forgot";
 const RESET = "/auth/password/reset";
 const ForgotSchema = PasswordForgotInSchema.extend({ email: z.string().email().max(254) }).strict();
 const ResetSchema = PasswordResetInSchema.strict();
+// ERD-PROF-01: cambio con sesión iniciada; la nueva contraseña debe diferir de la actual (la API también lo exige).
+const PasswordChangeSchema = PasswordChangeInSchema.strict().refine(body => body.current_password !== body.new_password, { path: ["new_password"] });
+const PASSWORD_CHANGE = "/auth/password/change";
+// Exportación de datos del titular: se reenvía tal cual, solo se comprueba que lo sea.
+const ExportSchema = z.object({ format_version: z.literal(1) }).passthrough();
+const EXPORT_DISPOSITION = /^attachment; filename="energyrd-datos-\d{4}-\d{2}-\d{2}\.json"$/;
 const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const accessName = (config: BffConfig) => config.secure ? "__Host-erd-access" : "erd-access";
 const logoutName = (config: BffConfig) => config.secure ? "__Host-erd-logout" : "erd-logout";
@@ -139,7 +145,20 @@ function sharingRoute(path: string, method: string): Phase2Route | null {
   }
   return !child && method === "POST" ? { response: none, body: OwnershipTransferInSchema.strict(), query: {} } : null;
 }
+/** ERD-PROF-01: preferencias, sesiones activas y exportación de datos de la cuenta. */
+function accountSettingsRoute(path: string, method: string): Phase2Route | null {
+  const none = z.undefined();
+  if (path === "/auth/me/preferences") return method === "GET" ? { response: NotificationPreferencesOutSchema, query: {} }
+    : method === "PUT" ? { response: NotificationPreferencesOutSchema, body: NotificationPreferencesInSchema.strict(), query: {} } : null;
+  if (path === "/auth/me/export") return method === "GET" ? { response: ExportSchema, query: {} } : null;
+  if (path === "/auth/sessions") return method === "GET" ? { response: SessionOutSchema.array(), query: {} } : null;
+  if (path === "/auth/sessions/revoke-others") return method === "POST" ? { response: none, body: z.object({}).strict(), query: {} } : null;
+  if (new RegExp(`^/auth/sessions/${UUID}$`).test(path)) return method === "DELETE" ? { response: none, body: z.object({}).strict(), query: {} } : null;
+  return null;
+}
 function phase2Route(path: string, method: string): Phase2Route | null {
+  const account = accountSettingsRoute(path, method);
+  if (account || /^\/auth\/(sessions|me\/preferences|me\/export)(\/|$)/.test(path)) return account;
   const sharing = sharingRoute(path, method);
   if (sharing || /\/(members|invitations|transfer-ownership)(\/|$)/.test(path)) return sharing;
   if (new RegExp(`^/homes/${UUID}/dashboard$`).test(path)) return method === "GET"
@@ -198,6 +217,9 @@ function writeSchema(path: string, method: string) {
 const FIELD_MESSAGES: Record<string, string> = {
   email: "Introduce un correo electrónico válido.",
   password: "La contraseña debe tener entre 12 y 128 caracteres.",
+  current_password: "Escribe tu contraseña actual (entre 12 y 128 caracteres).",
+  alerts_email: "Indica si quieres avisos por correo.",
+  alerts_push: "Indica si quieres avisos en el teléfono.",
   name: "Revisa el nombre (obligatorio, máximo 120 caracteres).",
   distributor: "Selecciona una distribuidora válida.",
   code: "Revisa el código (letras, números, guion o guion bajo).",
@@ -318,8 +340,9 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
   const legal = path === "/legal" && method === "GET";
   const recovery = method === "POST" && (path === FORGOT || path === RESET);
-  const phase2 = auth || legal || recovery ? null : phase2Route(path, method);
-  const schema = legal ? LegalOutSchema : ocr ? OcrDraftSchema : phase2 ? phase2.response : domainRoute(path, method);
+  const passwordChange = method === "POST" && path === PASSWORD_CHANGE;
+  const phase2 = auth || legal || recovery || passwordChange ? null : phase2Route(path, method);
+  const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocr ? OcrDraftSchema : phase2 ? phase2.response : domainRoute(path, method);
   if (!auth && !legal && !recovery && !schema) return reply({ detail: "Ruta no permitida." }, 404);
   if (new RegExp(`^/homes/${UUID}$`).test(path) && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   if (phase2 && !phase2QueryOk(phase2, url.searchParams)) return reply({ detail: "Consulta no permitida." }, 400);
@@ -353,6 +376,10 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
         body = JSON.stringify(credentials.data);
       } else if (recovery) {
         const parsed = (path === RESET ? ResetSchema : ForgotSchema).safeParse(value);
+        if (!parsed.success) return invalid(parsed.error.issues);
+        body = JSON.stringify(parsed.data);
+      } else if (passwordChange) {
+        const parsed = PasswordChangeSchema.safeParse(value);
         if (!parsed.success) return invalid(parsed.error.issues);
         body = JSON.stringify(parsed.data);
       } else if (logout) {
@@ -415,7 +442,8 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       // Revoked sessions are rejected by the normal 401 path; no second logout write.
       return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store, private", "Vary": "Cookie" } });
     }
-    if (path === "/auth/login" || path === "/auth/register") {
+    if (path === "/auth/login" || path === "/auth/register" || passwordChange) {
+      // El cambio de contraseña revoca TODAS las sesiones (también esta) y trae una nueva: se renuevan las cookies.
       const pair = PairSchema.parse(data);
       const response = reply({ ok: true }, upstream.status);
       const options = { httpOnly: true, secure: config.secure, sameSite: "strict" as const, path: "/" };
@@ -438,7 +466,12 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       const response = new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
       return deleteAccount ? setEpoch(clear(response, config), config) : response;
     }
-    return reply(parsed, upstream.status);
+    const response = reply(parsed, upstream.status);
+    if (path === "/auth/me/export") {
+      const disposition = upstream.headers.get("content-disposition") ?? "";
+      response.headers.set("Content-Disposition", EXPORT_DISPOSITION.test(disposition) ? disposition : 'attachment; filename="energyrd-datos.json"');
+    }
+    return response;
   } catch {
     const response = reply({ detail: "No se pudo confirmar la respuesta de la API. No se reintentó la operación." }, 502);
     return logout ? setEpoch(clear(response, config), config) : response;

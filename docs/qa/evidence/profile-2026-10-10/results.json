@@ -1,0 +1,67 @@
+[
+  {
+    "check": "sesiones: aparecen 2 y una está marcada como actual",
+    "ok": true,
+    "detail": "items=2 actual=1"
+  },
+  {
+    "check": "notificaciones: por defecto ambas activadas",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "notificaciones: persisten tras recargar",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "sesiones: la otra sesión deja de funcionar al instante",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "sesiones: esta sesión sigue activa",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "contraseña: la actual incorrecta no cambia nada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "contraseña: tras el intento fallido la antigua sigue sirviendo",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "contraseña: esta sesión sigue activa con cookies renovadas",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "contraseña: la otra sesión se cerró",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "contraseña: la antigua ya no inicia sesión",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "contraseña: la nueva sí inicia sesión",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "datos: se descarga un JSON con el nombre de la API",
+    "ok": true,
+    "detail": "energyrd-datos-2026-10-10.json"
+  },
+  {
+    "check": "datos: contiene la cuenta y ningún secreto",
+    "ok": true,
+    "detail": ""
+  }
+]

@@ -42,5 +42,5 @@ sigue válida (`invited_by` pasa a NULL).
 
 ## Web (hecho) y móvil (pendiente)
 Web: BFF (rutas declaradas y mensajes locales, `apps/web/src/lib/auth/bff.ts`), cliente `lib/auth/sharing.ts`, panel
-«Compartir» en «Mis viviendas», página pública `/invitacion`. Móvil: **sin pantallas todavía**; la API y el contrato ya
-sirven, y el enlace del correo se abre en el navegador (donde se puede aceptar iniciando sesión). Se hará con ERD-PROF-01.
+«Compartir» en «Mis viviendas», página pública `/invitacion`. Móvil: pantalla «Compartir vivienda» (Perfil) y «¿Le invitaron?» (Elegir vivienda, se pega el enlace del correo),
+construidas con ERD-PROF-01 pero **sin verificar en dispositivo**.
