@@ -1,0 +1,269 @@
+# Etiquetas REAL/ESTIMADO/PROYECTADO y ausencia de datos horarios en las 5 viviendas (app ya en onboarding completado).
+appId: ${APP_ID || 'host.exp.Exponent'}
+---
+- launchApp:
+    stopApp: true
+- openLink: ${EXPO_URL || 'exp://127.0.0.1:8081'}
+- extendedWaitUntil:
+    visible: "(Development servers|Inicio)"
+    timeout: 120000
+# Android: a veces Expo Go se queda en su inicio en vez de abrir el enlace.
+- runFlow:
+    when:
+      visible: "Development servers"
+    commands:
+      - tapOn: "exp://.*:8081"
+- extendedWaitUntil:
+    visible:
+      id: "tab-Dashboard"
+    timeout: 120000
+
+# ---- PILOT-01 ----
+- tapOn:
+    id: "tab-Dashboard"
+- tapOn:
+    id: "home-switcher"
+- extendedWaitUntil:
+    visible:
+      id: "home-PILOT-01"
+    timeout: 20000
+- tapOn:
+    id: "home-PILOT-01"
+- extendedWaitUntil:
+    visible: "Vivienda piloto 01.*"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "hero"
+    timeout: 20000
+- assertVisible:
+    id: "badge-PROJECTED"
+- assertNotVisible: ".*(por hora|kWh/h|PROJECTED|ESTIMATED).*"
+- takeScreenshot: evidence/labels-PILOT-01-top
+- scrollUntilVisible:
+    element:
+      id: "badge-ESTIMATED"
+    timeout: 20000
+- takeScreenshot: evidence/labels-PILOT-01-estimated
+- scrollUntilVisible:
+    element:
+      id: "monthly-note"
+    timeout: 20000
+- assertVisible: ".*Resolución mensual: sin datos horarios.*"
+# La leyenda conserva su estado al cambiar de vivienda: abrirla solo si está cerrada.
+- runFlow:
+    when:
+      notVisible: ".*Ocultar.*"
+    commands:
+      - tapOn:
+          id: "monthly-note"
+- scrollUntilVisible:
+    element:
+      id: "badge-REAL"
+    timeout: 10000
+- takeScreenshot: evidence/labels-PILOT-01-legend
+- scrollUntilVisible:
+    element:
+      id: "hero"
+    direction: UP
+    timeout: 20000
+
+# ---- PILOT-02 ----
+- tapOn:
+    id: "tab-Dashboard"
+- tapOn:
+    id: "home-switcher"
+- extendedWaitUntil:
+    visible:
+      id: "home-PILOT-02"
+    timeout: 20000
+- tapOn:
+    id: "home-PILOT-02"
+- extendedWaitUntil:
+    visible: "Vivienda piloto 02.*"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "hero"
+    timeout: 20000
+- assertVisible:
+    id: "badge-PROJECTED"
+- assertNotVisible: ".*(por hora|kWh/h|PROJECTED|ESTIMATED).*"
+- takeScreenshot: evidence/labels-PILOT-02-top
+- scrollUntilVisible:
+    element:
+      id: "badge-ESTIMATED"
+    timeout: 20000
+- takeScreenshot: evidence/labels-PILOT-02-estimated
+- scrollUntilVisible:
+    element:
+      id: "monthly-note"
+    timeout: 20000
+- assertVisible: ".*Resolución mensual: sin datos horarios.*"
+# La leyenda conserva su estado al cambiar de vivienda: abrirla solo si está cerrada.
+- runFlow:
+    when:
+      notVisible: ".*Ocultar.*"
+    commands:
+      - tapOn:
+          id: "monthly-note"
+- scrollUntilVisible:
+    element:
+      id: "badge-REAL"
+    timeout: 10000
+- takeScreenshot: evidence/labels-PILOT-02-legend
+- scrollUntilVisible:
+    element:
+      id: "hero"
+    direction: UP
+    timeout: 20000
+
+# ---- PILOT-03 ----
+- tapOn:
+    id: "tab-Dashboard"
+- tapOn:
+    id: "home-switcher"
+- extendedWaitUntil:
+    visible:
+      id: "home-PILOT-03"
+    timeout: 20000
+- tapOn:
+    id: "home-PILOT-03"
+- extendedWaitUntil:
+    visible: "Vivienda piloto 03.*"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "hero"
+    timeout: 20000
+- assertVisible:
+    id: "badge-PROJECTED"
+- assertNotVisible: ".*(por hora|kWh/h|PROJECTED|ESTIMATED).*"
+- takeScreenshot: evidence/labels-PILOT-03-top
+- scrollUntilVisible:
+    element:
+      id: "badge-ESTIMATED"
+    timeout: 20000
+- takeScreenshot: evidence/labels-PILOT-03-estimated
+- scrollUntilVisible:
+    element:
+      id: "monthly-note"
+    timeout: 20000
+- assertVisible: ".*Resolución mensual: sin datos horarios.*"
+# La leyenda conserva su estado al cambiar de vivienda: abrirla solo si está cerrada.
+- runFlow:
+    when:
+      notVisible: ".*Ocultar.*"
+    commands:
+      - tapOn:
+          id: "monthly-note"
+- scrollUntilVisible:
+    element:
+      id: "badge-REAL"
+    timeout: 10000
+- takeScreenshot: evidence/labels-PILOT-03-legend
+- scrollUntilVisible:
+    element:
+      id: "hero"
+    direction: UP
+    timeout: 20000
+
+# ---- PILOT-04 ----
+- tapOn:
+    id: "tab-Dashboard"
+- tapOn:
+    id: "home-switcher"
+- extendedWaitUntil:
+    visible:
+      id: "home-PILOT-04"
+    timeout: 20000
+- tapOn:
+    id: "home-PILOT-04"
+- extendedWaitUntil:
+    visible: "Vivienda piloto 04.*"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "hero"
+    timeout: 20000
+- assertVisible:
+    id: "badge-PROJECTED"
+- assertNotVisible: ".*(por hora|kWh/h|PROJECTED|ESTIMATED).*"
+- takeScreenshot: evidence/labels-PILOT-04-top
+- scrollUntilVisible:
+    element:
+      id: "badge-ESTIMATED"
+    timeout: 20000
+- takeScreenshot: evidence/labels-PILOT-04-estimated
+- scrollUntilVisible:
+    element:
+      id: "monthly-note"
+    timeout: 20000
+- assertVisible: ".*Resolución mensual: sin datos horarios.*"
+# La leyenda conserva su estado al cambiar de vivienda: abrirla solo si está cerrada.
+- runFlow:
+    when:
+      notVisible: ".*Ocultar.*"
+    commands:
+      - tapOn:
+          id: "monthly-note"
+- scrollUntilVisible:
+    element:
+      id: "badge-REAL"
+    timeout: 10000
+- takeScreenshot: evidence/labels-PILOT-04-legend
+- scrollUntilVisible:
+    element:
+      id: "hero"
+    direction: UP
+    timeout: 20000
+
+# ---- PILOT-05 ----
+- tapOn:
+    id: "tab-Dashboard"
+- tapOn:
+    id: "home-switcher"
+- extendedWaitUntil:
+    visible:
+      id: "home-PILOT-05"
+    timeout: 20000
+- tapOn:
+    id: "home-PILOT-05"
+- extendedWaitUntil:
+    visible: "Vivienda piloto 05.*"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "hero"
+    timeout: 20000
+- assertVisible:
+    id: "badge-PROJECTED"
+- assertNotVisible: ".*(por hora|kWh/h|PROJECTED|ESTIMATED).*"
+- takeScreenshot: evidence/labels-PILOT-05-top
+- scrollUntilVisible:
+    element:
+      id: "badge-ESTIMATED"
+    timeout: 20000
+- takeScreenshot: evidence/labels-PILOT-05-estimated
+- scrollUntilVisible:
+    element:
+      id: "monthly-note"
+    timeout: 20000
+- assertVisible: ".*Resolución mensual: sin datos horarios.*"
+# La leyenda conserva su estado al cambiar de vivienda: abrirla solo si está cerrada.
+- runFlow:
+    when:
+      notVisible: ".*Ocultar.*"
+    commands:
+      - tapOn:
+          id: "monthly-note"
+- scrollUntilVisible:
+    element:
+      id: "badge-REAL"
+    timeout: 10000
+- takeScreenshot: evidence/labels-PILOT-05-legend
+- scrollUntilVisible:
+    element:
+      id: "hero"
+    direction: UP
+    timeout: 20000

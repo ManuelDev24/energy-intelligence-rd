@@ -3,8 +3,12 @@
 Objetivo: que cualquier persona del equipo levante el proyecto **desde cero** en su máquina y haga la demo
 de las 5 viviendas piloto **sin ayuda**. Tiempo estimado: 20–30 min la primera vez (descargas), 5 min después.
 
-> Alcance del piloto: facturas mensuales manuales, comparación, proyección lineal, alertas por variación
-> y estimación por equipos declarados. **No** hay OCR, IA, medidores inteligentes, solar ni datos horarios.
+> Alcance del piloto: facturas mensuales (manuales o sugeridas por foto), comparación, proyección lineal,
+> alertas por variación, desviaciones explicables y estimación por equipos declarados.
+> **Foto de factura (OCR):** la API lee la imagen con Tesseract y devuelve un **borrador editable** con la
+> confianza de cada campo; nunca crea la factura sola: la persona revisa y confirma (`services/api/OCR_BILL_UPLOAD.md`).
+> La imagen no se guarda. Aún no se ha validado con fotos reales de EDESUR/EDENORTE/EDEESTE.
+> **No** hay IA generativa, medidores inteligentes, solar ni datos horarios.
 > Todos los datos del seed son **demo**: no son facturas reales de clientes.
 
 ---
@@ -19,6 +23,7 @@ de las 5 viviendas piloto **sin ayuda**. Tiempo estimado: 20–30 min la primera
 | npm | el que trae Node | dependencias JS | `npm -v` |
 | Expo Go (opcional) | SDK 57 | móvil en teléfono | App Store / Play Store |
 | uv + Python 3.12 (opcional) | solo para correr pruebas de la API fuera de Docker | | `uv --version` |
+| Tesseract (opcional) | OCR de facturas si la API corre fuera de Docker (la imagen Docker ya lo trae, con `spa`+`eng`) | `brew install tesseract tesseract-lang` | `tesseract --list-langs` |
 
 La API solo escucha en loopback por defecto. Para un teléfono físico configura
 `API_BIND_ADDRESS=<IP de tu interfaz LAN privada>` en `.env`, recrea el servicio API y usa
@@ -97,8 +102,10 @@ Etiquetas de calidad que aparecen junto a cada número (el móvil las muestra en
 | Función | Web | Móvil |
 |---|---|---|
 | Elegir vivienda, dashboard, historial y alta de facturas | ✅ | ✅ |
-| Alertas (leer / descartar) | aviso en el dashboard | ✅ pestaña *Alertas* |
-| Equipos declarados y estimado | — | ✅ pestaña *Equipos* |
+| Alertas (leer / descartar) | ✅ aviso en el dashboard y página *Alertas* | ✅ pestaña *Alertas* |
+| Factura desde foto (OCR → borrador editable) | ✅ *Facturas → Registrar factura → Seleccionar foto* | ✅ *Tomar foto* / *Seleccionar foto* |
+| Desviaciones de consumo (anomalías explicables) | ✅ dashboard | ✅ Inicio |
+| Equipos declarados y estimado | ✅ página *Equipos* | ✅ pestaña *Equipos* |
 
 ---
 

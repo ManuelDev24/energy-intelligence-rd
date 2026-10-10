@@ -1,0 +1,467 @@
+{
+  "results": [
+    {
+      "check": "API real: 5 viviendas piloto",
+      "ok": true,
+      "detail": "PILOT-01,PILOT-02,PILOT-03,PILOT-04,PILOT-05"
+    },
+    {
+      "check": "PILOT-01 etiquetas: cada métrica no-REAL de la API lleva su etiqueta",
+      "ok": true,
+      "detail": "API {'ESTIMATED': 2, 'PROJECTED': 2} · pantalla {'PROJECTED': 5, 'REAL': 3, 'ESTIMATED': 2} · textos {'PROJECTED': 'PROYECTADO', 'REAL': 'REAL', 'ESTIMATED': 'ESTIMADO'}"
+    },
+    {
+      "check": "PILOT-01 etiquetas en español (ESTIMADO/PROYECTADO, nunca ESTIMATED/PROJECTED)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-01 sin datos horarios",
+      "ok": true,
+      "detail": "resolution=monthly match=None"
+    },
+    {
+      "check": "PILOT-01 leyenda de calidad (REAL/ESTIMADO/PROYECTADO, resolución mensual) en 'Estado de los datos'",
+      "ok": true,
+      "detail": "Estado de los datos3 facturas · fuente: demo · resolución mensual REAL Dato tomado directamente de una factura mensual introducida. ESTIMADO Valor derivado de t"
+    },
+    {
+      "check": "PILOT-01 última factura coincide con la API",
+      "ok": true,
+      "detail": "420.0 kWh"
+    },
+    {
+      "check": "PILOT-01 alerta 'Crítica' visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-01 proyección 486.67 kWh visible con PROYECTADO",
+      "ok": true,
+      "detail": "486.67 kWh"
+    },
+    {
+      "check": "PILOT-02 etiquetas: cada métrica no-REAL de la API lleva su etiqueta",
+      "ok": true,
+      "detail": "API {'ESTIMATED': 2, 'PROJECTED': 2} · pantalla {'PROJECTED': 5, 'REAL': 3, 'ESTIMATED': 2} · textos {'PROJECTED': 'PROYECTADO', 'REAL': 'REAL', 'ESTIMATED': 'ESTIMADO'}"
+    },
+    {
+      "check": "PILOT-02 etiquetas en español (ESTIMADO/PROYECTADO, nunca ESTIMATED/PROJECTED)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-02 sin datos horarios",
+      "ok": true,
+      "detail": "resolution=monthly match=None"
+    },
+    {
+      "check": "PILOT-02 leyenda de calidad (REAL/ESTIMADO/PROYECTADO, resolución mensual) en 'Estado de los datos'",
+      "ok": true,
+      "detail": "Estado de los datos3 facturas · fuente: demo · resolución mensual REAL Dato tomado directamente de una factura mensual introducida. ESTIMADO Valor derivado de t"
+    },
+    {
+      "check": "PILOT-02 última factura coincide con la API",
+      "ok": true,
+      "detail": "315.0 kWh"
+    },
+    {
+      "check": "PILOT-02 sin alerta (la API no envía alerta)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-02 proyección 315 kWh visible con PROYECTADO",
+      "ok": true,
+      "detail": "315 kWh"
+    },
+    {
+      "check": "PILOT-03 etiquetas: cada métrica no-REAL de la API lleva su etiqueta",
+      "ok": true,
+      "detail": "API {'ESTIMATED': 2, 'PROJECTED': 2} · pantalla {'PROJECTED': 5, 'REAL': 2, 'ESTIMATED': 2} · textos {'PROJECTED': 'PROYECTADO', 'REAL': 'REAL', 'ESTIMATED': 'ESTIMADO'}"
+    },
+    {
+      "check": "PILOT-03 etiquetas en español (ESTIMADO/PROYECTADO, nunca ESTIMATED/PROJECTED)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-03 sin datos horarios",
+      "ok": true,
+      "detail": "resolution=monthly match=None"
+    },
+    {
+      "check": "PILOT-03 leyenda de calidad (REAL/ESTIMADO/PROYECTADO, resolución mensual) en 'Estado de los datos'",
+      "ok": true,
+      "detail": "Estado de los datos2 facturas · fuente: demo · resolución mensual REAL Dato tomado directamente de una factura mensual introducida. ESTIMADO Valor derivado de t"
+    },
+    {
+      "check": "PILOT-03 última factura coincide con la API",
+      "ok": true,
+      "detail": "225.0 kWh"
+    },
+    {
+      "check": "PILOT-03 alerta 'Advertencia' visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-03 proyección 270 kWh visible con PROYECTADO",
+      "ok": true,
+      "detail": "270 kWh"
+    },
+    {
+      "check": "PILOT-04 etiquetas: cada métrica no-REAL de la API lleva su etiqueta",
+      "ok": true,
+      "detail": "API {'ESTIMATED': 2, 'PROJECTED': 2} · pantalla {'PROJECTED': 5, 'REAL': 3, 'ESTIMATED': 2} · textos {'PROJECTED': 'PROYECTADO', 'REAL': 'REAL', 'ESTIMATED': 'ESTIMADO'}"
+    },
+    {
+      "check": "PILOT-04 etiquetas en español (ESTIMADO/PROYECTADO, nunca ESTIMATED/PROJECTED)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-04 sin datos horarios",
+      "ok": true,
+      "detail": "resolution=monthly match=None"
+    },
+    {
+      "check": "PILOT-04 leyenda de calidad (REAL/ESTIMADO/PROYECTADO, resolución mensual) en 'Estado de los datos'",
+      "ok": true,
+      "detail": "Estado de los datos3 facturas · fuente: demo · resolución mensual REAL Dato tomado directamente de una factura mensual introducida. ESTIMADO Valor derivado de t"
+    },
+    {
+      "check": "PILOT-04 última factura coincide con la API",
+      "ok": true,
+      "detail": "410.0 kWh"
+    },
+    {
+      "check": "PILOT-04 sin alerta (la API no envía alerta)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-04 proyección 366.67 kWh visible con PROYECTADO",
+      "ok": true,
+      "detail": "366.67 kWh"
+    },
+    {
+      "check": "PILOT-05 etiquetas: cada métrica no-REAL de la API lleva su etiqueta",
+      "ok": true,
+      "detail": "API {'ESTIMATED': 2, 'PROJECTED': 2} · pantalla {'PROJECTED': 5, 'REAL': 2, 'ESTIMATED': 2} · textos {'PROJECTED': 'PROYECTADO', 'REAL': 'REAL', 'ESTIMATED': 'ESTIMADO'}"
+    },
+    {
+      "check": "PILOT-05 etiquetas en español (ESTIMADO/PROYECTADO, nunca ESTIMATED/PROJECTED)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-05 sin datos horarios",
+      "ok": true,
+      "detail": "resolution=monthly match=None"
+    },
+    {
+      "check": "PILOT-05 leyenda de calidad (REAL/ESTIMADO/PROYECTADO, resolución mensual) en 'Estado de los datos'",
+      "ok": true,
+      "detail": "Estado de los datos2 facturas · fuente: demo · resolución mensual REAL Dato tomado directamente de una factura mensual introducida. ESTIMADO Valor derivado de t"
+    },
+    {
+      "check": "PILOT-05 última factura coincide con la API",
+      "ok": true,
+      "detail": "240.0 kWh"
+    },
+    {
+      "check": "PILOT-05 sin alerta (la API no envía alerta)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "PILOT-05 proyección 260 kWh visible con PROYECTADO",
+      "ok": true,
+      "detail": "260 kWh"
+    },
+    {
+      "check": "título /dashboard = 'Inicio · Energy RD'",
+      "ok": true,
+      "detail": "Inicio · Energy RD"
+    },
+    {
+      "check": "/dashboard sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /dashboard: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /consumption = 'Consumo · Energy RD'",
+      "ok": true,
+      "detail": "Consumo · Energy RD"
+    },
+    {
+      "check": "/consumption sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /consumption: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /readings = 'Lecturas · Energy RD'",
+      "ok": true,
+      "detail": "Lecturas · Energy RD"
+    },
+    {
+      "check": "/readings sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /readings: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /bills = 'Facturas · Energy RD'",
+      "ok": true,
+      "detail": "Facturas · Energy RD"
+    },
+    {
+      "check": "/bills sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /bills: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /bills/new = 'Nueva factura · Energy RD'",
+      "ok": true,
+      "detail": "Nueva factura · Energy RD"
+    },
+    {
+      "check": "/bills/new sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /bills/new: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /bills/91a727f4-fdaa-4f19-8555-7591b857700b = 'Detalle de factura · Energy RD'",
+      "ok": true,
+      "detail": "Detalle de factura · Energy RD"
+    },
+    {
+      "check": "/bills/91a727f4-fdaa-4f19-8555-7591b857700b sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /bills/91a727f4-fdaa-4f19-8555-7591b857700b: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /goal = 'Meta mensual · Energy RD'",
+      "ok": true,
+      "detail": "Meta mensual · Energy RD"
+    },
+    {
+      "check": "/goal sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /goal: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /equipment = 'Equipos · Energy RD'",
+      "ok": true,
+      "detail": "Equipos · Energy RD"
+    },
+    {
+      "check": "/equipment sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /equipment: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /alerts = 'Alertas · Energy RD'",
+      "ok": true,
+      "detail": "Alertas · Energy RD"
+    },
+    {
+      "check": "/alerts sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /alerts: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /profile = 'Perfil · Energy RD'",
+      "ok": true,
+      "detail": "Perfil · Energy RD"
+    },
+    {
+      "check": "/profile sin datos horarios inventados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "axe /profile: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "título /login",
+      "ok": true,
+      "detail": "Iniciar sesión · Energy RD"
+    },
+    {
+      "check": "axe /login: sin violaciones serias/críticas",
+      "ok": true,
+      "detail": "0 violaciones"
+    },
+    {
+      "check": "Tab 1 enfoca 'Saltar al contenido' y es visible",
+      "ok": true,
+      "detail": "['Saltar al contenido', 158.140625]"
+    },
+    {
+      "check": "Enter en el skip link lleva el foco a <main>",
+      "ok": true,
+      "detail": "MAIN"
+    },
+    {
+      "check": "selector de vivienda: cambia a PILOT-02 sin datos de PILOT-01",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "selector de período: 'Resumen histórico' y datos de julio desde la API",
+      "ok": true,
+      "detail": "latest=2026-07-01..2026-07-31 kwh=280.00"
+    },
+    {
+      "check": "comparación del período coincide con la API",
+      "ok": true,
+      "detail": "{\"previous_bill_id\": \"ed14e232-c500-4f69-8c6e-630fed7b5b3a\", \"previous_period_start\": \"2026-06-01\", \"previous_period_end\": \"2026-06-30\", \"kwh_delta\": \"30.00\", \"kwh_pct\": \"12.00\", \"amount_delta\": \"410."
+    },
+    {
+      "check": "formulario con errores: el foco va al primer campo inválido",
+      "ok": true,
+      "detail": "['kwh', 'true']"
+    },
+    {
+      "check": "kWh negativo rechazado en el cliente y enfocado",
+      "ok": true,
+      "detail": "kwh"
+    },
+    {
+      "check": "tras la factura: alerta crítica +66.67 % (240 → 400 kWh)",
+      "ok": true,
+      "detail": "El consumo subió 66.67% frente al período anterior (240.00 kWh → 400.00 kWh)."
+    },
+    {
+      "check": "tras la factura: proyección 466.67 kWh PROYECTADO",
+      "ok": true,
+      "detail": "466.67"
+    },
+    {
+      "check": "la alerta aparece en /alerts",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "limpieza: PILOT-05 vuelve a 2 facturas",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "loading: esqueleto con role=status mientras la API responde",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "error HTTP en /dashboard: 'Reintentar', sin texto del servidor",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "errores independientes: el selector de período (facturas) sigue funcionando con /dashboard en 500",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "errores independientes: el contador de alertas sigue visible con /dashboard en 500",
+      "ok": true,
+      "detail": "1"
+    },
+    {
+      "check": "Reintentar recupera el dashboard",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "errores independientes: /alerts en 503 no rompe el dashboard",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "empty: vivienda sin facturas muestra 'Aún no hay facturas' con acción",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "API apagada: error con 'Reintentar'",
+      "ok": true,
+      "detail": "apareció en 1.3 s"
+    },
+    {
+      "check": "API encendida de nuevo: Reintentar recupera sin recargar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "375 px: sin desborde horizontal",
+      "ok": true,
+      "detail": "scrollWidth=375"
+    },
+    {
+      "check": "sin errores JS no capturados en la página",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "axe": {
+    "/dashboard": [],
+    "/consumption": [],
+    "/readings": [],
+    "/bills": [],
+    "/bills/new": [],
+    "/bills/91a727f4-fdaa-4f19-8555-7591b857700b": [],
+    "/goal": [],
+    "/equipment": [],
+    "/alerts": [],
+    "/profile": [],
+    "/login": []
+  }
+}
