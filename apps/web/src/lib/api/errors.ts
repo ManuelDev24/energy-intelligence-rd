@@ -3,7 +3,8 @@ import { ApiError } from "@energyrd/api-client";
 // Mensajes de error de la UI de fase 2. Se eligen SOLO por estado, código y NOMBRE de campo:
 // el texto que venga de la API (`message`, `detail`, `msg`) nunca se muestra. Funciona igual con
 // el BFF (auth activada) y en el piloto local (API directa, que sí enviaría su propio texto).
-export type ErrorContext = "load" | "consumption" | "reading-create" | "reading-delete" | "goal-save" | "bill-items-load" | "bill-items-save" | "bill-assess";
+export type ErrorContext = "load" | "consumption" | "reading-create" | "reading-delete" | "goal-save" | "bill-items-load" | "bill-items-save" | "bill-assess"
+  | "bill-save" | "bill-delete" | "ocr" | "equipment-save" | "alert-update";
 
 /** ERD-BILL-02: en el piloto (sin auth) la API local puede no tener /items ni /validate todavía. */
 export function billDetailUnavailable(error: unknown, authEnabled: boolean): boolean {
@@ -18,8 +19,17 @@ export function userMessage(error: unknown, context: ErrorContext): string {
   if (status === 0) return "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.";
   if (status === 401) return "La sesión venció. Inicia sesión de nuevo.";
   if (status === 403) return "No tienes permiso para esta operación.";
-  if (status === 404) return context === "reading-delete" ? "La lectura ya no existe. Actualiza la lista." : "No encontrado o sin acceso.";
-  if (status === 409) return context === "reading-create" ? "Ya existe una lectura con esa fecha y hora." : "La operación entra en conflicto con datos existentes.";
+  if (status === 404) {
+    if (context === "reading-delete") return "La lectura ya no existe. Actualiza la lista.";
+    if (context === "bill-delete") return "La factura ya no existe. Actualiza la lista.";
+    if (context === "alert-update") return "La alerta ya no existe. Actualiza la lista.";
+    return "No encontrado o sin acceso.";
+  }
+  if (status === 409) {
+    if (context === "reading-create") return "Ya existe una lectura con esa fecha y hora.";
+    if (context === "bill-save") return "Ya existe una factura que se solapa con ese período.";
+    return "La operación entra en conflicto con datos existentes.";
+  }
   if (status === 422) {
     if (context === "reading-create") {
       if ("read_at" in fieldErrors) return "Revisa la fecha y hora: la lectura no puede estar en el futuro.";
@@ -35,6 +45,9 @@ export function userMessage(error: unknown, context: ErrorContext): string {
       return "Revisa los conceptos: máximo 100, con concepto, tipo y monto válidos.";
     }
     if (context === "goal-save") return "Revisa la meta: valores mayores que 0, con hasta 2 decimales, y al menos una meta.";
+    if (context === "bill-save") return "Revisa los datos de la factura.";
+    if (context === "ocr") return "No se pudo leer la imagen (JPG, PNG o HEIC de hasta 10 MB). Puedes registrar la factura manualmente.";
+    if (context === "equipment-save") return "Revisa los datos del equipo.";
     return "Datos inválidos. Revisa los campos marcados.";
   }
   if (status === 429) return "Demasiados intentos. Espera un momento e inténtalo de nuevo.";

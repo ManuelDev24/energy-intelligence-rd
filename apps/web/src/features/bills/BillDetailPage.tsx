@@ -7,7 +7,7 @@ import { QueryState } from "@/components/query-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { billDetailUnavailable } from "@/lib/api/errors";
+import { billDetailUnavailable, userMessage } from "@/lib/api/errors";
 import { useBill, useBillItems, useDeleteBill, useUpdateBill } from "@/lib/api/hooks";
 import type { Bill } from "@/lib/api/schemas";
 import { formatDop, formatNumber, formatPeriod } from "@/lib/format";
@@ -58,7 +58,7 @@ export default function BillDetailPage() {
             initial={toFormValues(data)}
             submitLabel="Guardar cambios"
             pending={update.isPending}
-            serverError={update.error?.message}
+            serverError={update.error ? userMessage(update.error, "bill-save") : undefined}
             onSubmit={(value) => update.mutate(value, { onSuccess: () => router.push("/bills") })}
             onCancel={() => setEditing(false)}
           />
@@ -83,7 +83,7 @@ export default function BillDetailPage() {
             </Card>
             {remove.error ? (
               <p role="alert" className="text-sm text-red-600">
-                {remove.error.message}
+                {userMessage(remove.error, "bill-delete")}
               </p>
             ) : null}
             <div className="flex gap-2">

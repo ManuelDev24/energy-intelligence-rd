@@ -11,6 +11,7 @@ import { useBills, useCreateBill, useOcrBill } from "@/lib/api/hooks";
 import type { OcrDraft } from "@/lib/api/schemas";
 import { emptyBillForm } from "@/lib/bill-form";
 import { OCR_FIELDS, ocrDraftToBillForm } from "@/lib/bill-ocr";
+import { userMessage } from "@/lib/api/errors";
 import { useSession } from "@/lib/session";
 
 const confidenceLabel = { high: "Alta", inferred: "Inferida", none: "No detectada" } as const;
@@ -53,7 +54,7 @@ export default function NewBillPage() {
           </label>
           <span className="text-xs text-muted-foreground">JPG, PNG o HEIC</span>
         </div>
-        {ocr.error ? <p role="alert" className="mt-3 text-sm text-red-600">{ocr.error.message}</p> : null}
+        {ocr.error ? <p role="alert" className="mt-3 text-sm text-red-600">{userMessage(ocr.error, "ocr")}</p> : null}
       </Card>
 
       {draft ? (
@@ -88,7 +89,7 @@ export default function NewBillPage() {
                 initial={initial}
                 submitLabel="Confirmar y guardar factura"
                 pending={create.isPending}
-                serverError={create.error?.message}
+                serverError={create.error ? userMessage(create.error, "bill-save") : undefined}
                 onSubmit={(value) => create.mutate(value, { onSuccess: () => router.push("/dashboard") })}
                 onCancel={() => router.push("/bills")}
               />

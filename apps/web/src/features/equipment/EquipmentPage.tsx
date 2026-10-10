@@ -20,6 +20,7 @@ import { Field } from "@/components/ui/field";
 import { useDeleteEquipment, useEquipment, useEstimate, useSaveEquipment } from "@/lib/api/hooks";
 import type { Equipment } from "@/lib/api/schemas";
 import { formatMetric } from "@/lib/format";
+import { userMessage } from "@/lib/api/errors";
 import { useSession } from "@/lib/session";
 import { useFocusFirstInvalid } from "@/lib/use-focus-first-invalid";
 
@@ -78,7 +79,7 @@ function EquipmentForm({
         ) : null}
         {save.isError ? (
           <p role="alert" className="text-sm text-danger sm:col-span-2">
-            {save.error.message}
+            {userMessage(save.error, "equipment-save")}
           </p>
         ) : null}
         <div className="flex gap-2 sm:col-span-2">

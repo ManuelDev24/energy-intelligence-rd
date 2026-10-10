@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
+import { userMessage } from "@/lib/api/errors";
 
 interface QueryStateProps {
   isLoading: boolean;
@@ -11,7 +12,7 @@ interface QueryStateProps {
   onRetry?: () => void;
   /** Forma del contenido mientras carga (evita saltos de layout). Por defecto, 3 bloques. */
   skeleton?: ReactNode;
-  /** Mensaje local que reemplaza al del error (pantallas que nunca muestran texto de la API). */
+  /** Mensaje local para el error. Si falta, se elige por estado HTTP; el texto de la API nunca se muestra. */
   errorMessage?: string;
   children: ReactNode;
 }
@@ -36,6 +37,6 @@ export function QueryState({ isLoading, error, onRetry, skeleton, errorMessage, 
       </div>
     );
   }
-  if (error) return <ErrorState message={errorMessage ?? error.message} onRetry={onRetry} />;
+  if (error) return <ErrorState message={errorMessage ?? userMessage(error, "load")} onRetry={onRetry} />;
   return <>{children}</>;
 }
