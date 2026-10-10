@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.api.auth_deps import auth_required, current_user
 from app.api.auth_abuse import forgot_budget, login_budget, register_budget, refresh_budget, reset_budget
 from app.database import get_db
-from app.schemas.auth import (AccountDeletionIn, Credentials, PasswordForgotAccepted, PasswordForgotIn, PasswordResetIn,
-                              RefreshIn, RegisterIn, TokensOut, UserOut)
+from app.schemas.auth import (AccountDeletionIn, Credentials, PasswordChangeIn, PasswordForgotAccepted,
+                              PasswordForgotIn, PasswordResetIn, RefreshIn, RegisterIn, TokensOut, UserOut)
 from app.services import account, auth, email, password_recovery
 
 router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(auth_required)])
@@ -65,6 +65,15 @@ def forgot_password(payload: PasswordForgotIn, request: Request, background: Bac
         background.add_task(email.deliver, message)
     response.headers["Cache-Control"] = "no-store"
     return PasswordForgotAccepted(status="accepted")
+
+
+# ERD-AUTH-06: cambio con sesión iniciada. Los intentos fallidos gastan el presupuesto de /login.
+@router.post("/password/change", response_model=TokensOut)
+def change_password(payload: PasswordChangeIn, response: Response, user=Depends(_authenticated_login_budget),
+                    db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return account.change_password(db, user, payload.current_password.get_secret_value(),
+                                   payload.new_password.get_secret_value())
 
 
 @router.post("/password/reset", status_code=204, dependencies=[Depends(reset_budget)])

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, field_validator, model_validator
 
 
 class Credentials(BaseModel):
@@ -104,3 +104,22 @@ class PasswordResetIn(BaseModel):
     @classmethod
     def validate_password_encoding(cls, value):
         return Credentials.validate_password_encoding(value)
+
+
+class PasswordChangeIn(BaseModel):
+    """ERD-AUTH-06: cambio con sesión iniciada; reautentica con la contraseña actual."""
+    model_config = ConfigDict(extra="forbid")
+    current_password: SecretStr = Field(min_length=12, max_length=128)
+    new_password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("current_password", "new_password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)
+
+    @model_validator(mode="after")
+    def require_different_password(self):
+        # Compara solo lo enviado por el cliente: no revela nada de la contraseña almacenada.
+        if self.current_password.get_secret_value() == self.new_password.get_secret_value():
+            raise ValueError("La nueva contraseña debe ser distinta de la actual")
+        return self

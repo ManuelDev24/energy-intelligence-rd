@@ -69,3 +69,15 @@ describe('ERD-AUTH-05 password recovery contracts', () => {
     }
   });
 });
+
+describe('ERD-AUTH-06 password change contract', () => {
+  it('requires bounded current and new passwords and no extra fields', async () => {
+    const { PasswordChangeInSchema } = await import('./index');
+    const body = { current_password: 'x'.repeat(12), new_password: 'y'.repeat(12) };
+    expect(PasswordChangeInSchema.safeParse(body).success).toBe(true);
+    for (const bad of [{ ...body, current_password: 'short' }, { ...body, new_password: 'x'.repeat(129) },
+      { new_password: body.new_password }, { current_password: body.current_password }]) {
+      expect(PasswordChangeInSchema.safeParse(bad).success).toBe(false);
+    }
+  });
+});

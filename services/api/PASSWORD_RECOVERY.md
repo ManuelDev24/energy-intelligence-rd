@@ -111,3 +111,19 @@ arrancar (el validador impide arrancar staging/producción sin ellas).
 sustituidos, cooldown, presupuestos, revocación total, 400 único, payload estricto/UTF-8, concurrencia,
 modo piloto, logs sin secretos, cascada, purga, migración 0013), `tests/test_email.py` (Resend con
 `httpx.MockTransport`, sin red), `tests/test_config.py`, `tests/test_authorization.py`.
+
+## Cambio de contraseña con sesión iniciada (ERD-AUTH-06)
+
+`POST /api/v1/auth/password/change` `{current_password, new_password}` con `Authorization: Bearer`.
+
+- `200` con `TokensOut` y `Cache-Control: no-store`: contraseña nueva (Argon2id), **todas** las sesiones anteriores
+  revocadas (incluida la que hizo la petición) y una sesión nueva para el cliente. Los enlaces de recuperación pendientes
+  de la cuenta se invalidan en la misma transacción.
+- `403 reauthentication_failed` si la contraseña actual no coincide (mismo código que el borrado de cuenta). Los intentos
+  fallidos gastan el presupuesto de `/login`, pero solo tras validar el token: una petición sin sesión no puede agotarlo.
+- `422` si la nueva contraseña no cumple 12–128 caracteres/UTF-8, es igual a la actual, o hay campos extra.
+- `401` sin token válido; `404` en modo piloto (`AUTH_ENABLED=false`).
+
+El hash nuevo se calcula fuera de los bloqueos; si la contraseña cambió entre la verificación y el bloqueo de la fila
+(otro cambio o un reset), la petición falla con `403` en lugar de pisar el cambio.
+No lo expone todavía `@energyrd/api-client` porque devuelve tokens: lo cablean el BFF web y el cliente móvil en ERD-PROF-01.

@@ -499,6 +499,12 @@ export const PasswordResetInSchema = z.object({
 });
 export type PasswordResetIn = z.infer<typeof PasswordResetInSchema>;
 
+export const PasswordChangeInSchema = z.object({
+  "current_password": z.string().min(12).max(128),
+  "new_password": z.string().min(12).max(128)
+});
+export type PasswordChangeIn = z.infer<typeof PasswordChangeInSchema>;
+
 export const OcrFieldSchema = z.object({
   "value": z.union([z.string(), z.null()]),
   "confidence": z.enum(["high", "inferred", "none"])

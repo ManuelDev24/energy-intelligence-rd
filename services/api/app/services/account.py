@@ -13,8 +13,8 @@ from sqlalchemy import delete, func, select, update
 
 from app.models import Home
 from app.models.audit import AuditEvent
-from app.models.auth import AuthSession, HomeMember, User
-from app.services.auth import now, unauthorized, verify_password
+from app.models.auth import AuthSession, HomeMember, PasswordResetToken, User
+from app.services.auth import new_session, now, password_hasher, unauthorized, verify_password
 from app.services.errors import ApplicationError, Forbidden
 from app.services.transactions import require_home, write_transaction
 
@@ -86,3 +86,31 @@ def delete_account(db, user, password):
         db.flush()  # the session factory has autoflush disabled
         # Sessions and refresh tokens cascade with the user row.
         db.execute(delete(User).where(User.id == user.id))
+
+
+def change_password(db, user, current_password, new_password):
+    """ERD-AUTH-06. Reautentica, cambia el hash, cierra todas las sesiones y emite una nueva.
+
+    Los enlaces de recuperación pendientes mueren con el cambio, igual que las sesiones. El hash nuevo se
+    calcula fuera de los bloqueos (Argon2 es lento) y se descarta si la contraseña cambió mientras tanto.
+    """
+    verified_hash = user.password_hash
+    if not verify_password(user, current_password):
+        raise ReauthenticationFailed(str(unauthorized()))
+    new_hash = password_hasher.hash(new_password)
+    with write_transaction(db):
+        locked = db.scalar(select(User).where(User.id == user.id).with_for_update()
+                           .execution_options(populate_existing=True))
+        if locked is None:
+            raise unauthorized()
+        if not locked.active or locked.password_hash != verified_hash:
+            raise ReauthenticationFailed(str(unauthorized()))
+        current = now()
+        locked.password_hash = new_hash
+        db.execute(update(PasswordResetToken).where(PasswordResetToken.user_id == locked.id,
+                                                    PasswordResetToken.used_at.is_(None))
+                   .values(used_at=current))
+        db.execute(update(AuthSession).where(AuthSession.user_id == locked.id, AuthSession.revoked_at.is_(None))
+                   .values(revoked_at=current))
+        tokens = new_session(db, locked)
+    return tokens
