@@ -579,6 +579,21 @@ export const OcrDraftSchema = z.object({
 });
 export type OcrDraft = z.infer<typeof OcrDraftSchema>;
 
+export const OcrJobOutSchema = z.object({
+  "document_id": z.string().uuid(),
+  "status": z.enum(["pending", "processing", "done", "failed"]),
+  "attempts": z.number().finite().int(),
+  "method": z.union([z.enum(["text_layer", "ocr", "mixed"]), z.null()]),
+  "pages_read": z.union([z.number().finite().int(), z.null()]),
+  "pages_total": z.union([z.number().finite().int(), z.null()]),
+  "draft": z.union([OcrDraftSchema, z.null()]),
+  "error_code": z.union([z.enum(["unreadable", "protected_pdf", "file_missing", "engine_error"]), z.null()]),
+  "error_message": z.union([z.string(), z.null()]),
+  "created_at": z.string().datetime({ offset: true }),
+  "finished_at": z.union([z.string().datetime({ offset: true }), z.null()])
+});
+export type OcrJobOut = z.infer<typeof OcrJobOutSchema>;
+
 export const AnomalyRecordSchema = z.object({
   "home_id": z.string().uuid(),
   "granularity": z.enum(["day", "month"]),

@@ -1,4 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import type { BillImage } from '@energyrd/api-client';
+import { isOcrActive } from '@energyrd/api-contracts';
 
 import { api } from './client';
 import { authSession } from '../auth/runtime';
@@ -20,6 +23,8 @@ export const keys = {
   equipmentItem: (homeId: string, id: string) => [...scope(), 'equipment', homeId, id] as const,
   estimate: (homeId: string) => [...scope(), 'estimate', homeId] as const,
   alerts: (homeId: string) => [...scope(), 'alerts', homeId] as const,
+  /** ERD-OCR-PROD: fuera de la clave de facturas; guardar la factura no debe relanzar el sondeo. */
+  ocrJob: (homeId: string, documentId: string) => [...scope(), 'ocr-job', homeId, documentId] as const,
   /** Fase 2: lecturas, consumo, meta y progreso (mismo alcance por cuenta). */
   get phase2() { return phase2Keys(scope()); },
 };
@@ -157,4 +162,38 @@ export function useSaveGoal(homeId: string) {
     mutationFn: (input: GoalInput) => api.putGoal(homeId, input),
     onSuccess: () => invalidateAll(qc, goalInvalidations(keys.phase2, homeId)),
   });
+}
+
+
+export const OCR_POLL_MS = 2000;
+/** Pasado este tiempo sin terminar se avisa (sin cortar la espera): puede no haber un worker activo. */
+export const OCR_SLOW_AFTER_MS = 60_000;
+
+/**
+ * ERD-OCR-PROD: sube la foto o el PDF, consulta el estado cada 2 s mientras esté pendiente/procesando y se detiene al
+ * terminar (done/failed). El borrador solo llega al terminar; la factura nunca se crea aquí.
+ */
+export function useBillOcr(homeId: string | null, pollMs = OCR_POLL_MS) {
+  const qc = useQueryClient();
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState(0);
+  const id = homeId ?? 'none';
+  const start = useMutation({
+    mutationFn: (file: BillImage) => api.startOcrJob(homeId as string, file, 'mobile'),
+    onSuccess: (job) => { qc.setQueryData(keys.ocrJob(id, job.document_id), job); setStartedAt(Date.now()); setDocumentId(job.document_id); },
+  });
+  const poll = useQuery({
+    queryKey: keys.ocrJob(id, documentId ?? 'none'),
+    queryFn: ({ signal }) => api.getOcrJob(homeId as string, documentId as string, signal),
+    enabled: allowed() && !!homeId && documentId !== null,
+    retry: retryPolicy,
+    refetchInterval: (query) => (query.state.data && !isOcrActive(query.state.data) ? false : pollMs),
+    gcTime: 0,
+  });
+  const retry = useMutation({
+    mutationFn: () => api.retryOcrJob(homeId as string, documentId as string),
+    onSuccess: (job) => { qc.setQueryData(keys.ocrJob(id, job.document_id), job); setStartedAt(Date.now()); },
+  });
+  const reset = () => { setDocumentId(null); start.reset(); retry.reset(); };
+  return { start, retry, reset, job: poll.data ?? start.data ?? null, documentId, startedAt, pollError: poll.error };
 }

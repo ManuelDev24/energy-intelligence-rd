@@ -395,6 +395,8 @@ def test_confirming_the_bill_attaches_the_original_and_drops_the_draft(ocr_env, 
     assert meta['bill_id'] == created.json()['id'] and meta['retention_until'] is None
     after = poll(client, alice, home, doc).json()
     assert after['status'] == 'done' and after['draft'] is None  # el borrador ya no hace falta
+    with engine.connect() as c:  # y en la base es NULL de SQL, no el JSON «null»
+        assert c.execute(text('SELECT draft IS NULL FROM document_ocr WHERE document_id = :d'), {'d': doc}).scalar() is True
     # el mismo original no se puede ligar a una segunda factura
     again = client.post(f'/api/v1/homes/{home}/bills', headers=bearer(alice), json={**payload, 'period_start': '2026-09-01', 'period_end': '2026-09-30'})
     assert again.status_code == 404

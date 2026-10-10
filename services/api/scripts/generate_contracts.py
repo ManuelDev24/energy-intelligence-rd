@@ -23,7 +23,7 @@ from app.schemas.goal import GoalIn, GoalOut, GoalProgressOut
 from app.schemas.contract import ContractIn, ContractOut
 from app.schemas.tariff import TariffOut
 from app.schemas.bill_detail import BillItemsReplace, BillItemsOut, BillAssessment
-from app.schemas.ocr import OcrDraft
+from app.schemas.ocr import OcrDraft, OcrJobOut
 from app.schemas.anomaly import AnomalyRecord
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -33,7 +33,7 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
           PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
-          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, OcrDraft, AnomalyRecord]
+          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, OcrDraft, OcrJobOut, AnomalyRecord]
 
 
 def generate():

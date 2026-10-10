@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { getApi } from "./index";
+import { isOcrActive } from "@energyrd/api-contracts";
 import { useSession } from "@/lib/session";
 import type { AlertStatus, BillInput, BillItemsReplace, Distributor, EquipmentInput, GoalInput, Granularity, ReadingInput } from "./schemas";
 
@@ -30,6 +32,8 @@ export const keys = {
   goal: (homeId: string) => ["homes", homeId, "goal"] as const,
   goalProgress: (homeId: string) => ["homes", homeId, "goal", "progress"] as const,
   // Pliegos publicados (SIE): no dependen de la vivienda.
+  // ERD-OCR-PROD: fuera del árbol de la vivienda a propósito: guardar la factura invalida la vivienda y no debe relanzar el sondeo.
+  ocrJob: (homeId: string, documentId: string) => ["ocr-job", homeId, documentId] as const,
   tariffs: (distributor: Distributor | undefined, on?: string) => ["tariffs", distributor ?? "all", on ?? "today"] as const,
 };
 
@@ -119,8 +123,37 @@ function useHomeMutation<V, R>(homeId: string, fn: (v: V) => Promise<R>) {
   return useMutation({ mutationFn: fn, onSuccess: () => invalidateHome(qc, homeId) });
 }
 
-export const useOcrBill = (homeId: string) =>
-  useMutation({ mutationFn: (file: File) => getApi().ocrBill(homeId, file) });
+export const OCR_POLL_MS = 2000;
+/** Pasado este tiempo sin terminar se avisa (sin cortar la espera): puede no haber un worker activo. */
+export const OCR_SLOW_AFTER_MS = 60_000;
+
+/**
+ * ERD-OCR-PROD: sube la foto o el PDF, sondea el estado cada 2 s mientras esté `pending`/`processing` y se detiene en
+ * `done`/`failed`. El borrador solo llega cuando termina; la factura nunca se crea aquí.
+ */
+export function useBillOcr(homeId: string, pollMs = OCR_POLL_MS) {
+  const qc = useQueryClient();
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState(0);
+  const start = useMutation({
+    mutationFn: (file: File) => getApi().startOcrJob(homeId, file, "web"),
+    onSuccess: (job) => { qc.setQueryData(keys.ocrJob(homeId, job.document_id), job); setStartedAt(Date.now()); setDocumentId(job.document_id); },
+  });
+  const poll = useQuery({
+    queryKey: keys.ocrJob(homeId, documentId ?? ""),
+    queryFn: ({ signal }) => getApi().getOcrJob(homeId, documentId!, signal),
+    enabled: enabled(homeId) && documentId !== null,
+    refetchInterval: (query) => (query.state.data && !isOcrActive(query.state.data) ? false : pollMs),
+    gcTime: 0,
+  });
+  const retry = useMutation({
+    mutationFn: () => getApi().retryOcrJob(homeId, documentId!),
+    onSuccess: (job) => { qc.setQueryData(keys.ocrJob(homeId, job.document_id), job); setStartedAt(Date.now()); },
+  });
+  const job = poll.data ?? start.data ?? null;
+  const reset = () => { setDocumentId(null); start.reset(); retry.reset(); };
+  return { start, retry, reset, job, documentId, pollError: poll.error, startedAt };
+}
 
 export const useCreateBill = (homeId: string) =>
   useHomeMutation(homeId, (input: BillInput) => getApi().createBill(homeId, input));

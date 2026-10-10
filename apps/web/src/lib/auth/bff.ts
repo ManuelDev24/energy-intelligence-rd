@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -164,6 +164,9 @@ function phase2Route(path: string, method: string): Phase2Route | null {
   if (new RegExp(`^/homes/${UUID}/dashboard$`).test(path)) return method === "GET"
     ? { response: DashboardSchema, query: { bill_id: { pattern: v => z.string().uuid().safeParse(v).success } } }
     : null;
+  const job = path.match(new RegExp(`^/homes/${UUID}/bills/ocr-jobs/${UUID}(/retry)?$`));
+  if (job) return job[1] ? (method === "POST" ? { response: OcrJobSchema, body: z.object({}).strict(), query: {} } : null)
+    : method === "GET" ? { response: OcrJobSchema, query: {} } : null;
   const bill = billDetailRoute(path, method);
   if (bill || new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path)) return bill;
   if (new RegExp(`^/homes/${UUID}/contract$`).test(path)) return method === "GET" ? { response: ContractOutSchema, query: {} } : method === "PUT" ? { response: ContractOutSchema, body: ContractInSchema.strict(), query: {} } : null;
@@ -262,7 +265,7 @@ const FIELD_MESSAGES: Record<string, string> = {
   token: "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.",
   new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
 };
-const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|http_[1-5]\d\d)$/;
+const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
@@ -279,6 +282,10 @@ function statusMessage(status: number, path: string, code?: unknown) {
   if (status === 429 && code === "invitation_rate_limited") return "Has enviado demasiadas invitaciones hoy. Inténtalo mañana.";
   if (status === 422 && /\/invitations$/.test(path)) return "Indica un correo válido que no sea el tuyo.";
   if (status === 403 && /\/(members|invitations|transfer-ownership)/.test(path) && code !== "reauthentication_failed") return "Solo el propietario de la vivienda puede hacer esto.";
+  // ERD-OCR-PROD
+  if (status === 409 && code === "document_quota_exceeded") return "Ya hay varias facturas en proceso o sin confirmar en esta vivienda. Espera a que terminen o confirma o elimina alguna.";
+  if (status === 503 && code === "storage_unavailable") return "La lectura de facturas no está disponible en este momento. Puedes registrar la factura manualmente.";
+  if (status === 422 && /\/bills\/ocr(-jobs)?$/.test(path)) return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC) o un PDF.";
   // Fase 2: mensajes propios por ruta (el texto de la API nunca se reenvía).
   if (status === 409 && /\/readings$/.test(path)) return "Ya existe una lectura con esa fecha y hora.";
   if (status === 422 && code === "invalid_input" && /\/readings$/.test(path)) return "La lectura debe ser mayor o igual que la anterior y menor o igual que la siguiente.";
@@ -321,6 +328,8 @@ function safeError(body: unknown, status: number, path: string) {
 // ERD-BILL-LIVE-QA: única ruta multipart. La foto va tal cual a la API (que valida tipo y tamaño de imagen);
 // aquí solo se acota el total (10 MiB de imagen + sobre multipart) para no leer cuerpos arbitrarios en memoria.
 const OCR_MAX_BYTES = 10 * 1024 * 1024 + 4096;
+// ERD-OCR-PROD: la lectura asíncrona también acepta PDF (hasta 20 MiB); la API valida el tipo real por los bytes.
+const OCR_JOB_MAX_BYTES = 20 * 1024 * 1024 + 4096;
 const OCR_TIMEOUT_MS = 45_000; // Tesseract tarda más que una consulta normal
 const MULTIPART = /^multipart\/form-data;\s*boundary=[^\s;]+$/i;
 /** Server-only boundary. No refresh endpoint: expiry always requires a fresh login. */
@@ -330,11 +339,13 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const path = url.pathname.slice("/api/bff".length);
   const method = request.method;
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) return reply({ detail: "Método no permitido." }, 405);
-  const ocr = method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr$`).test(path);
+  const ocrJobStart = method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr-jobs$`).test(path);
+  const ocr = ocrJobStart || (method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr$`).test(path));
+  const ocrLimit = ocrJobStart ? OCR_JOB_MAX_BYTES : OCR_MAX_BYTES;
   if (method !== "GET") {
     if (request.headers.get("origin") !== config.origin || (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) return reply({ detail: "Origen no permitido." }, 403);
     if (ocr) {
-      if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: "Se requiere una imagen." }, 415);
+      if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: ocrJobStart ? "Se requiere una foto o un PDF." : "Se requiere una imagen." }, 415);
     } else if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
   }
   const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
@@ -342,7 +353,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const recovery = method === "POST" && (path === FORGOT || path === RESET);
   const passwordChange = method === "POST" && path === PASSWORD_CHANGE;
   const phase2 = auth || legal || recovery || passwordChange ? null : phase2Route(path, method);
-  const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocr ? OcrDraftSchema : phase2 ? phase2.response : domainRoute(path, method);
+  const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocrJobStart ? OcrJobSchema : ocr ? OcrDraftSchema : phase2 ? phase2.response : domainRoute(path, method);
   if (!auth && !legal && !recovery && !schema) return reply({ detail: "Ruta no permitida." }, 404);
   if (new RegExp(`^/homes/${UUID}$`).test(path) && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   if (phase2 && !phase2QueryOk(phase2, url.searchParams)) return reply({ detail: "Consulta no permitida." }, 400);
@@ -357,10 +368,10 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const logout = path === "/auth/logout";
   const deleteAccount = path === "/auth/me" && method === "DELETE";
   if (ocr) {
-    if (Number(request.headers.get("content-length") || 0) > OCR_MAX_BYTES) return reply({ detail: "Solicitud demasiado grande." }, 413);
+    if (Number(request.headers.get("content-length") || 0) > ocrLimit) return reply({ detail: "Solicitud demasiado grande." }, 413);
     try {
       const bytes = await request.arrayBuffer();
-      if (bytes.byteLength > OCR_MAX_BYTES) return reply({ detail: "Solicitud demasiado grande." }, 413);
+      if (bytes.byteLength > ocrLimit) return reply({ detail: "Solicitud demasiado grande." }, 413);
       body = bytes;
       headers["Content-Type"] = request.headers.get("content-type")!;
     } catch { return reply({ detail: "Solicitud inválida." }, 400); }
@@ -460,6 +471,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
           (url.searchParams.has("bill_id") && dashboard.latest_bill?.bill_id !== url.searchParams.get("bill_id"))) throw new Error("Mismatched dashboard");
     }
     if (parsed !== undefined && phase2 && new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path) && !ownsBill(path, parsed)) throw new Error("Mismatched bill");
+    if (parsed !== undefined && /\/bills\/ocr-jobs\/[0-9a-f-]{36}(\/retry)?$/.test(path) && (parsed as { document_id: string }).document_id !== path.split("/")[5]) throw new Error("Mismatched OCR job");
     if (parsed !== undefined && phase2 && /\/contract$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched home");
     if (parsed !== undefined && new RegExp(`^/homes/${UUID}$`).test(path) && (parsed as { id: string }).id !== path.split("/")[2]) throw new Error("Mismatched home");
     if (parsed === undefined) {

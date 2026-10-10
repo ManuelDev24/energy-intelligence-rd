@@ -1,4 +1,4 @@
-import type { OcrDraft } from '@energyrd/api-contracts';
+import { isOcrActive, type OcrDraft, type OcrJob } from '@energyrd/api-contracts';
 import type { BillInput } from '../../api/types';
 import { validateBill, type BillFormValues } from './form';
 
@@ -21,3 +21,37 @@ export function ocrDraftToBillInput(values: BillFormValues): BillInput {
 export function confidenceText(confidence: OcrDraft['kwh']['confidence']): string {
   return confidence === 'high' ? 'Alta confianza' : confidence === 'inferred' ? 'Inferido: revise' : 'No detectado';
 }
+
+/** ERD-OCR-PROD: la factura que se guarda desde un borrador lleva el id del original para ligarlo. */
+export function ocrJobBillInput(values: BillFormValues, documentId: string): BillInput {
+  return { ...ocrDraftToBillInput(values), document_id: documentId };
+}
+
+export type OcrPhase = 'idle' | 'working' | 'slow' | 'done' | 'failed';
+
+/** Qué debe mostrar la pantalla según el estado del trabajo y el tiempo que lleva (puro, sin reloj). */
+export function ocrPhase(job: OcrJob | null, busy: boolean, elapsedMs: number, slowAfterMs = 60_000): OcrPhase {
+  if (job?.status === 'done' && job.draft) return 'done';
+  if (job?.status === 'failed') return 'failed';
+  if (busy || (job && isOcrActive(job))) return elapsedMs >= slowAfterMs ? 'slow' : 'working';
+  return 'idle';
+}
+
+/** Solo un fallo temporal del motor merece «Reintentar»; un archivo ilegible no mejora repitiéndolo. */
+export const canRetryOcr = (job: OcrJob | null) => job?.status === 'failed' && job.error_code === 'engine_error';
+
+const METHOD_TEXT = { text_layer: 'Leído del texto del PDF', ocr: 'Leído con reconocimiento óptico (OCR)', mixed: 'Leído del texto del PDF y con OCR' } as const;
+export function ocrSourceText(job: OcrJob): string {
+  if (!job.method) return '';
+  const pages = job.pages_total && job.pages_total > 1 ? ` (${job.pages_read} de ${job.pages_total} páginas)` : '';
+  return `${METHOD_TEXT[job.method]}${pages}.`;
+}
+
+/** Texto local por código: la pantalla nunca muestra texto que venga del servidor. */
+const ERROR_TEXT: Record<string, string> = {
+  unreadable: 'No se pudo leer el archivo. Pruebe con una foto más nítida o con el PDF original de la distribuidora.',
+  protected_pdf: 'El PDF está protegido con contraseña. Descárguelo de nuevo sin protección.',
+  file_missing: 'El archivo original ya no está disponible. Súbalo de nuevo.',
+  engine_error: 'No se pudo leer la factura en este momento. Intente de nuevo en unos minutos.',
+};
+export const ocrErrorText = (code: string | null | undefined) => ERROR_TEXT[code ?? ''] ?? 'No se pudo leer la factura.';

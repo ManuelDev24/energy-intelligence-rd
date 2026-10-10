@@ -3,7 +3,7 @@ import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
-  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, AnomaliesSchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, AnomaliesSchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
   type Distributor, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
@@ -184,6 +184,25 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       }
       return request(`${homePath(id)}/bills/ocr`, OcrDraftSchema, { method: "POST", body });
     },
+    // ERD-OCR-PROD: lectura asíncrona. startOcrJob responde 202 con el estado `pending`; se consulta con getOcrJob.
+    // Acepta fotos y PDF; el servidor decide el tipo por los bytes. Nunca crea una factura: deja un borrador.
+    startOcrJob: (id: string, file: BillImage | File, source: "web" | "mobile") => {
+      const body = new FormData();
+      if (typeof File !== "undefined" && file instanceof File) body.append("file", file);
+      else body.append("file", file as unknown as Blob);
+      body.append("source", source);
+      return request(`${homePath(id)}/bills/ocr-jobs`, OcrJobSchema, { method: "POST", body }, 202);
+    },
+    getOcrJob: (id: string, document: string, signal?: AbortSignal) =>
+      request(`${homePath(id)}/bills/ocr-jobs/${idPath(document)}`, OcrJobSchema, { signal }).then(job => {
+        if (job.document_id !== document) throw new ContractError();
+        return job;
+      }),
+    retryOcrJob: (id: string, document: string) =>
+      request(`${homePath(id)}/bills/ocr-jobs/${idPath(document)}/retry`, OcrJobSchema, write("POST", {}), 202).then(job => {
+        if (job.document_id !== document) throw new ContractError();
+        return job;
+      }),
     updateBill: (id: string, bill: string, input: BillInput) => request(`${homePath(id)}/bills/${idPath(bill)}`, BillSchema, write("PUT", input)),
     deleteBill: (id: string, bill: string) => request(`${homePath(id)}/bills/${idPath(bill)}`, z.undefined(), write("DELETE")),
     // ERD-BILL-02: detalle manual (cargos/descuentos) y evaluación de solo lectura (nunca aprueba).

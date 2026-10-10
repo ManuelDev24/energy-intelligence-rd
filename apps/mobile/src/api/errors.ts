@@ -67,9 +67,13 @@ const KNOWN_CODES = new Set([
   'reauthentication_failed', 'ownership_transfer_required',
   // ERD-SHARE-01: compartir vivienda.
   'invitation_invalid', 'invitation_pending', 'invitation_limit_reached', 'invitation_rate_limited', 'already_member',
+  // ERD-OCR-PROD: lectura de facturas.
+  'document_quota_exceeded', 'storage_unavailable',
 ]);
 /** ERD-AUTH-03: mensajes locales específicos por código, nunca el detalle del servidor. */
 const CODE_MESSAGES: Record<string, string> = {
+  document_quota_exceeded: 'Ya hay varias facturas en proceso o sin confirmar en esta vivienda. Espere a que terminen o confirme o elimine alguna.',
+  storage_unavailable: 'La lectura de facturas no está disponible en este momento. Puede ingresar la factura manualmente.',
   reauthentication_failed: 'La contraseña no es correcta. Vuelva a escribirla e intente de nuevo.',
   // Mismo código para borrar la cuenta y para salir de una vivienda (ERD-SHARE-01: la transferencia ya existe).
   ownership_transfer_required:

@@ -53,7 +53,34 @@ services:
       MIGRATE_ON_START: "false"
     entrypoint: ["alembic", "upgrade", "head"]
 
-  # Fuera del alcance del piloto (jobs/cache). No arranca por defecto:
+  # ERD-WORKER-01: ejecuta los trabajos en segundo plano (OCR de originales, mantenimiento). La cola vive en
+  # PostgreSQL (docs/ops/JOBS.md). No arranca por defecto:  docker compose --profile jobs up -d worker
+  # Sin STORAGE_* el OCR asíncrono responde 503 (el almacenamiento está deshabilitado); ver services/api/STORAGE.md.
+  # La sintaxis se validó con `docker compose --profile jobs config`; NO se levantó (no hay daemon de Docker en este entorno).
+  worker:
+    image: energy-rd-api:local
+    build: ./services/api
+    container_name: energy-worker
+    profiles: ["jobs"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-energy}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/${POSTGRES_DB:-energy_rd}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      SEED_PILOT: "false"
+      MIGRATE_ON_START: "false"
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-disabled}
+      STORAGE_ENCRYPTION_KEYS: ${STORAGE_ENCRYPTION_KEYS:-}
+      STORAGE_URL_SIGNING_KEY: ${STORAGE_URL_SIGNING_KEY:-}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
+      STORAGE_S3_ENDPOINT_URL: ${STORAGE_S3_ENDPOINT_URL:-}
+      STORAGE_S3_ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY_ID:-}
+      STORAGE_S3_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:-}
+    entrypoint: ["./docker-entrypoint.sh", "python", "-m", "app.worker"]
+
+  # Sin uso: la cola de trabajos está en PostgreSQL (ERD-WORKER-01). Se conserva por si el volumen exige Redis más adelante.
   #   docker compose --profile jobs up -d redis
   redis:
     image: redis:7-alpine

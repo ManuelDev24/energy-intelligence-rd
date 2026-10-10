@@ -75,7 +75,7 @@ class DocumentOcr(Base):
     method: Mapped[str | None] = mapped_column(String(16))
     pages_read: Mapped[int | None] = mapped_column(Integer)
     pages_total: Mapped[int | None] = mapped_column(Integer)
-    draft: Mapped[dict | None] = mapped_column(JSONB)
+    draft: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))  # None = NULL de SQL, no el JSON «null»
     error_code: Mapped[str | None] = mapped_column(String(24))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

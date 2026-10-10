@@ -1,7 +1,7 @@
 export * from "./generated";
 import {
   HomeOutSchema, BillOutSchema, DashboardOutSchema, EquipmentOutSchema,
-  EquipmentEstimateOutSchema, AlertRecordSchema, AnomalyRecordSchema, BillUpdateSchema, EquipmentInSchema, MetricSchema,
+  EquipmentEstimateOutSchema, OcrJobOutSchema, AlertRecordSchema, AnomalyRecordSchema, BillUpdateSchema, EquipmentInSchema, MetricSchema,
 } from "./generated";
 import type { z } from "zod";
 
@@ -32,8 +32,13 @@ export type AlertStatus = AlertItem["status"];
 export type Severity = AlertItem["severity"];
 // Optional readings are accepted by the API; decimal inputs are canonical strings.
 export type BillInput = Omit<z.infer<typeof BillUpdateSchema>, "reading_previous" | "reading_current">
-  & { reading_previous?: string | null; reading_current?: string | null };
+  & { reading_previous?: string | null; reading_current?: string | null; document_id?: string | null };
 export type EquipmentInput = z.infer<typeof EquipmentInSchema>;
+// ERD-OCR-PROD: lectura asíncrona de un original (foto o PDF).
+export const OcrJobSchema = OcrJobOutSchema;
+export type OcrJob = z.infer<typeof OcrJobSchema>;
+export const OCR_ACTIVE_STATUSES = ["pending", "processing"] as const;
+export const isOcrActive = (job: Pick<OcrJob, "status">) => job.status === "pending" || job.status === "processing";
 
 // ---------- Fase 2: lecturas, consumo, metas y tarifas ----------
 import {

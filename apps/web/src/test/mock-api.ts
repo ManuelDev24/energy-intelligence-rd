@@ -22,6 +22,7 @@ import {
   type Consumption,
   type Goal,
   type GoalProgress,
+  type OcrJob,
   type Reading,
 } from "@/lib/api/schemas";
 import { ApiError, type Api } from "@/lib/api/types";
@@ -163,6 +164,25 @@ const dashboardWithoutProjection = (home: Home): Dashboard => ({
   quality_legend: DASHBOARD_A.quality_legend,
 });
 
+export const OCR_DOC = "99999999-9999-4999-8999-999999999999";
+const ocrField = (value: string | null) => ({ value, confidence: value === null ? "none" as const : "high" as const });
+export const OCR_DRAFT = {
+  period_start: ocrField("2026-10-01"), period_end: ocrField("2026-10-31"), days: ocrField("31"), kwh: ocrField("320"),
+  amount_dop: ocrField("4500.00"), reading_previous: ocrField(null), reading_current: ocrField(null),
+  warnings: [], raw_text_excerpt: "TOTAL A PAGAR",
+};
+const OCR_JOB: OcrJob = {
+  document_id: OCR_DOC, status: "pending", attempts: 0, method: null, pages_read: null, pages_total: null, draft: null,
+  error_code: null, error_message: null, created_at: "2026-10-10T12:00:00Z", finished_at: null,
+};
+/** Controles del mock de OCR asíncrono (solo tests). */
+let ocrOutcome: "done" | "failed" = "done";
+let ocrFailure: "unreadable" | "engine_error" = "unreadable";
+let ocrPolls = 1;
+let ocrPollsLeft = 0;
+let ocrJob: OcrJob | null = null;
+export function setMockOcr(outcome: "done" | "failed", polls = 1, failure: "unreadable" | "engine_error" = "unreadable") { ocrOutcome = outcome; ocrPolls = polls; ocrFailure = failure; }
+
 export function createMockApi(): Api {
   const homes = HOMES.map((h) => HomeSchema.parse(h));
   let bills = BILLS.map((b) => BillSchema.parse(b));
@@ -222,6 +242,27 @@ export function createMockApi(): Api {
     },
     ocrBill: async () => {
       throw new ApiError(501, "OCR no disponible en el mock");
+    },
+    // ERD-OCR-PROD: el trabajo termina tras `ocrPolls` consultas; `ocrOutcome` decide si sale un borrador o un fallo.
+    startOcrJob: async (homeId) => {
+      requireHome(homeId);
+      ocrPollsLeft = ocrPolls;
+      ocrJob = { ...OCR_JOB, status: "pending" };
+      return ocrJob;
+    },
+    getOcrJob: async (_homeId, documentId) => {
+      if (!ocrJob || ocrJob.document_id !== documentId) throw new ApiError(404, "No encontrado");
+      if (ocrPollsLeft > 0) { ocrPollsLeft -= 1; return { ...ocrJob, status: ocrPollsLeft === 0 ? "processing" : "pending" }; }
+      ocrJob = ocrOutcome === "done"
+        ? { ...OCR_JOB, status: "done", method: "text_layer", pages_read: 2, pages_total: 2, finished_at: "2026-10-10T12:00:05Z", draft: OCR_DRAFT }
+        : { ...OCR_JOB, status: "failed", attempts: 1, error_code: ocrFailure, error_message: ocrFailure === "unreadable" ? "No se pudo leer el archivo. Pruebe con una foto más nítida o con el PDF original de la distribuidora." : "No se pudo leer la factura en este momento. Intente de nuevo en unos minutos.", finished_at: "2026-10-10T12:00:05Z" };
+      return ocrJob;
+    },
+    retryOcrJob: async () => {
+      ocrOutcome = "done";
+      ocrPollsLeft = ocrPolls;
+      ocrJob = { ...OCR_JOB, status: "pending" };
+      return ocrJob;
     },
     updateBill: async (homeId, billId, input) => {
       const current = requireBill(homeId, billId);
