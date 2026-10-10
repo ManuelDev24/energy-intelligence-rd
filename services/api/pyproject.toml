@@ -24,6 +24,8 @@ dependencies = [
     "sentry-sdk>=2.20,<3",
     "cryptography>=50,<51",
     "boto3>=1.35,<2",
+    "pypdfium2>=4.30,<6",
+    "pillow-heif>=0.18,<2",
 ]
 
 [dependency-groups]

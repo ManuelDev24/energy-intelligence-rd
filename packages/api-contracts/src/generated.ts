@@ -181,7 +181,8 @@ export const BillCreateSchema = z.object({
   "days": z.number().finite().int().min(0).max(366),
   "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
   "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
-  "source": z.literal("manual").default("manual")
+  "source": z.literal("manual").default("manual"),
+  "document_id": z.union([z.string().uuid(), z.null()]).default(null)
 });
 export type BillCreate = z.infer<typeof BillCreateSchema>;
 

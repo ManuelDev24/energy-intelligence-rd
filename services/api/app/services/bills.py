@@ -6,6 +6,7 @@ from app.models import Bill
 from app.services.alerts import recompute_alerts
 from app.services.audit import record_change, snapshot
 from app.services.errors import ApplicationError, NotFound
+from app.services.ocr import jobs as ocr_jobs
 from app.services.transactions import require_home, write_transaction
 
 
@@ -33,7 +34,7 @@ def ensure_no_overlap(db, home_id, start, end, exclude_id=None):
 
 def normalized_fields(payload):
     return {key: value.quantize(Decimal("0.01")) if isinstance(value, Decimal) else value
-            for key, value in payload.model_dump().items()}
+            for key, value in payload.model_dump(exclude={"document_id"}).items()}
 
 
 def create_bill(db, home_id, payload):
@@ -44,6 +45,10 @@ def create_bill(db, home_id, payload):
         db.add(bill)
         record_change(db, home_id, bill, "create")
         db.add(BillSnapshot(bill_id=bill.id, origin="creation", data=snapshot(bill)))
+        document_id = getattr(payload, "document_id", None)
+        if document_id is not None:  # ERD-OCR-PROD: el original queda ligado a la factura confirmada, en la misma transacción
+            db.flush()
+            ocr_jobs.confirm_document(db, home_id, document_id, bill.id)
         recompute_alerts(db, home_id)
     return bill
 

@@ -55,6 +55,8 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('DELETE',u+'/invitations/'+invitation,None),
             ('POST',u+'/transfer-ownership',{'user_id':OTHER_ID,'password':PASSWORD}),
             # ERD-STORE-01
+            ('POST',u+'/bills/ocr-jobs',MULTIPART),('GET',u+'/bills/ocr-jobs/'+document,None),
+            ('POST',u+'/bills/ocr-jobs/'+document+'/retry',None),
             ('GET',u+'/documents',None),('POST',u+'/documents',MULTIPART),('GET',u+'/documents/'+document,None),
             ('POST',u+'/documents/'+document+'/download-url',None),('DELETE',u+'/documents/'+document,None)]
 

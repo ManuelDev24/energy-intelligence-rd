@@ -40,6 +40,8 @@ class _BillFields(BaseModel):
 class BillCreate(_BillFields):
     # La API solo crea facturas manuales; "seed" es exclusivo del script de datos demo.
     source: Literal["manual"] = "manual"
+    # ERD-OCR-PROD: original (foto o PDF) del que se leyó el borrador; se asocia a la factura al confirmarla.
+    document_id: uuid.UUID | None = None
 
 
 class BillUpdate(_BillFields):

@@ -61,9 +61,8 @@ def _check_decodable(content_type: str, content: bytes) -> None:
         raise InvalidInput("El archivo está dañado o no es una imagen válida") from None
 
 
-def upload_document(db: Session, home_id, user_id, content: bytes, *, uploaded_via: str = "api", now=None) -> Document:
-    store = get_store()
-    require_home(db, home_id)
+def validate_upload(content: bytes) -> tuple[str, str]:
+    """Valida el archivo recibido (vacío, tipo real, tamaño, decodificable) y devuelve (kind, content_type)."""
     if not content:
         raise InvalidInput("El archivo está vacío")
     kind, content_type = sniff(content)
@@ -71,6 +70,14 @@ def upload_document(db: Session, home_id, user_id, content: bytes, *, uploaded_v
     if len(content) > limit:
         raise InvalidInput(f"El archivo supera el máximo de {limit // (1024 * 1024)} MB")
     _check_decodable(content_type, content)
+    return kind, content_type
+
+
+def upload_document(db: Session, home_id, user_id, content: bytes, *, uploaded_via: str = "api", now=None,
+                    validated: tuple[str, str] | None = None) -> Document:
+    store = get_store()
+    require_home(db, home_id)
+    kind, content_type = validated or validate_upload(content)
     pending = db.scalar(select(func.count()).select_from(Document).where(Document.home_id == home_id, Document.bill_id.is_(None)))
     if pending >= settings.DOCUMENT_MAX_UNCONFIRMED_PER_HOME:
         raise QuotaExceeded("Hay demasiados documentos sin confirmar en esta vivienda; confirme o elimine alguno")

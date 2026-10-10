@@ -499,3 +499,10 @@ def test_jobs_cli(migrated, monkeypatch, capsys):
     assert 'demo.cli' in out and 'fallo' in out and 'secreto' not in out
     assert cli.main(['requeue', str(job.id)]) == 0
     assert cli.main(['requeue', str(job.id)]) == 2
+
+
+def test_enqueue_uses_the_max_attempts_registered_for_the_kind(db):
+    registry.register('demo.limited', max_attempts=2)(lambda db, job: None)
+    assert queue.enqueue(db, 'demo.limited', now=NOW)[0].max_attempts == 2
+    assert queue.enqueue(db, 'demo.limited', max_attempts=7, now=NOW)[0].max_attempts == 7  # lo explícito gana
+    assert queue.enqueue(db, 'demo.unregistered', now=NOW)[0].max_attempts == settings.JOB_DEFAULT_MAX_ATTEMPTS

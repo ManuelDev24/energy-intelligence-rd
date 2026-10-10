@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -54,3 +54,29 @@ class StorageDeletion(Base):
     last_error: Mapped[str | None] = mapped_column(Text)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DocumentOcr(Base):
+    """ERD-OCR-PROD: estado del OCR de un original y su borrador. El borrador vive solo hasta que la persona confirma la
+    factura (se borra) o el documento caduca (cae en cascada). No se guarda el texto completo del OCR."""
+    __tablename__ = "document_ocr"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'processing', 'done', 'failed')", name="ck_document_ocr_status"),
+        CheckConstraint("status <> 'failed' OR error_code IS NOT NULL", name="ck_document_ocr_failed_code"),
+        CheckConstraint("method IS NULL OR method IN ('text_layer', 'ocr', 'mixed')", name="ck_document_ocr_method"),
+        CheckConstraint("pages_read IS NULL OR (pages_read >= 0 AND pages_total >= pages_read)", name="ck_document_ocr_pages"),
+        CheckConstraint("draft IS NULL OR octet_length(draft::text) <= 16384", name="ck_document_ocr_draft_size"),
+    )
+
+    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="pending", server_default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    engine: Mapped[str | None] = mapped_column(String(24))
+    method: Mapped[str | None] = mapped_column(String(16))
+    pages_read: Mapped[int | None] = mapped_column(Integer)
+    pages_total: Mapped[int | None] = mapped_column(Integer)
+    draft: Mapped[dict | None] = mapped_column(JSONB)
+    error_code: Mapped[str | None] = mapped_column(String(24))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

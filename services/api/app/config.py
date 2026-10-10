@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     JOB_BACKOFF_CAP_SECONDS: int = Field(default=3600, ge=1, le=86400)
     JOB_SUCCEEDED_RETENTION_DAYS: int = Field(default=7, ge=1, le=365)
     JOB_DEAD_RETENTION_DAYS: int = Field(default=90, ge=1, le=730)
+    # ERD-OCR-PROD: OCR asíncrono de originales (imágenes y PDF).
+    OCR_MAX_PDF_PAGES: int = Field(default=6, ge=1, le=20)
+    OCR_PAGE_TIMEOUT_SECONDS: int = Field(default=40, ge=5, le=120)
+    OCR_MAX_ACTIVE_PER_HOME: int = Field(default=3, ge=1, le=20)
     EMAIL_BACKEND: Literal["console", "resend"] = "console"
     RESEND_API_KEY: str = Field(default="", repr=False)
     EMAIL_FROM: str = ""

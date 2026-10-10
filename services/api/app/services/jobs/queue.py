@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models.job import Job
 from app.services.errors import InvalidInput
-from app.services.jobs.registry import _KIND
+from app.services.jobs.registry import _KIND, get_spec
 from app.services.transactions import write_transaction
 
 MAX_PAYLOAD_BYTES = 8192
@@ -51,7 +51,10 @@ def enqueue(db: Session, kind: str, payload: dict | None = None, *, idempotency_
         raise InvalidInput("Los datos del trabajo no son válidos")
     if idempotency_key is not None and not 0 < len(idempotency_key) <= 128:
         raise InvalidInput("Clave de idempotencia no válida")
-    attempts = settings.JOB_DEFAULT_MAX_ATTEMPTS if max_attempts is None else max_attempts
+    if max_attempts is None:  # el tipo registrado manda; si no está registrado (otro proceso), el valor global
+        spec = get_spec(kind)
+        max_attempts = spec.max_attempts if spec and spec.max_attempts else settings.JOB_DEFAULT_MAX_ATTEMPTS
+    attempts = max_attempts
     if not 1 <= attempts <= 20:
         raise InvalidInput("Máximo de intentos no válido")
     current = _now(now)
