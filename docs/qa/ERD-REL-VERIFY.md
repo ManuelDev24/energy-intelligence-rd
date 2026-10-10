@@ -8,9 +8,9 @@
 - Node: **v24.21** (el repo exige `>=24 <25`). Con Node 26 la suite web falla (`window.localStorage` indefinido): incompatibilidad de entorno, no defecto del repo.
 - Dispositivos: iPhone 18 Pro (iOS 27, Xcode 27) y emulador `EnergyRD_Pixel` (Android 16), Expo Go SDK 57.
 - Evidencia: `docs/qa/evidence/rel-verify-2026-10-10/` (`web-qa/`, `mobile-qa/ios`, `mobile-qa/android`, capturas de la 2.ª pasada).
-- **Estado: todos los criterios técnicos comprobados salvo OCR con fotos reales (⛔, requiere facturas de Manuel)
-  y la confirmación de Manuel de la aceptación de riesgo de dependencias (➖). Promoción `Dev → QA` pendiente de
-  esas dos decisiones y del CI verde del último commit.**
+- **Estado: todos los criterios comprobados salvo OCR con fotos reales (⛔, requiere facturas de Manuel).
+  CI verde en `eb4937c` (run `38079786950`). Aceptación de riesgo de dependencias confirmada (2026-10-10).
+  Promoción `Dev → QA` pendiente solo del OCR con facturas reales.**
 
 Leyenda: ✅ comprobado · ⛔ bloqueado · ➖ pendiente de decisión humana / no aplica.
 
@@ -21,7 +21,7 @@ Leyenda: ✅ comprobado · ⛔ bloqueado · ➖ pendiente de decisión humana / 
 
 ## 2. CI
 - Diagnóstico del rojo (`37369363180` cancelado, `37706860287` failure): `TesseractNotFoundError` en el runner. Corregido en `d5e4c3b`/`effff9c`.
-- ✅ Runs `38014377647` (`000abe0`) y `38075621697` (`4fbdc75`) verdes en los 3 jobs. El commit final de esta pasada debe repetir el verde antes de promover.
+- ✅ Runs `38014377647` (`000abe0`), `38075621697` (`4fbdc75`) y `38079786950` (`eb4937c`, 3.ª pasada) verdes en los 3 jobs.
 
 ## 3. Base de datos y migraciones
 - ✅ Base vacía → `alembic upgrade head` hasta `0013`; `downgrade -1` + `upgrade head` OK.
@@ -56,13 +56,11 @@ Leyenda: ✅ comprobado · ⛔ bloqueado · ➖ pendiente de decisión humana / 
 
 ## 6. Seguridad y datos
 - ✅ No hay `.env` ni `.env.local` versionados; `.env.example` con placeholders; `CORS_ORIGINS` explícito; API piloto en loopback.
-- ✅/➖ Dependencias: **23 → 20** (los 2 moderados de `postcss-selector-parser` corregidos con override a 7.1.6, CSS de producción idéntico; Expo 57.0.27). Los 20 altos son los 2 advisories sin parche ya aceptados el 2026-10-05 (`braces`, `node-forge`, solo herramientas de build/desarrollo). Detalle: `docs/qa/ERD_SEC_DEPS_2026-10-04.md` § Revisión 2026-10-10. **➖ Falta que Manuel confirme que mantiene la aceptación con 20 altos.**
+- ✅ Dependencias: **23 → 20** (los 2 moderados de `postcss-selector-parser` corregidos con override a 7.1.6, CSS de producción idéntico; Expo 57.0.27). Los 20 altos son los 2 advisories sin parche ya aceptados el 2026-10-05 (`braces`, `node-forge`, solo herramientas de build/desarrollo). Detalle: `docs/qa/ERD_SEC_DEPS_2026-10-04.md` § Revisión 2026-10-10. **✅ Aceptación de riesgo confirmada por Manuel el 2026-10-10.**
 - ✅ Datos demo (`source=seed`, aviso en dashboard); las capturas solo contienen datos demo.
 
 ## 7. Publicar / 8. Rollback
-- ⛔ No se promueve `Dev → QA`: faltan OCR con fotos reales y la confirmación de riesgo de dependencias; además el CI del último commit.
+- ⛔ No se promueve `Dev → QA`: falta OCR con fotos reales. PR #17 cerrado sin fusionar (su commit ya está en `Dev`).
 
 ## Bloqueos que quedan
 1. ⛔ Fotos reales de facturas EDESUR, EDENORTE y EDEESTE para probar el OCR (las pone Manuel).
-2. ➖ Confirmación de Manuel de la aceptación de riesgo con 20 altos (2 advisories sin parche).
-3. CI verde del commit final en `Dev`.

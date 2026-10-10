@@ -57,6 +57,6 @@ vulnerabilidades propias. Las "correcciones" de `npm audit` siguen siendo downgr
 react-native@0.72, eslint-config-next@14, tailwind 4) y se rechazan.
 
 - Decisión: **la aceptación de riesgo del 2026-10-05 sigue vigente** para estos 2 advisories, con las mismas
-  mitigaciones. **Pendiente: confirmación de Manuel** de que mantiene la aceptación con el recuento actual (20 altos).
+  mitigaciones. **Confirmada por Manuel el 2026-10-10** con el recuento actual (20 altos, 0 críticos).
 - Salida definitiva sin cambios: Tailwind 4 (tarea propia) y Expo cuando upstream publique `node-forge` corregido.
 - Próxima revisión: 2026-11-04 o en la próxima actualización de dependencias.
