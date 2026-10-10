@@ -69,5 +69,6 @@ Los dumps se guardan fuera de Git y el restore drill solo usa una base desechabl
 - [Checklist de release](docs/RELEASE_CHECKLIST.md)
 - [API y reglas de datos](services/api/README.md)
 - [Visión del producto](docs/SPECIFICATION.md)
+- [Plan de cierre antes de módulos nuevos](docs/CLOSURE_PLAN_2026-10-10.md)
 
 Las proyecciones son orientación calculada sobre facturas introducidas; no son garantía de consumo o importe futuro.
