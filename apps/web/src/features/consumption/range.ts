@@ -66,3 +66,16 @@ export function groupGaps(
     label: g.count === 1 ? bucketLabel({ start, end }, granularity) : `${bucketLabel({ start, end: start }, granularity === "week" ? "day" : granularity)} – ${bucketLabel({ start: end, end }, granularity === "week" ? "day" : granularity)}`,
   }));
 }
+
+/**
+ * Rango inicial desde los parámetros de la URL (`/consumption?from=…&to=…&granularity=…`), p. ej. al investigar una
+ * desviación. Cualquier valor ausente, repetido o inválido (mismas reglas que la API) devuelve null: nunca se adivina.
+ */
+export function initialRangeFromParams(params: { get(name: string): string | null; getAll(name: string): string[] }): RangeQuery | null {
+  for (const name of ["from", "to", "granularity"]) if (params.getAll(name).length !== 1) return null;
+  const from = params.get("from") ?? "";
+  const to = params.get("to") ?? "";
+  const granularity = params.get("granularity");
+  if (granularity !== "day" && granularity !== "week" && granularity !== "month") return null;
+  return validateRange(from, to) === null ? { from, to, granularity } : null;
+}

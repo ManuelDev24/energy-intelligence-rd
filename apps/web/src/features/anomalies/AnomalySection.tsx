@@ -3,7 +3,8 @@
 import type { Anomaly } from "@/lib/api/schemas";
 import { AlertCard } from "@/components/alert-card";
 import { Card, CardTitle } from "@/components/ui/card";
-import { formatAnomaly } from "./anomaly";
+import Link from "next/link";
+import { formatAnomaly, investigateHref } from "./anomaly";
 
 export function AnomalySection({ anomalies, isLoading = false }: { anomalies?: Anomaly[]; isLoading?: boolean }) {
   if (isLoading) return null;
@@ -16,7 +17,13 @@ export function AnomalySection({ anomalies, isLoading = false }: { anomalies?: A
       {anomalies?.length ? anomalies.map((anomaly) => {
         const view = formatAnomaly(anomaly);
         return (
-          <AlertCard key={`${anomaly.period_start}-${anomaly.period_end}-${anomaly.granularity}`} tone={anomaly.severity} title="Consumo fuera de lo habitual" meta={view.delta} footer={`${view.period} · Observado: ${view.observed} · Línea base: ${view.baseline}`}>
+          <AlertCard key={`${anomaly.period_start}-${anomaly.period_end}-${anomaly.granularity}`} tone={anomaly.severity} title="Consumo fuera de lo habitual" meta={view.delta} footer={`${view.period} · Observado: ${view.observed} · Línea base: ${view.baseline}`}
+            action={
+              <Link href={investigateHref(anomaly)} aria-label={`Investigar en Consumo la desviación de ${view.period}`}
+                className="inline-flex h-11 items-center gap-1 rounded-lg px-1 text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                Investigar en Consumo
+              </Link>
+            }>
             {view.explanation}
           </AlertCard>
         );

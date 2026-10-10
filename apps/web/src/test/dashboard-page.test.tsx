@@ -31,7 +31,7 @@ describe("DashboardPage", () => {
     fireEvent.change(selector, { target: { value: BILLS[0].id } });
     expect(await screen.findByText("Factura del período")).toBeInTheDocument();
     expect(dashboard).toHaveBeenLastCalledWith(HOME_A, expect.any(AbortSignal), BILLS[0].id);
-    expect(screen.getByRole("img", { name: /jun 2026: 250 kWh/ }).getAttribute("aria-label")).not.toMatch(/jul|ago|proyectado/);
+    expect(screen.getByRole("img", { name: /jun 2026: 250 kWh \(30 días\)/ }).getAttribute("aria-label")).not.toMatch(/jul|ago|proyectado/);
     expect(screen.getByText(/Sin período anterior para comparar/)).toBeInTheDocument();
     fireEvent.change(selector, { target: { value: "" } });
     expect(await screen.findByText("Última factura")).toBeInTheDocument();
@@ -72,7 +72,7 @@ describe("DashboardPage", () => {
   it("CH-01 y CH-05: gráfica accesible con la proyección y deltas con flecha frente al período anterior", async () => {
     renderWithApp(<DashboardPage />, HOME_A);
     expect(
-      await screen.findByRole("img", { name: /ago 2026: 420 kWh; sep 2026: 486.67 kWh \(proyectado\)/ }),
+      await screen.findByRole("img", { name: /ago 2026: 420 kWh \(31 días\); sep 2026: 486.67 kWh \(proyectado\)/ }),
     ).toBeInTheDocument();
     const compare = screen.getByRole("region", { name: "Vs. período anterior" });
     expect(within(compare).getByText("+50.00%").parentElement).toHaveTextContent("▲Sube+50.00%vs. período anterior");

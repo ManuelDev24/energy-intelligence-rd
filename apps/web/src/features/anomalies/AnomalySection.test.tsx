@@ -28,4 +28,18 @@ describe("AnomalySection", () => {
     expect(screen.getByText("Sin desviaciones recientes")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
+
+  it("ERD-CHARTS-01: cada desviación ofrece investigarla en Consumo con el rango correcto", () => {
+    render(<AnomalySection anomalies={[anomaly, { ...anomaly, granularity: "day" as const, period_start: "2026-10-04", period_end: "2026-10-04" }]} />);
+    const links = screen.getAllByRole("link", { name: /Investigar en Consumo/ });
+    expect(links.map((l) => l.getAttribute("href"))).toEqual([
+      "/consumption?from=2026-09-01&to=2026-09-30&granularity=day",
+      "/consumption?from=2026-09-21&to=2026-10-04&granularity=day",
+    ]);
+  });
+
+  it("sin desviaciones no hay enlace que investigar", () => {
+    render(<AnomalySection anomalies={[]} />);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
 });

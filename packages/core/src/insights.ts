@@ -15,8 +15,13 @@ export interface ChartBar {
   periodEnd: string;
   kwh: number;
   amountDop: number | null;
+  /** Días facturados de la factura; la proyección no los tiene. Facturas de 28 y 31 días no son comparables sin verlos. */
+  days?: number;
   kind: 'REAL' | 'PROJECTED';
 }
+
+/** "31 días", "1 día". */
+export const billDaysLabel = (days: number) => `${days} ${days === 1 ? 'día' : 'días'}`;
 
 /**
  * Serie para el gráfico mensual: últimas `max` facturas (orden cronológico) y, si existe,
@@ -35,6 +40,7 @@ export function monthlySeries(
       periodEnd: b.period_end,
       kwh: Number(b.kwh),
       amountDop: Number(b.amount_dop),
+      days: b.days,
       kind: 'REAL',
     }));
   if (projection && real.length > 0) {
@@ -90,4 +96,33 @@ export function suggestNextPeriod(
   const end = new Date(firstThisMonth.getTime() - 86_400_000);
   const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
   return { period_start: toIso(start), period_end: toIso(end), days: end.getUTCDate() };
+}
+
+export interface CurrentCycle {
+  /** active = dentro del ciclo estimado; overdue = el ciclo estimado ya terminó y falta la factura; upcoming = aún no empieza. */
+  state: 'upcoming' | 'active' | 'overdue';
+  start: string;
+  end: string;
+  days: number;
+  /** Días transcurridos del ciclo (ambos extremos incluidos), 0 si no empezó. */
+  elapsed: number;
+  /** Rango ya transcurrido para consultar el consumo por lecturas; null si el ciclo no ha empezado. */
+  range: { from: string; to: string } | null;
+}
+
+/**
+ * Ciclo de facturación en curso, ESTIMADO a partir de la última factura (empieza el día siguiente y dura lo mismo).
+ * La distribuidora puede facturar otro ciclo: la pantalla debe decir que las fechas son estimadas.
+ * Si ese ciclo ya terminó no se inventa uno nuevo: queda «vencido» a la espera de la factura.
+ */
+export function currentCycle(
+  lastBill: Pick<BillLike, 'period_end' | 'days'> & Partial<Pick<BillLike, 'period_start'>>,
+  today: string,
+): CurrentCycle {
+  const next = suggestNextPeriod(lastBill);
+  const base = { start: next.period_start, end: next.period_end, days: next.days };
+  if (today < base.start) return { state: 'upcoming', ...base, elapsed: 0, range: null };
+  const overdue = today > base.end;
+  const to = overdue ? base.end : today;
+  return { state: overdue ? 'overdue' : 'active', ...base, elapsed: daysBetween(base.start, to), range: { from: base.start, to } };
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import { NotebookPen, Receipt } from "lucide-react";
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { BillsConsumption } from "@/features/consumption/BillsConsumption";
 import { ReadingsConsumption } from "@/features/consumption/ReadingsConsumption";
+import { initialRangeFromParams } from "@/features/consumption/range";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session";
 
@@ -13,8 +15,10 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
-export default function ConsumptionPage() {
+function ConsumptionContent() {
   const { homeId } = useSession();
+  const params = useSearchParams();
+  const initialRange = useMemo(() => (params ? initialRangeFromParams(params) : null), [params]);
   const [tab, setTab] = useState<Tab>("readings");
   const refs = useRef<Record<Tab, HTMLButtonElement | null>>({ readings: null, bills: null });
 
@@ -71,9 +75,18 @@ export default function ConsumptionPage() {
           tabIndex={0}
           className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          {id === "readings" ? <ReadingsConsumption homeId={homeId ?? ""} /> : <BillsConsumption />}
+          {id === "readings" ? <ReadingsConsumption key={initialRange ? `${initialRange.from}:${initialRange.to}:${initialRange.granularity}` : "default"} homeId={homeId ?? ""} initialRange={initialRange} /> : <BillsConsumption />}
         </div>
       ))}
     </div>
+  );
+}
+
+// useSearchParams exige un límite Suspense para poder prerenderizar la página.
+export default function ConsumptionPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConsumptionContent />
+    </Suspense>
   );
 }

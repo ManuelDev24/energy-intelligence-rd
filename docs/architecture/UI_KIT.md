@@ -25,7 +25,7 @@ Los componentes pendientes se hicieron extrayéndolos de código que ya los usab
 ## Verificación y límites
 - Web: 8 pruebas de `Modal`/`ConfirmDialog`, 8 de las tres tarjetas y el selector, y 4 de integración de los flujos de
   borrado (diálogo, cancelar, Escape, confirmar). Lint, tipos y 671 pruebas en verde.
-- Móvil: lógica pura del rango (6 pruebas) y comprobaciones de estructura (5), typecheck, 431 pruebas y compilación Metro
+- Móvil: lógica pura del rango (9 pruebas) y comprobaciones de estructura (5), typecheck, 431 pruebas y compilación Metro
   de Android. **`BottomSheet` y `DateRangePicker` no se han visto en un simulador ni dispositivo** (ERD-E2E-MAESTRO-AUTH y
   ERD-A11Y-NATIVE).
 - No se hizo una pasada de axe/Lighthouse sobre el diálogo nuevo en navegador real: la cubren sus pruebas de foco y ARIA.

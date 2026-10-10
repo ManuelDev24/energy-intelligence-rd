@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ChartBar } from "@energyrd/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AlertCard } from "./alert-card";
-import { ConsumptionChart } from "./consumption-chart";
+import { ConsumptionChart, consumptionSummary } from "./consumption-chart";
 import { DataStatusBadge } from "./data-status-badge";
 import { EmptyState } from "./empty-state";
 import { EnergyGauge } from "./energy-gauge";
@@ -239,5 +239,25 @@ describe("EmptyState y ErrorState", () => {
     render(<ErrorState message="Failed to fetch" onRetry={() => {}} />);
     expect(screen.getByText("Sin conexión")).toBeInTheDocument();
     spy.mockRestore();
+  });
+});
+
+describe("ERD-CHARTS-01: días de factura en la gráfica", () => {
+  const bars = [
+    { key: "a", periodEnd: "2026-06-30", kwh: 250, amountDop: 3000, days: 30, kind: "REAL" as const },
+    { key: "b", periodEnd: "2026-07-31", kwh: 280, amountDop: 3500, days: 31, kind: "REAL" as const },
+    { key: "p", periodEnd: "2026-08-30", kwh: 300, amountDop: null, kind: "PROJECTED" as const },
+  ];
+  it("el resumen accesible incluye los días facturados de cada factura real y no inventa los de la proyección", () => {
+    expect(consumptionSummary(bars)).toBe("Consumo mensual por factura, en kWh. jun 2026: 250 kWh (30 días); jul 2026: 280 kWh (31 días); ago 2026: 300 kWh (proyectado).");
+  });
+  it("la tabla de datos tiene columna Días con «—» para la proyección", () => {
+    render(<ConsumptionChart series={bars} />);
+    fireEvent.click(screen.getByRole("button", { name: "Ver tabla de datos" }));
+    const table = screen.getByRole("table", { name: "Consumo y monto por mes" });
+    expect(within(table).getByRole("columnheader", { name: "Días" })).toBeInTheDocument();
+    const rows = within(table).getAllByRole("row").slice(1);
+    expect(within(rows[0]).getAllByRole("cell")[2]).toHaveTextContent("30");
+    expect(within(rows[2]).getAllByRole("cell")[2]).toHaveTextContent("—");
   });
 });

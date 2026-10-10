@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   QUALITY, SEVERITY, daysBetween, fmtDate, fmtDop, fmtKwh, fmtMetric, fmtMonth, fmtNumber, fmtPct, fmtPeriod,
-  fmtSigned, monthlySeries, resolutionLabel, shouldLabel, sourceLabel, suggestNextPeriod,
+  billDaysLabel, currentCycle, fmtSigned, investigationRange, monthlySeries, validateRange, resolutionLabel, shouldLabel, sourceLabel, suggestNextPeriod,
 } from './index';
 
 describe('format', () => {
@@ -94,6 +94,15 @@ describe('insights', () => {
     expect(s[0].kwh).toBe(220);
     expect(s[2]).toMatchObject({ kwh: 260, periodEnd: '2026-08-30' });
   });
+  it('real bars carry the billed days; the projection has none (ERD-CHARTS-01)', () => {
+    const s = monthlySeries(bills, { kwh: '260' });
+    expect(s.map((b) => b.days)).toEqual([30, 31, undefined]);
+  });
+  it('labels billed days with the right plural', () => {
+    expect(billDaysLabel(31)).toBe('31 días');
+    expect(billDaysLabel(1)).toBe('1 día');
+    expect(billDaysLabel(0)).toBe('0 días');
+  });
   it('limits to the last N bills and omits projection without bills', () => {
     expect(monthlySeries(bills, null, 1).map((b) => b.key)).toEqual(['b']);
     expect(monthlySeries([], { kwh: '1' })).toEqual([]);
@@ -119,5 +128,50 @@ describe('insights', () => {
   it('does not derive business metrics: the projection delta comes from the API (ERD-PROJECTION-METRIC-API)', async () => {
     const core = await import('./index');
     expect('projectionDeltaPct' in core).toBe(false);
+  });
+});
+
+describe('investigar una desviación (ERD-CHARTS-01)', () => {
+  const day = { granularity: 'day' as const, period_start: '2026-10-04', period_end: '2026-10-04' };
+  const month = { granularity: 'month' as const, period_start: '2026-09-01', period_end: '2026-09-30' };
+  it('un día anómalo se estudia con las dos semanas que terminan ese día, en detalle diario', () => {
+    expect(investigationRange(day)).toEqual({ from: '2026-09-21', to: '2026-10-04', granularity: 'day' });
+  });
+  it('un mes anómalo se desglosa día a día dentro de ese mes', () => {
+    expect(investigationRange(month)).toEqual({ from: '2026-09-01', to: '2026-09-30', granularity: 'day' });
+  });
+  it('cruza el cambio de año sin errores y siempre es un rango válido para la API', () => {
+    const r = investigationRange({ granularity: 'day', period_start: '2026-01-05', period_end: '2026-01-05' });
+    expect(r.from).toBe('2025-12-23');
+    for (const input of [day, month, { granularity: 'month' as const, period_start: '2026-02-01', period_end: '2026-02-28' }]) {
+      const range = investigationRange(input);
+      expect(validateRange(range.from, range.to)).toBeNull();
+    }
+  });
+});
+
+describe('ciclo de facturación actual (ERD-CHARTS-01)', () => {
+  const last = { period_start: '2026-08-01', period_end: '2026-08-31', days: 31 };
+  it('dentro del ciclo estimado: avance y rango ya transcurrido', () => {
+    expect(currentCycle(last, '2026-09-10')).toEqual({
+      state: 'active', start: '2026-09-01', end: '2026-09-30', days: 30, elapsed: 10, range: { from: '2026-09-01', to: '2026-09-10' },
+    });
+  });
+  it('el primer y el último día del ciclo cuentan', () => {
+    expect(currentCycle(last, '2026-09-01')).toMatchObject({ state: 'active', elapsed: 1, range: { from: '2026-09-01', to: '2026-09-01' } });
+    expect(currentCycle(last, '2026-09-30')).toMatchObject({ state: 'active', elapsed: 30, range: { from: '2026-09-01', to: '2026-09-30' } });
+  });
+  it('si el ciclo estimado ya terminó, está vencido: no se inventa otro y se consulta el ciclo completo', () => {
+    expect(currentCycle(last, '2026-10-04')).toEqual({
+      state: 'overdue', start: '2026-09-01', end: '2026-09-30', days: 30, elapsed: 30, range: { from: '2026-09-01', to: '2026-09-30' },
+    });
+  });
+  it('si el ciclo estimado aún no empieza, no hay rango que consultar', () => {
+    expect(currentCycle(last, '2026-08-31')).toEqual({ state: 'upcoming', start: '2026-09-01', end: '2026-09-30', days: 30, elapsed: 0, range: null });
+  });
+  it('un ciclo que no coincide con el mes repite la duración del anterior', () => {
+    expect(currentCycle({ period_start: '2026-07-15', period_end: '2026-08-14', days: 31 }, '2026-08-20')).toMatchObject({
+      start: '2026-08-15', end: '2026-09-14', days: 31, elapsed: 6, state: 'active',
+    });
   });
 });

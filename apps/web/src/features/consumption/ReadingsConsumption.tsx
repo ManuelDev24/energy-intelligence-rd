@@ -41,7 +41,11 @@ function Controls({
   onGranularity,
   onFrom,
   onTo,
+  compare,
+  onCompare,
 }: {
+  compare: boolean;
+  onCompare: (value: boolean) => void;
   preset: Preset | "custom";
   granularity: Granularity;
   from: string;
@@ -66,6 +70,10 @@ function Controls({
           ))}
         </div>
       </fieldset>
+      <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
+        <input type="checkbox" checked={compare} onChange={(event) => onCompare(event.target.checked)} className="h-4 w-4" />
+        Comparar con el período anterior
+      </label>
     </div>
   );
 }
@@ -89,10 +97,10 @@ function ComparisonKwhDelta({ comparison }: { comparison: NonNullable<Consumptio
   );
 }
 
-function Summary({ data }: { data: Consumption }) {
+function Summary({ data, showComparison }: { data: Consumption; showComparison: boolean }) {
   const missing = data.insufficient_reasons[0] ?? "No hay lecturas que cubran este rango.";
   const peak = data.peak_bucket;
-  const comparison = data.comparison;
+  const comparison = showComparison ? data.comparison : null;
   const totalDelta = comparison?.kwh_pct
     ? { pct: comparison.kwh_pct.value, label: `vs. ${formatPeriod(comparison.previous_from, comparison.previous_to)}`, quality: comparison.kwh_pct.quality, goodWhen: "down" as const }
     : null;
@@ -163,13 +171,13 @@ function Gaps({ data }: { data: Consumption }) {
   );
 }
 
-function Result({ data }: { data: Consumption }) {
+function Result({ data, showComparison }: { data: Consumption; showComparison: boolean }) {
   const hasValue = data.buckets.some((b) => b.kwh !== null);
   return (
     <div className="flex flex-col gap-4">
       {hasValue ? (
         <>
-          <Summary data={data} />
+          <Summary data={data} showComparison={showComparison} />
           <Card>
             <CardTitle>
               {formatPeriod(data.from_date, data.to_date)}
@@ -218,12 +226,13 @@ function Result({ data }: { data: Consumption }) {
 }
 
 /** Vista "Por lecturas": consumo por día/semana/mes a partir de las lecturas del medidor. */
-export function ReadingsConsumption({ homeId }: { homeId: string }) {
-  const [preset, setPreset] = useState<Preset | "custom">("30d");
-  const initial = presetRange("30d", todayRD());
+export function ReadingsConsumption({ homeId, initialRange }: { homeId: string; initialRange?: RangeQuery | null }) {
+  const [preset, setPreset] = useState<Preset | "custom">(initialRange ? "custom" : "30d");
+  const initial = initialRange ?? presetRange("30d", todayRD());
   const [granularity, setGranularity] = useState<Granularity>(initial.granularity);
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
+  const [compare, setCompare] = useState(true);
 
   const rangeError = preset === "custom" ? validateRange(from, to) : null;
   let query: RangeQuery | null;
@@ -257,6 +266,8 @@ export function ReadingsConsumption({ homeId }: { homeId: string }) {
           onGranularity={setGranularity}
           onFrom={setFrom}
           onTo={setTo}
+          compare={compare}
+          onCompare={setCompare}
         />
         <Link href="/readings" className="inline-flex h-11 shrink-0 items-center gap-2 self-start rounded-lg px-1 text-sm font-medium text-primary underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <NotebookPen className="h-4 w-4" aria-hidden /> Gestionar lecturas
@@ -274,7 +285,7 @@ export function ReadingsConsumption({ homeId }: { homeId: string }) {
         >
           {consumption.data ? (
             <div className={cn("transition-opacity", consumption.isPlaceholderData && "opacity-60")} aria-busy={consumption.isPlaceholderData}>
-              <Result data={consumption.data} />
+              <Result data={consumption.data} showComparison={compare} />
             </div>
           ) : null}
         </QueryState>
