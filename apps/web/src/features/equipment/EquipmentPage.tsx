@@ -21,6 +21,7 @@ import { useDeleteEquipment, useEquipment, useEstimate, useSaveEquipment } from 
 import type { Equipment } from "@/lib/api/schemas";
 import { formatMetric } from "@/lib/format";
 import { useSession } from "@/lib/session";
+import { useFocusFirstInvalid } from "@/lib/use-focus-first-invalid";
 
 const EMPTY: EquipmentFormValues = { name: "", room: "", powerW: "", hoursPerDay: "" };
 
@@ -44,6 +45,7 @@ function EquipmentForm({
       : EMPTY,
   );
   const [errors, setErrors] = useState<EquipmentFormErrors>({});
+  const { formRef, flagInvalid } = useFocusFirstInvalid();
   const save = useSaveEquipment(homeId);
   const preview = previewDailyKwh(v);
   const bind = (k: keyof EquipmentFormValues) => ({
@@ -57,14 +59,14 @@ function EquipmentForm({
     e.preventDefault();
     const { errors: errs, input } = validateEquipment(v);
     setErrors(errs);
-    if (!input) return;
+    if (!input) { flagInvalid(); return; }
     save.mutate({ id: editing?.id, input }, { onSuccess: onDone });
   }
 
   return (
     <Card>
       <CardTitle>{editing ? "Editar equipo" : "Nuevo equipo"}</CardTitle>
-      <form onSubmit={submit} noValidate className="mt-4 grid gap-4 sm:grid-cols-2">
+      <form ref={formRef} onSubmit={submit} noValidate className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field label="Nombre" placeholder="Nevera" {...bind("name")} />
         <Field label="Habitación (opcional)" placeholder="Cocina" {...bind("room")} />
         <Field label="Potencia (W)" inputMode="decimal" placeholder="150" {...bind("powerW")} />

@@ -14,6 +14,7 @@ import type { Reading } from "@/lib/api/schemas";
 import { formatNumber } from "@/lib/format";
 import { formatReadAt, isIsoDate, isTime, localToIso, nowTimeRD, todayRD } from "@/lib/rd-time";
 import { useSession } from "@/lib/session";
+import { useFocusFirstInvalid } from "@/lib/use-focus-first-invalid";
 
 const describe = (r: Reading) => `${formatNumber(r.reading_kwh)} kWh (${formatReadAt(r.read_at)})`;
 
@@ -33,6 +34,7 @@ function ReadingForm({ homeId, readings }: { homeId: string; readings: readonly 
   const create = useCreateReading(homeId);
   const [values, setValues] = useState<ReadingFormValues>(() => ({ date: todayRD(), time: nowTimeRD(), reading_kwh: "", note: "" }));
   const [errors, setErrors] = useState<ReadingFormErrors>({});
+  const { formRef, flagInvalid } = useFocusFirstInvalid();
   const [saved, setSaved] = useState<string | null>(null);
 
   const bind = (name: keyof ReadingFormValues) => ({
@@ -51,6 +53,7 @@ function ReadingForm({ homeId, readings }: { homeId: string; readings: readonly 
     const result = validateReadingForm(values, readings);
     if (!result.ok) {
       setErrors(result.errors);
+      flagInvalid();
       return;
     }
     setErrors({});
@@ -63,7 +66,7 @@ function ReadingForm({ homeId, readings }: { homeId: string; readings: readonly 
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Fecha" type="date" max={todayRD()} {...bind("date")} />
         <Field label="Hora" type="time" hint="Hora de República Dominicana." {...bind("time")} />

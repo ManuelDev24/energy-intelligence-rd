@@ -13,11 +13,13 @@ import type { Goal, Home } from "@/lib/api/schemas";
 import { formatDate } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { todayRD } from "@/lib/rd-time";
+import { useFocusFirstInvalid } from "@/lib/use-focus-first-invalid";
 
 function GoalForm({ homeId, initial }: { homeId: string; initial: Goal | null }) {
   const save = usePutGoal(homeId);
   const [values, setValues] = useState<GoalFormValues>(() => goalToForm(initial));
   const [errors, setErrors] = useState<GoalFormErrors>({});
+  const { formRef, flagInvalid } = useFocusFirstInvalid();
   const [saved, setSaved] = useState(false);
 
   const bind = (name: keyof GoalFormValues) => ({
@@ -37,6 +39,7 @@ function GoalForm({ homeId, initial }: { homeId: string; initial: Goal | null })
     const result = validateGoalForm(values);
     if (!result.ok) {
       setErrors(result.errors);
+      flagInvalid();
       return;
     }
     setErrors({});
@@ -44,7 +47,7 @@ function GoalForm({ homeId, initial }: { homeId: string; initial: Goal | null })
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Meta de gasto mensual (RD$)" placeholder="Ej. 3000" hint="Déjalo vacío si no quieres meta en pesos." {...bind("monthly_amount_rd")} />
         <Field label="Meta de consumo mensual (kWh)" placeholder="Ej. 400" hint="Déjalo vacío si no quieres meta en kWh." {...bind("monthly_kwh")} />

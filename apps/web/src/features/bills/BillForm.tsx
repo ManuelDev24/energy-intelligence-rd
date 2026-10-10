@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { useFocusFirstInvalid } from "@/lib/use-focus-first-invalid";
 import type { BillInput } from "@/lib/api/schemas";
 import {
   emptyBillForm,
@@ -29,6 +30,7 @@ export function BillForm({
 }: BillFormProps) {
   const [values, setValues] = useState<BillFormValues>(initial);
   const [errors, setErrors] = useState<Partial<Record<keyof BillFormValues, string>>>({});
+  const { formRef, flagInvalid } = useFocusFirstInvalid();
 
   const bind = (name: keyof BillFormValues) => ({
     name,
@@ -43,6 +45,7 @@ export function BillForm({
     const result = validateBillForm(values);
     if (!result.ok) {
       setErrors(result.errors);
+      flagInvalid();
       return;
     }
     setErrors({});
@@ -50,7 +53,7 @@ export function BillForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex max-w-xl flex-col gap-4">
+    <form ref={formRef} onSubmit={handleSubmit} noValidate className="flex max-w-xl flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Inicio del período" type="date" {...bind("period_start")} />
         <Field label="Fin del período" type="date" {...bind("period_end")} />
