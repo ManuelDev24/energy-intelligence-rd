@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, StrictBool, field_validator, model_validator
 
 
 class Credentials(BaseModel):
@@ -166,3 +166,23 @@ class OwnershipTransferIn(BaseModel):
     @classmethod
     def validate_password_encoding(cls, value):
         return Credentials.validate_password_encoding(value)
+
+
+class NotificationPreferencesIn(BaseModel):
+    """Reemplazo completo: exactamente dos booleanos reales (nada de 0/1 ni "yes")."""
+    model_config = ConfigDict(extra="forbid")
+    alerts_email: StrictBool
+    alerts_push: StrictBool
+
+
+class NotificationPreferencesOut(BaseModel):
+    alerts_email: bool
+    alerts_push: bool
+    updated_at: datetime | None = None  # null = nunca guardadas (valores por defecto)
+
+
+class SessionOut(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    expires_at: datetime
+    current: bool

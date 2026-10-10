@@ -538,6 +538,27 @@ export const OwnershipTransferInSchema = z.object({
 });
 export type OwnershipTransferIn = z.infer<typeof OwnershipTransferInSchema>;
 
+export const NotificationPreferencesInSchema = z.object({
+  "alerts_email": z.boolean(),
+  "alerts_push": z.boolean()
+});
+export type NotificationPreferencesIn = z.infer<typeof NotificationPreferencesInSchema>;
+
+export const NotificationPreferencesOutSchema = z.object({
+  "alerts_email": z.boolean(),
+  "alerts_push": z.boolean(),
+  "updated_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
+});
+export type NotificationPreferencesOut = z.infer<typeof NotificationPreferencesOutSchema>;
+
+export const SessionOutSchema = z.object({
+  "id": z.string().uuid(),
+  "created_at": z.string().datetime({ offset: true }),
+  "expires_at": z.string().datetime({ offset: true }),
+  "current": z.boolean()
+});
+export type SessionOut = z.infer<typeof SessionOutSchema>;
+
 export const OcrFieldSchema = z.object({
   "value": z.union([z.string(), z.null()]),
   "confidence": z.enum(["high", "inferred", "none"])

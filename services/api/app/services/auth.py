@@ -91,6 +91,11 @@ def login(db, credentials):
 
 
 def resolve_access(db, token):
+    return resolve_access_session(db, token)[0]
+
+
+def resolve_access_session(db, token):
+    """Usuario y sesión a la que pertenece el access token (la sesión permite marcar «esta sesión» y no cerrarla)."""
     if len(token) > 4096:
         raise unauthorized()
     try:
@@ -107,7 +112,7 @@ def resolve_access(db, token):
     if (not session or session.user_id != uid or session.revoked_at is not None
             or session.expires_at <= now() or not user or not user.active):
         raise unauthorized()
-    return user
+    return user, session
 
 
 def refresh_or_logout(db, token, *, logout=False):

@@ -99,11 +99,14 @@ def test_private_route_inventory_remains_covered(auth_client):
     assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal', '/api/v1/invitations/accept'}
     # Rutas /auth sin access token (las credenciales o el token opaco van en el cuerpo) más las que lo exigen
     # (/me y el cambio de contraseña, que además reautentica).
-    assert {p for p in public if p.startswith('/api/v1/auth/')} == PUBLIC_AUTH_ROUTES | {'/api/v1/auth/me', '/api/v1/auth/me/export', '/api/v1/auth/password/change'}
+    assert {p for p in public if p.startswith('/api/v1/auth/')} == PUBLIC_AUTH_ROUTES | PRIVATE_AUTH_ROUTES
     # /legal solo expone GET, nunca escrituras.
     assert set(paths['/api/v1/legal']) == {'get'}
 
 
+# Rutas de /auth que SÍ exigen access token (se prueban en test_auth*, test_password_change, test_account_settings).
+PRIVATE_AUTH_ROUTES = {'/api/v1/auth/me', '/api/v1/auth/me/export', '/api/v1/auth/me/preferences', '/api/v1/auth/password/change',
+                       '/api/v1/auth/sessions', '/api/v1/auth/sessions/revoke-others', '/api/v1/auth/sessions/{session_id}'}
 PUBLIC_AUTH_ROUTES = {'/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout',
                       '/api/v1/auth/password/forgot', '/api/v1/auth/password/reset'}
 

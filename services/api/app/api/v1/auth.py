@@ -1,13 +1,16 @@
+import uuid
+
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.api.auth_deps import auth_required, current_user
+from app.api.auth_deps import auth_required, current_session, current_user
 from app.api.auth_abuse import forgot_budget, login_budget, register_budget, refresh_budget, reset_budget
 from app.database import get_db
-from app.schemas.auth import (AccountDeletionIn, Credentials, PasswordChangeIn, PasswordForgotAccepted,
-                              PasswordForgotIn, PasswordResetIn, RefreshIn, RegisterIn, TokensOut, UserOut)
-from app.services import account, auth, data_export, email, password_recovery
+from app.schemas.auth import (AccountDeletionIn, Credentials, NotificationPreferencesIn, NotificationPreferencesOut,
+                              PasswordChangeIn, PasswordForgotAccepted, PasswordForgotIn, PasswordResetIn, RefreshIn,
+                              RegisterIn, SessionOut, TokensOut, UserOut)
+from app.services import account, account_settings, auth, data_export, email, password_recovery
 
 router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(auth_required)])
 
@@ -51,6 +54,40 @@ def _authenticated_login_budget(user=Depends(current_user), _=Depends(login_budg
 @router.delete("/me", status_code=204)
 def delete_me(payload: AccountDeletionIn, user=Depends(_authenticated_login_budget), db: Session = Depends(get_db)):
     account.delete_account(db, user, payload.password.get_secret_value())
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+# ERD-PROF-01: preferencias de aviso y sesiones activas (solo con sesión válida; siempre no-store).
+@router.get("/me/preferences", response_model=NotificationPreferencesOut)
+def get_preferences(response: Response, user=Depends(current_user), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return account_settings.get_preferences(db, user)
+
+
+@router.put("/me/preferences", response_model=NotificationPreferencesOut)
+def put_preferences(payload: NotificationPreferencesIn, response: Response, user=Depends(current_user),
+                    db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return account_settings.save_preferences(db, user, payload.alerts_email, payload.alerts_push)
+
+
+@router.get("/sessions", response_model=list[SessionOut])
+def list_sessions(response: Response, auth_ctx=Depends(current_session), db: Session = Depends(get_db)):
+    user, session = auth_ctx
+    response.headers["Cache-Control"] = "no-store"
+    return account_settings.list_sessions(db, user, session.id)
+
+
+@router.post("/sessions/revoke-others", status_code=204)
+def revoke_other_sessions(auth_ctx=Depends(current_session), db: Session = Depends(get_db)):
+    user, session = auth_ctx
+    account_settings.revoke_other_sessions(db, user, session.id)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def revoke_session(session_id: uuid.UUID, user=Depends(current_user), db: Session = Depends(get_db)):
+    account_settings.revoke_session(db, user, session_id)
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 

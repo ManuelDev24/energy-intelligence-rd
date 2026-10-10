@@ -84,3 +84,13 @@ class HomeInvitation(Base):
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     accepted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class NotificationPreference(Base):
+    """ERD-PROF-01: preferencias de aviso por usuario. Sin fila = valores por defecto (activados). Se aplican cuando
+    existan los envíos (ERD-ALERT-02); hoy solo se guardan."""
+    __tablename__ = "notification_preferences"
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    alerts_email: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    alerts_push: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
