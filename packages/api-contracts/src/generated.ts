@@ -505,6 +505,38 @@ export const PasswordChangeInSchema = z.object({
 });
 export type PasswordChangeIn = z.infer<typeof PasswordChangeInSchema>;
 
+export const InvitationCreateInSchema = z.object({
+  "email": z.string().max(254)
+});
+export type InvitationCreateIn = z.infer<typeof InvitationCreateInSchema>;
+
+export const InvitationOutSchema = z.object({
+  "id": z.string().uuid(),
+  "email": z.string(),
+  "created_at": z.string().datetime({ offset: true }),
+  "expires_at": z.string().datetime({ offset: true })
+});
+export type InvitationOut = z.infer<typeof InvitationOutSchema>;
+
+export const InvitationAcceptInSchema = z.object({
+  "token": z.string().regex(new RegExp("^[A-Za-z0-9_-]{43}$")).min(43).max(43)
+});
+export type InvitationAcceptIn = z.infer<typeof InvitationAcceptInSchema>;
+
+export const MemberOutSchema = z.object({
+  "user_id": z.string().uuid(),
+  "email": z.string(),
+  "role": z.enum(["owner", "member"]),
+  "joined_at": z.string().datetime({ offset: true })
+});
+export type MemberOut = z.infer<typeof MemberOutSchema>;
+
+export const OwnershipTransferInSchema = z.object({
+  "user_id": z.string().uuid(),
+  "password": z.string().min(12).max(128)
+});
+export type OwnershipTransferIn = z.infer<typeof OwnershipTransferInSchema>;
+
 export const OcrFieldSchema = z.object({
   "value": z.union([z.string(), z.null()]),
   "confidence": z.enum(["high", "inferred", "none"])

@@ -11,6 +11,7 @@ from tests.test_api_insights import EQ, add_bill
 from tests.test_api_readings import READING
 
 GOAL = {"monthly_kwh": "300", "monthly_amount_rd": "3000"}
+OTHER_ID = '00000000-0000-4000-8000-000000000001'
 CONSUMPTION_QUERY = "?granularity=day&from=2026-09-01&to=2026-09-30"
 
 
@@ -31,7 +32,7 @@ def setup_homes(client):
     return a, b, homes, bill, eq, alert, reading
 
 
-def cases(h, bill, eq, alert, reading):
+def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID):
     u = f'/api/v1/homes/{h}'
     return [('GET',u,None),('PATCH',u,{'name':'changed'}),('DELETE',u,None),
             ('GET',u+'/contract',None),('PUT',u+'/contract',{'account_number':'123'}),
@@ -47,7 +48,12 @@ def cases(h, bill, eq, alert, reading):
             ('GET',u+'/dashboard',None),
             ('GET',u+'/readings',None),('POST',u+'/readings',READING),('DELETE',u+'/readings/'+reading,None),
             ('GET',u+'/consumption'+CONSUMPTION_QUERY,None),
-            ('GET',u+'/goal',None),('PUT',u+'/goal',GOAL),('GET',u+'/goal/progress?on=2026-09-15',None)]
+            ('GET',u+'/goal',None),('PUT',u+'/goal',GOAL),('GET',u+'/goal/progress?on=2026-09-15',None),
+            # ERD-SHARE-01
+            ('GET',u+'/members',None),('DELETE',u+'/members/me',None),('DELETE',u+'/members/'+member,None),
+            ('GET',u+'/invitations',None),('POST',u+'/invitations',{'email':'new@example.com'}),
+            ('DELETE',u+'/invitations/'+invitation,None),
+            ('POST',u+'/transfer-ownership',{'user_id':OTHER_ID,'password':PASSWORD})]
 
 
 def _call(client, method, url, body, headers=None):
@@ -83,13 +89,14 @@ def test_all_private_routes_require_membership_and_token(auth_client, migrated, 
 
 def test_private_route_inventory_remains_covered(auth_client):
     paths = auth_client.get('/openapi.json').json()['paths']
-    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}')
+    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}')
     actual = {(method.upper(), path) for path, operations in paths.items()
               if path.startswith('/api/v1/homes/') for method in operations if method != 'parameters'}
     assert actual == {(method, path.split('?')[0]) for method, path, _ in tested}
-    # Únicas rutas públicas fuera de /homes: auth, tarifas publicadas y versiones legales.
+    # Únicas rutas fuera de /homes y /auth: tarifas y versiones legales (públicas) y aceptar invitación (exige sesión; su
+    # comportamiento sin token se prueba en test_home_sharing).
     public = {path for path in paths if path.startswith('/api/v1/') and not path.startswith('/api/v1/homes')}
-    assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal'}
+    assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal', '/api/v1/invitations/accept'}
     # Rutas /auth sin access token (las credenciales o el token opaco van en el cuerpo) más las que lo exigen
     # (/me y el cambio de contraseña, que además reautentica).
     assert {p for p in public if p.startswith('/api/v1/auth/')} == PUBLIC_AUTH_ROUTES | {'/api/v1/auth/me', '/api/v1/auth/password/change'}

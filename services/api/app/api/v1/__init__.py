@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from app.api.auth_deps import authorize_home
 
-from app.api.v1 import alerts, anomalies, auth, bills, consumption, dashboard, equipment, goals, homes, legal, readings, tariffs
+from app.api.v1 import alerts, anomalies, auth, bills, consumption, dashboard, equipment, goals, homes, legal, readings, sharing, tariffs
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
@@ -14,6 +14,9 @@ api_router.include_router(anomalies.router, dependencies=[Depends(authorize_home
 api_router.include_router(readings.router, dependencies=[Depends(authorize_home)])
 api_router.include_router(consumption.router, dependencies=[Depends(authorize_home)])
 api_router.include_router(goals.router, dependencies=[Depends(authorize_home)])
+api_router.include_router(sharing.router, dependencies=[Depends(authorize_home)])
+# Requiere sesión pero no pertenencia previa: el token de invitación es lo que da acceso.
+api_router.include_router(sharing.invitations_router)
 # Público a propósito: datos regulatorios publicados (ver PHASE2_IMPLEMENTATION.md).
 api_router.include_router(tariffs.router)
 # Público a propósito: versiones legales vigentes (ERD-AUTH-03).

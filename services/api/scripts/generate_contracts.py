@@ -14,7 +14,8 @@ from app.schemas.dashboard import DashboardOut
 from app.schemas.equipment import EquipmentOut, EquipmentEstimateOut, EquipmentIn
 from app.schemas.alert import AlertRecord, AlertSettingsOut, AlertSettingsIn, AlertStatusUpdate
 from app.schemas.auth import (UserOut, TokensOut, RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn,
-                              PasswordForgotAccepted, PasswordResetIn, PasswordChangeIn)
+                              PasswordForgotAccepted, PasswordResetIn, PasswordChangeIn, InvitationCreateIn,
+                              InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn)
 from app.schemas.reading import ReadingCreate, ReadingOut
 from app.schemas.consumption import ConsumptionOut
 from app.schemas.goal import GoalIn, GoalOut, GoalProgressOut
@@ -30,7 +31,8 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           UserOut, TokensOut, ReadingOut, ReadingCreate, ConsumptionOut, GoalOut, GoalIn, GoalProgressOut,
           TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
-          PasswordChangeIn, OcrDraft, AnomalyRecord]
+          PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
+          OcrDraft, AnomalyRecord]
 
 
 def generate():

@@ -3,9 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 // so cookie values cannot reach any dev-mode RSC debug serialization.
 const PROTECTED = ["/dashboard", "/consumption", "/readings", "/goal", "/bills", "/equipment", "/alerts", "/homes", "/account", "/profile"];
 export async function middleware(request: NextRequest) {
-  // ERD-AUTH-05: recuperación pública. El token es un fragmento (no llega al servidor), pero
+  // ERD-AUTH-05 / ERD-SHARE-01: páginas públicas con token en el fragmento. El token es un fragmento (no llega al servidor), pero
   // reforzamos el encabezado para que ni la ruta ni futuras variantes viajen como Referer.
-  if (request.nextUrl.pathname === "/restablecer-contrasena") {
+  if (request.nextUrl.pathname === "/restablecer-contrasena" || request.nextUrl.pathname === "/invitacion") {
     const response = NextResponse.next();
     response.headers.set("Referrer-Policy", "no-referrer");
     response.headers.set("Cache-Control", "no-store");

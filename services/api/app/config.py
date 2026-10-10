@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     # navegador, distinta de la IP del propio BFF en la conexión servidor-a-servidor).
     BFF_API_SHARED_SECRET: str = Field(default="", repr=False)
 
+    # ERD-SHARE-01: invitaciones a una vivienda (el token viaja en el fragmento #token=, como el de recuperación).
+    # Vacío = misma web que PASSWORD_RESET_URL, ruta /invitacion (no añade una variable obligatoria al despliegue).
+    INVITATION_URL: str = ""
+    INVITATION_TTL_DAYS: int = Field(default=7, ge=1, le=30)
+    INVITATION_MAX_PENDING_PER_HOME: int = Field(default=10, ge=1, le=50)
+    INVITATION_DAILY_LIMIT_PER_USER: int = Field(default=20, ge=1, le=200)
     # ERD-OBS-01: Sentry es opcional; sin DSN no se envía nada. El DSN no es secreto fuerte pero no se imprime.
     SENTRY_DSN: str = Field(default="", repr=False)
     SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.05, ge=0.0, le=1.0)
@@ -104,6 +110,15 @@ class Settings(BaseSettings):
         reset_url = urlsplit(self.PASSWORD_RESET_URL)
         if reset_url.query or reset_url.fragment or "#" in self.PASSWORD_RESET_URL or "?" in self.PASSWORD_RESET_URL:
             raise ValueError("PASSWORD_RESET_URL must not contain query or fragment; the token is appended as #token=")
+        if not self.INVITATION_URL:
+            reset = urlsplit(self.PASSWORD_RESET_URL)
+            self.INVITATION_URL = f"{reset.scheme}://{reset.netloc}/invitacion"
+        invitation_url = urlsplit(self.INVITATION_URL)
+        if (invitation_url.query or invitation_url.fragment or "#" in self.INVITATION_URL or "?" in self.INVITATION_URL
+                or not invitation_url.hostname):
+            raise ValueError("INVITATION_URL must not contain query or fragment; the token is appended as #token=")
+        if self.ENVIRONMENT.lower() != "development" and invitation_url.scheme != "https":
+            raise ValueError("Non-development environments require an HTTPS INVITATION_URL")
         if self.ENVIRONMENT.lower() != "development":
             if self.EMAIL_BACKEND != "resend" or not self.RESEND_API_KEY.strip() or not self.EMAIL_FROM.strip():
                 raise ValueError("Non-development environments require EMAIL_BACKEND=resend with RESEND_API_KEY and EMAIL_FROM")

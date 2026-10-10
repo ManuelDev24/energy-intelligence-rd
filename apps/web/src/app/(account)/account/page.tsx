@@ -33,7 +33,7 @@ function DeleteAccountSection() {
       <p className="mt-2 text-sm text-muted-foreground">
         Esta acción es permanente. Las viviendas donde eres el único miembro se eliminarán junto con todos sus
         datos. Si eres el único propietario de una vivienda compartida, la eliminación quedará bloqueada hasta
-        transferir la propiedad a otro miembro; todavía no existe una función para transferir la propiedad.
+        transferir la propiedad a otro miembro o expulsar a los demás (en «Mis viviendas» → «Compartir»).
       </p>
       {!confirming ? (
         <Button type="button" variant="outline" className="mt-4 border-danger text-danger" onClick={() => setConfirming(true)}>

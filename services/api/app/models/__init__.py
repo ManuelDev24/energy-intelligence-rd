@@ -1,5 +1,5 @@
 from app.models.auth_abuse import AuthAbuseBucket
-from app.models.auth import User, HomeMember, AuthSession, RefreshToken, PasswordResetToken
+from app.models.auth import User, HomeMember, AuthSession, RefreshToken, PasswordResetToken, HomeInvitation
 from app.models.alert import Alert
 from app.models.audit import AuditEvent
 from app.models.bill import Bill

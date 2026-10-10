@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -120,7 +120,28 @@ function ownsBill(path: string, value: unknown) {
   const nested = (value as { detail?: unknown }).detail;
   return owns(value) && (nested === undefined || owns(nested));
 }
+/** ERD-SHARE-01: compartir vivienda. Cuerpos estrictos; el texto de error de la API nunca se reenvía. */
+function sharingRoute(path: string, method: string): Phase2Route | null {
+  if (path === "/invitations/accept") return method === "POST" ? { response: HomeSchema, body: InvitationAcceptInSchema.strict(), query: {} } : null;
+  const match = path.match(new RegExp(`^/homes/${UUID}/(members|invitations|transfer-ownership)(?:/(${UUID}|me))?$`));
+  if (!match) return null;
+  const [, kind, child] = match;
+  const none = z.undefined();
+  const empty = z.object({}).strict();
+  if (kind === "members") {
+    if (!child) return method === "GET" ? { response: MemberOutSchema.array(), query: {} } : null;
+    return method === "DELETE" ? { response: none, body: empty, query: {} } : null;
+  }
+  if (kind === "invitations") {
+    if (!child) return method === "GET" ? { response: InvitationOutSchema.array(), query: {} }
+      : method === "POST" ? { response: InvitationOutSchema, body: InvitationCreateInSchema.strict(), query: {} } : null;
+    return child !== "me" && method === "DELETE" ? { response: none, body: empty, query: {} } : null;
+  }
+  return !child && method === "POST" ? { response: none, body: OwnershipTransferInSchema.strict(), query: {} } : null;
+}
 function phase2Route(path: string, method: string): Phase2Route | null {
+  const sharing = sharingRoute(path, method);
+  if (sharing || /\/(members|invitations|transfer-ownership)(\/|$)/.test(path)) return sharing;
   if (new RegExp(`^/homes/${UUID}/dashboard$`).test(path)) return method === "GET"
     ? { response: DashboardSchema, query: { bill_id: { pattern: v => z.string().uuid().safeParse(v).success } } }
     : null;
@@ -219,7 +240,7 @@ const FIELD_MESSAGES: Record<string, string> = {
   token: "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.",
   new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
 };
-const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|http_[1-5]\d\d)$/;
+const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|http_[1-5]\d\d)$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
@@ -227,7 +248,15 @@ function statusMessage(status: number, path: string, code?: unknown) {
   if (status === 400 && code === "reset_token_invalid") return "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.";
   if (status === 429 && (path === FORGOT || path === RESET)) return "Demasiadas solicitudes de recuperación. Espera unos minutos e inténtalo de nuevo.";
   if (status === 403 && code === "reauthentication_failed") return "La contraseña no es correcta.";
-  if (status === 409 && code === "ownership_transfer_required") return "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad antes de continuar (todavía no existe una función para transferirla).";
+  // ERD-SHARE-01: la propiedad ya se puede transferir; el mismo código lo usan borrar cuenta y salir de la vivienda.
+  if (status === 409 && code === "ownership_transfer_required") return path === "/auth/me" ? "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad o expulsa a los demás miembros antes de continuar." : "Eres el propietario: transfiere la propiedad a otro miembro antes de salir, o borra la vivienda si eres el único miembro.";
+  if (status === 400 && code === "invitation_invalid") return "La invitación no es válida o ha caducado. Pide al propietario que te envíe una nueva, y ábrela con la cuenta del correo invitado.";
+  if (status === 409 && code === "already_member") return "Esa persona ya es miembro de la vivienda.";
+  if (status === 409 && code === "invitation_pending") return "Ya hay una invitación pendiente para ese correo. Revócala para enviar otra.";
+  if (status === 409 && code === "invitation_limit_reached") return "Hay demasiadas invitaciones pendientes en esta vivienda. Revoca alguna o espera a que caduquen.";
+  if (status === 429 && code === "invitation_rate_limited") return "Has enviado demasiadas invitaciones hoy. Inténtalo mañana.";
+  if (status === 422 && /\/invitations$/.test(path)) return "Indica un correo válido que no sea el tuyo.";
+  if (status === 403 && /\/(members|invitations|transfer-ownership)/.test(path) && code !== "reauthentication_failed") return "Solo el propietario de la vivienda puede hacer esto.";
   // Fase 2: mensajes propios por ruta (el texto de la API nunca se reenvía).
   if (status === 409 && /\/readings$/.test(path)) return "Ya existe una lectura con esa fecha y hora.";
   if (status === 422 && code === "invalid_input" && /\/readings$/.test(path)) return "La lectura debe ser mayor o igual que la anterior y menor o igual que la siguiente.";

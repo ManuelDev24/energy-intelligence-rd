@@ -21,6 +21,7 @@ const pages: Record<string, () => Promise<{ metadata?: Metadata }>> = {
   "Recuperar contraseña": () => import("./olvide-contrasena/layout"),
   "Términos y privacidad": () => import("./legal/layout"),
   "Restablecer contraseña": () => import("./restablecer-contrasena/layout"),
+  "Invitación a una vivienda": () => import("./invitacion/layout"),
 };
 
 describe("títulos por pantalla", () => {

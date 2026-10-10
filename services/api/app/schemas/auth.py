@@ -123,3 +123,46 @@ class PasswordChangeIn(BaseModel):
         if self.current_password.get_secret_value() == self.new_password.get_secret_value():
             raise ValueError("La nueva contraseña debe ser distinta de la actual")
         return self
+
+
+class InvitationCreateIn(BaseModel):
+    """ERD-SHARE-01: solo se invita como miembro; la propiedad se cede con transfer-ownership."""
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr = Field(max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        return str(value).lower()
+
+
+class InvitationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    email: str
+    created_at: datetime
+    expires_at: datetime
+
+
+class InvitationAcceptIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+
+
+class MemberOut(BaseModel):
+    user_id: uuid.UUID
+    email: str
+    role: Literal["owner", "member"]
+    joined_at: datetime
+
+
+class OwnershipTransferIn(BaseModel):
+    """Reautentica con la contraseña actual: ceder la propiedad es una acción de alto impacto."""
+    model_config = ConfigDict(extra="forbid")
+    user_id: uuid.UUID
+    password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)
