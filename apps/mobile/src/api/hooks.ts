@@ -15,6 +15,7 @@ export const keys = {
   get homes() { return [...scope(), 'homes'] as const; },
   bills: (homeId: string) => [...scope(), 'bills', homeId] as const,
   dashboard: (homeId: string) => [...scope(), 'dashboard', homeId] as const,
+  anomalies: (homeId: string, granularity: 'day' | 'month') => [...scope(), 'anomalies', homeId, granularity] as const,
   equipment: (homeId: string) => [...scope(), 'equipment', homeId] as const,
   equipmentItem: (homeId: string, id: string) => [...scope(), 'equipment', homeId, id] as const,
   estimate: (homeId: string) => [...scope(), 'estimate', homeId] as const,
@@ -35,6 +36,8 @@ export const useBills = (homeId: string | null) =>
   useQuery(perHome(keys.bills(homeId ?? 'none'), homeId, api.listBills));
 export const useDashboard = (homeId: string | null) =>
   useQuery(perHome(keys.dashboard(homeId ?? 'none'), homeId, api.getDashboard));
+export const useAnomalies = (homeId: string | null, granularity: 'day' | 'month' = 'month') =>
+  useQuery(perHome(keys.anomalies(homeId ?? 'none', granularity), homeId, (id, signal) => api.listAnomalies(id, granularity, signal)));
 export const useEquipment = (homeId: string | null) =>
   useQuery(perHome(keys.equipment(homeId ?? 'none'), homeId, api.listEquipment));
 export const useEstimate = (homeId: string | null) =>

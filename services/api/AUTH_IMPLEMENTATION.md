@@ -156,9 +156,9 @@ roundtrip; model/migration metadata parity.
 ## Honest limits / release prerequisites
 
 This is a backend foundation, **not a complete production account system**:
-- No password recovery/reset endpoint, email verification, mail delivery, MFA,
-  account erasure/export, privacy frontend, recovery frontend or auth UI. No stub
-  claims these workflows work. Existing frontends are not wired to auth yet.
+- Password recovery backend now exists (ERD-AUTH-05, see `PASSWORD_RECOVERY.md`);
+  still no email verification, MFA, data export or recovery screens in web/mobile.
+  No stub claims these workflows work.
 - Persistent per-peer register/login/refresh budgets now exist (migration `0010`);
   see `AUTH_ABUSE_PROTECTION.md` for limits, proxy trust and rollout. No CAPTCHA,
   account lockout or breached-password check. Gateway rate/body/header-size limits
@@ -175,3 +175,24 @@ This is a backend foundation, **not a complete production account system**:
   handling would be a separate contract change, not an undocumented default here.
 - Legacy mutation audit does not yet attribute actions to the authenticated user.
 - No independently delegated support/admin access to private home data.
+
+## ERD-AUTH-03: consentimiento y borrado de cuenta
+
+- `POST /auth/register` exige `accept_terms: true` (literal JSON `true`; `false`, `1`, `"true"` o ausente → 422).
+  El servidor guarda `LEGAL_TERMS_VERSION` (`app/services/legal.py`) y la fecha en `users.terms_version` /
+  `users.terms_accepted_at` (migración 0012; NULL para cuentas legadas). El cliente no puede elegir versión.
+- `GET /auth/me` expone `terms_version` y `terms_accepted_at`.
+- `GET /api/v1/legal` (público, solo GET) devuelve `{terms_version, privacy_version, status: "draft"}`.
+- `DELETE /auth/me` con `{password}`: ver `ACCOUNT_DELETION.md`. Borrador de privacidad y retención:
+  `docs/legal/PRIVACY_AND_RETENTION_DRAFT.md`.
+
+## ERD-AUTH-05: recuperación de contraseña
+
+- `POST /auth/password/forgot {email}` → siempre `202 {"status":"accepted"}` (sin enumeración);
+  `POST /auth/password/reset {token,new_password}` → `204` o `400 reset_token_invalid`.
+- Token de 32 bytes, solo SHA-256 en `password_reset_tokens` (migración 0013), caduca en 30 min,
+  un solo uso; una nueva solicitud invalida los anteriores. El reset revoca **todas** las sesiones:
+  como el access token lleva `sid` y se comprueba en BD, los access tokens previos fallan al instante.
+- Presupuestos `AUTH_FORGOT_LIMIT` / `AUTH_RESET_LIMIT` por peer + cooldown por cuenta.
+- Correo en `app/services/email.py` (`console` solo desarrollo, `resend` obligatorio fuera de él).
+  Enlace `PASSWORD_RESET_URL#token=…` (fragmento). Detalle y amenazas: `PASSWORD_RECOVERY.md`.

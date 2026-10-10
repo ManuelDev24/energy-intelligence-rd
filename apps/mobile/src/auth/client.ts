@@ -1,4 +1,5 @@
-import { ApiError } from '@energyrd/api-client';
+import { ApiError, buildRegisterPayload } from '@energyrd/api-client';
+import { PasswordForgotAcceptedSchema } from '@energyrd/api-contracts';
 
 export interface TokenPair {
   access_token: string;
@@ -6,13 +7,21 @@ export interface TokenPair {
   token_type: 'bearer';
   expires_in: number;
 }
-export interface Account { id: string; email: string; role: string; created_at: string }
+// ERD-AUTH-03: terms_version/terms_accepted_at son nulos hasta que el usuario acepta al registrarse.
+export interface Account {
+  id: string; email: string; role: string; created_at: string;
+  terms_version: string | null; terms_accepted_at: string | null;
+}
 export type CredentialErrors = Partial<Record<'email' | 'password', string>>;
+export type RegisterErrors = CredentialErrors & { acceptTerms?: string };
+export const INVALID_EMAIL_MESSAGE = 'Ingrese un correo válido (máximo 254 caracteres).';
+export function isValidEmail(email: string): boolean {
+  const normalized = email.trim();
+  return normalized.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+}
 export function validateCredentials(email: string, password: string): CredentialErrors {
   const errors: CredentialErrors = {};
-  const normalized = email.trim();
-  if (normalized.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
-    errors.email = 'Ingrese un correo válido (máximo 254 caracteres).';
+  if (!isValidEmail(email)) errors.email = INVALID_EMAIL_MESSAGE;
   // Python/backend measures Unicode characters, not UTF-16 code units.
   const length = Array.from(password).length;
   if (length < 12 || length > 128) errors.password = 'Use entre 12 y 128 caracteres.';
@@ -28,14 +37,21 @@ export function parsePair(value: unknown): TokenPair {
 }
 function parseAccount(value: unknown): Account {
   const u = value as Partial<Account> | null;
+  const termsVersionOk = u != null && (u.terms_version === null || typeof u.terms_version === 'string');
+  const termsAcceptedOk = u != null && (u.terms_accepted_at === null ||
+    (typeof u.terms_accepted_at === 'string' && Number.isFinite(Date.parse(u.terms_accepted_at))));
   if (!u || typeof u.id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u.id) ||
-    typeof u.email !== 'string' || typeof u.role !== 'string' || typeof u.created_at !== 'string' || !Number.isFinite(Date.parse(u.created_at)))
+    typeof u.email !== 'string' || typeof u.role !== 'string' || typeof u.created_at !== 'string' || !Number.isFinite(Date.parse(u.created_at)) ||
+    !termsVersionOk || !termsAcceptedOk)
     throw new ApiError(502, 'Respuesta de cuenta inválida. Inicie sesión de nuevo.');
-  return { id: u.id, email: u.email, role: u.role, created_at: u.created_at };
+  return {
+    id: u.id, email: u.email, role: u.role, created_at: u.created_at,
+    terms_version: u.terms_version ?? null, terms_accepted_at: u.terms_accepted_at ?? null,
+  };
 }
 export function createAuthClient(baseUrl: string, fetchImpl: typeof fetch = fetch, timeoutMs = 10_000) {
   const root = `${baseUrl.replace(/\/+$/, '')}/api/v1/auth`;
-  async function request(path: string, body?: Record<string, string>, access?: string): Promise<unknown> {
+  async function request(path: string, body?: Record<string, unknown>, access?: string, expectedStatus?: number): Promise<unknown> {
     const ctrl = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     // The deadline covers headers AND the body, even for an uncooperative fetch mock.
@@ -53,10 +69,13 @@ export function createAuthClient(baseUrl: string, fetchImpl: typeof fetch = fetc
           // Never surface arbitrary auth error bodies: servers/proxies can echo secrets.
           const message = response.status === 401 ? 'Correo o contraseña incorrectos. Intente de nuevo.'
             : response.status === 409 ? 'No se pudo crear la cuenta con ese correo. Intente iniciar sesión.'
-            : response.status === 422 ? 'Revise el correo y la contraseña (12 a 128 caracteres).'
+            : response.status === 422 ? 'Revise el correo, la contraseña (12 a 128 caracteres) y la aceptación de los términos.'
             : 'No se pudo completar la solicitud. Intente de nuevo.';
           throw new ApiError(response.status, message);
         }
+        // Contrato estricto cuando el endpoint fija su estado (p. ej. forgot → 202).
+        if (expectedStatus !== undefined && response.status !== expectedStatus)
+          throw new ApiError(502, 'Respuesta de sesión inválida. Inicie sesión de nuevo.');
         return response.status === 204 ? undefined : await response.json();
       })()]);
     } catch (error) {
@@ -72,10 +91,26 @@ export function createAuthClient(baseUrl: string, fetchImpl: typeof fetch = fetc
   };
   return {
     login: (email: string, password: string) => credentials('/login', email, password),
-    register: (email: string, password: string) => credentials('/register', email, password),
+    // ERD-AUTH-03: el registro exige accept_terms:true explícito; el cliente nunca envía la versión.
+    register: async (email: string, password: string, acceptTerms: boolean) => {
+      const fields: RegisterErrors = validateCredentials(email, password);
+      if (!acceptTerms) fields.acceptTerms = 'Debe aceptar los Términos de Servicio y la Política de Privacidad.';
+      if (Object.keys(fields).length) throw new ApiError(422, 'Revise los campos indicados.', fields);
+      const payload = buildRegisterPayload({ email, password, acceptTerms });
+      return parsePair(await request('/register', payload));
+    },
     refresh: async (refresh_token: string) => parsePair(await request('/refresh', { refresh_token })),
     logout: async (refresh_token: string) => { await request('/logout', { refresh_token }); },
     me: async (access: string) => parseAccount(await request('/me', undefined, access)),
+    // ERD-AUTH-05: siempre 202 exista o no la cuenta (sin enumeración). El token de restablecimiento
+    // llega por correo como enlace WEB; el móvil no implementa el restablecimiento nativo todavía.
+    forgotPassword: async (email: string) => {
+      if (!isValidEmail(email)) throw new ApiError(422, 'Revise los campos indicados.', { email: INVALID_EMAIL_MESSAGE });
+      const body = await request('/password/forgot', { email: email.trim().toLowerCase() }, undefined, 202);
+      // Contrato de body: un 202 con un cuerpo distinto de {status:'accepted'} no debe mostrar éxito.
+      if (!PasswordForgotAcceptedSchema.safeParse(body).success)
+        throw new ApiError(502, 'Respuesta de sesión inválida. Inicie sesión de nuevo.');
+    },
   };
 }
 export type AuthClient = ReturnType<typeof createAuthClient>;

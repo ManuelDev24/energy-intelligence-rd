@@ -1,7 +1,7 @@
-import type { Consumption, ConsumptionBucketItem } from '@energyrd/api-contracts';
+import type { Consumption, ConsumptionBucketItem, ConsumptionComparison, Metric } from '@energyrd/api-contracts';
 import { describe, expect, it } from 'vitest';
 
-import { bucketLabel, bucketLongLabel, bucketValues, chartSummary, consumptionNotices, coveragePct, reasonText } from './model';
+import { bucketLabel, bucketLongLabel, bucketValues, chartSummary, comparisonView, consumptionNotices, coveragePct, reasonText } from './model';
 
 const b = (start: string, end: string, kwh: string | null, extra: Partial<ConsumptionBucketItem> = {}): ConsumptionBucketItem => ({
   start, end, kwh,
@@ -63,5 +63,43 @@ describe('modelo de consumo', () => {
       buckets: [b('2026-10-01', '2026-10-01', null), b('2026-10-02', '2026-10-02', '5', { quality: 'ESTIMATED', coverage_ratio: '0.5', reason_code: 'partial_coverage' })],
     } as unknown as Consumption;
     expect(consumptionNotices(partial)).toEqual({ noData: false, gaps: 1, partial: 1, coverage: 50 });
+  });
+
+  const metric = (value: string): Metric => ({ value, unit: 'kWh', quality: 'REAL' });
+  const comparison = (overrides: Partial<ConsumptionComparison> = {}): ConsumptionComparison => ({
+    previous_from: '2026-08-01',
+    previous_to: '2026-08-31',
+    previous_kwh: metric('100'),
+    kwh_delta: metric('10'),
+    kwh_pct: { value: '10', unit: '%', quality: 'REAL' },
+    ...overrides,
+  });
+
+  it('comparisonView: aumento vs. período anterior usa tono de advertencia y flecha arriba', () => {
+    const v = comparisonView(comparison({ kwh_delta: metric('10'), kwh_pct: { value: '10', unit: '%', quality: 'REAL' } }));
+    expect(v).not.toBeNull();
+    expect(v?.tone).toBe('warning');
+    expect(v?.icon).toBe('arrow-up');
+    expect(v?.text).toBe('+10.00% vs. período anterior');
+  });
+
+  it('comparisonView: disminución vs. período anterior usa tono positivo y flecha abajo', () => {
+    const v = comparisonView(comparison({ kwh_delta: metric('-10'), kwh_pct: { value: '-10', unit: '%', quality: 'REAL' } }));
+    expect(v).not.toBeNull();
+    expect(v?.tone).toBe('success');
+    expect(v?.icon).toBe('arrow-down');
+    expect(v?.text).toBe('−10.00% vs. período anterior');
+  });
+
+  it('comparisonView: kwh_pct null muestra el delta en kWh y aclara que no se pudo calcular el porcentaje', () => {
+    const v = comparisonView(comparison({ kwh_delta: metric('5'), kwh_pct: null }));
+    expect(v).not.toBeNull();
+    expect(v?.tone).toBe('warning');
+    expect(v?.icon).toBe('arrow-up');
+    expect(v?.text).toBe('+5 kWh vs. período anterior (no se pudo calcular el porcentaje)');
+  });
+
+  it('comparisonView: comparison null no produce nada que mostrar', () => {
+    expect(comparisonView(null)).toBeNull();
   });
 });

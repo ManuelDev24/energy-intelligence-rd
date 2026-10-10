@@ -1,6 +1,8 @@
-import { ApiError, ContractError, parseErrorBody } from "@energyrd/api-client";
-import { UserOutSchema, type UserOut } from "@energyrd/api-contracts";
+import { ApiError, ContractError, parseErrorBody, buildRegisterPayload } from "@energyrd/api-client";
+import { UserOutSchema, LegalOutSchema, type UserOut, type LegalOut } from "@energyrd/api-contracts";
 export const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
+/** Clave de localStorage cuyo cambio hace que las demás pestañas vuelvan a verificar la sesión. */
+export const ACCOUNT_CHANGE_KEY = "energyrd.account-change";
 export const AccountSchema = UserOutSchema;
 export type Account = UserOut;
 let generation = 0;
@@ -42,13 +44,16 @@ export const bffFetch: typeof fetch = async (input, init) => {
   };
   return guarded;
 };
-export async function accountRequest(path: "login" | "register" | "logout" | "me", input?: { email: string; password: string }): Promise<unknown> {
+export async function accountRequest(path: "login" | "register" | "logout" | "me", input?: { email: string; password: string; acceptTerms?: boolean }): Promise<unknown> {
   // 428 auth_epoch_required is answered by the BFF itself (no upstream contact) together with a
   // fresh epoch cookie, so exactly one local retry is safe; it is never repeated.
   for (let attempt = 0; ; attempt += 1) {
+    // ERD-AUTH-03: único punto de construcción del cuerpo de registro (buildRegisterPayload),
+    // compartido con móvil. Lanza localmente (sin red) si falta la aceptación explícita.
+    const payload = path === "register" && input ? buildRegisterPayload({ email: input.email, password: input.password, acceptTerms: input.acceptTerms }) : input;
     let response: Response;
     try {
-      response = await fetch(`/api/bff/auth/${path}`, { method: path === "me" ? "GET" : "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", cache: "no-store", redirect: "error", body: path === "me" ? undefined : JSON.stringify(input ?? {}), signal: AbortSignal.timeout(10_000) });
+      response = await fetch(`/api/bff/auth/${path}`, { method: path === "me" ? "GET" : "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", cache: "no-store", redirect: "error", body: path === "me" ? undefined : JSON.stringify(payload ?? {}), signal: AbortSignal.timeout(10_000) });
     } catch { throw new ApiError(0, "No se pudo confirmar la operación. No se reintentó. Inicia sesión de nuevo."); }
     // A non-JSON body (proxy HTML, stack trace) must never become a UI message.
     let body: unknown;
@@ -63,4 +68,25 @@ export async function accountRequest(path: "login" | "register" | "logout" | "me
     if (!account.success) throw new ContractError();
     return account.data;
   }
+}
+/** ERD-AUTH-03: versión pública de términos/privacidad, siempre en borrador. */
+export async function fetchLegal(): Promise<LegalOut> {
+  const response = await fetch("/api/bff/legal", { method: "GET", credentials: "same-origin", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) });
+  let body: unknown;
+  try { body = await response.json(); } catch { body = undefined; }
+  if (!response.ok) throw parseErrorBody(response.status, body);
+  const parsed = LegalOutSchema.safeParse(body);
+  if (!parsed.success) throw new ContractError();
+  return parsed.data;
+}
+/**
+ * ERD-AUTH-03: elimina la cuenta con reautenticación por contraseña. Éxito = 204 sin cuerpo
+ * (nunca se parsea como JSON); el error ya trae el mensaje local en español (`detail`).
+ */
+export async function deleteAccountRequest(password: string): Promise<void> {
+  const response = await fetch("/api/bff/auth/me", { method: "DELETE", headers: { "Content-Type": "application/json" }, credentials: "same-origin", cache: "no-store", redirect: "error", body: JSON.stringify({ password }), signal: AbortSignal.timeout(10_000) });
+  if (response.status === 204) return;
+  let body: unknown;
+  try { body = await response.json(); } catch { body = undefined; }
+  throw parseErrorBody(response.status, body);
 }

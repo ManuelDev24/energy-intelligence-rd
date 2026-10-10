@@ -39,14 +39,26 @@ def cases(h, bill, eq, alert, reading):
             ('GET',u+'/bills/'+bill,None),('PUT',u+'/bills/'+bill,BILL),('DELETE',u+'/bills/'+bill,None),
             ('GET',u+'/bills/'+bill+'/items',None),('PUT',u+'/bills/'+bill+'/items',{'items': []}),
             ('POST',u+'/bills/'+bill+'/validate',{}),
+            ('POST',u+'/bills/ocr',MULTIPART),
             ('GET',u+'/equipment',None),('POST',u+'/equipment',EQ),('GET',u+'/equipment/estimate',None),
             ('GET',u+'/equipment/'+eq,None),('PUT',u+'/equipment/'+eq,EQ),('DELETE',u+'/equipment/'+eq,None),
-            ('GET',u+'/alerts',None),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
+            ('GET',u+'/alerts',None),('GET',u+'/anomalies',None),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
             ('GET',u+'/alert-settings',None),('PUT',u+'/alert-settings',{'warning_pct':'10','critical_pct':'40'}),
             ('GET',u+'/dashboard',None),
             ('GET',u+'/readings',None),('POST',u+'/readings',READING),('DELETE',u+'/readings/'+reading,None),
             ('GET',u+'/consumption'+CONSUMPTION_QUERY,None),
             ('GET',u+'/goal',None),('PUT',u+'/goal',GOAL),('GET',u+'/goal/progress?on=2026-09-15',None)]
+
+
+def _call(client, method, url, body, headers=None):
+    """Mismo helper para las dos pasadas del inventario: el caso OCR manda multipart, no JSON."""
+    if body is MULTIPART:
+        png = b'\x89PNG\r\n\x1a\n' + b'0' * 32  # no necesita ser una imagen válida: solo probar auth
+        return client.request(method, url, files={'file': ('x.png', png, 'image/png')}, headers=headers)
+    return client.request(method, url, json=body, headers=headers)
+
+
+MULTIPART = object()
 
 
 @pytest.mark.parametrize('role', ['user','admin','support'])
@@ -55,12 +67,12 @@ def test_all_private_routes_require_membership_and_token(auth_client, migrated, 
     with migrated.begin() as c:
         c.execute(text('UPDATE users SET role=:r WHERE email=:e'), {'r':role,'e':'bob@example.com'})
     for method,url,body in cases(homes[0],bill,eq,alert,reading):
-        assert auth_client.request(method,url,json=body).status_code == 401, (method,url)
-        assert auth_client.request(method,url,json=body,headers=bearer(b)).status_code == 404, (method,url)
+        assert _call(auth_client, method, url, body).status_code == 401, (method,url)
+        assert _call(auth_client, method, url, body, headers=bearer(b)).status_code == 404, (method,url)
     # Authorized parent must not allow child IDs from another home.
     for method,url,body in cases(homes[1],bill,eq,alert,reading):
         if any('/'+child in url for child in [bill,eq,alert,reading]):
-            assert auth_client.request(method,url,json=body,headers=bearer(a)).status_code == 404, (method,url)
+            assert _call(auth_client, method, url, body, headers=bearer(a)).status_code == 404, (method,url)
     # Verify denied mutations did not change private records.
     assert auth_client.get(f'/api/v1/homes/{homes[0]}',headers=bearer(a)).json()['name'] == 'one'
     assert auth_client.get(f'/api/v1/homes/{homes[0]}/bills/{bill}',headers=bearer(a)).status_code == 200
@@ -75,9 +87,24 @@ def test_private_route_inventory_remains_covered(auth_client):
     actual = {(method.upper(), path) for path, operations in paths.items()
               if path.startswith('/api/v1/homes/') for method in operations if method != 'parameters'}
     assert actual == {(method, path.split('?')[0]) for method, path, _ in tested}
-    # Únicas rutas públicas fuera de /homes: auth y tarifas publicadas.
+    # Únicas rutas públicas fuera de /homes: auth, tarifas publicadas y versiones legales.
     public = {path for path in paths if path.startswith('/api/v1/') and not path.startswith('/api/v1/homes')}
-    assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs'}
+    assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal'}
+    # Rutas /auth sin access token (las credenciales o el token opaco van en el cuerpo).
+    assert {p for p in public if p.startswith('/api/v1/auth/')} == PUBLIC_AUTH_ROUTES | {'/api/v1/auth/me'}
+    # /legal solo expone GET, nunca escrituras.
+    assert set(paths['/api/v1/legal']) == {'get'}
+
+
+PUBLIC_AUTH_ROUTES = {'/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout',
+                      '/api/v1/auth/password/forgot', '/api/v1/auth/password/reset'}
+
+
+def test_public_auth_routes_never_require_bearer(auth_client):
+    for path in PUBLIC_AUTH_ROUTES:
+        response = auth_client.post(path, json={})
+        assert response.status_code == 422, path
+        assert 'www-authenticate' not in response.headers, path
 
 
 def test_member_read_write_owner_only_home_delete_and_revocation(auth_client, migrated):
@@ -100,7 +127,7 @@ def test_member_read_write_owner_only_home_delete_and_revocation(auth_client, mi
 
 def test_concurrent_registration_unique_email(auth_client, migrated):
     def signup(_):
-        return auth_client.post(AUTH+'/register',json={'email':'same@example.com','password':PASSWORD})
+        return auth_client.post(AUTH+'/register',json={'email':'same@example.com','password':PASSWORD,'accept_terms':True})
     with ThreadPoolExecutor(max_workers=2) as pool:
         result = list(pool.map(signup, range(2)))
     assert sorted(r.status_code for r in result) == [201,409]

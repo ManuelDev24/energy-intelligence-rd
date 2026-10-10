@@ -36,7 +36,7 @@ export function PilotLogin() {
             se guardan credenciales.
           </CardDescription>
           <div className="mt-4 flex flex-col gap-4">
-            <QueryState isLoading={homes.isLoading} error={homes.error}>
+            <QueryState isLoading={homes.isLoading} error={homes.error} onRetry={() => void homes.refetch()}>
               <div className="flex flex-col gap-1">
                 <label htmlFor="home" className="text-sm font-medium">
                   Vivienda

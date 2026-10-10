@@ -8,6 +8,7 @@ import { QueryState } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { useAlerts, useSetAlertStatus } from "@/lib/api/hooks";
 import { formatPeriod } from "@/lib/format";
+import { userMessage } from "@/lib/api/errors";
 import { useSession } from "@/lib/session";
 
 export default function AlertsPage() {
@@ -25,7 +26,7 @@ export default function AlertsPage() {
       </header>
       {setStatus.isError ? (
         <p role="alert" className="rounded-lg bg-danger-bg p-3 text-sm text-danger">
-          No se pudo actualizar la alerta: {setStatus.error.message}
+          No se pudo actualizar la alerta: {userMessage(setStatus.error, "alert-update")}
         </p>
       ) : null}
       <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()}>

@@ -5,7 +5,8 @@ import { SessionProvider } from "@/lib/session";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Energy RD",
+  // ERD-WEB-QUALITY H3 (WCAG 2.4.2): cada pantalla declara su título; la raíz añade la marca.
+  title: { default: "Energy RD", template: "%s · Energy RD" },
   description: "Plataforma de inteligencia y gestión energética para República Dominicana",
 };
 

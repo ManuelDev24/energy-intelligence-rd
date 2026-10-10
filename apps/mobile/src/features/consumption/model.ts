@@ -1,7 +1,7 @@
 // Presentación del consumo por lecturas (ERD-CONS-01). Puro: convierte lo que envía la API en
 // etiquetas y textos locales. Un período sin cobertura es `null` (hueco), nunca 0.
-import type { Consumption, ConsumptionBucketItem, Granularity } from '@energyrd/api-contracts';
-import { fmtDate, fmtKwh, fmtMonth, fmtPeriod } from '@energyrd/core';
+import type { Consumption, ConsumptionBucketItem, ConsumptionComparison, Granularity } from '@energyrd/api-contracts';
+import { fmtDate, fmtKwh, fmtMetric, fmtMonth, fmtPeriod } from '@energyrd/core';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const dayMonth = (iso: string) => {
@@ -46,6 +46,31 @@ export function chartSummary(buckets: readonly ConsumptionBucketItem[], g: Granu
   return buckets
     .map((b) => `${bucketLongLabel(b, g)}: ${bucketValueText(b)}${b.quality === 'ESTIMATED' ? ' estimado' : ''}`)
     .join('; ');
+}
+
+export type ComparisonTone = 'warning' | 'success' | 'neutral';
+export interface ComparisonView {
+  text: string;
+  icon: 'arrow-up' | 'arrow-down' | 'remove';
+  tone: ComparisonTone;
+}
+
+/**
+ * Nota compacta de comparación vs. el período anterior equivalente (CH-03). Un aumento es
+ * desfavorable (tono de advertencia); una disminución usa el tono positivo de la app (no verde
+ * genérico, el mismo "éxito" de metas). `null` = sin suficiente historial: no se muestra nada.
+ */
+export function comparisonView(c: ConsumptionComparison | null | undefined): ComparisonView | null {
+  if (!c) return null;
+  const delta = Number(c.kwh_delta.value);
+  const tone: ComparisonTone = delta > 0 ? 'warning' : delta < 0 ? 'success' : 'neutral';
+  const icon: ComparisonView['icon'] = delta > 0 ? 'arrow-up' : delta < 0 ? 'arrow-down' : 'remove';
+  if (c.kwh_pct === null) {
+    const deltaText = fmtMetric(c.kwh_delta.value, c.kwh_delta.unit, { signed: true });
+    return { text: `${deltaText} vs. período anterior (no se pudo calcular el porcentaje)`, icon, tone };
+  }
+  const pctText = fmtMetric(c.kwh_pct.value, c.kwh_pct.unit, { signed: true });
+  return { text: `${pctText} vs. período anterior`, icon, tone };
 }
 
 /** Avisos de la pantalla, calculados localmente a partir de los datos (no del texto del servidor). */

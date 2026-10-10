@@ -20,7 +20,10 @@ import json
 @pytest.mark.parametrize('invalid_codepoint', ['\ud800', '\udfff'])
 def test_invalid_password_unicode_is_rejected_without_echo(auth_client, operation, invalid_codepoint):
     password = 'valid-length-password-' + invalid_codepoint
-    encoded = json.dumps({'email': 'unicode@example.com', 'password': password})
+    body = {'email': 'unicode@example.com', 'password': password}
+    if operation == 'register':
+        body['accept_terms'] = True  # the 422 must come from the password itself
+    encoded = json.dumps(body)
     response = auth_client.post('/api/v1/auth/' + operation, content=encoded,
                                 headers={'Content-Type': 'application/json'})
     assert response.status_code == 422

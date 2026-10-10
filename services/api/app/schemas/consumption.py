@@ -26,6 +26,14 @@ class ConsumptionTotals(BaseModel):
     coverage_ratio: Decimal
 
 
+class ConsumptionComparison(BaseModel):
+    previous_from: date
+    previous_to: date
+    previous_kwh: Metric
+    kwh_delta: Metric
+    kwh_pct: Metric | None            # None si el período anterior tiene 0 kWh
+
+
 class ConsumptionOut(BaseModel):
     home_id: uuid.UUID
     granularity: Granularity
@@ -36,6 +44,8 @@ class ConsumptionOut(BaseModel):
     totals: ConsumptionTotals
     average_daily_kwh: Metric | None  # ESTIMATED: total / días cubiertos
     peak_bucket: ConsumptionBucket | None
+    estimated_cost: Metric | None = None     # RD$, ESTIMATED; None si falta total o no hay tarifa vigente
+    comparison: ConsumptionComparison | None = None  # vs. el período anterior de igual longitud; None sin historial
     readings_used: int
     resolution: Literal["meter_readings"] = "meter_readings"
     hourly_data_available: bool = False

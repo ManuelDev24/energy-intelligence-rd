@@ -115,6 +115,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas md:flex-row">
+      {/* ERD-WEB-QUALITY H2 (WCAG 2.4.1): primer destino del tabulador; visible solo al recibir foco. */}
+      <a
+        href="#contenido"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary"
+      >
+        Saltar al contenido
+      </a>
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 border-r border-border bg-background p-4 md:flex">
         <Logo />
         <HomeSwitcher />
@@ -131,7 +138,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {authEnabled ? <Link href="/account" className="text-sm text-primary underline">Cuenta</Link> : null}
       </header>
 
-      <main className="flex-1 p-4 pb-24 md:p-8 md:pb-8">
+      <main id="contenido" tabIndex={-1} className="flex-1 p-4 pb-24 focus:outline-none md:p-8 md:pb-8">
         <div className="mx-auto max-w-5xl">{children}</div>
       </main>
 

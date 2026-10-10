@@ -15,6 +15,16 @@ it("no repite POST cuando no se pudo confirmar la creación", async () => {
   expect(screen.getByRole("button", { name: /Guardar y continuar/ })).toBeDisabled();
   expect(screen.getByRole("link", { name: /Consultar mis viviendas/ })).toHaveAttribute("href", "/homes");
 });
+
+it("muestra un mensaje de error visible al enviar la Ubicación vacía, sin avanzar de etapa (QA visual 2026-10-05)", async () => {
+  render(<OnboardingWizard onComplete={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: /Empezar/ }));
+  await screen.findByRole("heading", { name: /Ubicación/ });
+  fireEvent.click(screen.getByRole("button", { name: /Guardar y continuar/ }));
+  await screen.findByRole("alert");
+  expect(screen.getByRole("alert")).toHaveTextContent(/nombre, provincia y municipio/i);
+  expect(screen.getByRole("heading", { name: /Ubicación/ })).toBeInTheDocument();
+});
 import { saveOnboardingHome, saveOnboardingContract, saveOnboardingGoal } from "@/lib/auth/onboarding";
 vi.mock("@/lib/auth/onboarding", () => ({ saveOnboardingHome: vi.fn(), saveOnboardingContract: vi.fn(), saveOnboardingGoal: vi.fn() }));
 const id = "11111111-1111-4111-8111-111111111111";

@@ -5,11 +5,32 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas import BillCreate, BillOut, BillUpdate
+from app.schemas.ocr import OcrDraft
 from app.services import bills, bill_detail
+from app.services.ocr.engine import MAX_UPLOAD_BYTES, UnreadableImage, extract_text
+from app.services.ocr.parser import parse_bill_text
 from app.schemas.bill_detail import BillItemsOut, BillItemsReplace, BillAssessment, BillValidationRequest
+from app.services.errors import InvalidInput
 from app.services.transactions import require_home
+from fastapi import UploadFile, File
 
 router = APIRouter(prefix="/homes/{home_id}/bills", tags=["bills"])
+
+
+@router.post("/ocr", response_model=OcrDraft)
+async def ocr_bill_photo(home_id: uuid.UUID, db: Session = Depends(get_db), file: UploadFile = File(...)):
+    """ERD-OCR-01/02: lee una foto de factura y devuelve un BORRADOR para que la persona lo confirme
+    o corrija. Nunca crea ni modifica una factura: el único camino real a la base de datos sigue
+    siendo POST /homes/{home_id}/bills (ya validado), llamado después de que alguien confirme."""
+    require_home(db, home_id)
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise InvalidInput("La imagen supera el máximo de 10MB")
+    try:
+        text = extract_text(content)
+    except UnreadableImage as exc:
+        raise InvalidInput(str(exc)) from exc
+    return parse_bill_text(text)
 
 
 @router.get("", response_model=list[BillOut])

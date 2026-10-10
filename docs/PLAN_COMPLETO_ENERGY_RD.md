@@ -155,21 +155,30 @@ Se crean en `packages/ui` (web) y `apps/mobile/src/components` con la **misma AP
 |---|---|---|
 | ERD-AUTH-01 | **Fundación backend integrada y probada (196 tests):** `users`, registro/login/refresh/logout/me, Argon2id, JWT y rotación de sesiones. **Pendiente:** recuperación/email y controles de abuso; no cerrar tarea integral | `/auth/register`, `/auth/login` |
 | ERD-AUTH-02 | **Integrado y probado:** membresía por vivienda en todas las rutas privadas, sin bypass de admin/support; errores 404 indistinguibles entre vivienda ajena e inexistente | "roles y permisos" |
-| ERD-AUTH-03 | Términos y privacidad, borrado de cuenta, política de retención (P14) | Perfil → eliminar cuenta |
+| ERD-AUTH-03 | **Implementado y verificado localmente (2026-10-05):** aceptación de términos en el registro (migración 0012, versión `2026-10-draft`), `GET /legal` público, `DELETE /auth/me` con reautenticación (403/409/429), borrado transaccional y auditoría seudonimizada; UI web (BFF) y móvil. Revisión independiente: 0 Critical; R1 (presupuesto de login gastado sin token) corregido con regresión. Pendiente: texto legal final (revisión Ley 172-13), QA visual/nativa. **ERD-AUTH-04 no aplica todavía** (ver nota abajo) | Perfil → eliminar cuenta |
 | ERD-DB-02 | Migraciones 0007+ (0006 reservada para auth): `contracts`, `tariffs`, `meter_readings`, `bill_items` + `documents` | modelo §6 |
 | ERD-DEPLOY-01 | Neon (prod) + Render/Fly (API) + Vercel (web) + EAS (móvil), secretos, dominio | presupuesto US$10–45/mes |
 | ERD-OBS-01 | Sentry + logs estructurados + health | monitoreo |
 | ERD-MOB-AUTH / ERD-WEB-AUTH | **Integrado:** registro, login, logout, sesión segura (web cookies HttpOnly vía BFF; móvil SecureStore), revisión Codex corregida. **Pendiente:** recuperar contraseña y términos | módulo 01 |
 
 ### Fase 2 — Core loop completo + Onboarding + Perfil (4 semanas)
+> **Nota ERD-AUTH-04 (2026-10-05):** el modelo (`home_members.role IN ('owner','member')`) y la regla de
+> `DELETE /auth/me` (409 `ownership_transfer_required` si el único dueño deja otros miembros) ya existen y
+> están probados — pero **no hay ninguna ruta de API para invitar o agregar un segundo miembro a una
+> vivienda** (la única forma de crearlo hoy es un insert directo en pruebas). Por lo tanto el 409 es hoy
+> inalcanzable en producción: nadie puede compartir su vivienda, así que nadie puede quedar bloqueado para
+> borrar su cuenta por esta causa. Construir "transferir propiedad" sin "invitar miembro" sería una función
+> huérfana. Esto deja de ser un bloqueante real hasta que exista una especificación y un módulo de "compartir
+> vivienda / invitar miembro" (sin CH/módulo asignado en este plan todavía).
+
 | ID | Tarea | Módulos / gráficos |
 |---|---|---|
 | ERD-ONB-01 | **Implementación local:** onboarding web/móvil reutilizado, ubicación/distribuidora/perfil/contrato/meta, migración0009, triestados y reintentos parciales. Correcciones revisión R1–R4 con pruebas; **pendiente aceptación live/visual/nativa de estas pantallas** | M01 |
 | ERD-CONS-01 | `meter_readings` + `POST /consumption/readings` + `GET /consumption` con agregación día/semana/mes/año | M03 · CH-02, CH-03 |
 | ERD-TARIFF-01 | `tariffs` versionadas por distribuidora (EDESUR/EDENORTE/EDEESTE, SIE) y cálculo de costo | cálculo de tarifas |
 | ERD-BILL-02 | **Implementado y revisado localmente:** `bill_items` manual (cargos/descuentos), `POST /validate` de solo lectura (nunca aprueba), snapshot original inmutable con legado marcado "origen desconocido", UI web/móvil; revisión independiente con 3 Required corregidos. Pendiente live/visual/nativo. Ver `services/api/BILL_DETAIL_VALIDATION.md` | M04 |
-| ERD-DASH-02 | `GET /dashboard` ampliado: consumo, factura, proyección, meta, alertas, ahorro, service_status | M02 · CH-06, CH-07 |
-| ERD-FCST-01 | Forecast de consumo y de factura (método documentado; PROJECTED) | M05 · CH-06 |
+| ERD-DASH-02 | **Implementado y verificado:** `GET /dashboard` con factura, comparación, proyección, alerta, recomendación y data_status; meta (GoalProgressSection/GoalCard) y gráfico de consumo integrados en la misma pantalla web/móvil. Pendiente: QA visual/nativa real | M02 · CH-06, CH-07 |
+| ERD-FCST-01 | **Implementado y verificado:** proyección lineal de próxima factura (kWh + RD$) con método documentado y calidad PROJECTED, en `/dashboard` y UI web/móvil | M05 · CH-06 |
 | ERD-GOAL-01 | **Implementado y verificado localmente:** objetivos RD$/kWh + progreso web/móvil, proyección etiquetada y costo estimado con tarifa oficial; integración real y Maestro Android/iOS 2× por plataforma. Sin publicación; QA en `docs/qa/ERD_PHASE2_NATIVE_2026-10-04.md` | M23 · CH-07 |
 | ERD-PROF-01 | Perfil, Mi vivienda, Mi servicio, Configuración, notificaciones | M25–27 |
 | ERD-UI-KIT | Los 12 componentes de §2.4 en web y móvil + estados loading/empty/error/offline | §2 |

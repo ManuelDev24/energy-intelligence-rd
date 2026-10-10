@@ -25,6 +25,36 @@ class Credentials(BaseModel):
         return str(value).lower()
 
 
+class RegisterIn(Credentials):
+    """Registro: aceptación explícita (booleano estricto). La versión la fija el servidor."""
+    accept_terms: Literal[True]
+
+    @field_validator("accept_terms", mode="before")
+    @classmethod
+    def require_json_true(cls, value):
+        # Literal[True] alone admits 1 / 1.0 in lax mode; only the JSON literal true counts as consent.
+        if value is not True:
+            raise ValueError("Debes aceptar los términos")
+        return value
+
+
+class AccountDeletionIn(BaseModel):
+    """Reautenticación para borrar la cuenta; mismos límites que Credentials."""
+    model_config = ConfigDict(extra="forbid")
+    password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)
+
+
+class LegalOut(BaseModel):
+    terms_version: str
+    privacy_version: str
+    status: Literal["draft"]
+
+
 class RefreshIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     refresh_token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
@@ -36,6 +66,9 @@ class UserOut(BaseModel):
     email: str
     role: Literal["user", "admin", "support"]
     created_at: datetime
+    # Default None: clients parsing an older API (sin 0012) materialize null instead of failing.
+    terms_version: str | None = None
+    terms_accepted_at: datetime | None = None
 
 
 class TokensOut(BaseModel):
@@ -43,3 +76,31 @@ class TokensOut(BaseModel):
     refresh_token: str
     token_type: Literal["bearer"] = "bearer"
     expires_in: int
+
+
+class PasswordForgotIn(BaseModel):
+    """ERD-AUTH-05: solicitud de enlace; la respuesta es idéntica exista o no la cuenta."""
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr = Field(max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        return str(value).lower()
+
+
+class PasswordForgotAccepted(BaseModel):
+    """Cuerpo fijo del 202: nunca dice si la cuenta existe ni si se envió correo."""
+    status: Literal["accepted"]
+
+
+class PasswordResetIn(BaseModel):
+    """Token opaco (43 caracteres URL-safe) solo en el cuerpo; misma política de contraseña que el registro."""
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+    new_password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)

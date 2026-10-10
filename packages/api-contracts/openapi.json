@@ -1,6 +1,25 @@
 {
   "components": {
     "schemas": {
+      "AccountDeletionIn": {
+        "additionalProperties": false,
+        "description": "Reautenticaci\u00f3n para borrar la cuenta; mismos l\u00edmites que Credentials.",
+        "properties": {
+          "password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "AccountDeletionIn",
+        "type": "object"
+      },
       "AlertRecord": {
         "properties": {
           "basis_bill_id": {
@@ -214,6 +233,73 @@
           "status"
         ],
         "title": "AlertStatusUpdate",
+        "type": "object"
+      },
+      "AnomalyRecord": {
+        "properties": {
+          "baseline_kwh": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Baseline Kwh",
+            "type": "string"
+          },
+          "delta_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Delta Pct",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "granularity": {
+            "enum": [
+              "day",
+              "month"
+            ],
+            "title": "Granularity",
+            "type": "string"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "observed_kwh": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Observed Kwh",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "warning",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "home_id",
+          "granularity",
+          "severity",
+          "observed_kwh",
+          "baseline_kwh",
+          "delta_pct",
+          "period_start",
+          "period_end",
+          "explanation"
+        ],
+        "title": "AnomalyRecord",
         "type": "object"
       },
       "BillAssessment": {
@@ -855,6 +941,20 @@
         "title": "BillValidationRequest",
         "type": "object"
       },
+      "Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post",
+        "type": "object"
+      },
       "Comparison": {
         "properties": {
           "amount_delta": {
@@ -995,6 +1095,45 @@
         "title": "ConsumptionBucket",
         "type": "object"
       },
+      "ConsumptionComparison": {
+        "properties": {
+          "kwh_delta": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "kwh_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_from": {
+            "format": "date",
+            "title": "Previous From",
+            "type": "string"
+          },
+          "previous_kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "previous_to": {
+            "format": "date",
+            "title": "Previous To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "previous_from",
+          "previous_to",
+          "previous_kwh",
+          "kwh_delta",
+          "kwh_pct"
+        ],
+        "title": "ConsumptionComparison",
+        "type": "object"
+      },
       "ConsumptionOut": {
         "properties": {
           "average_daily_kwh": {
@@ -1013,6 +1152,26 @@
             },
             "title": "Buckets",
             "type": "array"
+          },
+          "comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConsumptionComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estimated_cost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "from_date": {
             "format": "date",
@@ -2577,6 +2736,30 @@
         "title": "LatestBill",
         "type": "object"
       },
+      "LegalOut": {
+        "properties": {
+          "privacy_version": {
+            "title": "Privacy Version",
+            "type": "string"
+          },
+          "status": {
+            "const": "draft",
+            "title": "Status",
+            "type": "string"
+          },
+          "terms_version": {
+            "title": "Terms Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "terms_version",
+          "privacy_version",
+          "status"
+        ],
+        "title": "LegalOut",
+        "type": "object"
+      },
       "Metric": {
         "properties": {
           "quality": {
@@ -2604,6 +2787,144 @@
           "quality"
         ],
         "title": "Metric",
+        "type": "object"
+      },
+      "OcrDraft": {
+        "properties": {
+          "amount_dop": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "days": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "kwh": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "period_end": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "period_start": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "raw_text_excerpt": {
+            "title": "Raw Text Excerpt",
+            "type": "string"
+          },
+          "reading_current": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "reading_previous": {
+            "$ref": "#/components/schemas/OcrField"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end",
+          "days",
+          "kwh",
+          "amount_dop",
+          "reading_previous",
+          "reading_current",
+          "warnings",
+          "raw_text_excerpt"
+        ],
+        "title": "OcrDraft",
+        "type": "object"
+      },
+      "OcrField": {
+        "properties": {
+          "confidence": {
+            "enum": [
+              "high",
+              "inferred",
+              "none"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "confidence"
+        ],
+        "title": "OcrField",
+        "type": "object"
+      },
+      "PasswordForgotAccepted": {
+        "description": "Cuerpo fijo del 202: nunca dice si la cuenta existe ni si se envi\u00f3 correo.",
+        "properties": {
+          "status": {
+            "const": "accepted",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "PasswordForgotAccepted",
+        "type": "object"
+      },
+      "PasswordForgotIn": {
+        "additionalProperties": false,
+        "description": "ERD-AUTH-05: solicitud de enlace; la respuesta es id\u00e9ntica exista o no la cuenta.",
+        "properties": {
+          "email": {
+            "format": "email",
+            "maxLength": 254,
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasswordForgotIn",
+        "type": "object"
+      },
+      "PasswordResetIn": {
+        "additionalProperties": false,
+        "description": "Token opaco (43 caracteres URL-safe) solo en el cuerpo; misma pol\u00edtica de contrase\u00f1a que el registro.",
+        "properties": {
+          "new_password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "token": {
+            "maxLength": 43,
+            "minLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "PasswordResetIn",
         "type": "object"
       },
       "ProjectionOut": {
@@ -2754,6 +3075,38 @@
           "refresh_token"
         ],
         "title": "RefreshIn",
+        "type": "object"
+      },
+      "RegisterIn": {
+        "additionalProperties": false,
+        "description": "Registro: aceptaci\u00f3n expl\u00edcita (booleano estricto). La versi\u00f3n la fija el servidor.",
+        "properties": {
+          "accept_terms": {
+            "const": true,
+            "title": "Accept Terms",
+            "type": "boolean"
+          },
+          "email": {
+            "format": "email",
+            "maxLength": 254,
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "accept_terms"
+        ],
+        "title": "RegisterIn",
         "type": "object"
       },
       "TariffBlockOut": {
@@ -3047,6 +3400,29 @@
             ],
             "title": "Role",
             "type": "string"
+          },
+          "terms_accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terms Accepted At"
+          },
+          "terms_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terms Version"
           }
         },
         "required": [
@@ -3205,6 +3581,43 @@
       }
     },
     "/api/v1/auth/me": {
+      "delete": {
+        "operationId": "delete_me_api_v1_auth_me_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountDeletionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Me",
+        "tags": [
+          "auth"
+        ]
+      },
       "get": {
         "operationId": "me_api_v1_auth_me_get",
         "responses": {
@@ -3225,6 +3638,81 @@
           }
         ],
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/forgot": {
+      "post": {
+        "operationId": "forgot_password_api_v1_auth_password_forgot_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordForgotIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordForgotAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forgot Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/reset": {
+      "post": {
+        "operationId": "reset_password_api_v1_auth_password_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Password",
         "tags": [
           "auth"
         ]
@@ -3278,7 +3766,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Credentials"
+                "$ref": "#/components/schemas/RegisterIn"
               }
             }
           },
@@ -3843,6 +4331,113 @@
         ]
       }
     },
+    "/api/v1/homes/{home_id}/anomalies": {
+      "get": {
+        "description": "Detecta solo el \u00faltimo per\u00edodo comparable; no crea alertas persistentes.",
+        "operationId": "get_anomalies_api_v1_homes__home_id__anomalies_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "default": "month",
+              "enum": [
+                "day",
+                "month"
+              ],
+              "title": "Granularity",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warning_delta_pct",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0.0,
+                  "maximum": 1000.0,
+                  "type": "number"
+                },
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                }
+              ],
+              "default": "50",
+              "title": "Warning Delta Pct"
+            }
+          },
+          {
+            "in": "query",
+            "name": "critical_delta_pct",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0.0,
+                  "maximum": 1000.0,
+                  "type": "number"
+                },
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                }
+              ],
+              "default": "100",
+              "title": "Critical Delta Pct"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AnomalyRecord"
+                  },
+                  "title": "Response Get Anomalies Api V1 Homes  Home Id  Anomalies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Anomalies",
+        "tags": [
+          "anomalies"
+        ]
+      }
+    },
     "/api/v1/homes/{home_id}/bills": {
       "get": {
         "operationId": "list_bills_api_v1_homes__home_id__bills_get",
@@ -3969,6 +4564,65 @@
           }
         ],
         "summary": "Create Bill",
+        "tags": [
+          "bills"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/bills/ocr": {
+      "post": {
+        "description": "ERD-OCR-01/02: lee una foto de factura y devuelve un BORRADOR para que la persona lo confirme\no corrija. Nunca crea ni modifica una factura: el \u00fanico camino real a la base de datos sigue\nsiendo POST /homes/{home_id}/bills (ya validado), llamado despu\u00e9s de que alguien confirme.",
+        "operationId": "ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OcrDraft"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ocr Bill Photo",
         "tags": [
           "bills"
         ]
@@ -4538,6 +5192,23 @@
               "format": "uuid",
               "title": "Home Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bill_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bill Id"
             }
           }
         ],
@@ -5284,6 +5955,27 @@
         "summary": "Delete Reading",
         "tags": [
           "readings"
+        ]
+      }
+    },
+    "/api/v1/legal": {
+      "get": {
+        "operationId": "get_legal_api_v1_legal_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Legal",
+        "tags": [
+          "legal"
         ]
       }
     },

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import { handleBff, readBffConfig } from "./bff";
-const config = { enabled: true, apiBase: "http://127.0.0.1:8000", origin: "http://localhost:3000", secure: false };
+const config = { enabled: true, apiBase: "http://127.0.0.1:8000", origin: "http://localhost:3000", secure: false, bffApiSharedSecret: "" };
 const EPOCH = "0123456789abcdef0123456789abcdef";
 const epochCookie = `erd-epoch=${EPOCH}`;
 const req = (path: string, method = "GET", body?: unknown, headers = {}) => new Request(`http://localhost:3000/api/bff/${path}`, { method, headers: { origin: config.origin, "content-type": "application/json", ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -84,7 +84,7 @@ describe("BFF security boundary", () => {
     const respond = (status: number, body: unknown) => vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }));
     const cases: [string, string, unknown, number, unknown, string][] = [
       ["auth/login", "POST", { email: "a@b.test", password: "long-password" }, 500, { detail: leak, code: leak, request_id: leak }, "Error del servidor. Inténtalo de nuevo más tarde."],
-      ["auth/register", "POST", { email: "a@b.test", password: "long-password" }, 409, { detail: leak, code: "conflict" }, "Ya existe una cuenta con este correo electrónico."],
+      ["auth/register", "POST", { email: "a@b.test", password: "long-password", accept_terms: true }, 409, { detail: leak, code: "conflict" }, "Ya existe una cuenta con este correo electrónico."],
       ["auth/login", "POST", { email: "a@b.test", password: "long-password" }, 401, { detail: leak, code: "http_401" }, "Credenciales inválidas."],
       ["auth/login", "POST", { email: "a@b.test", password: "long-password" }, 418, { detail: leak }, "No se pudo completar la solicitud."],
     ];
@@ -95,24 +95,39 @@ describe("BFF security boundary", () => {
       expect(text).not.toContain("psycopg2"); expect(text).not.toContain("<script>");
       expect(JSON.parse(text).detail).toBe(expected);
     }
-    const validation = await handleBff(req("auth/register", "POST", { email: "a@b.test", password: "long-password" }, { cookie: epochCookie }), config,
+    const validation = await handleBff(req("auth/register", "POST", { email: "a@b.test", password: "long-password", accept_terms: true }, { cookie: epochCookie }), config,
       respond(422, { detail: [{ loc: ["body", "password"], msg: leak }, { loc: ["body", "evil_field"], msg: leak }, { loc: ["body"], msg: leak }], code: "validation_error", request_id: "req-123" }));
     const parsed = JSON.parse(await validation.clone().text());
     expect(await validation.text()).not.toContain("psycopg2");
     expect(parsed).toEqual({ detail: [{ loc: ["body", "password"], msg: "La contraseña debe tener entre 12 y 128 caracteres." }], code: "validation_error", request_id: "req-123" });
   });
   it("maps the BFF's own validation errors to the local field table, never to library text", async () => {
-    const response = await handleBff(req("auth/register", "POST", { email: "not-an-email", password: "short" }), config, vi.fn());
+    const response = await handleBff(req("auth/register", "POST", { email: "not-an-email", password: "short", accept_terms: true }), config, vi.fn());
     expect(response.status).toBe(422);
     expect((await response.json()).detail).toEqual([
       { loc: ["body", "email"], msg: "Introduce un correo electrónico válido." },
       { loc: ["body", "password"], msg: "La contraseña debe tener entre 12 y 128 caracteres." },
     ]);
   });
+  it("rejects registration without explicit true consent and never sends a client-chosen terms version", async () => {
+    const upstream = vi.fn();
+    const bads = [{}, { accept_terms: false }, { accept_terms: "true" }, { accept_terms: 1 }, { terms_version: "2026-10-draft", accept_terms: true }];
+    for (const bad of bads) {
+      const response = await handleBff(req("auth/register", "POST", { email: "a@b.test", password: "long-password", ...bad }, { cookie: epochCookie }), config, upstream);
+      expect(response.status).toBe(422);
+    }
+    expect(upstream).not.toHaveBeenCalled();
+  });
+  it("forwards accept_terms: true to the API on a valid registration", async () => {
+    const upstream = vi.fn().mockResolvedValue(new Response(JSON.stringify({ access_token: "a", refresh_token: "b", token_type: "bearer", expires_in: 900 })));
+    const response = await handleBff(req("auth/register", "POST", { email: "a@b.test", password: "long-password", accept_terms: true }, { cookie: epochCookie }), config, upstream);
+    expect(response.status).toBe(200);
+    expect(JSON.parse(upstream.mock.calls[0][1].body)).toEqual({ email: "a@b.test", password: "long-password", accept_terms: true });
+  });
   it("requires a per-browser auth epoch before contacting upstream for login/register", async () => {
     const upstream = vi.fn();
     for (const path of ["auth/login", "auth/register"]) {
-      const response = await handleBff(req(path, "POST", { email: "a@b.test", password: "long-password" }), config, upstream);
+      const response = await handleBff(req(path, "POST", { email: "a@b.test", password: "long-password", ...(path === "auth/register" ? { accept_terms: true } : {}) }), config, upstream);
       expect(response.status).toBe(428);
       expect((await response.json()).code).toBe("auth_epoch_required");
       expect(response.headers.get("set-cookie")).toMatch(/erd-epoch=[0-9a-f]{32}; .*HttpOnly/i);
@@ -148,5 +163,33 @@ describe("BFF security boundary", () => {
     const me = await handleBff(req("auth/me", "GET", undefined, { cookie: `${epochCookie}; ${cookies}` }), config, upstream);
     expect(me.status).toBe(200);
     expect(upstream.mock.calls[1][1].headers.Authorization).toBe("Bearer fresh-access");
+  });
+  // ---------- ERD-SEC-PROXY-01: BFF signs the real browser IP for the API's abuse budget ----------
+  it("reads BFF_API_SHARED_SECRET from the environment", () => {
+    expect(readBffConfig({ NODE_ENV: "development" }).bffApiSharedSecret).toBe("");
+    expect(readBffConfig({ NODE_ENV: "development", BFF_API_SHARED_SECRET: "topsecret" }).bffApiSharedSecret).toBe("topsecret");
+  });
+  it("signs X-Forwarded-Client-Ip from the first X-Forwarded-For hop when a shared secret is configured", async () => {
+    const upstream = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "11111111-1111-4111-8111-111111111111", email: "a@b.test", role: "user", created_at: "2026-01-01T00:00:00Z" })));
+    const signedConfig = { ...config, bffApiSharedSecret: "x".repeat(48) };
+    const response = await handleBff(req("auth/me", "GET", undefined, { cookie: `${epochCookie}; erd-access=${EPOCH}~real-access`, "x-forwarded-for": "203.0.113.7, 10.0.0.1" }), signedConfig, upstream);
+    expect(response.status).toBe(200);
+    const signed = upstream.mock.calls[0][1].headers["X-Forwarded-Client-Ip"] as string;
+    expect(signed.startsWith("203.0.113.7.")).toBe(true);
+    const mac = signed.slice(signed.length - 64);
+    expect(mac).toMatch(/^[0-9a-f]{64}$/);
+  });
+  it("does not send X-Forwarded-Client-Ip when no shared secret is configured", async () => {
+    const upstream = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "11111111-1111-4111-8111-111111111111", email: "a@b.test", role: "user", created_at: "2026-01-01T00:00:00Z" })));
+    const response = await handleBff(req("auth/me", "GET", undefined, { cookie: `${epochCookie}; erd-access=${EPOCH}~real-access`, "x-forwarded-for": "203.0.113.7" }), config, upstream);
+    expect(response.status).toBe(200);
+    expect(upstream.mock.calls[0][1].headers["X-Forwarded-Client-Ip"]).toBeUndefined();
+  });
+  it("does not send X-Forwarded-Client-Ip when there is no X-Forwarded-For header", async () => {
+    const upstream = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "11111111-1111-4111-8111-111111111111", email: "a@b.test", role: "user", created_at: "2026-01-01T00:00:00Z" })));
+    const signedConfig = { ...config, bffApiSharedSecret: "x".repeat(48) };
+    const response = await handleBff(req("auth/me", "GET", undefined, { cookie: `${epochCookie}; erd-access=${EPOCH}~real-access` }), signedConfig, upstream);
+    expect(response.status).toBe(200);
+    expect(upstream.mock.calls[0][1].headers["X-Forwarded-Client-Ip"]).toBeUndefined();
   });
 });

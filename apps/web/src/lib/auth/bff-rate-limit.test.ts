@@ -4,10 +4,11 @@ import { handleBff } from "./bff";
 
 const config = { enabled: true, apiBase: "http://127.0.0.1:8011", origin: "http://localhost:3000", secure: false };
 const credentials = { email: "disposable@example.com", password: "test-only-password" };
+const registerCredentials = { ...credentials, accept_terms: true };
 function request(path: string) {
   return new Request(`${config.origin}/api/bff/${path}`, { method: "POST", headers: {
     origin: config.origin, "content-type": "application/json", cookie: "erd-epoch=0123456789abcdef0123456789abcdef",
-  }, body: JSON.stringify(credentials) });
+  }, body: JSON.stringify(path === "auth/register" ? registerCredentials : credentials) });
 }
 
 describe("auth rate limit boundary", () => {

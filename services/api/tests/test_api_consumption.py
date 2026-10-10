@@ -108,3 +108,65 @@ def test_consumption_does_not_mix_homes(client):
     add_reading(client, h1, "2026-09-02T00:00:00-04:00", 150)
     body = ok(client, h2, granularity="day", **{"from": "2026-09-01", "to": "2026-09-01"})
     assert body["buckets"][0]["kwh"] is None and body["readings_used"] == 0
+
+
+def test_estimated_cost_uses_home_distributor_tariff(client):
+    """ERD-CHARTS-01 / CH-03: costo estimado del total con la tarifa vigente de la vivienda."""
+    h = mk_home(client, distributor="EDESUR")["id"]
+    add_reading(client, h, "2026-10-01T00:00:00-04:00", 0)
+    add_reading(client, h, "2026-10-04T00:00:00-04:00", 300)
+    body = ok(client, h, granularity="day", **{"from": "2026-10-01", "to": "2026-10-04"})
+    assert body["estimated_cost"] is not None
+    assert body["estimated_cost"]["unit"] == "RD$" and f(body["estimated_cost"]["value"]) > 0
+    assert body["estimated_cost"]["quality"] == "ESTIMATED"
+
+
+def test_estimated_cost_is_none_when_total_kwh_is_none(client):
+    h = mk_home(client, distributor="EDESUR")["id"]
+    body = ok(client, h, granularity="day", **{"from": "2026-09-01", "to": "2026-09-10"})
+    assert body["totals"]["kwh"] is None and body["estimated_cost"] is None
+
+
+def test_estimated_cost_is_none_when_distributor_has_no_tariff(client):
+    h = mk_home(client, distributor="EDENORTE")["id"]
+    add_reading(client, h, "2026-09-01T00:00:00-04:00", 0)
+    add_reading(client, h, "2026-09-10T00:00:00-04:00", 300)
+    body = ok(client, h, granularity="day", **{"from": "2026-09-01", "to": "2026-09-10"})
+    assert body["totals"]["kwh"] is not None
+    assert body["estimated_cost"] is None
+    assert any("tarifa" in r.lower() for r in body["insufficient_reasons"])
+
+
+def test_comparison_against_immediately_preceding_equivalent_period(client):
+    """La comparación usa el período anterior de igual longitud, inmediatamente antes de 'from'."""
+    h = mk_home(client, distributor="EDESUR")["id"]
+    # Período anterior (1-10 ago): 100 kWh. Período actual (11-20 ago): 150 kWh.
+    add_reading(client, h, "2026-08-01T00:00:00-04:00", 0)
+    add_reading(client, h, "2026-08-11T00:00:00-04:00", 100)
+    add_reading(client, h, "2026-08-21T00:00:00-04:00", 250)
+    body = ok(client, h, granularity="day", **{"from": "2026-08-11", "to": "2026-08-20"})
+    comp = body["comparison"]
+    assert comp is not None
+    assert comp["previous_from"] == "2026-08-01" and comp["previous_to"] == "2026-08-10"
+    assert f(comp["previous_kwh"]["value"]) == 100
+    assert f(comp["kwh_delta"]["value"]) == 50
+    assert f(comp["kwh_pct"]["value"]) == 50.0
+
+
+def test_comparison_is_none_without_enough_history(client):
+    h = mk_home(client, distributor="EDESUR")["id"]
+    add_reading(client, h, "2026-08-11T00:00:00-04:00", 0)
+    add_reading(client, h, "2026-08-21T00:00:00-04:00", 150)
+    body = ok(client, h, granularity="day", **{"from": "2026-08-11", "to": "2026-08-20"})
+    assert body["comparison"] is None
+
+
+def test_comparison_pct_is_none_when_previous_period_is_zero(client):
+    h = mk_home(client, distributor="EDESUR")["id"]
+    add_reading(client, h, "2026-08-01T00:00:00-04:00", 0)
+    add_reading(client, h, "2026-08-11T00:00:00-04:00", 0)
+    add_reading(client, h, "2026-08-21T00:00:00-04:00", 150)
+    body = ok(client, h, granularity="day", **{"from": "2026-08-11", "to": "2026-08-20"})
+    assert body["comparison"] is not None
+    assert f(body["comparison"]["previous_kwh"]["value"]) == 0
+    assert body["comparison"]["kwh_pct"] is None

@@ -5,7 +5,7 @@ import { createAuthSession } from './session';
 import { createAuthenticatedFetch } from './transport';
 import { createHomeApi } from '../api/homes';
 const pair = { access_token: 'access-test', refresh_token: 'refresh-test', token_type: 'bearer', expires_in: 900 };
-const user = { id: '11111111-1111-4111-8111-111111111111', email: 'a@b.com', role: 'user', created_at: '2026-10-04T00:00:00Z' };
+const user = { id: '11111111-1111-4111-8111-111111111111', email: 'a@b.com', role: 'user', created_at: '2026-10-04T00:00:00Z', terms_version: '2026-10-01', terms_accepted_at: '2026-10-04T00:00:00Z' };
 const home = { id: '22222222-2222-4222-8222-222222222222', code: null, name: 'Mi hogar', city: null, address: null, distributor: 'EDESUR', created_at: '2026-10-04T00:00:00Z' };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 async function setup() {

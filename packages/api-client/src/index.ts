@@ -2,9 +2,10 @@ import { z } from "zod";
 import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
-  BillItemsOutSchema, BillAssessmentSchema,
+  BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, AnomaliesSchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
-  type Distributor, type BillItemsReplace,
+  type Distributor, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
 
 export class ApiError extends Error {
@@ -24,6 +25,8 @@ export class ContractError extends ApiError {
 export const retryPolicy = (count: number, error: unknown) =>
   !(error instanceof ContractError || (error instanceof ApiError && error.status >= 400 && error.status < 500)) && count < 1;
 
+export type BillImage = { uri: string; name?: string; type?: string };
+
 export function parseErrorBody(status: number, body: unknown): ApiError {
   const parsed = z.object({ detail: z.unknown().optional(), code: z.string().optional(), request_id: z.string().optional() }).safeParse(body);
   const value = parsed.success ? parsed.data : {};
@@ -37,6 +40,40 @@ export function parseErrorBody(status: number, body: unknown): ApiError {
   return new ApiError(status, message, fields, value.code, value.request_id);
 }
 
+function localValidation(error: z.ZodError, messages: Record<string, string>): ApiError {
+  const fields: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const field = String(issue.path[0] ?? "body");
+    fields[field] = messages[field] ?? "Valor inválido";
+  }
+  return new ApiError(422, "Revise los campos indicados.", fields, "validation_error");
+}
+
+const RESET_MESSAGES = {
+  email: "Introduce un correo electrónico válido.",
+  token: "El enlace de recuperación no es válido. Solicita uno nuevo.",
+  new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
+};
+
+const CREDENTIAL_MESSAGES = {
+  email: "Introduce un correo electrónico válido.",
+  password: "La contraseña debe tener entre 12 y 128 caracteres.",
+  accept_terms: "Debes aceptar los términos y la política de privacidad.",
+};
+
+/**
+ * ERD-AUTH-03: único constructor del cuerpo de POST /auth/register para web y móvil.
+ * Exige aceptación explícita (`true` literal) y nunca envía la versión de términos: la fija el servidor.
+ * La contraseña se envía exacta (sin recortar).
+ */
+export function buildRegisterPayload(input: { email: string; password: string; acceptTerms: boolean | undefined }): RegisterIn {
+  const parsed = RegisterInSchema.strict().safeParse({
+    email: input.email.trim().toLowerCase(), password: input.password, accept_terms: input.acceptTerms,
+  });
+  if (!parsed.success) throw localValidation(parsed.error, CREDENTIAL_MESSAGES);
+  return parsed.data;
+}
+
 function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise((resolve, reject) => {
     const abort = () => reject(signal.reason ?? new Error("Solicitud cancelada"));
@@ -48,17 +85,29 @@ function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 
 export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch, timeoutMs = 10_000) {
   const root = `${baseUrl.replace(/\/+$/, "")}/api/v1`;
-  async function request<S extends z.ZodTypeAny>(path: string, schema: S, init?: RequestInit): Promise<z.output<S>> {
+  async function request<S extends z.ZodTypeAny>(path: string, schema: S, init?: RequestInit, expectedStatus?: number): Promise<z.output<S>> {
     const ctrl = new AbortController();
     const cancel = () => ctrl.abort(init?.signal?.reason);
     if (init?.signal?.aborted) cancel();
     init?.signal?.addEventListener("abort", cancel, { once: true });
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      const response = await abortable(fetchImpl(`${root}${path}`, {
-        ...init, signal: ctrl.signal,
-        headers: { "Content-Type": "application/json", Accept: "application/json", ...init?.headers },
-      }), ctrl.signal);
+      let response: Response;
+      try {
+        response = await abortable(fetchImpl(`${root}${path}`, {
+          ...init, signal: ctrl.signal,
+          headers: {
+            ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+            Accept: "application/json", ...init?.headers,
+          },
+        }), ctrl.signal);
+      } catch (error) {
+        // Errores de dominio de un transporte envolvente (auth, cuenta cambiada) pasan tal cual.
+        if (error instanceof ApiError) throw error;
+        // Sin respuesta no hay contrato que violar. React Native/Expo rechaza con un Error genérico
+        // (no TypeError) cuando la API no está accesible: siempre es un fallo de conexión.
+        throw new ApiError(0, "No se pudo conectar con la API");
+      }
       let body: unknown;
       if (response.status !== 204) {
         try { body = await abortable(response.json(), ctrl.signal); }
@@ -68,6 +117,7 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
         }
       }
       if (!response.ok) throw parseErrorBody(response.status, body);
+      if (expectedStatus !== undefined && response.status !== expectedStatus) throw new ContractError();
       const parsed = schema.safeParse(body);
       if (!parsed.success) throw new ContractError();
       const home = path.match(/^\/homes\/([^/?]+)/)?.[1];
@@ -124,6 +174,16 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     listBills: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/bills`, BillSchema, signal),
     getBill: (id: string, bill: string, signal?: AbortSignal) => request(`${homePath(id)}/bills/${idPath(bill)}`, BillSchema, { signal }),
     createBill: (id: string, input: BillInput) => request(`${homePath(id)}/bills`, BillSchema, write("POST", { ...input, source: "manual" })),
+    ocrBill: (id: string, image: BillImage | File) => {
+      const body = new FormData();
+      if (typeof File !== "undefined" && image instanceof File) {
+        body.append("file", image);
+      } else {
+        // React Native FormData accepts the `{uri,name,type}` upload object.
+        body.append("file", image as unknown as Blob);
+      }
+      return request(`${homePath(id)}/bills/ocr`, OcrDraftSchema, { method: "POST", body });
+    },
     updateBill: (id: string, bill: string, input: BillInput) => request(`${homePath(id)}/bills/${idPath(bill)}`, BillSchema, write("PUT", input)),
     deleteBill: (id: string, bill: string) => request(`${homePath(id)}/bills/${idPath(bill)}`, z.undefined(), write("DELETE")),
     // ERD-BILL-02: detalle manual (cargos/descuentos) y evaluación de solo lectura (nunca aprueba).
@@ -133,7 +193,13 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       request(`${homePath(id)}/bills/${idPath(bill)}/items`, BillItemsOutSchema, write("PUT", input)).then(ownBill(bill)),
     assessBill: async (id: string, bill: string, signal?: AbortSignal) =>
       request(`${homePath(id)}/bills/${idPath(bill)}/validate`, BillAssessmentSchema, { ...write("POST", {}), signal }).then(ownBill(bill)),
-    getDashboard: (id: string, signal?: AbortSignal) => request(`${homePath(id)}/dashboard`, DashboardSchema, { signal }),
+    getDashboard: async (id: string, signal?: AbortSignal, billId?: string) => {
+      const data = await request(`${homePath(id)}/dashboard${query({ bill_id: billId === undefined ? undefined : idPath(billId) })}`, DashboardSchema, { signal });
+      if (billId !== undefined && data.latest_bill?.bill_id !== billId) throw new ContractError();
+      return data;
+    },
+    listAnomalies: (id: string, granularity: "day" | "month", signal?: AbortSignal): Promise<Anomaly[]> =>
+      request(`${homePath(id)}/anomalies?granularity=${granularity}`, AnomaliesSchema, { signal }),
     listEquipment: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/equipment`, EquipmentSchema, signal),
     getEquipment: (id: string, item: string, signal?: AbortSignal) => request(`${homePath(id)}/equipment/${idPath(item)}`, EquipmentSchema, { signal }),
     createEquipment: (id: string, input: EquipmentInput) => request(`${homePath(id)}/equipment`, EquipmentSchema, write("POST", input)),
@@ -154,6 +220,28 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     getGoalProgress: async (id: string, opts?: { on?: string }, signal?: AbortSignal) =>
       request(`${homePath(id)}/goal/progress${query({ on: opts?.on === undefined ? undefined : isoDate.parse(opts.on) })}`,
         GoalProgressSchema, { signal }),
+    // ERD-AUTH-03: versiones legales públicas y borrado de cuenta con reautenticación (204 sin cuerpo).
+    getLegal: (signal?: AbortSignal) => request("/legal", LegalOutSchema, { signal }),
+    deleteAccount: async (password: string) => {
+      const parsed = AccountDeletionInSchema.strict().safeParse({ password });
+      if (!parsed.success) throw localValidation(parsed.error, CREDENTIAL_MESSAGES);
+      return request("/auth/me", z.undefined(), write("DELETE", parsed.data));
+    },
+    // ERD-AUTH-05: recuperación. forgot siempre 202 (exista o no la cuenta); reset 204 sin cuerpo.
+    // El token viaja solo en el cuerpo JSON, nunca en la URL de la API.
+    forgotPassword: async (emailAddress: string) => {
+      // El contrato generado no impone formato de email (solo longitud): validación básica local.
+      const parsed = PasswordForgotInSchema.strict()
+        .refine(body => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email), { path: ["email"] })
+        .safeParse({ email: emailAddress.trim().toLowerCase() });
+      if (!parsed.success) throw localValidation(parsed.error, RESET_MESSAGES);
+      await request("/auth/password/forgot", PasswordForgotAcceptedSchema, write("POST", parsed.data), 202);
+    },
+    resetPassword: async (token: string, newPassword: string) => {
+      const parsed = PasswordResetInSchema.strict().safeParse({ token, new_password: newPassword });
+      if (!parsed.success) throw localValidation(parsed.error, RESET_MESSAGES);
+      return request("/auth/password/reset", z.undefined(), write("POST", parsed.data), 204);
+    },
     listTariffs: async (opts?: { distributor?: Distributor; on?: string }, signal?: AbortSignal) =>
       list(`/tariffs${query({ distributor: opts?.distributor, on: opts?.on === undefined ? undefined : isoDate.parse(opts.on) })}`,
         TariffSchema, signal),

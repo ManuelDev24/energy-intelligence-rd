@@ -37,6 +37,10 @@ resolución de dependencias también consumen presupuesto; JSON mal formado pued
 ser rechazado por FastAPI antes de las dependencias, así que el borde debe limitar
 bytes/peticiones antes de parsear. No se mantiene bloqueo mientras Argon2 trabaja.
 
+ERD-AUTH-05 añade los presupuestos `forgot` y `reset` (`/auth/password/forgot` y `/reset`) con
+el mismo mecanismo; el cooldown por cuenta de recuperación vive en `password_reset_tokens`, no aquí
+(ver `PASSWORD_RECOVERY.md`).
+
 ## Variables y comportamiento fail-closed
 
 | Variable | Default | Rango |
@@ -44,6 +48,8 @@ bytes/peticiones antes de parsear. No se mantiene bloqueo mientras Argon2 trabaj
 | `AUTH_REGISTER_LIMIT` | 10 | 1–10000 |
 | `AUTH_LOGIN_LIMIT` | 20 | 1–10000 |
 | `AUTH_REFRESH_LIMIT` | 60 | 1–10000 |
+| `AUTH_FORGOT_LIMIT` (ERD-AUTH-05) | 5 | 1–10000 |
+| `AUTH_RESET_LIMIT` (ERD-AUTH-05) | 10 | 1–10000 |
 | `AUTH_ABUSE_WINDOW_SECONDS` | 60 | 1–86400 |
 
 No existe switch para desactivar límites cuando auth está activo. Config inválida
@@ -77,6 +83,55 @@ agregación y calibrar los límites. Si operaciones decide usar IP de usuario:
 No se configura ningún proxy, cuenta o servicio externo en este tramo.
 HTTPS, límites globales en borde, tamaño de body/headers y concurrencia de Argon2
 siguen siendo requisitos operativos. CORS no sustituye controles de acceso.
+
+### ERD-SEC-PROXY-01: IP de cliente verificada detrás de Render/Cloudflare
+
+Problema que resuelve: en Render, toda la web pasa por una ÚNICA conexión
+BFF→API, así que con el default anterior (`request.client.host`) el presupuesto
+de abuso agregaba a TODOS los usuarios web bajo el socket del BFF — un atacante
+podía bloquear el login de todos los demás usuarios web.
+
+Dos variables nuevas, ambas por defecto seguras (`socket`, secreto vacío):
+
+| Variable | Default | Notas |
+|---|---|---|
+| `CLIENT_IP_SOURCE` | `socket` | `socket` (peer TCP, sin cambios) o `cf-connecting-ip`. |
+| `BFF_API_SHARED_SECRET` | `""` | Requerido (misma fuerza que `AUTH_SIGNING_KEY`, ≥32 bytes CSPRNG) en producción/staging cuando `CLIENT_IP_SOURCE=cf-connecting-ip`; config inválida falla al iniciar. |
+
+Modelo de confianza — **dependiente de la topología, no una regla general**:
+
+- `cf-connecting-ip` es seguro **únicamente** porque Render coloca Cloudflare
+  directamente delante de la API, y Cloudflare siempre sobrescribe
+  `CF-Connecting-IP` en su borde (nunca reenvía un valor suministrado por el
+  cliente). Si esa topología cambia (otro proxy, Cloudflare detrás de otra capa,
+  acceso directo a Render sin Cloudflare), este ajuste deja de ser seguro y no
+  debe activarse.
+- Segundo límite de confianza, independiente del anterior: la conexión BFF→API
+  es servidor-a-servidor, así que `CF-Connecting-IP` por sí solo sería la IP del
+  propio BFF para todo el tráfico web (el mismo problema, un nivel más adentro).
+  El BFF firma la IP real del navegador en `X-Forwarded-Client-Ip` con HMAC-SHA256
+  usando `BFF_API_SHARED_SECRET` y una marca de tiempo Unix:
+  `<ip>.<unix-ts>.<hex-hmac-sha256>` (dominio `energy-rd:client-ip:v1`). La API
+  verifica la firma y una ventana de ±60 s; un header ausente, corrupto, con
+  secreto equivocado o fuera de ventana **nunca se usa sin firma verificada**: cae
+  a `CF-Connecting-IP`, y si tampoco está presente, cae al peer de socket (se
+  registra una advertencia `client_ip_fallback_to_socket`, nunca lanza excepción).
+- El BFF (`apps/web/src/lib/auth/bff.ts`) toma esa IP real de
+  `request.headers.get("x-forwarded-for")` (primer salto). Esto también es
+  dependiente de topología: asume que Next.js en Render ve la cadena de
+  `X-Forwarded-For` que Cloudflare ya estableció/garantizó en su borde, no una
+  regla general de que cualquier `X-Forwarded-For` entrante sea confiable.
+
+Riesgo residual: esto sigue siendo presupuesto por IP, no por cuenta; NAT/CGNAT
+compartido puede seguir agregando usuarios legítimos bajo una IP, y rotación de
+IP/IPv6 o botnets distribuidas no quedan resueltas por este tramo. Cambiar
+`BFF_API_SHARED_SECRET` sin coordinar ambos lados (BFF y API) a la vez invalida
+instantáneamente todas las firmas en tránsito (caen a `CF-Connecting-IP`, no es
+un fallo cerrado destructivo, pero rompe la atribución por navegador hasta
+desplegar ambos lados).
+
+Ejecutar `python3 scripts/check_architecture.py` tras cualquier cambio en estas
+variables o en `app/services/client_ip.py` (módulo puro, sin import de FastAPI).
 
 Ejecutar `alembic upgrade head` como paso único de release autorizado antes de
 arrancar replicas: `0010` depende de `0009`, añade solo esta tabla y su constraint;

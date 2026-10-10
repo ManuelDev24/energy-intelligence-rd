@@ -1,0 +1,14 @@
+# API de nuevo arriba: Reintentar recupera el dashboard sin reiniciar la app.
+appId: ${APP_ID || 'host.exp.Exponent'}
+---
+- extendedWaitUntil:
+    visible:
+      id: "retry"
+    timeout: 20000
+- tapOn:
+    id: "retry"
+- extendedWaitUntil:
+    visible:
+      id: "hero"
+    timeout: 60000
+- takeScreenshot: evidence/state-api-recovered

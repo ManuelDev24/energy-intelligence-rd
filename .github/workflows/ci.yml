@@ -31,6 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+      - name: Instalar motor OCR e idiomas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng
+          tesseract --version
+          tesseract --list-langs
       - run: uv sync --frozen
       - run: uv run python -m scripts.generate_contracts --check
       - run: python scripts/check_architecture.py
@@ -82,24 +88,51 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: API migrada y sembrada
+      # Los servidores se lanzan desde .venv (no con `uv run`): un `uv` vivo en segundo plano
+      # retiene el lock de caché y `uv cache prune` del post-job agota su timeout (exit 2).
+      - name: API piloto (:8000, sin auth) migrada y sembrada
         working-directory: services/api
         run: |
           uv sync --frozen
-          uv run alembic upgrade head
-          uv run python -m app.seed
-          nohup uv run uvicorn app.main:app --port 8000 > /tmp/api.log 2>&1 &
+          .venv/bin/alembic upgrade head
+          .venv/bin/python -m app.seed
+          nohup .venv/bin/uvicorn app.main:app --port 8000 > /tmp/api.log 2>&1 &
+          echo $! > /tmp/api.pid
           for i in $(seq 1 30); do curl -sf http://localhost:8000/health && break; sleep 1; done
           curl --fail http://localhost:8000/health
+      - name: API de integración (:8011, con auth) en BD dedicada
+        working-directory: services/api
+        env:
+          PGPASSWORD: change_me_local_only
+        run: |
+          psql -h localhost -p 5433 -U energy -d energy_rd -c 'CREATE DATABASE energy_rd_auth_ci'
+          export DATABASE_URL=postgresql+psycopg://energy:change_me_local_only@localhost:5433/energy_rd_auth_ci
+          export AUTH_ENABLED=true
+          export AUTH_SIGNING_KEY="$(openssl rand -base64 48 | tr -d '\n')"
+          echo "::add-mask::$AUTH_SIGNING_KEY"
+          .venv/bin/alembic upgrade head
+          nohup .venv/bin/uvicorn app.main:app --port 8011 > /tmp/api-auth.log 2>&1 &
+          echo $! > /tmp/api-auth.pid
+          for i in $(seq 1 30); do curl -sf http://localhost:8011/health && break; sleep 1; done
+          curl --fail http://localhost:8011/health
       - run: npm ci
       - name: Web contra API real (sin omisiones)
         env:
           LIVE_API_URL: http://localhost:8000
         run: npm run test --workspace apps/web
-      - name: Recorrido vivienda → factura → dashboard → alerta
+      - name: Recorridos móviles (piloto, auth y Fase 2)
         env:
           MOBILE_E2E_API_URL: http://localhost:8000
+          AUTH_E2E_API_URL: http://localhost:8011
+          # Sin PHASE2_PILOT_PROBE_URL: esa sonda exige la API piloto ANTIGUA (sin Fase 2);
+          # aquí :8000 corre el código actual, que sí tiene Fase 2. Se ejecuta solo en local.
         run: npx vitest run src/e2e
         working-directory: apps/mobile
       - if: failure()
-        run: cat /tmp/api.log
+        run: cat /tmp/api.log /tmp/api-auth.log
+      - name: Detener APIs
+        if: always()
+        run: |
+          for f in /tmp/api.pid /tmp/api-auth.pid; do
+            [ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null || true
+          done

@@ -218,7 +218,9 @@ export const UserOutSchema = z.object({
   "id": z.string().uuid(),
   "email": z.string(),
   "role": z.enum(["user", "admin", "support"]),
-  "created_at": z.string().datetime({ offset: true })
+  "created_at": z.string().datetime({ offset: true }),
+  "terms_version": z.union([z.string(), z.null()]).default(null),
+  "terms_accepted_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
 });
 export type UserOut = z.infer<typeof UserOutSchema>;
 
@@ -260,6 +262,15 @@ export const ConsumptionBucketSchema = z.object({
 });
 export type ConsumptionBucket = z.infer<typeof ConsumptionBucketSchema>;
 
+export const ConsumptionComparisonSchema = z.object({
+  "previous_from": z.string().date(),
+  "previous_to": z.string().date(),
+  "previous_kwh": MetricSchema,
+  "kwh_delta": MetricSchema,
+  "kwh_pct": z.union([MetricSchema, z.null()])
+});
+export type ConsumptionComparison = z.infer<typeof ConsumptionComparisonSchema>;
+
 export const ConsumptionTotalsSchema = z.object({
   "kwh": z.union([MetricSchema, z.null()]),
   "covered_days": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
@@ -277,6 +288,8 @@ export const ConsumptionOutSchema = z.object({
   "totals": ConsumptionTotalsSchema,
   "average_daily_kwh": z.union([MetricSchema, z.null()]),
   "peak_bucket": z.union([ConsumptionBucketSchema, z.null()]),
+  "estimated_cost": z.union([MetricSchema, z.null()]).default(null),
+  "comparison": z.union([ConsumptionComparisonSchema, z.null()]).default(null),
   "readings_used": z.number().finite().int(),
   "resolution": z.literal("meter_readings").default("meter_readings"),
   "hourly_data_available": z.boolean().default(false),
@@ -450,3 +463,70 @@ export const BillAssessmentSchema = z.object({
   "detail": BillItemsOutSchema
 });
 export type BillAssessment = z.infer<typeof BillAssessmentSchema>;
+
+export const RegisterInSchema = z.object({
+  "email": z.string().max(254),
+  "password": z.string().min(12).max(128),
+  "accept_terms": z.literal(true)
+});
+export type RegisterIn = z.infer<typeof RegisterInSchema>;
+
+export const AccountDeletionInSchema = z.object({
+  "password": z.string().min(12).max(128)
+});
+export type AccountDeletionIn = z.infer<typeof AccountDeletionInSchema>;
+
+export const LegalOutSchema = z.object({
+  "terms_version": z.string(),
+  "privacy_version": z.string(),
+  "status": z.literal("draft")
+});
+export type LegalOut = z.infer<typeof LegalOutSchema>;
+
+export const PasswordForgotInSchema = z.object({
+  "email": z.string().max(254)
+});
+export type PasswordForgotIn = z.infer<typeof PasswordForgotInSchema>;
+
+export const PasswordForgotAcceptedSchema = z.object({
+  "status": z.literal("accepted")
+});
+export type PasswordForgotAccepted = z.infer<typeof PasswordForgotAcceptedSchema>;
+
+export const PasswordResetInSchema = z.object({
+  "token": z.string().regex(new RegExp("^[A-Za-z0-9_-]{43}$")).min(43).max(43),
+  "new_password": z.string().min(12).max(128)
+});
+export type PasswordResetIn = z.infer<typeof PasswordResetInSchema>;
+
+export const OcrFieldSchema = z.object({
+  "value": z.union([z.string(), z.null()]),
+  "confidence": z.enum(["high", "inferred", "none"])
+});
+export type OcrField = z.infer<typeof OcrFieldSchema>;
+
+export const OcrDraftSchema = z.object({
+  "period_start": OcrFieldSchema,
+  "period_end": OcrFieldSchema,
+  "days": OcrFieldSchema,
+  "kwh": OcrFieldSchema,
+  "amount_dop": OcrFieldSchema,
+  "reading_previous": OcrFieldSchema,
+  "reading_current": OcrFieldSchema,
+  "warnings": z.array(z.string()),
+  "raw_text_excerpt": z.string()
+});
+export type OcrDraft = z.infer<typeof OcrDraftSchema>;
+
+export const AnomalyRecordSchema = z.object({
+  "home_id": z.string().uuid(),
+  "granularity": z.enum(["day", "month"]),
+  "severity": z.enum(["warning", "critical"]),
+  "observed_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "baseline_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "delta_pct": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "period_start": z.string().date(),
+  "period_end": z.string().date(),
+  "explanation": z.string()
+});
+export type AnomalyRecord = z.infer<typeof AnomalyRecordSchema>;

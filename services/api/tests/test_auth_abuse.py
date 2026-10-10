@@ -34,7 +34,7 @@ def test_login_budget_survives_auth_failure(auth_client, monkeypatch):
 def test_registration_budget(auth_client, monkeypatch):
     from app.config import settings
     monkeypatch.setitem(settings.__dict__, 'AUTH_REGISTER_LIMIT', 1)
-    body = {'email': 'alice@example.com', 'password': PASSWORD}
+    body = {'email': 'alice@example.com', 'password': PASSWORD, 'accept_terms': True}
     assert auth_client.post(AUTH+'/register', json=body).status_code == 201
     body['email'] = 'bob@example.com'
     assert auth_client.post(AUTH+'/register', json=body).status_code == 429
@@ -188,3 +188,103 @@ def test_abuse_config_rejects_invalid_limits(field, value):
     from pydantic import ValidationError
     with pytest.raises(ValidationError):
         Settings(_env_file=None, AUTH_ENABLED=False, ENVIRONMENT='development', **{field: value})
+
+
+# ---------- ERD-SEC-PROXY-01: IP de cliente verificada detrás de Render/Cloudflare ----------
+CLIENT_IP_SECRET = 'x' * 48
+
+
+def _cf(settings, monkeypatch, secret=CLIENT_IP_SECRET):
+    monkeypatch.setattr(settings, 'CLIENT_IP_SOURCE', 'cf-connecting-ip')
+    monkeypatch.setattr(settings, 'BFF_API_SHARED_SECRET', secret)
+
+
+def test_two_signed_client_ips_do_not_share_a_budget(auth_client, monkeypatch):
+    from app.config import settings
+    from app.services.client_ip import sign_client_ip
+    _cf(settings, monkeypatch)
+    monkeypatch.setattr(settings, 'AUTH_LOGIN_LIMIT', 1)
+    body = {'email': 'unknown@example.com', 'password': PASSWORD}
+    headers_a = {'X-Forwarded-Client-Ip': sign_client_ip('203.0.113.10', CLIENT_IP_SECRET)}
+    headers_b = {'X-Forwarded-Client-Ip': sign_client_ip('203.0.113.20', CLIENT_IP_SECRET)}
+    assert auth_client.post(AUTH + '/login', json=body, headers=headers_a).status_code == 401
+    assert auth_client.post(AUTH + '/login', json=body, headers=headers_b).status_code == 401
+    # Previously all web traffic aggregated on one proxy IP: a second attempt from EITHER
+    # distinct signed IP would already have been 429. Each now has its own bucket.
+    assert auth_client.post(AUTH + '/login', json=body, headers=headers_a).status_code == 429
+    assert auth_client.post(AUTH + '/login', json=body, headers=headers_b).status_code == 429
+
+
+def test_expired_signed_header_falls_back_to_cf_connecting_ip(auth_client, monkeypatch):
+    from app.config import settings
+    from app.services.client_ip import sign_client_ip
+    import time
+    _cf(settings, monkeypatch)
+    monkeypatch.setattr(settings, 'AUTH_LOGIN_LIMIT', 1)
+    stale = sign_client_ip('198.51.100.5', CLIENT_IP_SECRET, now=time.time() - 120)
+    body = {'email': 'unknown@example.com', 'password': PASSWORD}
+    headers = {'X-Forwarded-Client-Ip': stale, 'CF-Connecting-IP': '198.51.100.9'}
+    assert auth_client.post(AUTH + '/login', json=body, headers=headers).status_code == 401
+    # Second call with the SAME expired signed header must have consumed the CF-Connecting-IP
+    # bucket (198.51.100.9), not the stale signed one (198.51.100.5): a fresh request carrying
+    # ONLY that CF-Connecting-IP is already rate limited.
+    assert auth_client.post(AUTH + '/login', json=body, headers={'CF-Connecting-IP': '198.51.100.9'}).status_code == 429
+    # A different CF-Connecting-IP still has its own fresh budget.
+    assert auth_client.post(AUTH + '/login', json=body, headers={'CF-Connecting-IP': '198.51.100.77'}).status_code == 401
+
+
+def test_future_signed_header_is_rejected_and_falls_back(auth_client, monkeypatch):
+    from app.config import settings
+    from app.services.client_ip import sign_client_ip
+    import time
+    _cf(settings, monkeypatch)
+    monkeypatch.setattr(settings, 'AUTH_LOGIN_LIMIT', 1)
+    future = sign_client_ip('198.51.100.6', CLIENT_IP_SECRET, now=time.time() + 120)
+    body = {'email': 'unknown@example.com', 'password': PASSWORD}
+    headers = {'X-Forwarded-Client-Ip': future, 'CF-Connecting-IP': '198.51.100.44'}
+    assert auth_client.post(AUTH + '/login', json=body, headers=headers).status_code == 401
+    assert auth_client.post(AUTH + '/login', json=body, headers={'CF-Connecting-IP': '198.51.100.44'}).status_code == 429
+
+
+def test_missing_cf_connecting_ip_falls_back_to_socket_with_logged_warning(auth_client, monkeypatch, caplog):
+    import logging
+    from app.config import settings
+    _cf(settings, monkeypatch)
+    logger = logging.getLogger('energyrd.api')
+    caplog.set_level(logging.WARNING, logger='energyrd.api')
+    logger.addHandler(caplog.handler)
+    try:
+        body = {'email': 'unknown@example.com', 'password': PASSWORD}
+        response = auth_client.post(AUTH + '/login', json=body)
+    finally:
+        logger.removeHandler(caplog.handler)
+    assert response.status_code == 401
+    assert any(rec.getMessage() == 'client_ip_fallback_to_socket' for rec in caplog.records)
+
+
+def test_missing_cf_connecting_ip_uses_same_bucket_as_socket_default(auth_client, monkeypatch, migrated):
+    from app.config import settings
+    from app.services.auth_abuse import bucket_key
+    _cf(settings, monkeypatch)
+    monkeypatch.setattr(settings, 'AUTH_LOGIN_LIMIT', 1)
+    body = {'email': 'unknown@example.com', 'password': PASSWORD}
+    assert auth_client.post(AUTH + '/login', json=body).status_code == 401
+    assert auth_client.post(AUTH + '/login', json=body).status_code == 429
+    with migrated.connect() as conn:
+        keys = conn.execute(text('SELECT key FROM auth_abuse_buckets')).scalars().all()
+    assert keys == [bucket_key('login', 'testclient')]
+
+
+def test_socket_mode_still_ignores_signed_and_cf_headers(auth_client, monkeypatch):
+    # Default CLIENT_IP_SOURCE stays 'socket': neither header must change the bucket peer,
+    # confirming this slice does not weaken the pre-existing default behavior.
+    from app.config import settings
+    from app.services.client_ip import sign_client_ip
+    from app.services.auth_abuse import bucket_key
+    monkeypatch.setattr(settings, 'AUTH_LOGIN_LIMIT', 1)
+    body = {'email': 'unknown@example.com', 'password': PASSWORD}
+    headers = {'X-Forwarded-Client-Ip': sign_client_ip('203.0.113.99', CLIENT_IP_SECRET),
+               'CF-Connecting-IP': '203.0.113.99'}
+    assert auth_client.post(AUTH + '/login', json=body, headers=headers).status_code == 401
+    response = auth_client.post(AUTH + '/login', json=body, headers=headers)
+    assert response.status_code == 429
