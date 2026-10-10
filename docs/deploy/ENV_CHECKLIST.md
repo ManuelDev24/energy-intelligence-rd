@@ -40,16 +40,19 @@ archivos del repo. Cambiar `AUTH_SIGNING_KEY` cierra todas las sesiones (y reini
 | `DB_POOL_SIZE` | No (grupo) | `5` | `5` | Conexiones máximas por proceso = `DB_POOL_SIZE + DB_MAX_OVERFLOW`. |
 | `DB_MAX_OVERFLOW` | No (grupo) | `5` | `5` | |
 | `DB_POOL_TIMEOUT` | No (grupo) | `10` | `10` | Segundos. |
-| `EMAIL_BACKEND` | No (grupo) | `resend` | `resend` | `console` solo en desarrollo local (imprimiría enlaces de recuperación en los logs). **Pendiente**: la lee la recuperación de contraseña en curso. |
-| `RESEND_API_KEY` | **Sí** | key de staging | key de producción | **Pendiente** (recuperación de contraseña). Una key por entorno, solo *Sending access*. |
-| `EMAIL_FROM` | No | `Energy RD <no-reply@staging.TU-DOMINIO>` | `Energy RD <no-reply@TU-DOMINIO>` | **Pendiente**. El dominio debe estar *Verified* en Resend. |
-| `PASSWORD_RESET_URL` | No | `https://<web-staging>/<ruta-de-restablecer>` | `https://<web-prod>/<ruta-de-restablecer>` | **Pendiente**: la ruta exacta la define el trabajo de recuperación; confirmarla en su documentación antes de crear el Blueprint. |
+| `EMAIL_BACKEND` | No (grupo) | `resend` | `resend` | `console` solo en desarrollo local (guarda el mensaje en memoria/archivo de desarrollo, nunca en logs; la API lo rechaza fuera de development). La lee la recuperación de contraseña (ERD-AUTH-05, ya implementada). |
+| `RESEND_API_KEY` | **Sí** | key de staging | key de producción | Obligatoria fuera de development (la API no arranca sin ella). Una key por entorno, solo *Sending access*. |
+| `EMAIL_FROM` | No | `Energy RD <no-reply@staging.TU-DOMINIO>` | `Energy RD <no-reply@TU-DOMINIO>` | Obligatoria fuera de development. El dominio debe estar *Verified* en Resend. |
+| `PASSWORD_RESET_URL` | No | `https://<web-staging>/<ruta-de-restablecer>` | `https://<web-prod>/<ruta-de-restablecer>` | La web sirve `/restablecer-contrasena` (ERD-AUTH-05); la API exige HTTPS y rechaza `?`/`#` en la URL (el token se añade como `#token=`). |
 | `PORT` | No | (Render) | (Render) | La inyecta Render; **no** definirla. El contenedor escucha en `${PORT:-8000}`. |
 
 Opcionales (tienen default seguro en `config.py`; solo definirlas si se decide cambiarlas):
 `AUTH_ACCESS_TTL_SECONDS` (900, 60–900), `AUTH_REFRESH_TTL_DAYS` (30, 1–90), `AUTH_REGISTER_LIMIT` (10),
 `AUTH_LOGIN_LIMIT` (20), `AUTH_REFRESH_LIMIT` (60), `AUTH_ABUSE_WINDOW_SECONDS` (60), `AUTH_ISSUER`,
-`AUTH_AUDIENCE`, `PROJECT_NAME`, `VERSION`.
+`AUTH_AUDIENCE`, `PROJECT_NAME`, `VERSION`, `PASSWORD_RESET_TTL_MINUTES` (30), `PASSWORD_RESET_ACCOUNT_LIMIT` (3),
+`DOCUMENT_UNCONFIRMED_RETENTION_DAYS` (7: originales de factura sin confirmar; propuesta pendiente de ERD-LEGAL-FINAL),
+`DOCUMENT_MAX_PHOTO_BYTES` (10 MiB), `DOCUMENT_MAX_PDF_BYTES` (20 MiB), `SENTRY_DSN` (vacío = sin telemetría; `https://`; ver
+`docs/ops/OBSERVABILITY.md`), `SENTRY_TRACES_SAMPLE_RATE` (0.05).
 
 > ⚠️ Límites anti-abuso detrás de Render: la API cuenta intentos **por IP de transporte** y arranca con
 > `--no-proxy-headers` (decisión documentada en `services/api/AUTH_ABUSE_PROTECTION.md`). Detrás del proxy de

@@ -20,6 +20,8 @@ dependencies = [
     "python-multipart>=0.0.9,<1",
     "pillow>=12.3,<13",
     "pytesseract>=0.3.10,<1",
+    # ERD-OBS-01: errores y trazas a Sentry (opcional: sin SENTRY_DSN no se envía nada), con redacción de datos personales.
+    "sentry-sdk>=2.20,<3",
 ]
 
 [dependency-groups]

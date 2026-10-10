@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     # navegador, distinta de la IP del propio BFF en la conexión servidor-a-servidor).
     BFF_API_SHARED_SECRET: str = Field(default="", repr=False)
 
+    # ERD-OBS-01: Sentry es opcional; sin DSN no se envía nada. El DSN no es secreto fuerte pero no se imprime.
+    SENTRY_DSN: str = Field(default="", repr=False)
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.05, ge=0.0, le=1.0)
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
@@ -95,6 +99,8 @@ class Settings(BaseSettings):
                     "BFF_API_SHARED_SECRET requires a securely generated random key (at least 32 bytes) "
                     "when CLIENT_IP_SOURCE is cf-connecting-ip"
                 )
+        if self.SENTRY_DSN and (urlsplit(self.SENTRY_DSN).scheme != "https" or not urlsplit(self.SENTRY_DSN).hostname):
+            raise ValueError("SENTRY_DSN must be an HTTPS DSN")
         reset_url = urlsplit(self.PASSWORD_RESET_URL)
         if reset_url.query or reset_url.fragment or "#" in self.PASSWORD_RESET_URL or "?" in self.PASSWORD_RESET_URL:
             raise ValueError("PASSWORD_RESET_URL must not contain query or fragment; the token is appended as #token=")
