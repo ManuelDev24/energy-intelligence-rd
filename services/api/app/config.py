@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     PASSWORD_RESET_ACCOUNT_WINDOW_SECONDS: int = Field(default=3600, ge=60, le=86400)
     # Página web que lee el token del FRAGMENTO (#token=...); nunca query string.
     PASSWORD_RESET_URL: str = "http://localhost:3000/restablecer-contrasena"
+    # ERD-DB-DOCUMENTS: originales de factura. Sin factura asociada caducan (propuesta, pendiente de aprobación legal).
+    DOCUMENT_UNCONFIRMED_RETENTION_DAYS: int = Field(default=7, ge=1, le=90)
+    DOCUMENT_MAX_PHOTO_BYTES: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
+    DOCUMENT_MAX_PDF_BYTES: int = Field(default=20 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
     EMAIL_BACKEND: Literal["console", "resend"] = "console"
     RESEND_API_KEY: str = Field(default="", repr=False)
     EMAIL_FROM: str = ""

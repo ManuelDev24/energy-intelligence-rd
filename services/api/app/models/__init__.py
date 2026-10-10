@@ -7,9 +7,10 @@ from app.models.bill_detail import BillItem, BillSnapshot
 from app.models.equipment import AlertSettings, Equipment
 from app.models.home import DISTRIBUTORS, Home
 from app.models.contract import Contract
+from app.models.document import Document, StorageDeletion
 from app.models.goal import HomeGoal
 from app.models.reading import MeterReading
 from app.models.tariff import TARIFF_DISTRIBUTORS, Tariff, TariffBlock, TariffFixedCharge
 
-__all__ = ["Alert", "AlertSettings", "Bill", "Equipment", "Home", "Contract", "DISTRIBUTORS", "HomeGoal", "MeterReading",
+__all__ = ["Alert", "AlertSettings", "Bill", "Equipment", "Home", "Contract", "DISTRIBUTORS", "Document", "StorageDeletion", "HomeGoal", "MeterReading",
            "TARIFF_DISTRIBUTORS", "Tariff", "TariffBlock", "TariffFixedCharge"]
