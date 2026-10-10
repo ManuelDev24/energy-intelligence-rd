@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { BillForm } from "./bill-form";
 import { AppShell } from "./app-shell";
+import { AlertCard } from "./alert-card";
 
 // ERD-WEB-QUALITY H2/H4: salto al contenido y foco en el primer campo inválido.
 vi.mock("@/lib/session", () => ({ useSession: () => ({ homeId: "h1", ready: true, authEnabled: false, user: null }) }));
@@ -18,6 +19,11 @@ describe("accesibilidad del shell y formularios", () => {
     expect(main).toHaveAttribute("tabindex", "-1");
     const focusables = document.querySelectorAll("a[href], button, select, input, [tabindex]:not([tabindex='-1'])");
     expect(focusables[0]).toBe(skip);
+  });
+
+  it("una alerta anunciada usa role=alert en un <div>, no en <article> (axe aria-allowed-role)", () => {
+    render(<AlertCard tone="critical" announce>Subió 50 %</AlertCard>);
+    expect(screen.getByRole("alert").tagName).toBe("DIV");
   });
 
   it("al enviar la factura con errores, el foco va al primer campo inválido", async () => {

@@ -43,8 +43,10 @@ export function AlertCard({
 }: AlertCardProps) {
   const s = SEVERITY[tone];
   const Icon = ICON[tone];
+  // <article> no admite role="alert" (axe aria-allowed-role): una alerta anunciada se pinta como <div>.
+  const Element = announce && Tag === "article" ? "div" : Tag;
   return (
-    <Tag
+    <Element
       role={announce ? "alert" : Tag === "li" ? undefined : "article"}
       aria-label={title ? `${s.short}: ${title}` : s.short}
       data-tone={tone}
@@ -66,6 +68,6 @@ export function AlertCard({
         </div>
         {action ? <div className="flex flex-wrap gap-2 sm:flex-col">{action}</div> : null}
       </div>
-    </Tag>
+    </Element>
   );
 }
