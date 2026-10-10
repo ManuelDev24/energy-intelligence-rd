@@ -25,6 +25,10 @@ El único camino real hacia la base de datos sigue siendo `POST /homes/{home_id}
   (error típico de OCR), ambas se descartan con advertencia en vez de aceptarse ciegas.
 - `days` se infiere de las fechas del período cuando no hay un "(N días)" explícito
   (confianza `inferred`, no `high`).
+- Formato real de las tres distribuidoras (línea `dd/mm/aaaa - dd/mm/aaaa = N días`, tabla de
+  lecturas, escalones `N kWh X RD$`) y ruido típico de Tesseract: ver
+  `docs/qa/OCR_FORMATOS_FACTURAS_RD.md`. Si los días impresos no cuadran con las fechas leídas, el
+  período baja a `inferred` con advertencia.
 
 ## Pendiente (fuera de este slice, documentado para no fingir que está resuelto)
 - **ERD-STORE-01** (almacenamiento S3/R2/MinIO) no existe todavía: la imagen subida se
