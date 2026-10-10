@@ -1,5 +1,44 @@
 # ERD-WEB-QUALITY — Validación de calidad web
 
+## Cierre con PostgreSQL y API real — 2026-10-10 (Manuel)
+
+> **Estado: COMPLETO contra la API real.** Se ejecutó lo que §7 dejaba pendiente y se corrigieron los
+> hallazgos H2, H3, H4 y los nuevos de la revisión. Lo que sigue más abajo es la evidencia histórica
+> (API simulada, 2026-10-07) y el smoke del PR #17, que se trajo a `Dev` como commit (el PR no se fusiona).
+
+- Entorno: clon limpio de `Dev`, PostgreSQL 16 + API en contenedores Docker aislados (`:18001`, migraciones
+  hasta `0013`, seed de 5 viviendas piloto), web `next dev` en `:3000` (Node 24.21), Chromium headless
+  (Playwright) con `prefers-reduced-motion`. El piloto de `:8000` no se tocó.
+- Script reproducible: `docs/qa/evidence/rel-verify-2026-10-10/web-qa/qa.py`; resultado completo en
+  `results.json` y capturas `web-*.jpg` de la misma carpeta. **90 comprobaciones, 0 fallos.**
+- `LIVE_API_URL=http://127.0.0.1:18001 npm run test --workspace apps/web` → **530/530, 0 omitidas**.
+
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Vivienda → factura → dashboard → proyección/alerta **sin mocks** | ✅ PILOT-05: kWh `-5` rechazado en el cliente; 400 kWh → alerta **crítica +66.67 %** (240 → 400) y proyección **466.67 kWh PROYECTADO**, también en `/alerts`; limpieza a 2 facturas | `web-flow-PILOT-05-alert.jpg`, `web-bill-form-errors-focus.jpg` |
+| Valores del dashboard = respuesta de `/dashboard` | ✅ en las 5 viviendas (última factura, alerta o su ausencia, proyección) | `web-dashboard-PILOT-0*.jpg` |
+| Estados loading / error / vacío / Reintentar | ✅ esqueleto con `role=status`; 500 en `/dashboard` → mensaje local + Reintentar que recupera; API **apagada de verdad** (`docker stop`) → error en 1.3 s y Reintentar recupera al volver | `web-state-*.jpg` |
+| Accesibilidad de pantallas internas | ✅ axe-core 4.10 (WCAG 2.0/2.1 A/AA + best-practice) en `/login` y 10 pantallas internas: **0 violaciones** | `results.json` → `axe` |
+| H2 "Saltar al contenido" | ✅ corregido: primer Tab, visible al enfocar, Enter lleva el foco a `<main>` | `web-skip-link.jpg` |
+| H3 título por pantalla | ✅ corregido: "Facturas · Energy RD", etc. (17 rutas con prueba) | `apps/web/src/app/titles.test.ts` |
+| H4 foco con errores de formulario | ✅ corregido en facturas, lecturas, equipos y meta: foco al primer campo `aria-invalid` | `apps/web/src/components/a11y.test.tsx` |
+| Responsive 375 px | ✅ `scrollWidth` = 375 | `web-dashboard-375.jpg` |
+
+Hallazgos nuevos de esta revisión, corregidos (TDD, RED → GREEN):
+
+| # | Hallazgo | Corrección |
+|---|---|---|
+| H7 | Con un 500 de la API, el dashboard mostraba el `detail` del servidor tal cual (en el piloto no hay BFF que lo filtre) | `QueryState` usa `userMessage()` por estado; también facturas (alta/edición/borrado), OCR, equipos y alertas |
+| H8 | `<article role="alert">` en la alerta del inicio (axe `aria-allowed-role`) | la alerta anunciada se pinta como `<div role="alert">` |
+| H9 | Acceso demo sin "Reintentar" cuando no cargan las viviendas (smoke PR #17) | `PilotLogin` pasa `onRetry` |
+
+Siguen abiertos (no bloquean): **H1** el "+15.87 % vs. la última factura" del inicio lo calcula el cliente
+(también en móvil); debe venir de la API como métrica `PROJECTED` (tarea propia). **H5** el `input type=file`
+oculto es enfocable (accesible por la etiqueta "Seleccionar foto"). **H6** con la API caída aparecen dos
+tarjetas de error (períodos y dashboard), cada una con su Reintentar. No se usó lector de pantalla real.
+
+---
+
 Revisión posterior en `test/web-mvp-smoke`: [smoke del 2026-10-10](ERD-WEB-MVP-SMOKE-2026-10-10.md).
 Los cinco checks pasan; la aceptación con API real permanece bloqueada. La evidencia histórica siguiente se conserva.
 
