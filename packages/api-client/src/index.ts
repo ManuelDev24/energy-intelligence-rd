@@ -92,13 +92,22 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     init?.signal?.addEventListener("abort", cancel, { once: true });
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      const response = await abortable(fetchImpl(`${root}${path}`, {
-        ...init, signal: ctrl.signal,
-        headers: {
-          ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-          Accept: "application/json", ...init?.headers,
-        },
-      }), ctrl.signal);
+      let response: Response;
+      try {
+        response = await abortable(fetchImpl(`${root}${path}`, {
+          ...init, signal: ctrl.signal,
+          headers: {
+            ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+            Accept: "application/json", ...init?.headers,
+          },
+        }), ctrl.signal);
+      } catch (error) {
+        // Errores de dominio de un transporte envolvente (auth, cuenta cambiada) pasan tal cual.
+        if (error instanceof ApiError) throw error;
+        // Sin respuesta no hay contrato que violar. React Native/Expo rechaza con un Error genérico
+        // (no TypeError) cuando la API no está accesible: siempre es un fallo de conexión.
+        throw new ApiError(0, "No se pudo conectar con la API");
+      }
       let body: unknown;
       if (response.status !== 204) {
         try { body = await abortable(response.json(), ctrl.signal); }
