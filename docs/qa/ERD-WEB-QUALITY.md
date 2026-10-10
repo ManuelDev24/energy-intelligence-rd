@@ -1,5 +1,8 @@
 # ERD-WEB-QUALITY — Validación de calidad web
 
+Revisión posterior en `test/web-mvp-smoke`: [smoke del 2026-10-10](ERD-WEB-MVP-SMOKE-2026-10-10.md).
+Los cinco checks pasan; la aceptación con API real permanece bloqueada. La evidencia histórica siguiente se conserva.
+
 > **Estado: PARCIAL.** El recorrido se probó contra una **API simulada**, no contra la API real:
 > Docker Desktop no arranca en el equipo donde se hizo la revisión ("Docker Desktop is unable to
 > start") y no hay Python/uv/PostgreSQL. Lo verificado aquí es el comportamiento de la **web** frente
