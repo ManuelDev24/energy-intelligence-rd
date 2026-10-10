@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 errors = []
-for path in (ROOT / "services/api/app/services").glob("*.py"):
+for path in (ROOT / "services/api/app/services").rglob("*.py"):
     imports = [node.module or "" for node in ast.walk(ast.parse(path.read_text())) if isinstance(node, ast.ImportFrom)]
     if any(name.startswith("fastapi") for name in imports):
         errors.append(f"Application services cannot import FastAPI: {path.relative_to(ROOT)}")

@@ -1,7 +1,7 @@
 # Documentos (ERD-DB-DOCUMENTS)
 
 Metadatos y procedencia de los **originales de factura** (foto o PDF). El contenido lo guarda el almacenamiento privado
-(ERD-STORE-01); aquí no hay bytes. Migración `0014`. Sin endpoints todavía: los trae ERD-STORE-01 / ERD-OCR-PROD.
+(ERD-STORE-01); aquí no hay bytes. Migración `0014`. Los endpoints de subida/descarga están en `STORAGE.md` (ERD-STORE-01); el OCR los usará en ERD-OCR-PROD.
 
 ## `documents`
 | Columna | Regla |
@@ -38,5 +38,5 @@ vivienda, inmutabilidad a nivel de base, cascadas (factura, vivienda, usuario y 
 exclusividad y reintento de la cola.
 
 ## Pendiente (otras tareas)
-Subida/descarga con URLs firmadas y cifrado (ERD-STORE-01); worker que vacía la cola y expira (ERD-WORKER-01); estados de
+Subida/descarga con URLs firmadas y cifrado: hecho en ERD-STORE-01 (ver `STORAGE.md`); worker que vacía la cola y expira (ERD-WORKER-01); estados de
 OCR por documento en una tabla propia (ERD-OCR-PROD); texto legal de retención (ERD-LEGAL-FINAL).

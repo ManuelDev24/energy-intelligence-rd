@@ -39,6 +39,20 @@ class Settings(BaseSettings):
     DOCUMENT_UNCONFIRMED_RETENTION_DAYS: int = Field(default=7, ge=1, le=90)
     DOCUMENT_MAX_PHOTO_BYTES: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
     DOCUMENT_MAX_PDF_BYTES: int = Field(default=20 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
+    DOCUMENT_MAX_UNCONFIRMED_PER_HOME: int = Field(default=20, ge=1, le=200)
+    # ERD-STORE-01: almacenamiento privado de originales (ver STORAGE.md). 'disabled' = las rutas responden 503.
+    STORAGE_BACKEND: Literal["disabled", "local", "s3"] = "disabled"
+    STORAGE_LOCAL_DIR: str = ""  # solo desarrollo/pruebas
+    STORAGE_S3_BUCKET: str = ""
+    STORAGE_S3_PREFIX: str = ""
+    STORAGE_S3_ENDPOINT_URL: str = ""  # vacío = AWS; para Cloudflare R2 la URL de la cuenta
+    STORAGE_S3_REGION: str = "auto"
+    STORAGE_S3_ACCESS_KEY_ID: str = Field(default="", repr=False)
+    STORAGE_S3_SECRET_ACCESS_KEY: str = Field(default="", repr=False)
+    # "id:clave,id2:clave2" (base64url de 32 bytes); la primera cifra, todas descifran. Ver STORAGE.md para rotar.
+    STORAGE_ENCRYPTION_KEYS: str = Field(default="", repr=False)
+    STORAGE_URL_SIGNING_KEY: str = Field(default="", repr=False)
+    STORAGE_URL_TTL_SECONDS: int = Field(default=60, ge=10, le=300)
     EMAIL_BACKEND: Literal["console", "resend"] = "console"
     RESEND_API_KEY: str = Field(default="", repr=False)
     EMAIL_FROM: str = ""
@@ -107,6 +121,7 @@ class Settings(BaseSettings):
                 )
         if self.SENTRY_DSN and (urlsplit(self.SENTRY_DSN).scheme != "https" or not urlsplit(self.SENTRY_DSN).hostname):
             raise ValueError("SENTRY_DSN must be an HTTPS DSN")
+        self._validate_storage()
         reset_url = urlsplit(self.PASSWORD_RESET_URL)
         if reset_url.query or reset_url.fragment or "#" in self.PASSWORD_RESET_URL or "?" in self.PASSWORD_RESET_URL:
             raise ValueError("PASSWORD_RESET_URL must not contain query or fragment; the token is appended as #token=")
@@ -133,6 +148,24 @@ class Settings(BaseSettings):
                 or any(s in self.AUTH_SIGNING_KEY.lower() for s in ("change_me", "changeme", "secret", "password"))):
             raise ValueError("AUTH_SIGNING_KEY requires a securely generated random key (at least 32 bytes)")
         return self
+
+
+    def _validate_storage(self) -> None:
+        if self.STORAGE_BACKEND == "disabled":
+            return
+        from app.services.storage.crypto import Keyring
+        Keyring.parse(self.STORAGE_ENCRYPTION_KEYS)
+        if len(self.STORAGE_URL_SIGNING_KEY) < 43 or len(set(self.STORAGE_URL_SIGNING_KEY)) < 16 or any(
+                s in self.STORAGE_URL_SIGNING_KEY.lower() for s in ("change_me", "changeme", "secret", "password")):
+            raise ValueError("STORAGE_URL_SIGNING_KEY requires a securely generated random key (at least 32 bytes)")
+        if self.STORAGE_BACKEND == "local":
+            if not self.STORAGE_LOCAL_DIR:
+                raise ValueError("STORAGE_BACKEND=local requires STORAGE_LOCAL_DIR")
+            if self.ENVIRONMENT.lower() in {"production", "staging"}:
+                raise ValueError("Production/staging cannot use local file storage for documents")
+        if self.STORAGE_BACKEND == "s3" and not (
+                self.STORAGE_S3_BUCKET and self.STORAGE_S3_ACCESS_KEY_ID and self.STORAGE_S3_SECRET_ACCESS_KEY):
+            raise ValueError("STORAGE_BACKEND=s3 requires bucket and access credentials")
 
 
 @lru_cache

@@ -35,3 +35,4 @@ apps/mobile/maestro/evidence/**/console.log
 
 # Facturas reales para QA de OCR (datos personales): nunca versionar.
 qa-private/
+.local-storage/

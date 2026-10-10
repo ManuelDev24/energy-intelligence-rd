@@ -22,10 +22,13 @@ dependencies = [
     "pytesseract>=0.3.10,<1",
     # ERD-OBS-01: errores y trazas a Sentry (opcional: sin SENTRY_DSN no se envía nada), con redacción de datos personales.
     "sentry-sdk>=2.20,<3",
+    "cryptography>=50,<51",
+    "boto3>=1.35,<2",
 ]
 
 [dependency-groups]
 dev = [
+    "moto[s3]>=5.0,<6",
     "pytest>=9.0.3,<10",
 ]
 
