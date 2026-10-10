@@ -29,3 +29,34 @@ ERD-SEC-DEPS PARCIAL. No cerrar mientras persistan los avisos altos o hasta docu
 - Mitigación: patrones de glob solo del repo (no de usuarios); Expo CLI sin firma de actualizaciones OTA con certificados externos; CI y desarrollo en entornos confiables.
 - Salida definitiva: migración a Tailwind 4 (elimina chokidar/micromatch→braces) como tarea propia; actualizar Expo cuando upstream publique node-forge corregido.
 - Revisar en cada actualización de dependencias o en 30 días (2026-11-04).
+
+## Revisión 2026-10-10 — ERD-REL-VERIFY (Manuel)
+
+Auditoría de partida (`npm audit`, commit `4fbdc75`): **23** hallazgos = 21 altos + **2 moderados nuevos**.
+
+### Corregido
+- **2 moderados → 0.** `postcss-selector-parser@6.1.4` (GHSA-rj75-hqrm-r3gf, complejidad cuadrática al parsear
+  selectores planos) llegaba por `tailwindcss@3.4.19` y `postcss-nested@6.2.0`. Parche publicado en `7.1.6`
+  (2026-09-03); la rama `legacy-v6` no tiene corrección. Override acotado en `package.json`
+  (`tailwindcss@3.4.19 → postcss-selector-parser 7.1.6`, también para su `postcss-nested`).
+  **Prueba de no regresión:** el CSS de producción de la web es idéntico regla a regla antes/después del override
+  (única diferencia: las clases nuevas del enlace "Saltar al contenido" de ERD-WEB-QUALITY). Web build OK.
+- **Expo al parche recomendado por `expo install --check`:** `expo 57.0.26 → 57.0.27`, `expo-constants
+  57.0.20 → 57.0.21` (`@expo/cli 57.0.28`, `@expo/metro-file-map 57.0.4`, que ya no depende de `micromatch`).
+  `expo install --check`: *Dependencies are up to date*. Export iOS/Android OK; smoke Maestro re-ejecutado.
+
+### Riesgo residual (20 altos, 0 críticos) — mismos 2 advisories ya aceptados el 2026-10-05
+| Advisory | Paquete vulnerable | Llega por | ¿Parche? | Alcance |
+|---|---|---|---|---|
+| GHSA-vfj7-8cjw-p6xm (DoS) | `braces@3.0.3` (última publicada) | `micromatch` ← `tailwindcss@3`, `fast-glob` (`eslint-config-next`), `metro-file-map` | No | Build/lint/Metro en desarrollo; no llega al bundle web, a la app ni a la API |
+| GHSA-86w9-cpqp-85rv (firma PKCS#1) | `node-forge@1.4.0` (última publicada) | `@expo/code-signing-certificates` ← `@expo/cli` | No | Solo Expo CLI (firma de updates OTA, no usada) |
+
+Los otros 18 nombres del informe (`expo`, `react-native`, `metro*`, `@expo/*`, `eslint-config-next`,
+`tailwindcss`, `chokidar`, `fast-glob`, `micromatch`…) son **transitivos de esos dos advisories**, no
+vulnerabilidades propias. Las "correcciones" de `npm audit` siguen siendo downgrades mayores (expo@44,
+react-native@0.72, eslint-config-next@14, tailwind 4) y se rechazan.
+
+- Decisión: **la aceptación de riesgo del 2026-10-05 sigue vigente** para estos 2 advisories, con las mismas
+  mitigaciones. **Pendiente: confirmación de Manuel** de que mantiene la aceptación con el recuento actual (20 altos).
+- Salida definitiva sin cambios: Tailwind 4 (tarea propia) y Expo cuando upstream publique `node-forge` corregido.
+- Próxima revisión: 2026-11-04 o en la próxima actualización de dependencias.
