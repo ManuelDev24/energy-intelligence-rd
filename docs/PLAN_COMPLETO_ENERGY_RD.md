@@ -100,6 +100,8 @@ Se crean en `packages/ui` (web) y `apps/mobile/src/components` con la **misma AP
 
 **Avance ERD-UI-KIT (2026-10-04, sin commit):** ✅ `MetricCard`, `DataStatusBadge` (+`INFERRED`), `AlertCard` (4 tonos 🔴🟠🟡🟢), `EmptyState`, `ErrorState` (Reintentar + sin conexión), `LoadingSkeleton` (respeta reducir movimiento), `ConsumptionChart`, `EquipmentBreakdown`, `EnergyGauge` en web (`apps/web/src/components`) y móvil (`apps/mobile/src/components`). ⛔ `DateRangePicker`, `BottomSheet`, `Modal`, `RecommendationCard`, `DeviceCard`, `BillCard` (llegan con sus módulos). Pendiente: mover la lógica de gráficos compartida (`chartMath`, `deltaTone`, iconos por tono) a `@energyrd/core`.
 
+**Cierre ERD-UI-KIT (2026-10-10):** `packages/ui` se elimina del diseño y no se construyen componentes sin consumidor; ver `docs/architecture/UI_KIT.md` (Modal/ConfirmDialog, BillCard, RecommendationCard, DateRangePicker, BottomSheet hechos; DeviceCard con ERD-DEV-02; el rango de fechas ya vive en `@energyrd/core`).
+
 ### 2.5 Reglas de experiencia (obligatorias, 7 del chat)
 
 1. Indicadores más importantes primero. 2. Lenguaje simple; explicar kWh y RD$. 3. Real vs. estimado siempre visible. 4. Nada de gráficos vacíos ni métricas sin contexto. 5. Estados `loading / error / offline / empty` en cada pantalla. 6. Accesibilidad: contraste ≥ 4.5:1, objetivos táctiles ≥ 44 px (ya definido en tokens). 7. El usuario corrige lo que extrae el OCR antes de guardar.

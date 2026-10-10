@@ -5,6 +5,7 @@ import { ArrowRight, Plus, Receipt } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { AlertCard } from "@/components/alert-card";
+import { RecommendationCard } from "@/components/recommendation-card";
 import { ConsumptionChart } from "@/components/consumption-chart";
 import { DataStatusBadge } from "@/components/data-status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -314,20 +315,7 @@ function HomeDashboard({ homeId }: { homeId: string }) {
               ) : null}
             </Section>
 
-            <AlertCard
-              tone="savings"
-              title="Recomendación"
-              action={
-                <Link
-                  href="/equipment"
-                  className="inline-flex h-11 items-center gap-1 rounded-lg px-1 text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  Ver qué equipos consumen más <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                </Link>
-              }
-            >
-              {data.recommendation ?? "Sin recomendaciones por ahora."}
-            </AlertCard>
+            <RecommendationCard text={data.recommendation} action={{ href: "/equipment", label: "Ver qué equipos consumen más" }} />
 
             <details className="group rounded-xl border border-border bg-background p-4 text-sm">
               <summary className="cursor-pointer list-none font-semibold">

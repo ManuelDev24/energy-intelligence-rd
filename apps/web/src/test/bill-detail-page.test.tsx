@@ -14,7 +14,8 @@ vi.mock("@/lib/api", async () => {
   return { getApi: () => api };
 });
 const BILL = BILLS[2];
-vi.mock("next/navigation", () => ({ useParams: () => ({ id: "aaaaaaaa-0000-4000-8000-000000000003" }), useRouter: () => ({ push: vi.fn() }) }));
+const push = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useParams: () => ({ id: "aaaaaaaa-0000-4000-8000-000000000003" }), useRouter: () => ({ push }) }));
 
 const ITEMS = [
   { position: 0, label: "Cargo por energía", kind: "charge" as const, amount_dop: "5000.00" },
@@ -213,5 +214,33 @@ describe("Detalle de factura: historial truncado (revisión R3)", () => {
     const r = await review();
     expect(await r.findByText("Se muestran las 100 correcciones más recientes.")).toBeInTheDocument();
     expect(r.queryByText(/primeras/i)).not.toBeInTheDocument();
+  });
+});
+
+
+describe("Detalle de factura: eliminar con diálogo accesible (ERD-UI-KIT)", () => {
+  beforeEach(() => { window.localStorage.clear(); push.mockClear(); });
+  afterEach(() => vi.restoreAllMocks());
+  const manual = { ...BILL, source: "manual" as const };
+
+  it("pide confirmación, no borra al cancelar y al confirmar borra y vuelve al listado", async () => {
+    vi.spyOn(getApi(), "getBill").mockResolvedValue(manual);
+    const remove = vi.spyOn(getApi(), "deleteBill").mockResolvedValue(undefined as never);
+    renderWithApp(<BillDetailPage />, HOME_A);
+    fireEvent.click(await screen.findByRole("button", { name: "Eliminar" }));
+    const dialog = screen.getByRole("dialog", { name: "¿Eliminar esta factura?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(remove).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Eliminar" }));
+    await waitFor(() => expect(remove).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/bills"));
+  });
+
+  it("las facturas demo (seed) no se pueden eliminar: no hay botón", async () => {
+    renderWithApp(<BillDetailPage />, HOME_A);
+    await screen.findByText(/Detalle de factura/);
+    expect(screen.queryByRole("button", { name: "Eliminar" })).not.toBeInTheDocument();
   });
 });

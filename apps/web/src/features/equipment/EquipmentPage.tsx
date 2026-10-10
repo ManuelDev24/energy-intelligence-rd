@@ -17,6 +17,7 @@ import { QueryState } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
+import { ConfirmDialog } from "@/components/modal";
 import { useDeleteEquipment, useEquipment, useEstimate, useSaveEquipment } from "@/lib/api/hooks";
 import type { Equipment } from "@/lib/api/schemas";
 import { formatMetric } from "@/lib/format";
@@ -101,6 +102,7 @@ export default function EquipmentPage() {
   const estimate = useEstimate(homeId ?? "");
   const del = useDeleteEquipment(homeId ?? "");
   const [form, setForm] = useState<{ editing: Equipment | null } | null>(null);
+  const [deleting, setDeleting] = useState<Equipment | null>(null);
   const byId = new Map((estimate.data?.items ?? []).map((i) => [i.equipment_id, i]));
   const e = estimate.data;
 
@@ -123,6 +125,18 @@ export default function EquipmentPage() {
       {form && homeId ? (
         <EquipmentForm key={form.editing?.id ?? "new"} homeId={homeId} editing={form.editing} onDone={() => setForm(null)} />
       ) : null}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title={`¿Eliminar "${deleting?.name ?? ""}"?`}
+        message="El equipo deja de contar en la estimación de consumo. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        pendingLabel="Eliminando…"
+        destructive
+        pending={del.isPending}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => { if (deleting) del.mutate(deleting.id, { onSettled: () => setDeleting(null) }); }}
+      />
 
       <QueryState
         isLoading={list.isLoading || estimate.isLoading}
@@ -217,9 +231,7 @@ export default function EquipmentPage() {
                                 size="sm"
                                 variant="outline"
                                 aria-label={`Eliminar ${it.name}`}
-                                onClick={() => {
-                                  if (window.confirm(`¿Eliminar "${it.name}"?`)) del.mutate(it.id);
-                                }}
+                                onClick={() => setDeleting(it)}
                               >
                                 <Trash2 className="h-4 w-4 text-danger" aria-hidden />
                               </Button>

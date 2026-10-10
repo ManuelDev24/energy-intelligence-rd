@@ -6,6 +6,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { useBills, useDashboard, useGoalProgress, useAnomalies } from '../../api/hooks';
 import type { Dashboard, Metric } from '../../api/types';
 import { AlertCard } from '../../components/AlertCard';
+import { RecommendationCard } from '../../components/RecommendationCard';
 import { ConsumptionChart } from '../../components/charts/ConsumptionChart';
 import { deltaDisplay } from '../../components/charts/chartMath';
 import { MetricCard } from '../../components/MetricCard';
@@ -218,11 +219,7 @@ export function DashboardView({
         </Card>
       ) : null}
 
-      {recommendation ? (
-        <Card title="Recomendación" testID="card-reco">
-          <Text style={{ color: colors.text }}>{recommendation}</Text>
-        </Card>
-      ) : null}
+      <RecommendationCard text={recommendation} />
 
       {ds.insufficient_reasons.length > 0 ? (
         <Card title="Datos insuficientes" testID="card-insufficient">

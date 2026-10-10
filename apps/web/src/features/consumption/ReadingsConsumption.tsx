@@ -1,10 +1,11 @@
 "use client";
 
 import { QUALITY } from "@energyrd/core";
-import { CalendarRange, NotebookPen } from "lucide-react";
+import { NotebookPen } from "lucide-react";
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { DataStatusBadge } from "@/components/data-status-badge";
+import { DateRangePicker, segmentClass } from "@/components/date-range-picker";
 import { EmptyState } from "@/components/empty-state";
 import { MetricCard } from "@/components/metric-card";
 import { QueryState } from "@/components/query-state";
@@ -13,7 +14,6 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import {
   GRANULARITIES,
-  MAX_RANGE_DAYS,
   PRESETS,
   bucketLabel,
   groupGaps,
@@ -29,11 +29,7 @@ import type { Consumption, Granularity } from "@/lib/api/schemas";
 import { formatMetric, formatPeriod } from "@/lib/format";
 import { todayRD } from "@/lib/rd-time";
 
-const segment = (active: boolean) =>
-  cn(
-    "inline-flex h-11 items-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-    active ? "border-primary bg-brand-50 text-primary" : "border-border bg-background text-foreground hover:bg-muted",
-  );
+const segment = segmentClass;
 
 function Controls({
   preset,
@@ -56,58 +52,10 @@ function Controls({
   onFrom: (v: string) => void;
   onTo: (v: string) => void;
 }) {
-  const id = useId();
   const today = todayRD();
   return (
     <div className="flex flex-col gap-4">
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">Rango</legend>
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map((p) => (
-            <button key={p.id} type="button" aria-pressed={preset === p.id} className={segment(preset === p.id)} onClick={() => onPreset(p.id)}>
-              {p.label}
-            </button>
-          ))}
-          <button type="button" aria-pressed={preset === "custom"} className={segment(preset === "custom")} onClick={() => onPreset("custom")}>
-            <CalendarRange className="mr-1.5 h-4 w-4" aria-hidden /> Personalizado
-          </button>
-        </div>
-        {preset === "custom" ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-end gap-3">
-              <label className="flex flex-col gap-1 text-sm font-medium" htmlFor={`${id}-from`}>
-                Desde
-                <input
-                  id={`${id}-from`}
-                  type="date"
-                  value={from}
-                  max={today}
-                  aria-invalid={rangeError ? true : undefined}
-                  aria-describedby={`${id}-range`}
-                  onChange={(e) => onFrom(e.target.value)}
-                  className="h-11 rounded-lg border border-border bg-background px-3 text-base font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-sm"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm font-medium" htmlFor={`${id}-to`}>
-                Hasta
-                <input
-                  id={`${id}-to`}
-                  type="date"
-                  value={to}
-                  max={today}
-                  aria-invalid={rangeError ? true : undefined}
-                  aria-describedby={`${id}-range`}
-                  onChange={(e) => onTo(e.target.value)}
-                  className="h-11 rounded-lg border border-border bg-background px-3 text-base font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-sm"
-                />
-              </label>
-            </div>
-            <p id={`${id}-range`} role={rangeError ? "alert" : undefined} className={cn("text-xs", rangeError ? "text-danger" : "text-muted-foreground")}>
-              {rangeError ?? `Máximo ${MAX_RANGE_DAYS} días, ambos incluidos.`}
-            </p>
-          </div>
-        ) : null}
-      </fieldset>
+      <DateRangePicker presets={PRESETS} selected={preset} from={from} to={to} today={today} error={rangeError} onPreset={onPreset} onFrom={onFrom} onTo={onTo} />
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">Agrupar por</legend>
         <div className="flex flex-wrap gap-2">

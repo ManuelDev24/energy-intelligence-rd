@@ -1,11 +1,10 @@
-import { fmtDate, fmtMonth } from "@energyrd/core";
+import { MAX_RANGE_DAYS, fmtDate, fmtMonth, presetRange as corePresetRange, validateRange, type RangePreset } from "@energyrd/core";
 import type { Granularity } from "@/lib/api/schemas";
-import { addDaysIso, inclusiveDays, isIsoDate } from "@/lib/rd-time";
 
-/** Límite de la API para /consumption (rango inclusivo). */
-export const MAX_RANGE_DAYS = 366;
+// La aritmética y las reglas del rango viven en @energyrd/core (compartidas con el móvil).
+export { MAX_RANGE_DAYS, validateRange };
 
-export type Preset = "7d" | "30d" | "12m";
+export type Preset = RangePreset;
 export const PRESETS: { id: Preset; label: string }[] = [
   { id: "7d", label: "Últimos 7 días" },
   { id: "30d", label: "Últimos 30 días" },
@@ -25,21 +24,7 @@ export interface RangeQuery {
 }
 
 /** Rango de un atajo, terminando hoy (RD). 12 meses empieza el día 1 para tener meses completos. */
-export function presetRange(preset: Preset, today: string): RangeQuery {
-  if (preset === "7d") return { from: addDaysIso(today, -6), to: today, granularity: "day" };
-  if (preset === "30d") return { from: addDaysIso(today, -29), to: today, granularity: "day" };
-  const [y, m] = today.split("-").map(Number);
-  const start = new Date(Date.UTC(y, m - 1 - 11, 1)).toISOString().slice(0, 10);
-  return { from: start, to: today, granularity: "month" };
-}
-
-/** Mismas reglas que la API: fechas válidas, desde ≤ hasta y como máximo 366 días. */
-export function validateRange(from: string, to: string): string | null {
-  if (!isIsoDate(from) || !isIsoDate(to)) return "Elige las dos fechas del rango.";
-  if (from > to) return "La fecha inicial debe ser igual o anterior a la final.";
-  if (inclusiveDays(from, to) > MAX_RANGE_DAYS) return `El rango no puede superar ${MAX_RANGE_DAYS} días.`;
-  return null;
-}
+export const presetRange = (preset: Preset, today: string): RangeQuery => corePresetRange(preset, today);
 
 const dayMonth = (iso: string) => fmtDate(iso).replace(/ \d{4}$/, "");
 
