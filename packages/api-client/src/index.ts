@@ -3,7 +3,7 @@ import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
-  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema, EnergyScoreSchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
   type Distributor, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
@@ -238,6 +238,8 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
         if (updated.id !== anomaly) throw new ContractError();
         return updated;
       }),
+    // ERD-SCORE-01: Energy Score de la vivienda (solo lectura; la fórmula vive en el backend).
+    getEnergyScore: (id: string, signal?: AbortSignal) => request(`${homePath(id)}/energy-score`, EnergyScoreSchema, { signal }),
     // ERD-SAVE-01: recomendaciones de ahorro. `refreshRecommendations` recalcula (idempotente) y devuelve las vigentes.
     listRecommendations: (id: string, opts: { status?: RecommendationListStatus; limit?: number } = {}, signal?: AbortSignal) => {
       const query = new URLSearchParams();

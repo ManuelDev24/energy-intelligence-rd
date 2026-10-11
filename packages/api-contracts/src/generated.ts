@@ -679,6 +679,37 @@ export const RecommendationListOutSchema = z.object({
 });
 export type RecommendationListOut = z.infer<typeof RecommendationListOutSchema>;
 
+export const ScoreComponentOutSchema = z.object({
+  "key": z.enum(["consumption", "efficiency", "habits", "consistency"]),
+  "label": z.string(),
+  "weight": z.number().finite().int(),
+  "score": z.union([z.number().finite().int(), z.null()]),
+  "available": z.boolean(),
+  "summary": z.string(),
+  "detail": z.string(),
+  "inputs": z.record(z.string(), z.string()),
+  "reasons": z.array(z.string()),
+  "next_step": z.string()
+});
+export type ScoreComponentOut = z.infer<typeof ScoreComponentOutSchema>;
+
+export const EnergyScoreOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "score_version": z.number().finite().int(),
+  "as_of": z.string().date(),
+  "status": z.enum(["ok", "insufficient_data"]),
+  "score": z.union([z.number().finite().int(), z.null()]),
+  "band": z.union([z.enum(["good", "fair", "poor"]), z.null()]),
+  "band_label": z.union([z.string(), z.null()]),
+  "quality": z.literal("INFERRED"),
+  "coverage_pct": z.number().finite().int(),
+  "components": z.array(ScoreComponentOutSchema),
+  "reasons": z.array(z.string()),
+  "method": z.string(),
+  "note": z.string()
+});
+export type EnergyScoreOut = z.infer<typeof EnergyScoreOutSchema>;
+
 export const BillPaymentInSchema = z.object({
   "paid": z.boolean()
 });

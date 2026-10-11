@@ -1,7 +1,7 @@
 export * from "./generated";
 import {
   HomeOutSchema, BillOutSchema, DashboardOutSchema, EquipmentOutSchema,
-  EquipmentEstimateOutSchema, OcrJobOutSchema, AlertRecordSchema, AnomalyRecordSchema, RecommendationRecordSchema, RecommendationListOutSchema, BillUpdateSchema, EquipmentInSchema, MetricSchema,
+  EquipmentEstimateOutSchema, OcrJobOutSchema, AlertRecordSchema, AnomalyRecordSchema, RecommendationRecordSchema, RecommendationListOutSchema, EnergyScoreOutSchema, BillUpdateSchema, EquipmentInSchema, MetricSchema,
 } from "./generated";
 import type { z } from "zod";
 
@@ -29,6 +29,10 @@ export type Anomaly = z.infer<typeof AnomalySchema>;
 // ERD-SAVE-01: recomendaciones de ahorro explicables (los ahorros son ESTIMATED y traen sus supuestos).
 export const RecommendationSchema = RecommendationRecordSchema;
 export const RecommendationListSchema = RecommendationListOutSchema;
+// ERD-SCORE-01: Energy Score 0–100 calculado por el backend (indicador interno INFERIDO).
+export const EnergyScoreSchema = EnergyScoreOutSchema;
+export type EnergyScore = z.infer<typeof EnergyScoreSchema>;
+export type ScoreComponent = EnergyScore["components"][number];
 export type Recommendation = z.infer<typeof RecommendationSchema>;
 export type RecommendationList = z.infer<typeof RecommendationListSchema>;
 export type Distributor = Home["distributor"];

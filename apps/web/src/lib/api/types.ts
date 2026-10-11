@@ -2,6 +2,7 @@ import type { Bill, BillAssessment, BillInput, BillItemsOut, BillItemsReplace, D
 import type {
   Anomaly,
   Recommendation,
+  EnergyScore,
   RecommendationList,
   AlertItem,
   AlertStatus,
@@ -37,6 +38,7 @@ export interface Api {
   getDashboard(homeId: string, signal?: AbortSignal, billId?: string): Promise<Dashboard>;
   listAnomalies(homeId: string, opts?: { status?: "active" | "all" | "dismissed" | "resolved" }, signal?: AbortSignal): Promise<Anomaly[]>;
   updateAnomaly(homeId: string, anomalyId: string, status: "open" | "acknowledged" | "dismissed"): Promise<Anomaly>;
+  getEnergyScore(homeId: string, signal?: AbortSignal): Promise<EnergyScore>;
   listRecommendations(homeId: string, opts?: { status?: "active" | "applied" | "dismissed" | "resolved" | "all"; limit?: number }, signal?: AbortSignal): Promise<RecommendationList>;
   refreshRecommendations(homeId: string): Promise<RecommendationList>;
   updateRecommendation(homeId: string, recommendationId: string, status: "active" | "applied" | "dismissed"): Promise<Recommendation>;

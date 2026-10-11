@@ -31,7 +31,7 @@ function Item({ item, nav, pending, onApply, onDismiss, onRestore }: {
           <>
             {go ? <TextAction title={target.label} testID={`reco-go-${item.id}`} onPress={go} /> : null}
             <TextAction title={open ? 'Ocultar por qué' : '¿Por qué se recomienda?'} testID={`reco-why-${item.id}`} onPress={() => setOpen((v) => !v)} accessibilityLabel={`${open ? 'Ocultar' : 'Ver'} por qué se recomienda: ${view.title}`} />
-            {onApply && !pending ? <TextAction title="Ya la apliqué" testID={`reco-apply-${item.id}`} onPress={onApply} accessibilityLabel={`Marcar como aplicada: ${view.title}`} /> : null}
+            {onApply && !pending && item.category === 'equipment' ? <TextAction title="Ya la apliqué" testID={`reco-apply-${item.id}`} onPress={onApply} accessibilityLabel={`Marcar como aplicada: ${view.title}`} /> : null}
             {onDismiss && !pending ? <TextAction title="Descartar" tone="muted" testID={`reco-dismiss-${item.id}`} onPress={onDismiss} accessibilityLabel={`Descartar: ${view.title}`} /> : null}
             {onRestore && !pending ? <TextAction title="Volver a activar" testID={`reco-restore-${item.id}`} onPress={onRestore} accessibilityLabel={`Volver a activar: ${view.title}`} /> : null}
           </>

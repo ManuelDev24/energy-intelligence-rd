@@ -22,6 +22,7 @@ export const keys = {
     ? ["homes", homeId, "dashboard", billId] as const
     : ["homes", homeId, "dashboard"] as const,
   anomalies: (homeId: string) => ["homes", homeId, "anomalies"] as const,
+  energyScore: (homeId: string) => ["homes", homeId, "energy-score"] as const,
   recommendations: (homeId: string) => ["homes", homeId, "recommendations"] as const,
   equipment: (homeId: string) => ["homes", homeId, "equipment"] as const,
   estimate: (homeId: string) => ["homes", homeId, "estimate"] as const,
@@ -83,6 +84,15 @@ export const useUpdateAnomaly = (homeId: string) => {
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.anomalies(homeId) }),
   });
 };
+
+/** ERD-SCORE-01: Energy Score del backend. Se refresca al entrar (los datos de origen pudieron cambiar). */
+export const useEnergyScore = (homeId: string) =>
+  useQuery({
+    queryKey: keys.energyScore(homeId),
+    queryFn: ({ signal }) => getApi().getEnergyScore(homeId, signal),
+    enabled: enabled(homeId),
+    staleTime: 0, refetchOnMount: "always",
+  });
 
 /** ERD-SAVE-01: recomendaciones de ahorro vigentes. Entrar a la pantalla recalcula (idempotente) y devuelve las vigentes. */
 export const useRecommendations = (homeId: string) =>

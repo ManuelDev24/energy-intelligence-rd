@@ -16,6 +16,7 @@ import { fmtMetric, fmtPeriod } from '../../lib/format';
 import { GoalCard } from '../goals/GoalCard';
 import { AnomaliesSection } from './AnomaliesSection';
 import { CycleCard } from './CycleCard';
+import { EnergyScoreCard } from './EnergyScoreCard';
 import { metricParts } from '../../lib/metricParts';
 import { useSession } from '../../store/session';
 import { colors, radius, spacing, TOUCH } from '../../theme';
@@ -113,6 +114,7 @@ export function DashboardView({
   onOpenAlerts,
   onOpenSavings,
   goalSlot,
+  scoreSlot,
   cycleSlot,
   anomalies = [],
   onInvestigate,
@@ -127,6 +129,8 @@ export function DashboardView({
   onOpenSavings?: () => void;
   /** Tarjeta de meta mensual (Fase 2); falla en suave si la API no la ofrece. */
   goalSlot?: ReactNode;
+  /** Energy Score del backend (ERD-SCORE-01). */
+  scoreSlot?: ReactNode;
   /** Tarjeta del ciclo actual (ERD-CHARTS-01). */
   cycleSlot?: ReactNode;
   anomalies?: import('../../api/types').Anomaly[];
@@ -168,6 +172,8 @@ export function DashboardView({
       <AnomaliesSection anomalies={anomalies} onInvestigate={onInvestigate} onOpenBill={onOpenBill} onDismiss={onDismissAnomaly} pendingId={dismissingId} />
 
       {goalSlot}
+
+      {scoreSlot}
 
       {lb ? (
         <Card title={`Última factura · ${fmtPeriod(lb.period_start, lb.period_end)}`} testID="card-latest">
@@ -344,6 +350,7 @@ export function DashboardScreen({
         onOpenAlerts={onOpenAlerts}
         onOpenSavings={onOpenSavings}
         goalSlot={<GoalCard query={goal} onEdit={onEditGoal} onAddReading={onAddReading} onAddBill={onAddBill} />}
+        scoreSlot={<EnergyScoreCard homeId={homeId} />}
         cycleSlot={data.latest_bill ? <CycleCard homeId={homeId} lastBill={data.latest_bill} /> : null}
         anomalies={anomalies.data ?? []}
         onInvestigate={onInvestigate}

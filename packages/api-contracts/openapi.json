@@ -1959,6 +1959,119 @@
         "title": "DownloadUrlOut",
         "type": "object"
       },
+      "EnergyScoreOut": {
+        "description": "Energy Score 0\u2013100 calculado por el backend (la f\u00f3rmula vive solo all\u00ed). Indicador interno INFERIDO: orientativo.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "band": {
+            "anyOf": [
+              {
+                "enum": [
+                  "good",
+                  "fair",
+                  "poor"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
+          "band_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band Label"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreComponentOut"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "coverage_pct": {
+            "title": "Coverage Pct",
+            "type": "integer"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "quality": {
+            "const": "INFERRED",
+            "title": "Quality",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "score_version": {
+            "title": "Score Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "home_id",
+          "score_version",
+          "as_of",
+          "status",
+          "score",
+          "band",
+          "band_label",
+          "quality",
+          "coverage_pct",
+          "components",
+          "reasons",
+          "method",
+          "note"
+        ],
+        "title": "EnergyScoreOut",
+        "type": "object"
+      },
       "EquipmentEstimateItem": {
         "properties": {
           "brand": {
@@ -4321,6 +4434,84 @@
           "status"
         ],
         "title": "ScanQueuedOut",
+        "type": "object"
+      },
+      "ScoreComponentOut": {
+        "description": "Un componente del Energy Score. `score` es nulo cuando faltan datos: no se rellena ni cuenta en el total.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Inputs",
+            "type": "object"
+          },
+          "key": {
+            "enum": [
+              "consumption",
+              "efficiency",
+              "habits",
+              "consistency"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "next_step": {
+            "title": "Next Step",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "weight",
+          "score",
+          "available",
+          "summary",
+          "detail",
+          "inputs",
+          "reasons",
+          "next_step"
+        ],
+        "title": "ScoreComponentOut",
         "type": "object"
       },
       "SessionOut": {
@@ -7470,6 +7661,55 @@
         "summary": "Create Download Url",
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/energy-score": {
+      "get": {
+        "description": "Energy Score 0\u2013100 de la vivienda con sus cuatro componentes. Solo lectura: se deriva de los datos actuales.",
+        "operationId": "get_energy_score_api_v1_homes__home_id__energy_score_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnergyScoreOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Energy Score",
+        "tags": [
+          "energy-score"
         ]
       }
     },

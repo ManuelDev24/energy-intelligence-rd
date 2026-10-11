@@ -45,6 +45,8 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('GET',u+'/equipment/'+eq,None),('PUT',u+'/equipment/'+eq,EQ),('DELETE',u+'/equipment/'+eq,None),
             ('GET',u+'/alerts',None),('GET',u+'/anomalies',None),('POST',u+'/anomalies/scan',None),
             ('PATCH',u+'/anomalies/'+anomaly,{'status':'dismissed'}),
+            # ERD-SCORE-01
+            ('GET',u+'/energy-score',None),
             # ERD-SAVE-01
             ('GET',u+'/recommendations',None),('POST',u+'/recommendations/refresh',None),
             ('PATCH',u+'/recommendations/'+recommendation,{'status':'applied'}),('PATCH',u+'/alerts/'+alert,{'status':'read'}),

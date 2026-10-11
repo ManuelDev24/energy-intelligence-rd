@@ -19,6 +19,7 @@ export const keys = {
   bills: (homeId: string) => [...scope(), 'bills', homeId] as const,
   dashboard: (homeId: string) => [...scope(), 'dashboard', homeId] as const,
   anomalies: (homeId: string) => [...scope(), 'anomalies', homeId] as const,
+  energyScore: (homeId: string) => [...scope(), 'energy-score', homeId] as const,
   recommendations: (homeId: string) => [...scope(), 'recommendations', homeId] as const,
   equipment: (homeId: string) => [...scope(), 'equipment', homeId] as const,
   equipmentItem: (homeId: string, id: string) => [...scope(), 'equipment', homeId, id] as const,
@@ -53,6 +54,10 @@ export function useUpdateAnomaly(homeId: string | null) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.anomalies(homeId ?? 'none') }),
   });
 }
+/** ERD-SCORE-01: Energy Score del backend (solo lectura). Se vuelve a pedir al entrar: los datos de origen pudieron cambiar. */
+export const useEnergyScore = (homeId: string | null) =>
+  useQuery({ ...perHome(keys.energyScore(homeId ?? 'none'), homeId, api.getEnergyScore), staleTime: 0, refetchOnMount: 'always' as const });
+
 /** ERD-SAVE-01: recomendaciones vigentes. Entrar a la pantalla recalcula (idempotente); si falla, se muestra lo guardado. */
 export const useRecommendations = (homeId: string | null) =>
   useQuery(perHome(keys.recommendations(homeId ?? 'none'), homeId, async (id, signal) => {
