@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import Literal, Self
 from urllib.parse import urlsplit
@@ -8,6 +9,12 @@ from sqlalchemy.engine import make_url
 
 # Solo para desarrollo local; coincide con los defaults de docker-compose.yml.
 DEFAULT_DATABASE_URL = "postgresql+psycopg://energy:change_me_local_only@localhost:5433/energy_rd"
+ENVIRONMENTS = {"development", "staging", "production"}
+LOCAL_DATABASE_HOSTS = {"localhost", "127.0.0.1", "::1"}
+# Variables que fijan las plataformas de despliegue habituales (Render, Heroku, Cloud Run, Fly, Vercel, Railway, ECS/Lambda, Kubernetes).
+# Si alguna existe y ENVIRONMENT no se declaró, el arranque falla: nunca se asume «desarrollo» en una plataforma.
+PLATFORM_ENV_VARS = ("RENDER", "RENDER_SERVICE_ID", "DYNO", "K_SERVICE", "FLY_APP_NAME", "VERCEL", "RAILWAY_ENVIRONMENT",
+                     "AWS_EXECUTION_ENV", "ECS_CONTAINER_METADATA_URI", "KUBERNETES_SERVICE_HOST")
 
 
 class Settings(BaseSettings):
@@ -19,7 +26,9 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     DATABASE_URL: str = DEFAULT_DATABASE_URL
     ENVIRONMENT: str = "development"
-    AUTH_ENABLED: bool = False
+    # Auditoría C-03: la autenticación está ENCENDIDA por defecto (falla cerrado). El modo piloto local sin cuentas exige
+    # `AUTH_ENABLED=false` de forma explícita y solo se admite con ENVIRONMENT=development.
+    AUTH_ENABLED: bool = True
     AUTH_SIGNING_KEY: str = Field(default="", repr=False)
     AUTH_ACCESS_TTL_SECONDS: int = Field(default=900, ge=60, le=900)
     AUTH_REFRESH_TTL_DAYS: int = Field(default=30, ge=1, le=90)
@@ -126,6 +135,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_environment(self) -> Self:
+        if self.ENVIRONMENT.lower() not in ENVIRONMENTS:
+            raise ValueError("ENVIRONMENT must be one of: development, staging, production")
+        if "ENVIRONMENT" not in self.model_fields_set:
+            database_host = make_url(self.DATABASE_URL).host
+            if any(os.environ.get(name) for name in PLATFORM_ENV_VARS) or (database_host and database_host not in LOCAL_DATABASE_HOSTS):
+                raise ValueError("ENVIRONMENT must be set explicitly (development, staging or production) on a deployment platform "
+                                 "or with a non-local database; it is never assumed to be development")
         if "*" in self.cors_origins_list:
             raise ValueError("CORS must list explicit origins")
         if self.ENVIRONMENT.lower() in {"production", "staging"}:
@@ -179,7 +195,8 @@ class Settings(BaseSettings):
         if self.AUTH_ENABLED and (len(self.AUTH_SIGNING_KEY) < 43
                 or len(set(self.AUTH_SIGNING_KEY)) < 16
                 or any(s in self.AUTH_SIGNING_KEY.lower() for s in ("change_me", "changeme", "secret", "password"))):
-            raise ValueError("AUTH_SIGNING_KEY requires a securely generated random key (at least 32 bytes)")
+            raise ValueError("AUTH_SIGNING_KEY requires a securely generated random key (at least 32 bytes); "
+                             "AUTH_ENABLED=false (local pilot mode, development only) is the only way to run without one")
         return self
 
 

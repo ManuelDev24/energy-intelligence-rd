@@ -6,10 +6,13 @@ Implemented in the isolated `auth-backend` copy, only under `services/api/`.
 No changes to frontend/shared JS contracts. OpenAPI is the backend contract; clients
 must explicitly integrate it. Registration is **not** proof of email ownership.
 
-- `AUTH_ENABLED=false` (default) preserves the existing **development-only** local
-  pilot API without tokens. All `/api/v1/auth/*` endpoints return 404 in this mode.
-  Do not expose this mode to an untrusted network.
-- Set `AUTH_ENABLED=true` and supply `AUTH_SIGNING_KEY` through the environment or
+- **`AUTH_ENABLED=true` es el valor por defecto (falla cerrado, auditoría C-03).** El modo piloto local sin tokens
+  (`AUTH_ENABLED=false`) es **solo de desarrollo** y hay que pedirlo expresamente (`.env`, `docker-compose.yml` y el CI
+  lo declaran). En ese modo todos los `/api/v1/auth/*` devuelven 404. No exponga ese modo a una red no confiable.
+- `ENVIRONMENT` solo admite `development`, `staging` o `production`. Si no se declara y hay una plataforma de despliegue
+  (`RENDER`, `DYNO`, `K_SERVICE`, `KUBERNETES_SERVICE_HOST`…) o una base de datos no local, el arranque falla: nunca se
+  asume «desarrollo».
+- With authentication enabled (the default) supply `AUTH_SIGNING_KEY` through the environment or
   deployment secret manager. There is no fallback signing key. Generate at least
   32 random bytes with a CSPRNG (for example `secrets.token_urlsafe(48)`), store it
   securely, and use the same key on replicas. Do not paste it into source/logs.
@@ -17,7 +20,7 @@ must explicitly integrate it. Registration is **not** proof of email ownership.
   guardrail, not proof that an arbitrary supplied string has enough entropy.
 - Authentication disabled outside `ENVIRONMENT=development` is a startup error,
   including staging/production. Existing deployment DB/CORS/seed/migration guards
-  still apply. Enabled authentication also requires a valid key in development.
+  still apply. Enabled authentication (the default) also requires a valid key in development.
 - `AUTH_ACCESS_TTL_SECONDS`: 60–900; default 900. `AUTH_REFRESH_TTL_DAYS`: 1–90;
   default 30. `AUTH_ISSUER=energy-rd-api`, `AUTH_AUDIENCE=energy-rd-clients`.
 - Run Alembic `upgrade head` as a release step before enabling authentication.

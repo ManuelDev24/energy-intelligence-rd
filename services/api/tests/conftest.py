@@ -1,5 +1,10 @@
 import os
 
+# Auditoría C-03: la API arranca con autenticación ENCENDIDA por defecto. La suite usa el modo piloto local (sin cuentas) salvo
+# que cada prueba active la autenticación; se declara explícito aquí, antes de importar la configuración.
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("AUTH_ENABLED", "false")
+
 import pytest
 from alembic import command
 from alembic.config import Config

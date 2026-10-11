@@ -33,8 +33,8 @@ archivos del repo. Cambiar `AUTH_SIGNING_KEY` cierra todas las sesiones (y reini
 | `DATABASE_URL` | **Sí** | Neon rama `staging`, rol `erd_staging` | Neon rama `production` (principal), rol `erd_prod` | Formato `postgresql+psycopg://ROL:CLAVE@ep-….us-east-1.aws.neon.tech/energyrd?sslmode=require&channel_binding=require`. **Cambiar el prefijo `postgresql://` que da Neon por `postgresql+psycopg://`.** Usar la conexión *directa* (sin `-pooler`). Fuera de development se rechaza host local o sin contraseña. |
 | `AUTH_SIGNING_KEY` | **Sí** | generar | generar (otra) | ≥43 caracteres, ≥16 caracteres distintos, sin `secret/password/change_me`. También es la clave HMAC de los contadores anti-abuso. |
 | `CORS_ORIGINS` | No | `https://<web-staging>` | `https://<web-prod>` (o dominio propio) | Lista separada por comas; **solo `https://`**, nunca `*`. La app móvil nativa no necesita CORS. |
-| `ENVIRONMENT` | No (grupo) | `staging` | `production` | Activa los validadores de producción. |
-| `AUTH_ENABLED` | No (grupo) | `true` | `true` | Obligatorio fuera de development. |
+| `ENVIRONMENT` | No (grupo) | `staging` | `production` | Activa los validadores de producción. **Obligatoria** en una plataforma o con base no local: si falta, el arranque falla (nunca se asume `development`). Solo `development`, `staging`, `production`. |
+| `AUTH_ENABLED` | No (grupo) | `true` | `true` | Valor por defecto `true`; `false` (modo piloto local) solo en development y hay que pedirlo expresamente. |
 | `MIGRATE_ON_START` | No (grupo) | `false` | `false` | `true` está **prohibido** en staging/production: la migración es un paso de release. |
 | `SEED_PILOT` | No (grupo) | `false` | `false` | `true` está **prohibido** en staging/production (datos demo). |
 | `DB_POOL_SIZE` | No (grupo) | `5` | `5` | Conexiones máximas por proceso = `DB_POOL_SIZE + DB_MAX_OVERFLOW`. |

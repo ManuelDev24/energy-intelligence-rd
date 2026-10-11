@@ -5,7 +5,12 @@ Cross-field business validators remain authoritative in Python/API tests.
 """
 import argparse
 import json
+import os
 from pathlib import Path
+
+# Herramienta de compilación: no abre conexiones ni atiende peticiones; los modos de autenticación no cambian el esquema.
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("AUTH_ENABLED", "false")
 
 from app.main import app
 from app.schemas.home import HomeOut

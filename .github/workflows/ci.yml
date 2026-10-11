@@ -28,6 +28,10 @@ jobs:
     defaults:
       run:
         working-directory: services/api
+    env:
+      # Auditoría C-03: la API arranca con autenticación encendida; la suite y las migraciones usan el modo piloto explícito.
+      ENVIRONMENT: development
+      AUTH_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -145,6 +149,9 @@ jobs:
       # retiene el lock de caché y `uv cache prune` del post-job agota su timeout (exit 2).
       - name: API piloto (:8000, sin auth) migrada y sembrada
         working-directory: services/api
+        env:
+          ENVIRONMENT: development
+          AUTH_ENABLED: "false"
         run: |
           uv sync --frozen
           .venv/bin/alembic upgrade head

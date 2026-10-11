@@ -71,8 +71,11 @@ Datos inválidos → 422 (validación), vivienda/factura inexistente → 404, pe
 
 ## Estabilización del piloto
 
-El piloto sigue sin autenticación: mantener API y datos en un entorno privado. CORS no controla
-el acceso de clientes externos. La selección de vivienda no es una credencial.
+La API arranca con la autenticación **encendida** (`AUTH_ENABLED=true`, necesita `AUTH_SIGNING_KEY`). El modo piloto local sin
+cuentas es solo de desarrollo y se pide con `AUTH_ENABLED=false` (ver `.env.example`): mantener API y datos en un entorno
+privado, porque CORS no controla el acceso de clientes externos y la selección de vivienda no es una credencial.
+`ENVIRONMENT` debe ser `development`, `staging` o `production`; en una plataforma de despliegue o con una base no local no
+se asume `development` (el arranque falla si falta).
 
 `ENVIRONMENT=production` o `staging` exige credenciales de DB no locales, orígenes CORS HTTPS
 explícitos y `SEED_PILOT=false`. Estas validaciones no sustituyen autenticación ni autorización.
