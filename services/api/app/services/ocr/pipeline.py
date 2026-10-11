@@ -17,6 +17,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.config import settings
 from app.services.ocr import preprocess
+from app.services.ocr.parser import OcrText, parse_bill_text
 
 pillow_heif.register_heif_opener()
 MAX_SIDE_PX = 4000
@@ -42,7 +43,7 @@ class OcrEngine(Protocol):
     def read_image(self, image: Image.Image) -> str: ...
 
 
-GOOD_ENOUGH_SCORE = 6   # de 7 campos clave leídos: no hace falta probar más variantes
+GOOD_ENOUGH_SCORE = 7   # completo y confirmado; presencia de valores inferidos no basta
 BUDGET_FRACTION = 0.8   # del tiempo máximo por página; el resto es margen para no chocar con el límite duro
 
 
@@ -56,11 +57,12 @@ class TesseractEngine:
             raise EngineError(type(exc).__name__) from exc
 
     def read_image(self, image: Image.Image) -> str:
-        """Prueba variantes de imagen y modos de segmentación y devuelve la lectura con más campos clave. La primera
-        variante debe terminar (si falla, el error se propaga y se reintenta); las siguientes solo mejoran el resultado."""
+        """Prueba variantes con presupuesto y conserva su evidencia para el parser, además del texto elegido.
+        La primera debe terminar; las siguientes son opcionales. Solo una lectura completa y confirmada corta antes."""
         budget = settings.OCR_PAGE_TIMEOUT_SECONDS * BUDGET_FRACTION
         started = time.monotonic()
         best, best_score = "", -1
+        candidates: list[str] = []
         for index, (_name, psm, variant) in enumerate(preprocess.variants(image)):
             remaining = budget - (time.monotonic() - started)
             if index and remaining < 3:
@@ -72,11 +74,17 @@ class TesseractEngine:
                     raise
                 continue
             score = preprocess.score_text(text)
+            if text.strip():  # un puntaje bajo no borra evidencia de discrepancias
+                candidates.append(text)
             if score > best_score or (score == best_score and len(text) > len(best)):
                 best, best_score = text, score
-            if best_score >= GOOD_ENOUGH_SCORE:
-                break
-        return best
+            if score >= GOOD_ENOUGH_SCORE:
+                draft = parse_bill_text(text)
+                if all(getattr(draft, field).confidence == "high" for field in (
+                        "period_start", "period_end", "days", "kwh", "amount_dop", "due_date",
+                        "reading_previous", "reading_current")):
+                    break
+        return OcrText(best, tuple(candidates)) if len(candidates) > 1 else best
 
 
 @dataclass(frozen=True)
@@ -139,7 +147,22 @@ def _from_pdf(content: bytes, engine: OcrEngine) -> Extracted:
             finally:
                 page.close()
         method = "mixed" if len(used) > 1 else next(iter(used))
-        return Extracted("\n\n".join(parts), method, read, total, engine.name if "ocr" in used else "pdf_text")
+        text = "\n\n".join(parts)
+        # Hypotheses change only one page at a time. Variant indexes are local to
+        # their page, and repeating unchanged pages is not independent consensus.
+        if len(parts) > 1 or any(isinstance(part, OcrText) for part in parts):
+            alternatives = [text]
+            for index, part in enumerate(parts):
+                if isinstance(part, OcrText):
+                    for variant in part.alternatives:
+                        alternatives.append("\n\n".join(
+                            variant if other_index == index else str(other)
+                            for other_index, other in enumerate(parts)))
+            page_evidence = tuple(raw for part in parts for raw in
+                                  (str(part), *(part.alternatives if isinstance(part, OcrText) else ())))
+            text = OcrText(text, tuple(dict.fromkeys(alternatives)), rank_repetition=False,
+                           page_evidence=page_evidence)
+        return Extracted(text, method, read, total, engine.name if "ocr" in used else "pdf_text")
     finally:
         pdf.close()
 

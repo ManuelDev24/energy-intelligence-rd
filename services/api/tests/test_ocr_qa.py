@@ -56,6 +56,15 @@ def test_summary_aggregates_per_distributor_and_fails_on_silent_errors(tmp_path)
     assert report["passed"] is False
 
 
+def test_summary_separates_safety_from_exact_reproduction():
+    partial = qa.evaluate(draft(kwh=("320", "high")), EXPECTED)
+    report = qa.summarize({"synthetic.png": ("EDESUR", partial)})
+    assert report["passed"] is True  # gate de seguridad existente, no exactitud
+    assert report["exact"] is False
+    assert report["fields_total"] == 5
+    assert report["fields_ok"] == 1
+
+
 def test_load_manifest_rejects_unknown_distributor_and_fields(tmp_path):
     path = tmp_path / "expected.json"
     path.write_text(json.dumps({"a.jpg": {"distributor": "OTRA", "kwh": "1"}}))

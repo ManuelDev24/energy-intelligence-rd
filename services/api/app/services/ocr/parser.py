@@ -141,7 +141,7 @@ def _reading_table(text: str) -> dict[str, Decimal] | None:
 
 # Fila de la tabla de lecturas tal como la deja Tesseract: «Activa B.T. 15197994 4.971 5,205 1.00 234kWh». El separador de miles sale
 # como punto o coma, el multiplicador y el consumo salen deformados («Lecco», «4AWRh»).
-_ROW_RE = re.compile(r"ac\w{0,2}va\s*[bB8]\.?\s*[tT]\.?\s+(\d{6,9})\s+(\d{1,3}(?:[.,]\d{3})*|\d+)\s+(\d{1,3}(?:[.,]\d{3})*|\d+)\b", re.IGNORECASE)
+_ROW_RE = re.compile(r"ac\w{0,2}va[^\S\n]*[bB8]\.?[^\S\n]*[tT]\.?[^\S\n]+(\d{6,9})[^\S\n]+(\d{1,3}(?:[.,]\d{3})*|\d+)[^\S\n]+(\d{1,3}(?:[.,]\d{3})*|\d+)\b(?![\d.,])", re.IGNORECASE)
 MAX_PLAUSIBLE_DELTA_KWH = 20_000
 
 
@@ -241,7 +241,94 @@ def _cross_check_amount(text: str, amount: Decimal | None, conf: Confidence, war
     return amount, "inferred"
 
 
+class OcrText(str):
+    """Texto elegido y sus alternativas de la misma imagen; metadatos efímeros, no texto sintético."""
+
+    alternatives: tuple[str, ...]
+    rank_repetition: bool
+    page_evidence: tuple[str, ...]
+
+    def __new__(cls, selected: str, alternatives: tuple[str, ...], *, rank_repetition: bool = True,
+                page_evidence: tuple[str, ...] = ()):
+        instance = super().__new__(cls, selected)
+        instance.alternatives = alternatives
+        instance.rank_repetition = rank_repetition
+        instance.page_evidence = page_evidence
+        return instance
+
+
+_FIELD_GROUPS = (("period_start", "period_end", "days"), ("reading_previous", "reading_current"),
+                 ("kwh",), ("amount_dop",), ("due_date",))
+
+
 def parse_bill_text(text: str | None) -> OcrDraft:
+    if isinstance(text, OcrText):
+        # Nunca se concatenan filas de variantes diferentes: cada alternativa se parsea aislada.
+        # Page-local reads must also be parsed independently: an earlier match
+        # in a concatenated document must not conceal a later-page conflict.
+        alternatives = list(text.alternatives) + list(text.page_evidence)
+        if str(text) in alternatives:
+            alternatives.remove(str(text))  # la elegida cuenta una vez, no un voto adicional
+        alternatives.insert(0, str(text))  # también es evidencia si el adaptador omitió listarla
+        candidates = [parse_bill_text(raw) for raw in alternatives]
+        draft = parse_bill_text(str(text))
+        sources: dict[tuple[str, ...], OcrDraft] = {}
+        for names in _FIELD_GROUPS:
+            available = [other for other in candidates if all(
+                getattr(other, name).value is not None for name in names)]
+            if names == ("amount_dop",):
+                # Invoice charges and an outstanding balance are different
+                # concepts; preserve _read_amount's monthly-billed priority.
+                monthly = [other for raw, other in zip(alternatives, candidates)
+                           if _all_numbers(_FACTURADO_RE, raw) and other.amount_dop.value is not None]
+                if monthly:
+                    available = monthly
+            if not available:
+                continue
+            signatures = [tuple(getattr(other, name).value for name in names) for other in available]
+            ranks = [(
+                all(getattr(other, name).confidence == "high" for name in names),
+                signatures.count(signature) if text.rank_repetition else 1) for other, signature in zip(available, signatures)]
+            top_rank = max(ranks)
+            tied = {signature for signature, rank in zip(signatures, ranks) if rank == top_rank}
+            if names == ("amount_dop",) and len(tied) > 1:
+                draft.amount_dop = OcrField(value=None, confidence="none")
+                draft.warnings.append("Las variantes OCR discrepan en amount_dop sin una lectura ganadora; introduzca el monto de la factura manualmente.")
+                continue
+            chosen = available[ranks.index(top_rank)]
+            sources[names] = chosen
+            draft.warnings.extend(chosen.warnings)
+            for name in names:
+                item = getattr(chosen, name).model_copy(deep=True)
+                if len(set(signatures)) > 1:
+                    item.confidence = "inferred"
+                setattr(draft, name, item)
+            if len(set(signatures)) > 1:
+                draft.warnings.append(f"Las variantes OCR discrepan en {', '.join(names)}; compárelo con la factura.")
+        if (sources.get(("kwh",)) is not sources.get(("reading_previous", "reading_current"))
+                and draft.kwh.value and draft.reading_previous.value and draft.reading_current.value):
+            previous, current = Decimal(draft.reading_previous.value), Decimal(draft.reading_current.value)
+            reading_source = sources.get(("reading_previous", "reading_current"))
+            reading_text = next((raw for raw, other in zip(alternatives, candidates) if other is reading_source), "")
+            table = _reading_table(reading_text)
+            multiplier = (table.get("multiplier", Decimal(1)) if table
+                          and table.get("previous") == previous and table.get("current") == current else Decimal(1))
+            delta = (current - previous) * multiplier
+            if delta != Decimal(draft.kwh.value):
+                for name in ("kwh", "reading_previous", "reading_current"):
+                    getattr(draft, name).confidence = "inferred"
+                draft.warnings.append("Las lecturas de otra variante no coinciden con el consumo; revise los campos y el multiplicador.")
+        if draft.due_date.value and draft.period_start.value and draft.period_end.value:
+            due = date.fromisoformat(draft.due_date.value)
+            if not date.fromisoformat(draft.period_start.value) <= due <= date.fromisoformat(draft.period_end.value) + timedelta(days=120):
+                draft.due_date = OcrField(value=None, confidence="none")
+                draft.warnings.append("La fecha límite de pago leída no es coherente con el período; revísela.")
+        missing = {"period_start": "No se encontró el período", "amount_dop": "No se encontró el monto",
+                   "kwh": "No se encontró el consumo"}
+        draft.warnings = list(dict.fromkeys(warning for warning in draft.warnings if not any(
+            getattr(draft, name).value is not None and warning.startswith(prefix)
+            for name, prefix in missing.items())))
+        return draft
     text = text or ""
     warnings: list[str] = []
 
@@ -304,6 +391,8 @@ def parse_bill_text(text: str | None) -> OcrDraft:
 
     amount, amount_conf = _read_amount(text, warnings)
     amount, amount_conf = _cross_check_amount(text, amount, amount_conf, warnings)
+    if amount is not None and amount_conf == "inferred" and _FACTURADO_RE.search(text):
+        warnings.append("El importe facturado del mes no se confirmó con los conceptos; compárelo con la factura.")
 
     kwh = None
     kwh_conf: Confidence = "high"
@@ -330,20 +419,29 @@ def parse_bill_text(text: str | None) -> OcrDraft:
             if kwh is None and printed is not None:
                 kwh = printed
 
-    reading_conf: Confidence = "high"
-    if prev is None and curr is None:
-        row = _reading_row(text)
-        if row:
-            prev, curr, reading_conf = row[0], row[1], "inferred"
-            if kwh is None:
-                # Sin multiplicador legible se supone 1 (medidores residenciales de baja tensión); por eso solo `inferred`.
-                kwh, kwh_conf = curr - prev, "inferred"
-                warnings.append("El consumo se calculó con las lecturas de la tabla (multiplicador supuesto 1); compárelo con la factura.")
-
+    from_tiers = False
     if kwh is None:
         tiers = [_num(t.translate(_OCR_DIGITS)) for t in _TIER_RE.findall(text)]
         if tiers and all(t is not None for t in tiers):
             kwh, kwh_conf = sum(tiers, Decimal(0)), "inferred"  # type: ignore[arg-type]
+            from_tiers = True
+
+    reading_conf: Confidence = "high"
+    if prev is None and curr is None:
+        row = _reading_row(text)
+        if row:
+            if from_tiers and kwh is not None and kwh < row[1] - row[0]:
+                # Leer algunos escalones no prueba haber leído todos: su suma es solo un mínimo.
+                warnings.append("La suma parcial de escalones es menor que la diferencia de lecturas; no confirma el consumo calculado. Compárelo con la factura.")
+                kwh = None
+            if kwh is not None and row[1] - row[0] != kwh:
+                warnings.append("Las lecturas de la fila no coinciden con el consumo impreso; revise lecturas y consumo (multiplicador no confirmado).")
+            else:
+                prev, curr, reading_conf = row[0], row[1], "inferred"
+                if kwh is None:
+                    # Sin multiplicador legible se supone 1; la diferencia no desplaza consumo impreso.
+                    kwh, kwh_conf = curr - prev, "inferred"
+                    warnings.append("El consumo se calculó con las lecturas de la tabla (multiplicador supuesto 1); compárelo con la factura.")
     if kwh is None:
         warnings.append("No se encontró el consumo en kWh.")
     if prev is not None and curr is not None and curr < prev:

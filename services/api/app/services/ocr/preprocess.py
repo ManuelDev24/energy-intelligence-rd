@@ -1,9 +1,7 @@
 """ERD-OCR-REAL-QA: variantes de imagen para Tesseract. Solo Pillow (sin numpy ni OpenCV), sin BD ni FastAPI.
 
-Medido con 3 facturas reales de 2019–2024 (muestras públicas de 768×1024 px, una con fondos azul y amarillo): el texto
-con el ajuste por defecto de Tesseract casi no salía (0–1 de 8 campos); con el canal de máximo brillo, ampliado y con
-otro modo de segmentación salían 4–5 de 8 y ninguno mal. Ninguna variante gana siempre, así que se prueban en orden y
-se queda la que mejor lee (`score_text`), con tope de tiempo.
+Ninguna variante gana siempre: se prueban en orden, con tope de tiempo. `score_text` mide presencia y contradicciones,
+no exactitud; el parser contrasta por separado la evidencia de las variantes sin subir confianza por repetición.
 """
 from collections.abc import Iterator
 
@@ -56,5 +54,5 @@ def score_text(text: str) -> int:
     read = sum(1 for f in (draft.period_start, draft.days, draft.kwh, draft.amount_dop, draft.due_date,
                            draft.reading_previous, draft.reading_current) if f.value is not None)
     # Una lectura que se contradice (días que no cuadran con las fechas, lecturas absurdas) vale menos que una incompleta.
-    contradictions = sum(1 for w in draft.warnings if "no coinciden" in w or "invertidas" in w or "menor que" in w or "corrigió" in w)
+    contradictions = sum(1 for w in draft.warnings if "no coincide" in w or "invertidas" in w or "menor que" in w or "corrigió" in w)
     return read - 2 * contradictions
