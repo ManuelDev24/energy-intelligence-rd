@@ -111,6 +111,12 @@ appId: ${APP_ID || 'host.exp.Exponent'}
 - tapOn:
     id: "account-onboarding-province"
 - inputText: "Santo Domingo"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+      - waitForAnimationToEnd
 - tapOn:
     id: "account-onboarding-municipality"
 - inputText: "Santo Domingo Este"
@@ -191,6 +197,15 @@ appId: ${APP_ID || 'host.exp.Exponent'}
 # 3. Perfil: la vivienda y la meta quedaron guardadas.
 - tapOn:
     id: "profile-entry"
+# El menú de desarrollo de Android puede reabrirse en cualquier punto del recorrido
+# (gesto espurio del emulador); cerrarlo si aparece antes de continuar.
+- runFlow:
+    when:
+      visible: "Toggle performance monitor"
+      platform: Android
+    commands:
+      - back
+      - waitForAnimationToEnd
 - tapOn:
     id: "profile-home"
 - assertVisible: ".*Casa Maestro.*"
