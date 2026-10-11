@@ -64,7 +64,7 @@ export default function NewBillPage() {
           El archivo se guarda cifrado y se asocia a la factura que confirmes. Si no la confirmas, se elimina automáticamente.
         </CardDescription>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="inline-flex cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+          <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             {active ? "Analizando…" : "Seleccionar foto o PDF"}
             <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={selectFile} disabled={active} />
           </label>
