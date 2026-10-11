@@ -5,7 +5,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import { getApi } from "./index";
 import { isOcrActive } from "@energyrd/api-contracts";
 import { useSession } from "@/lib/session";
-import type { AlertStatus, BillInput, BillItemsReplace, Distributor, EquipmentInput, GoalInput, Granularity, ReadingInput } from "./schemas";
+import type { AlertStatus, BillInput, BillItemsReplace, Distributor, EquipmentInput, GoalInput, Granularity, OutageInput, ReadingInput } from "./schemas";
 
 // Todas las claves de una vivienda cuelgan de ["homes", homeId]: invalidar ese prefijo
 // refresca dashboard, alertas y estimado a la vez (la API los recalcula en cada escritura).
@@ -22,6 +22,7 @@ export const keys = {
     ? ["homes", homeId, "dashboard", billId] as const
     : ["homes", homeId, "dashboard"] as const,
   anomalies: (homeId: string) => ["homes", homeId, "anomalies"] as const,
+  outages: (homeId: string) => ["homes", homeId, "outages"] as const,
   energyScore: (homeId: string) => ["homes", homeId, "energy-score"] as const,
   recommendations: (homeId: string) => ["homes", homeId, "recommendations"] as const,
   equipment: (homeId: string) => ["homes", homeId, "equipment"] as const,
@@ -84,6 +85,19 @@ export const useUpdateAnomaly = (homeId: string) => {
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.anomalies(homeId) }),
   });
 };
+
+/** ERD-INT-01: historial de interrupciones del servicio y su resumen mensual (mismas claves: una escritura refresca ambos). */
+export const useOutages = (homeId: string) =>
+  useQuery({ queryKey: [...keys.outages(homeId), "list"] as const, queryFn: ({ signal }) => getApi().listOutages(homeId, signal), enabled: enabled(homeId) });
+export const useOutageSummary = (homeId: string, months = 12) =>
+  useQuery({ queryKey: [...keys.outages(homeId), "summary", months] as const, queryFn: ({ signal }) => getApi().getOutageSummary(homeId, months, signal), enabled: enabled(homeId) });
+function useOutageMutation<V, R>(homeId: string, fn: (v: V) => Promise<R>) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries({ queryKey: keys.outages(homeId) }) });
+}
+export const useCreateOutage = (homeId: string) => useOutageMutation(homeId, (input: OutageInput) => getApi().createOutage(homeId, input));
+export const useUpdateOutage = (homeId: string) => useOutageMutation(homeId, ({ id, input }: { id: string; input: OutageInput }) => getApi().updateOutage(homeId, id, input));
+export const useDeleteOutage = (homeId: string) => useOutageMutation(homeId, (id: string) => getApi().deleteOutage(homeId, id));
 
 /** ERD-SCORE-01: Energy Score del backend. Se refresca al entrar (los datos de origen pudieron cambiar). */
 export const useEnergyScore = (homeId: string) =>

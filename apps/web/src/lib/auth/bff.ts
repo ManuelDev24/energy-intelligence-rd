@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -173,6 +173,16 @@ function phase2Route(path: string, method: string): Phase2Route | null {
   } } : null;
   if (new RegExp(`^/homes/${UUID}/anomalies/${UUID}$`).test(path)) return method === "PATCH" ? { response: AnomalySchema, body: AnomalyStatusInSchema.strict(), query: {} } : null;
   if (/\/anomalies(\/|$)/.test(path)) return null;
+  // ERD-INT-01: interrupciones del servicio eléctrico (alta, historial, edición, baja y resumen mensual).
+  if (new RegExp(`^/homes/${UUID}/outages$`).test(path)) return method === "GET" ? { response: OutagesSchema, query: PAGE }
+    : method === "POST" ? { response: OutageSchema, body: OutageInSchema.strict(), query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/outages/summary$`).test(path)) return method === "GET" ? { response: OutageSummarySchema, query: {
+    months: { pattern: v => /^\d{1,2}$/.test(v) && Number(v) >= 1 && Number(v) <= 24 },
+  } } : null;
+  if (new RegExp(`^/homes/${UUID}/outages/${UUID}$`).test(path)) return method === "GET" ? { response: OutageSchema, query: {} }
+    : method === "PUT" ? { response: OutageSchema, body: OutageInSchema.strict(), query: {} }
+    : method === "DELETE" ? { response: z.undefined(), body: z.object({}).strict(), query: {} } : null;
+  if (/\/outages(\/|$)/.test(path)) return null;
   // ERD-SCORE-01: Energy Score (solo lectura, sin parámetros).
   if (new RegExp(`^/homes/${UUID}/energy-score$`).test(path)) return method === "GET" ? { response: EnergyScoreSchema, query: {} } : null;
   if (/\/energy-score(\/|$)/.test(path)) return null;
@@ -310,6 +320,8 @@ function statusMessage(status: number, path: string, code?: unknown) {
   if (status === 422 && /\/bills\/ocr(-jobs)?$/.test(path)) return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC) o un PDF.";
   // Fase 2: mensajes propios por ruta (el texto de la API nunca se reenvía).
   if (status === 409 && /\/readings$/.test(path)) return "Ya existe una lectura con esa fecha y hora.";
+  if (status === 409 && /\/outages(\/[0-9a-f-]{36})?$/.test(path)) return "Ya hay una interrupción registrada que se solapa con ese período. Edita esa o ajusta las horas.";
+  if (status === 422 && /\/outages(\/[0-9a-f-]{36})?$/.test(path)) return "Revisa las fechas: el apagón no puede estar en el futuro, debe terminar después de empezar y durar como máximo 30 días.";
   if (status === 422 && code === "invalid_input" && /\/readings$/.test(path)) return "La lectura debe ser mayor o igual que la anterior y menor o igual que la siguiente.";
   if (status === 422 && code === "invalid_input" && /\/consumption$/.test(path)) return "Rango de fechas inválido: máximo 366 días.";
   if (status === 401) return path === "/auth/login" ? "Credenciales inválidas." : "La sesión venció. Inicia sesión de nuevo.";
@@ -502,6 +514,11 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       const [, , home, , child] = path.split("/");
       const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id: string }[];
       if (rows.some(row => row.home_id !== home) || (child && rows[0]?.id !== child)) throw new Error("Mismatched anomaly");
+    }
+    if (parsed !== undefined && /\/outages(\/summary|\/[0-9a-f-]{36})?$/.test(path)) {
+      const [, , home, , child] = path.split("/");
+      const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id?: string }[];
+      if (rows.some(row => row.home_id !== home) || (child && child !== "summary" && rows[0]?.id !== child)) throw new Error("Mismatched outage");
     }
     if (parsed !== undefined && /\/energy-score$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched energy score");
     if (parsed !== undefined && /\/recommendations(\/refresh|\/[0-9a-f-]{36})?$/.test(path)) {

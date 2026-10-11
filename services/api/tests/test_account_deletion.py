@@ -12,7 +12,7 @@ from tests.test_bill_detail import ITEM
 ME = AUTH + '/me'
 GOAL = {'monthly_kwh': '300', 'monthly_amount_rd': '3000'}
 # Tablas con datos de vivienda; deben quedar vacías para una vivienda borrada.
-HOME_TABLES = ['bills', 'alerts', 'equipment', 'alert_settings', 'meter_readings', 'home_goals', 'contracts',
+HOME_TABLES = ['bills', 'alerts', 'equipment', 'alert_settings', 'meter_readings', 'home_goals', 'contracts', 'power_outages', 'recommendations',
                'home_members']
 
 

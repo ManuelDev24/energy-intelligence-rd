@@ -710,6 +710,59 @@ export const EnergyScoreOutSchema = z.object({
 });
 export type EnergyScoreOut = z.infer<typeof EnergyScoreOutSchema>;
 
+export const OutageInSchema = z.object({
+  "started_at": z.string().datetime({ offset: true }),
+  "ended_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null),
+  "cause": z.enum(["unknown", "utility_fault", "scheduled", "weather", "home_fault"]).default("unknown"),
+  "note": z.union([z.string().max(255), z.null()]).default(null)
+});
+export type OutageIn = z.infer<typeof OutageInSchema>;
+
+export const OutageOutSchema = z.object({
+  "id": z.string().uuid(),
+  "home_id": z.string().uuid(),
+  "started_at": z.string().datetime({ offset: true }),
+  "ended_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "cause": z.enum(["unknown", "utility_fault", "scheduled", "weather", "home_fault"]),
+  "note": z.union([z.string(), z.null()]),
+  "source": z.literal("manual"),
+  "created_at": z.string().datetime({ offset: true }),
+  "updated_at": z.string().datetime({ offset: true }),
+  "ongoing": z.boolean(),
+  "duration_minutes": z.union([z.number().finite().int(), z.null()])
+});
+export type OutageOut = z.infer<typeof OutageOutSchema>;
+
+export const OutageMonthSchema = z.object({
+  "month": z.string(),
+  "count": z.number().finite().int(),
+  "total_minutes": z.number().finite().int(),
+  "longest_minutes": z.number().finite().int(),
+  "average_minutes": z.union([z.number().finite().int(), z.null()]),
+  "ongoing": z.number().finite().int()
+});
+export type OutageMonth = z.infer<typeof OutageMonthSchema>;
+
+export const OutageTotalsSchema = z.object({
+  "count": z.number().finite().int(),
+  "total_minutes": z.number().finite().int(),
+  "longest_minutes": z.number().finite().int(),
+  "average_minutes": z.union([z.number().finite().int(), z.null()]),
+  "ongoing": z.number().finite().int()
+});
+export type OutageTotals = z.infer<typeof OutageTotalsSchema>;
+
+export const OutageSummaryOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "timezone": z.string(),
+  "from_month": z.string(),
+  "to_month": z.string(),
+  "months": z.array(OutageMonthSchema),
+  "totals": OutageTotalsSchema,
+  "note": z.string()
+});
+export type OutageSummaryOut = z.infer<typeof OutageSummaryOutSchema>;
+
 export const BillPaymentInSchema = z.object({
   "paid": z.boolean()
 });

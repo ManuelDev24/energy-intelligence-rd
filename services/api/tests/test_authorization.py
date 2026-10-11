@@ -13,6 +13,7 @@ from tests.test_api_readings import READING
 GOAL = {"monthly_kwh": "300", "monthly_amount_rd": "3000"}
 OTHER_ID = '00000000-0000-4000-8000-000000000001'
 CONSUMPTION_QUERY = "?granularity=day&from=2026-09-01&to=2026-09-30"
+OUTAGE = {"started_at": "2026-09-01T10:00:00-04:00", "ended_at": "2026-09-01T12:00:00-04:00", "cause": "utility_fault"}
 
 
 def setup_homes(client):
@@ -32,7 +33,7 @@ def setup_homes(client):
     return a, b, homes, bill, eq, alert, reading
 
 
-def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID, anomaly=OTHER_ID, recommendation=OTHER_ID):
+def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID, anomaly=OTHER_ID, recommendation=OTHER_ID, outage=OTHER_ID):
     u = f'/api/v1/homes/{h}'
     return [('GET',u,None),('PATCH',u,{'name':'changed'}),('DELETE',u,None),
             ('GET',u+'/contract',None),('PUT',u+'/contract',{'account_number':'123'}),
@@ -45,6 +46,9 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('GET',u+'/equipment/'+eq,None),('PUT',u+'/equipment/'+eq,EQ),('DELETE',u+'/equipment/'+eq,None),
             ('GET',u+'/alerts',None),('GET',u+'/anomalies',None),('POST',u+'/anomalies/scan',None),
             ('PATCH',u+'/anomalies/'+anomaly,{'status':'dismissed'}),
+            # ERD-INT-01
+            ('GET',u+'/outages',None),('GET',u+'/outages/summary',None),('POST',u+'/outages',OUTAGE),
+            ('GET',u+'/outages/'+outage,None),('PUT',u+'/outages/'+outage,OUTAGE),('DELETE',u+'/outages/'+outage,None),
             # ERD-SCORE-01
             ('GET',u+'/energy-score',None),
             # ERD-SAVE-01
@@ -100,7 +104,7 @@ def test_all_private_routes_require_membership_and_token(auth_client, migrated, 
 
 def test_private_route_inventory_remains_covered(auth_client):
     paths = auth_client.get('/openapi.json').json()['paths']
-    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}', '{anomaly_id}', '{recommendation_id}')
+    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}', '{anomaly_id}', '{recommendation_id}', '{outage_id}')
     actual = {(method.upper(), path) for path, operations in paths.items()
               if path.startswith('/api/v1/homes/') for method in operations if method != 'parameters'}
     assert actual == {(method, path.split('?')[0]) for method, path, _ in tested}

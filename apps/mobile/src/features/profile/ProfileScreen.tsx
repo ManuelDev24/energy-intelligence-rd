@@ -7,7 +7,7 @@ import { Button } from '../../components/ui';
 import { useSession } from '../../store/session';
 import { colors, spacing } from '../../theme';
 
-export function ProfileScreen({ onHome, onService, onHomes, onAccountSettings, onShare }: { onHome: () => void; onService: () => void; onHomes: () => void; onAccountSettings: () => void; onShare: () => void }) {
+export function ProfileScreen({ onHome, onService, onHomes, onAccountSettings, onShare, onOutages }: { onHome: () => void; onService: () => void; onHomes: () => void; onAccountSettings: () => void; onShare: () => void; onOutages?: () => void }) {
   const homeId = useSession(state => state.selectedHomeId);
   const home = useHomes().data?.find(item => item.id === homeId);
   return <ScrollView style={s.screen} contentContainerStyle={s.content}>
@@ -17,6 +17,7 @@ export function ProfileScreen({ onHome, onService, onHomes, onAccountSettings, o
       <Text style={s.subtitle} accessibilityRole="header">{home?.name ?? 'Seleccione una vivienda'}</Text>
       <Button title="Mi vivienda" testID="profile-home" variant="secondary" disabled={!homeId} onPress={onHome} />
       <Button title="Mi servicio" testID="profile-service" variant="secondary" disabled={!homeId} onPress={onService} />
+      {onOutages ? <Button title="Apagones" testID="profile-outages" variant="secondary" disabled={!homeId} onPress={onOutages} /> : null}
       <Button title="Cambiar vivienda" testID="profile-homes" variant="secondary" onPress={onHomes} />
     </View>
     <View style={s.card}>

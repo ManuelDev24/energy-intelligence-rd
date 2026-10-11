@@ -3876,6 +3876,291 @@
         "title": "OcrJobOut",
         "type": "object"
       },
+      "OutageIn": {
+        "additionalProperties": false,
+        "description": "Reemplazo completo (PUT/POST). `ended_at` nulo = todav\u00eda sin luz.",
+        "properties": {
+          "cause": {
+            "default": "unknown",
+            "enum": [
+              "unknown",
+              "utility_fault",
+              "scheduled",
+              "weather",
+              "home_fault"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "started_at"
+        ],
+        "title": "OutageIn",
+        "type": "object"
+      },
+      "OutageMonth": {
+        "description": "Totales de un mes calendario (America/Santo_Domingo). Cada interrupci\u00f3n se cuenta entera en el mes en que EMPEZ\u00d3.",
+        "properties": {
+          "average_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Minutes"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "longest_minutes": {
+            "title": "Longest Minutes",
+            "type": "integer"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "ongoing": {
+            "title": "Ongoing",
+            "type": "integer"
+          },
+          "total_minutes": {
+            "title": "Total Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "count",
+          "total_minutes",
+          "longest_minutes",
+          "average_minutes",
+          "ongoing"
+        ],
+        "title": "OutageMonth",
+        "type": "object"
+      },
+      "OutageOut": {
+        "properties": {
+          "cause": {
+            "enum": [
+              "unknown",
+              "utility_fault",
+              "scheduled",
+              "weather",
+              "home_fault"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Minutos de la interrupci\u00f3n terminada; null mientras siga abierta (la duraci\u00f3n a\u00fan no existe).",
+            "readOnly": true,
+            "title": "Duration Minutes"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "ongoing": {
+            "readOnly": true,
+            "title": "Ongoing",
+            "type": "boolean"
+          },
+          "source": {
+            "const": "manual",
+            "title": "Source",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "home_id",
+          "started_at",
+          "ended_at",
+          "cause",
+          "note",
+          "source",
+          "created_at",
+          "updated_at",
+          "ongoing",
+          "duration_minutes"
+        ],
+        "title": "OutageOut",
+        "type": "object"
+      },
+      "OutageSummaryOut": {
+        "properties": {
+          "from_month": {
+            "title": "From Month",
+            "type": "string"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/OutageMonth"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "to_month": {
+            "title": "To Month",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/OutageTotals"
+          }
+        },
+        "required": [
+          "home_id",
+          "timezone",
+          "from_month",
+          "to_month",
+          "months",
+          "totals",
+          "note"
+        ],
+        "title": "OutageSummaryOut",
+        "type": "object"
+      },
+      "OutageTotals": {
+        "properties": {
+          "average_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Minutes"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "longest_minutes": {
+            "title": "Longest Minutes",
+            "type": "integer"
+          },
+          "ongoing": {
+            "title": "Ongoing",
+            "type": "integer"
+          },
+          "total_minutes": {
+            "title": "Total Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "total_minutes",
+          "longest_minutes",
+          "average_minutes",
+          "ongoing"
+        ],
+        "title": "OutageTotals",
+        "type": "object"
+      },
       "OwnershipTransferIn": {
         "additionalProperties": false,
         "description": "Reautentica con la contrase\u00f1a actual: ceder la propiedad es una acci\u00f3n de alto impacto.",
@@ -8544,6 +8829,373 @@
         "summary": "Remove Member",
         "tags": [
           "sharing"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/outages": {
+      "get": {
+        "description": "Historial de interrupciones, de la m\u00e1s reciente a la m\u00e1s antigua.",
+        "operationId": "list_outages_api_v1_homes__home_id__outages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OutageOut"
+                  },
+                  "title": "Response List Outages Api V1 Homes  Home Id  Outages Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Outages",
+        "tags": [
+          "outages"
+        ]
+      },
+      "post": {
+        "operationId": "create_outage_api_v1_homes__home_id__outages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Outage",
+        "tags": [
+          "outages"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/outages/summary": {
+      "get": {
+        "description": "Totales por mes calendario (America/Santo_Domingo) de los \u00faltimos `months` meses, incluidos los meses sin apagones.",
+        "operationId": "get_summary_api_v1_homes__home_id__outages_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "months",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 24,
+              "minimum": 1,
+              "title": "Months",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Summary",
+        "tags": [
+          "outages"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/outages/{outage_id}": {
+      "delete": {
+        "operationId": "delete_outage_api_v1_homes__home_id__outages__outage_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "outage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Outage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Outage",
+        "tags": [
+          "outages"
+        ]
+      },
+      "get": {
+        "operationId": "get_outage_api_v1_homes__home_id__outages__outage_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "outage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Outage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Outage",
+        "tags": [
+          "outages"
+        ]
+      },
+      "put": {
+        "description": "Reemplazo completo: sirve para corregir datos o cerrar una interrupci\u00f3n abierta (poniendo `ended_at`).",
+        "operationId": "update_outage_api_v1_homes__home_id__outages__outage_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "outage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Outage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Outage",
+        "tags": [
+          "outages"
         ]
       }
     },
