@@ -16,10 +16,21 @@ from app.services.auth_abuse import RateLimited
 configure_logging()
 init_telemetry(settings)
 
+
+
+def documentation_urls(environment: str) -> dict[str, str | None]:
+    """Auditoría C-07: Swagger/ReDoc/OpenAPI solo en desarrollo; en staging/producción no se publica el mapa completo de rutas.
+    El contrato versionado vive en `packages/api-contracts/openapi.json` (lo genera `scripts/generate_contracts.py` sin servidor)."""
+    if environment.lower() == "development":
+        return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="API para Energy RD - Plataforma de Inteligencia Energética",
+    **documentation_urls(settings.ENVIRONMENT),
 )
 
 app.add_middleware(RequestContextMiddleware)

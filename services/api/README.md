@@ -9,7 +9,7 @@ Autenticación y límites persistentes: `AUTH_IMPLEMENTATION.md` y
 cp .env.example .env            # opcional: los defaults de compose ya funcionan
 SEED_PILOT=true docker compose up -d --build postgres api
 curl localhost:8000/health      # {"status":"healthy","database":"ok"}
-open http://localhost:8000/docs # OpenAPI
+open http://localhost:8000/docs # OpenAPI (solo con ENVIRONMENT=development; staging/production no publican /docs, /redoc ni /openapi.json)
 ```
 
 El contenedor `api` valida la configuración y arranca uvicorn. Solo ejecuta migraciones

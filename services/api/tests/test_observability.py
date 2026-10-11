@@ -74,3 +74,45 @@ def test_cors_exposes_request_id_and_limits_headers(client):
         },
     )
     assert bad.status_code == 400
+
+
+# --- Auditoría C-07 / C-09 ---------------------------------------------------------------------------------------------
+def test_responses_carry_security_headers(client):
+    r = client.get("/api/v1/homes")
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["referrer-policy"] == "no-referrer"
+    assert r.headers["x-frame-options"] == "DENY"
+    assert r.headers["content-security-policy"] == "default-src 'none'; frame-ancestors 'none'"
+    assert "camera=()" in r.headers["permissions-policy"]
+    assert "strict-transport-security" not in r.headers  # development (http local)
+
+
+def test_security_headers_also_cover_errors_and_hsts_outside_development():
+    from app.observability import security_headers
+
+    prod = security_headers("production", "/api/v1/homes")
+    assert prod["Strict-Transport-Security"].startswith("max-age=31536000")
+    assert "Strict-Transport-Security" not in security_headers("development", "/api/v1/homes")
+    assert "Content-Security-Policy" not in security_headers("development", "/docs")  # Swagger UI necesita scripts
+    assert "Content-Security-Policy" in security_headers("production", "/docs")
+
+
+def test_error_responses_keep_security_headers(client):
+    r = client.get("/api/v1/homes/not-a-uuid/bills")
+    assert r.status_code in (404, 422)
+    assert r.headers["x-content-type-options"] == "nosniff"
+
+
+def test_api_documentation_is_published_only_in_development():
+    from app.main import documentation_urls
+
+    assert documentation_urls("development")["openapi_url"] == "/openapi.json"
+    for environment in ("staging", "production", "Production"):
+        assert documentation_urls(environment) == {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
+def test_uvicorn_runs_without_access_log_and_server_header():
+    """El log de acceso de uvicorn registra la query completa (token firmado de descarga): debe estar apagado."""
+    from pathlib import Path
+    entrypoint = (Path(__file__).resolve().parents[1] / "docker-entrypoint.sh").read_text()
+    assert "--no-access-log" in entrypoint and "--no-server-header" in entrypoint
