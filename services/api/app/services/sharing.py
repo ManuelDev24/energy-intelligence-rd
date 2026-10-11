@@ -61,7 +61,7 @@ class OwnershipConflict(ApplicationError):
 
 def _audit(db, home_id, entity_id, entity, operation, before=None, after=None):
     db.add(AuditEvent(home_id=home_id, entity_id=entity_id, entity=entity, operation=operation, actor=ACTOR,
-                      before=before, after=after, created_at=func.clock_timestamp()))
+                      actor_user_id=db.info.get("rls_user_id"), before=before, after=after, created_at=func.clock_timestamp()))
 
 
 def _active(current):

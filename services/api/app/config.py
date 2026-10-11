@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     JOB_BACKOFF_CAP_SECONDS: int = Field(default=3600, ge=1, le=86400)
     JOB_SUCCEEDED_RETENTION_DAYS: int = Field(default=7, ge=1, le=365)
     JOB_DEAD_RETENTION_DAYS: int = Field(default=90, ge=1, le=730)
+    # Auditoría C-15 (DB-05): plazos de retención (propuestos; deben coincidir con el aviso de privacidad aprobado). Los aplica el trabajo
+    # diario `maintenance.retention` (app/services/retention.py).
+    RETENTION_SESSION_DAYS: int = Field(default=30, ge=1, le=365)          # sesiones vencidas o revocadas (y sus refresh tokens)
+    RETENTION_ABUSE_BUCKET_DAYS: int = Field(default=7, ge=1, le=90)       # contadores anti-abuso (HMAC de IP/correo)
+    RETENTION_INVITATION_DAYS: int = Field(default=90, ge=1, le=730)       # invitaciones aceptadas, revocadas o vencidas (correo de un tercero)
+    RETENTION_NOTIFICATION_DAYS: int = Field(default=365, ge=30, le=1825)  # registro de avisos enviados
+    RETENTION_DISMISSED_ALERT_DAYS: int = Field(default=365, ge=30, le=1825)
+    RETENTION_AUDIT_DAYS: int = Field(default=730, ge=90, le=3650)         # historial de cambios
     # ERD-OCR-PROD: OCR asíncrono de originales (imágenes y PDF).
     OCR_MAX_PDF_PAGES: int = Field(default=6, ge=1, le=20)
     OCR_PAGE_TIMEOUT_SECONDS: int = Field(default=40, ge=5, le=120)

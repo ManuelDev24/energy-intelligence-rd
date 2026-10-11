@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from datetime import datetime, timezone
 
-from app.services import alerts, anomaly_scan, document_storage, notifications
+from app.services import alerts, anomaly_scan, document_storage, notifications, retention
 from app.services.transactions import write_transaction
 from app.services.errors import NotFound
 from app.services.errors import StorageUnavailable
@@ -93,9 +93,16 @@ def jobs_purge(db: Session, job) -> None:
     queue.purge(db)
 
 
+@register("maintenance.retention", timeout_seconds=600, max_attempts=3)
+def maintenance_retention(db: Session, job) -> None:
+    """Auditoría C-15: aplica los plazos de retención (RETENTION_* en config.py)."""
+    retention.purge(db)
+
+
 def schedules() -> list[Schedule]:
     """Tareas periódicas vigentes según la configuración (sin almacenamiento no hay nada que mantener)."""
-    items = [Schedule("jobs.purge", 24 * 3600), Schedule("anomalies.scan_all", 24 * 3600), Schedule("alerts.evaluate_all", 24 * 3600)]
+    items = [Schedule("jobs.purge", 24 * 3600), Schedule("anomalies.scan_all", 24 * 3600), Schedule("alerts.evaluate_all", 24 * 3600),
+             Schedule("maintenance.retention", 24 * 3600)]
     if settings.STORAGE_BACKEND != "disabled":
         items.append(Schedule("storage.maintenance", 600))
     return items

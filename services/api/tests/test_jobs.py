@@ -380,9 +380,9 @@ def test_schedule_rejects_too_frequent_tasks():
 def test_default_schedules_follow_the_storage_configuration(monkeypatch):
     from app.services.jobs import handlers
     monkeypatch.setitem(settings.__dict__, 'STORAGE_BACKEND', 'disabled')
-    assert [s.kind for s in handlers.schedules()] == ['jobs.purge', 'anomalies.scan_all', 'alerts.evaluate_all']
+    assert [s.kind for s in handlers.schedules()] == ['jobs.purge', 'anomalies.scan_all', 'alerts.evaluate_all', 'maintenance.retention']
     monkeypatch.setitem(settings.__dict__, 'STORAGE_BACKEND', 's3')
-    assert [s.kind for s in handlers.schedules()] == ['jobs.purge', 'anomalies.scan_all', 'alerts.evaluate_all', 'storage.maintenance']
+    assert [s.kind for s in handlers.schedules()] == ['jobs.purge', 'anomalies.scan_all', 'alerts.evaluate_all', 'maintenance.retention', 'storage.maintenance']
 
 
 def test_duplicate_kind_registration_is_rejected():
