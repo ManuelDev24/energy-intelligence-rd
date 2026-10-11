@@ -7,7 +7,7 @@ from sqlalchemy import text
 
 from app.api.v1 import api_router
 from app.config import settings
-from app.database import engine
+from app.database import engine, require_restricted_role
 from app.observability import RequestContextMiddleware, configure_logging
 from app.telemetry import init_telemetry
 from app.services.errors import ApplicationError, ServiceBusy
@@ -15,6 +15,7 @@ from app.services.auth_abuse import RateLimited
 from app.request_limits import BodyLimitMiddleware
 from sqlalchemy.exc import OperationalError, TimeoutError as PoolTimeoutError
 import logging
+from contextlib import asynccontextmanager
 
 configure_logging()
 init_telemetry(settings)
@@ -29,7 +30,14 @@ def documentation_urls(environment: str) -> dict[str, str | None]:
     return {"docs_url": None, "redoc_url": None, "openapi_url": None}
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    require_restricted_role()  # auditoría C-01: nunca atender peticiones con un rol que ignora la RLS (si la configuración lo exige)
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="API para Energy RD - Plataforma de Inteligencia Energética",

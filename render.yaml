@@ -27,6 +27,10 @@ projects:
                 value: staging
               - key: AUTH_ENABLED
                 value: "true"
+              # Auditoría C-01: el API conecta como erd_app y el worker como erd_worker (docs/ops/DB_ROLES.md). Si el rol de
+              # DATABASE_URL ignora la RLS (superusuario, BYPASSRLS o dueño de tablas) el servicio no arranca.
+              - key: DB_REQUIRE_RESTRICTED_ROLE
+                value: "true"
               - key: MIGRATE_ON_START
                 value: "false"
               - key: SEED_PILOT
@@ -60,7 +64,9 @@ projects:
                 - services/api/**
             envVars:
               - fromGroup: energyrd-api-staging-config
-              - key: DATABASE_URL # Neon, rama `staging`: postgresql+psycopg://…?sslmode=require
+              - key: DATABASE_URL # Neon, rama `staging`, rol **erd_app** (no el dueño): postgresql+psycopg://erd_app:…@…?sslmode=require
+                sync: false
+              - key: MIGRATION_DATABASE_URL # rol dueño de la rama `staging`: solo lo usa `alembic upgrade head` (nunca el API)
                 sync: false
               - key: AUTH_SIGNING_KEY # ≥43 caracteres aleatorios; distinta de producción
                 sync: false
@@ -130,7 +136,7 @@ projects:
             autoDeployTrigger: commit
             envVars:
               - fromGroup: energyrd-api-staging-config
-              - key: DATABASE_URL # el MISMO que la API de este entorno
+              - key: DATABASE_URL # rol **erd_worker** de la MISMA base que la API (credenciales distintas; no el rol del API)
                 sync: false
               - key: AUTH_SIGNING_KEY # la config se valida igual en el worker; usar el mismo valor que la API
                 sync: false
@@ -166,6 +172,10 @@ projects:
                 value: production
               - key: AUTH_ENABLED
                 value: "true"
+              # Auditoría C-01: el API conecta como erd_app y el worker como erd_worker (docs/ops/DB_ROLES.md). Si el rol de
+              # DATABASE_URL ignora la RLS (superusuario, BYPASSRLS o dueño de tablas) el servicio no arranca.
+              - key: DB_REQUIRE_RESTRICTED_ROLE
+                value: "true"
               - key: MIGRATE_ON_START
                 value: "false"
               - key: SEED_PILOT
@@ -199,7 +209,9 @@ projects:
             autoDeployTrigger: "off"
             envVars:
               - fromGroup: energyrd-api-production-config
-              - key: DATABASE_URL # Neon, rama principal (production), rol propio
+              - key: DATABASE_URL # Neon, rama principal (production), rol **erd_app** (no el dueño)
+                sync: false
+              - key: MIGRATION_DATABASE_URL # rol dueño: lo usa el preDeployCommand `alembic upgrade head`; el API nunca lo usa para servir
                 sync: false
               - key: AUTH_SIGNING_KEY
                 sync: false
@@ -260,7 +272,7 @@ projects:
             autoDeployTrigger: "off"
             envVars:
               - fromGroup: energyrd-api-production-config
-              - key: DATABASE_URL # el MISMO que la API de este entorno
+              - key: DATABASE_URL # rol **erd_worker** de la MISMA base que la API (credenciales distintas; no el rol del API)
                 sync: false
               - key: AUTH_SIGNING_KEY # la config se valida igual en el worker; usar el mismo valor que la API
                 sync: false

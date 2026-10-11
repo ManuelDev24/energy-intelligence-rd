@@ -1,5 +1,8 @@
+import uuid
+
 from sqlalchemy import select
 
+from app import rls
 from app.models import Bill, Home, HomeMember
 from app.services.audit import record_change, snapshot
 from app.services.errors import InvalidInput
@@ -15,7 +18,8 @@ def list_homes(db, limit=100, offset=0, *, user_id=None):
 
 def create_home(db, payload, *, owner_id=None):
     with write_transaction(db):
-        home = Home(**payload.model_dump())
+        home = Home(id=uuid.uuid4(), **payload.model_dump())
+        rls.set_context(db, home_id=home.id)  # el INSERT … RETURNING lee la fila nueva antes de que exista la membresía
         db.add(home)
         db.flush()
         if owner_id is not None:

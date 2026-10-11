@@ -73,9 +73,13 @@ export default async function globalSetup() {
   execFileSync("uv", ["run", "--frozen", "python", "-m", "scripts.e2e_prepare", "--database-url", DATABASE_URL, "--out", RUN_FILE],
     { cwd: API_DIR, env, stdio: "inherit" });
 
-  // 2) API, worker y web reales.
-  start("api", "uv", ["run", "--frozen", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(API_PORT), "--no-proxy-headers"], API_DIR, env);
-  start("worker", "uv", ["run", "--frozen", "python", "-m", "app.worker"], API_DIR, env);
+  // 2) API, worker y web reales. Auditoría C-01: el API conecta como `erd_app` y el worker como `erd_worker` (roles restringidos sujetos
+  // a la RLS); DB_REQUIRE_RESTRICTED_ROLE hace que el arranque falle si alguno ignorara la RLS. Las URL salen del run.json que dejó e2e_prepare.
+  const roles = JSON.parse(fs.readFileSync(RUN_FILE, "utf8")) as { app_database_url: string; worker_database_url: string };
+  start("api", "uv", ["run", "--frozen", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(API_PORT), "--no-proxy-headers"],
+    API_DIR, { ...env, DATABASE_URL: roles.app_database_url, DB_REQUIRE_RESTRICTED_ROLE: "true" });
+  start("worker", "uv", ["run", "--frozen", "python", "-m", "app.worker"], API_DIR,
+    { ...env, DATABASE_URL: roles.worker_database_url, DB_REQUIRE_RESTRICTED_ROLE: "true" });
   const webEnv: NodeJS.ProcessEnv = {
     ...process.env, NEXT_PUBLIC_AUTH_ENABLED: "true", API_BASE_URL: API_URL, WEB_ORIGIN: WEB_URL, NEXT_TELEMETRY_DISABLED: "1",
   };

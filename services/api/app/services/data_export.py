@@ -10,6 +10,7 @@ from pydantic_core import to_jsonable_python
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
+from app import rls
 from app.models import (Alert, AlertSettings, Anomaly, Bill, Contract, PowerOutage, Recommendation, DeviceToken, Document, Equipment, Home, HomeGoal, MeterReading,
                         Notification)
 from app.models.bill_detail import BillItem
@@ -34,6 +35,7 @@ def export_user_data(db: Session, user: User, now: datetime | None = None) -> di
     memberships = db.execute(select(HomeMember, Home).join(Home, Home.id == HomeMember.home_id)
                              .where(HomeMember.user_id == user.id).order_by(Home.created_at, Home.id)).all()
     for membership, home in memberships:
+        rls.set_context(db, home_id=home.id)  # auditoría C-01: los datos de cada vivienda se leen con su contexto
         bills = []
         for bill in db.scalars(select(Bill).where(Bill.home_id == home.id).order_by(Bill.period_start, Bill.id)):
             items = [_row(item, exclude=frozenset({"bill_id"})) for item in db.scalars(

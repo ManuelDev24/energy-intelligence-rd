@@ -59,6 +59,10 @@ jobs:
       - run: uv run python -m app.seed && uv run python -m app.seed
       # Cobertura de líneas y ramas (informe en el log; el umbral mínimo se fija en pyproject.toml cuando haya medición estable).
       - run: uv run pytest -q --cov=app --cov-report=term:skip-covered
+      # Auditoría C-01: la misma suite (las pruebas con autenticación) con el API conectado como `erd_app`, un rol sin privilegios sujeto a la RLS.
+      - run: uv run pytest -q
+        env:
+          TEST_RLS_ROLE: "1"
 
   web-mobile:
     name: web + mobile + core (typecheck, lint, test, build)

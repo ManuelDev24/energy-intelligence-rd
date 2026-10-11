@@ -10,6 +10,7 @@ from datetime import timedelta
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from app import rls
 from app.config import settings
 from app.models.audit import AuditEvent
 from app.models.auth import HomeInvitation, HomeMember, User
@@ -129,6 +130,8 @@ def accept_invitation(db: Session, user, token: str):
     home_id = db.scalar(select(HomeInvitation.home_id).where(HomeInvitation.token_hash == token_hash))
     if home_id is None:
         raise InvitationInvalid()
+    # Auditoría C-01: quien presenta un token de invitación válido (su hash existe) puede ver esa vivienda para unirse a ella.
+    rls.set_context(db, home_id=home_id)
     with write_transaction(db):
         require_home(db, home_id, lock=True)  # serializa con borrado, transferencia y expulsión
         invitation = db.scalar(select(HomeInvitation).where(HomeInvitation.token_hash == token_hash)

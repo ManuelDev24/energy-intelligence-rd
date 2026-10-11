@@ -49,6 +49,7 @@ def test_deployment_rejects_local_database_defaults(environment):
 
 PRODUCTION = dict(ENVIRONMENT="production", DATABASE_URL="postgresql+psycopg://energy:private@db.internal/energy_rd",
                   CORS_ORIGINS="https://energy.example", AUTH_ENABLED=True, AUTH_SIGNING_KEY=secrets.token_urlsafe(48),
+                  DB_REQUIRE_RESTRICTED_ROLE=True,
                   EMAIL_BACKEND="resend", RESEND_API_KEY="re_" + secrets.token_urlsafe(24),
                   EMAIL_FROM="no-reply@energy.example", PASSWORD_RESET_URL="https://energy.example/restablecer")
 
@@ -214,3 +215,26 @@ def test_local_machine_without_declared_environment_still_works(monkeypatch):
         monkeypatch.delenv(name, raising=False)
     cfg = Settings(_env_file=None, DATABASE_URL=DEFAULT_DATABASE_URL, AUTH_ENABLED=False, CORS_ORIGINS="http://localhost:3000")
     assert cfg.ENVIRONMENT == "development"
+
+
+# --- Auditoría C-01: rol restringido obligatorio fuera de desarrollo --------------------------------------------------------
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_deployments_must_require_the_restricted_database_role(environment):
+    with pytest.raises(ValidationError, match="DB_REQUIRE_RESTRICTED_ROLE"):
+        config(**(PRODUCTION | EMAIL_PRODUCTION | {"ENVIRONMENT": environment, "DB_REQUIRE_RESTRICTED_ROLE": False}))
+    assert config(**(PRODUCTION | EMAIL_PRODUCTION | {"ENVIRONMENT": environment})).DB_REQUIRE_RESTRICTED_ROLE is True
+
+
+@pytest.mark.parametrize("url", ["postgresql+psycopg://energy:private@localhost/energy_rd", "postgresql+psycopg://owner@db.internal/energy_rd",
+                                 "postgresql+psycopg://energy:change_me_local_only@db.internal/energy_rd"])
+def test_the_migration_url_must_be_explicit_and_non_local_in_deployments(url):
+    with pytest.raises(ValidationError, match="MIGRATION_DATABASE_URL"):
+        config(**(PRODUCTION | EMAIL_PRODUCTION | {"MIGRATION_DATABASE_URL": url}))
+    assert config(**(PRODUCTION | EMAIL_PRODUCTION | {"MIGRATION_DATABASE_URL": "postgresql+psycopg://owner:s3cret@db.internal/energy_rd"}))
+
+
+def test_alembic_prefers_the_migration_url_over_the_application_url(monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "DATABASE_URL", "postgresql+psycopg://erd_app:x@db/energy")
+    monkeypatch.setattr(settings, "MIGRATION_DATABASE_URL", "postgresql+psycopg://owner:y@db/energy")
+    assert (settings.MIGRATION_DATABASE_URL or settings.DATABASE_URL).startswith("postgresql+psycopg://owner")

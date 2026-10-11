@@ -50,6 +50,21 @@ def migrate(url: str) -> None:
     command.upgrade(cfg, "head")
 
 
+def provision_roles(url: str) -> dict:
+    """Auditoría C-01: el E2E conecta el API como `erd_app` y el worker como `erd_worker` (los roles sin privilegios de la migración 0025),
+    con contraseñas aleatorias de esta corrida, para ejercitar la RLS en toda la pila. Las URL quedan solo en el run.json (carpeta ignorada)."""
+    parsed = _guard(url)
+    admin = create_engine(parsed, isolation_level="AUTOCOMMIT")
+    urls = {}
+    with admin.connect() as conn:
+        for key, role in (("app_database_url", "erd_app"), ("worker_database_url", "erd_worker")):
+            role_password = secrets.token_urlsafe(24)
+            conn.execute(text(f"ALTER ROLE {role} LOGIN PASSWORD '{role_password}'"))  # nombres fijos y contraseña urlsafe: sin comillas
+            urls[key] = parsed.set(username=role, password=role_password).render_as_string(hide_password=False)
+    admin.dispose()
+    return urls
+
+
 def load_fixtures(url: str, password: str) -> dict:
     from app.config import settings  # noqa: F401  (valida la configuración antes de escribir)
     from app.models import Home, HomeMember, User
@@ -102,7 +117,7 @@ def main(argv=None) -> int:
     data = sb.BillData(sb.date(2026, 8, 12), sb.date(2026, 9, 7), 4210, 4450, sb.date(2026, 10, 7))
     bill.write_bytes(sb.to_bytes(sb.render("EDESUR", data, 768)))
     args.out.write_text(json.dumps({"pilot_email": PILOT_EMAIL, "pilot_password": password, "pilot_homes": ids,
-                                    "bill_image": str(bill), "bill_expected": sb.expected(data)}, indent=2))
+                                    "bill_image": str(bill), "bill_expected": sb.expected(data), **provision_roles(args.database_url)}, indent=2))
     print(json.dumps({"homes": len(ids), "out": str(args.out)}))
     return 0
 

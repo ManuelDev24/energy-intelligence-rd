@@ -104,6 +104,11 @@ class Settings(BaseSettings):
     AUTH_AUDIENCE: str = "energy-rd-clients"
     SEED_PILOT: bool = False
     MIGRATE_ON_START: bool = False
+    # Auditoría C-01: con la RLS (migración 0025) el API debe conectarse como `erd_app` y el worker como `erd_worker` (roles sin privilegios
+    # especiales). Si esta bandera está activa, el arranque falla cuando el rol de la conexión es superusuario, ignora la RLS o es dueño de las
+    # tablas. Obligatoria en staging/production. `MIGRATION_DATABASE_URL` (rol dueño) solo la usan las migraciones (Alembic).
+    DB_REQUIRE_RESTRICTED_ROLE: bool = False
+    MIGRATION_DATABASE_URL: str = Field(default="", repr=False)
     DB_POOL_SIZE: int = Field(default=5, ge=1, le=100)
     DB_MAX_OVERFLOW: int = Field(default=5, ge=0, le=100)
     DB_POOL_TIMEOUT: int = Field(default=10, gt=0, le=120)
@@ -168,6 +173,12 @@ class Settings(BaseSettings):
                 raise ValueError("Production/staging requires explicit non-local database credentials")
             if self.SEED_PILOT:
                 raise ValueError("Demo seed is disabled in production/staging")
+            if not self.DB_REQUIRE_RESTRICTED_ROLE:
+                raise ValueError("Production/staging requires DB_REQUIRE_RESTRICTED_ROLE=true (API as erd_app, worker as erd_worker; see docs/ops/DB_ROLES.md)")
+            if self.MIGRATION_DATABASE_URL:
+                migration = make_url(self.MIGRATION_DATABASE_URL)
+                if not migration.host or migration.host in LOCAL_DATABASE_HOSTS or not migration.password or migration.password == "change_me_local_only":
+                    raise ValueError("MIGRATION_DATABASE_URL must be an explicit non-local URL with a password")
             if self.MIGRATE_ON_START:
                 raise ValueError("Production/staging migrations must run as a single release step")
             if not self.cors_origins_list or any(

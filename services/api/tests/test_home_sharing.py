@@ -258,7 +258,7 @@ def test_invitation_url_follows_the_same_rules_as_the_reset_url():
         with pytest.raises(ValueError, match='INVITATION_URL'):
             Settings(ENVIRONMENT='development', INVITATION_URL=bad)
     with pytest.raises(ValueError, match='INVITATION_URL'):
-        Settings(ENVIRONMENT='staging', DATABASE_URL='postgresql+psycopg://u:p@db.example/x', AUTH_ENABLED=True,
+        Settings(ENVIRONMENT='staging', DATABASE_URL='postgresql+psycopg://u:p@db.example/x', AUTH_ENABLED=True, DB_REQUIRE_RESTRICTED_ROLE=True,
                  AUTH_SIGNING_KEY='k' * 20 + 'abcdefghijklmnopqrstuvwxyz', CORS_ORIGINS='https://a.example',
                  EMAIL_BACKEND='resend', RESEND_API_KEY='re_x', EMAIL_FROM='a@b.co',
                  PASSWORD_RESET_URL='https://a.example/r', INVITATION_URL='http://a.example/i')

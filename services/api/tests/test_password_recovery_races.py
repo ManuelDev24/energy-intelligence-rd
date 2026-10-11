@@ -6,6 +6,7 @@ from argon2 import PasswordHasher
 from sqlalchemy import text
 
 from app.services import auth
+from tests.conftest import RLS_MODE
 from tests.test_auth import AUTH, PASSWORD, auth_client, bearer, register  # noqa: F401
 from tests.test_password_recovery import (NEW_PASSWORD, RESET, forgot, recovery_client,
                                          tokens_in_outbox)  # noqa: F401
@@ -51,6 +52,7 @@ def test_erasure_cannot_use_password_from_before_reset(recovery_client, migrated
                                             'new_password': NEW_PASSWORD + '!'}).status_code == 204
 
 
+@pytest.mark.skipif(RLS_MODE, reason="instrumenta el motor de pruebas (superusuario); en modo RLS la API usa otro motor")
 def test_forgot_purge_and_erasure_do_not_deadlock(recovery_client, migrated, monkeypatch):
     from sqlalchemy import event
 

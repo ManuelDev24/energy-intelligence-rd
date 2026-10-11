@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import rls
 from app.config import settings
 from app.database import get_db
 from app.models.auth import HomeMember
@@ -26,7 +27,9 @@ def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bear
         return None
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise unauthorized()
-    return resolve_access(db, credentials.credentials)
+    user = resolve_access(db, credentials.credentials)
+    rls.set_context(db, user_id=user.id)  # auditoría C-01: desde aquí la base solo ve lo de esta persona
+    return user
 
 
 def current_session(credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
@@ -36,7 +39,9 @@ def current_session(credentials: HTTPAuthorizationCredentials | None = Depends(b
         return None
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise unauthorized()
-    return resolve_access_session(db, credentials.credentials)
+    resolved = resolve_access_session(db, credentials.credentials)
+    rls.set_context(db, user_id=resolved[0].id)
+    return resolved
 
 
 def authorize_home(request: Request, user=Depends(current_user), db: Session = Depends(get_db)):
@@ -56,6 +61,7 @@ def authorize_home(request: Request, user=Depends(current_user), db: Session = D
     member = db.scalar(query)
     if member is None:
         raise NotFound("Vivienda no encontrada")
+    rls.set_context(db, home_id=home_id)  # membresía comprobada: la base ya puede mostrar los datos de esta vivienda
     return member
 
 
