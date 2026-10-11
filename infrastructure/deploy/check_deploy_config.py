@@ -27,7 +27,12 @@ PLATFORM_VARS = {"NODE_VERSION", "NEXT_TELEMETRY_DISABLED"}
 # Variables de recuperación de contraseña: las añade el trabajo de recuperación en curso.
 # Si aún no están en config.py se informan como PENDIENTE (aviso), no como error.
 PENDING_API_VARS = {"EMAIL_BACKEND", "RESEND_API_KEY", "EMAIL_FROM", "PASSWORD_RESET_URL"}
-SECRET_VARS = {"DATABASE_URL", "AUTH_SIGNING_KEY", "RESEND_API_KEY"}
+SECRET_VARS = {"DATABASE_URL", "AUTH_SIGNING_KEY", "RESEND_API_KEY", "STORAGE_S3_ACCESS_KEY_ID",
+               "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_ENCRYPTION_KEYS", "STORAGE_URL_SIGNING_KEY", "EXPO_ACCESS_TOKEN"}
+# Variables que API y worker deben compartir con el MISMO nombre (la config se valida igual en ambos).
+SHARED_API_WORKER = {"DATABASE_URL", "AUTH_SIGNING_KEY", "CORS_ORIGINS", "RESEND_API_KEY", "EMAIL_FROM",
+                     "PASSWORD_RESET_URL", "STORAGE_S3_BUCKET", "STORAGE_S3_ENDPOINT_URL", "STORAGE_S3_ACCESS_KEY_ID",
+                     "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_ENCRYPTION_KEYS", "STORAGE_URL_SIGNING_KEY"}
 # Copia de HTTPS_ORIGIN en apps/mobile/src/config.ts.
 HTTPS_ORIGIN = re.compile(
     r"^https://(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*|\[[0-9a-f:.]+\])(?::\d{1,5})?/?$",
@@ -75,6 +80,7 @@ def check_render() -> None:
     envs = {e["name"]: e for e in doc["projects"][0]["environments"]}
     if set(envs) != {"staging", "production"}:
         errors.append(f"entornos esperados staging/production, hay {sorted(envs)}")
+    all_keys: dict[tuple[str, str], set[str]] = {}
     for env_name, env in envs.items():
         groups = {g["name"]: g["envVars"] for g in env.get("envVarGroups", [])}
         for svc in env["services"]:
@@ -114,9 +120,16 @@ def check_render() -> None:
                 for flag in ("MIGRATE_ON_START", "SEED_PILOT"):
                     if keys.get(flag, {}).get("value", "false") != "false":
                         errors.append(f"{name}: {flag} debe ser false")
-                if svc.get("healthCheckPath") != "/health":
+                if svc.get("type") == "worker":
+                    if svc.get("dockerCommand") != "python -m app.worker":
+                        errors.append(f"{name}: dockerCommand debe ser 'python -m app.worker'")
+                    if svc.get("healthCheckPath") or svc.get("preDeployCommand"):
+                        errors.append(f"{name}: un worker no lleva healthCheckPath ni preDeployCommand")
+                    if svc.get("plan") == "free":
+                        errors.append(f"{name}: Render no ofrece workers gratuitos")
+                elif svc.get("healthCheckPath") != "/health":
                     errors.append(f"{name}: healthCheckPath debe ser /health")
-                if env_name == "production" and svc.get("preDeployCommand") != "alembic upgrade head":
+                if svc.get("type") != "worker" and env_name == "production" and svc.get("preDeployCommand") != "alembic upgrade head":
                     errors.append(f"{name}: preDeployCommand debe ser 'alembic upgrade head'")
                 if svc.get("plan") == "free" and svc.get("preDeployCommand"):
                     errors.append(f"{name}: Render no admite preDeployCommand en instancias free")
@@ -135,7 +148,20 @@ def check_render() -> None:
                     errors.append(f"{name}: no fijar NODE_ENV (npm ci omitiría devDependencies del build)")
             if env_name == "production" and svc.get("autoDeployTrigger") != "off":
                 errors.append(f"{name}: producción requiere autoDeployTrigger off")
+            all_keys[(env_name, name)] = set(keys)
             print(f"  render.yaml · {env_name:<10} {name:<22} {len(keys):>2} variables")
+    # El worker y la API de un mismo entorno deben declarar las mismas variables compartidas.
+    for env_name in envs:
+        api = all_keys.get((env_name, "energyrd-api-staging" if env_name == "staging" else "energyrd-api-prod"), set())
+        worker = all_keys.get((env_name, "energyrd-worker-staging" if env_name == "staging" else "energyrd-worker-prod"))
+        if worker is None:
+            errors.append(f"{env_name}: falta el servicio worker (ERD-WORKER-01)")
+            continue
+        for key in sorted(SHARED_API_WORKER):
+            if (key in api) != (key in worker):
+                errors.append(f"{env_name}: {key} está en {'la API' if key in api else 'el worker'} pero no en el otro")
+        if "EXPO_ACCESS_TOKEN" not in worker:
+            errors.append(f"{env_name}: el worker debe declarar EXPO_ACCESS_TOKEN (avisos push)")
 
 
 def check_eas() -> None:

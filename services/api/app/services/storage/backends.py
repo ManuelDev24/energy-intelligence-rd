@@ -7,6 +7,8 @@ público; el cifrado ocurre antes de subir, así que el proveedor solo ve texto 
 import os
 import re
 import tempfile
+from collections.abc import Iterator
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
@@ -26,6 +28,7 @@ class ObjectStore(Protocol):
     def put(self, key: str, data: bytes) -> None: ...
     def get(self, key: str) -> bytes: ...
     def delete(self, key: str) -> None: ...  # idempotente: borrar lo inexistente no es un error
+    def iter_objects(self) -> Iterator[tuple[str, datetime]]: ...  # (clave, última modificación UTC); solo claves válidas
 
 
 def check_key(key: str) -> str:
@@ -78,6 +81,17 @@ class LocalFileStore:
             raise StorageFailure("No se pudo borrar el objeto") from exc
 
 
+    def iter_objects(self) -> Iterator[tuple[str, datetime]]:
+        try:
+            for path in self.root.rglob("*"):
+                if path.is_file() and not path.name.startswith(".part-"):
+                    key = path.relative_to(self.root).as_posix()
+                    if KEY_PATTERN.match(key):
+                        yield key, datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+        except OSError as exc:
+            raise StorageFailure("No se pudo listar el almacenamiento") from exc
+
+
 class S3Store:
     def __init__(self, client, bucket: str, prefix: str = ""):
         self.client, self.bucket = client, bucket
@@ -110,3 +124,14 @@ class S3Store:
             self.client.delete_object(Bucket=self.bucket, Key=self._name(key))  # S3 responde 204 aunque no exista
         except (BotoCoreError, ClientError) as exc:
             raise StorageFailure("No se pudo borrar el objeto") from exc
+
+    def iter_objects(self) -> Iterator[tuple[str, datetime]]:
+        from botocore.exceptions import BotoCoreError, ClientError
+        try:
+            for page in self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=self.prefix):
+                for item in page.get("Contents", []):
+                    key = item["Key"][len(self.prefix):]
+                    if KEY_PATTERN.match(key):
+                        yield key, item["LastModified"].astimezone(timezone.utc)
+        except (BotoCoreError, ClientError) as exc:
+            raise StorageFailure("No se pudo listar el almacenamiento") from exc

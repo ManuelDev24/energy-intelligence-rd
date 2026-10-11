@@ -8,7 +8,7 @@ import hashlib
 import io
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy import func, select
@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import HomeMember
-from app.models.document import Document
+from app.models.document import Document, StorageDeletion
 from app.services import documents
 from app.services.errors import InvalidInput, NotFound, QuotaExceeded, StorageUnavailable
 from app.services.storage import DecryptionError, ObjectMissing, StorageFailure, get_store
@@ -165,4 +165,35 @@ def run_maintenance(db: Session, *, reencrypt: bool = False, batch: int = 200) -
     report["purged"] = documents.purge_completed_deletions(db)
     if reencrypt:
         report["reencrypt"] = reencrypt_all(db)
+    return report
+
+
+def reconcile(db: Session, *, delete_orphans: bool = False, min_age_minutes: int = 60, now: datetime | None = None,
+              sample: int = 50) -> dict:
+    """Compara la tabla `documents` con los objetos del almacenamiento (útil tras restaurar la base a un instante pasado).
+
+    - **faltantes**: filas sin objeto → pérdida de datos; se informan los ids (solo la persona dueña puede resubir).
+    - **huérfanos**: objetos sin fila y sin borrado pendiente → solo cuestan espacio. Se borran únicamente con
+      `delete_orphans` y si tienen más de `min_age_minutes` (una subida en curso inserta la fila primero, pero el margen
+      evita carreras con restauraciones parciales).
+    Solo lee del almacenamiento; no descifra nada (basta la lista de claves)."""
+    store = get_store()
+    now = now or datetime.now(timezone.utc)
+    rows = dict(db.execute(select(Document.storage_key, Document.id)).all())
+    pending = set(db.scalars(select(StorageDeletion.storage_key).where(StorageDeletion.done_at.is_(None))))
+    objects = dict(store.iter_objects())
+    missing = sorted(str(rows[key]) for key in rows.keys() - objects.keys())
+    candidates = {key: at for key, at in objects.items() if key not in rows and key not in pending}
+    cutoff = now - timedelta(minutes=min_age_minutes)
+    orphans = sorted(key for key, at in candidates.items() if at <= cutoff)
+    report = {"documents": len(rows), "objects": len(objects), "missing": len(missing), "missing_document_ids": missing[:sample],
+              "orphans": len(orphans), "orphans_too_new": len(candidates) - len(orphans), "orphans_deleted": 0,
+              "orphan_delete_failed": 0}
+    if delete_orphans:
+        for key in orphans:
+            try:
+                store.delete(key)
+                report["orphans_deleted"] += 1
+            except StorageFailure:
+                report["orphan_delete_failed"] += 1
     return report

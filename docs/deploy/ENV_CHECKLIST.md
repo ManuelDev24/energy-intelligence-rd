@@ -46,13 +46,25 @@ archivos del repo. Cambiar `AUTH_SIGNING_KEY` cierra todas las sesiones (y reini
 | `PASSWORD_RESET_URL` | No | `https://<web-staging>/<ruta-de-restablecer>` | `https://<web-prod>/<ruta-de-restablecer>` | La web sirve `/restablecer-contrasena` (ERD-AUTH-05); la API exige HTTPS y rechaza `?`/`#` en la URL (el token se añade como `#token=`). |
 | `PORT` | No | (Render) | (Render) | La inyecta Render; **no** definirla. El contenedor escucha en `${PORT:-8000}`. |
 
+**Almacenamiento y worker** (API **y** worker, mismos valores por entorno; ver `DEPLOY_GUIDE.md` §4b):
+
+| Variable | Secreto | Notas |
+|---|---|---|
+| `STORAGE_BACKEND` | No (grupo) | `s3` en staging/production (`local` está prohibido; `disabled` apaga documentos y OCR) |
+| `STORAGE_S3_BUCKET` | No (sync: false) | bucket **privado** del entorno |
+| `STORAGE_S3_ENDPOINT_URL` | No (sync: false) | vacío = AWS; Cloudflare R2: `https://<cuenta>.r2.cloudflarestorage.com` |
+| `STORAGE_S3_ACCESS_KEY_ID` / `STORAGE_S3_SECRET_ACCESS_KEY` | **Sí** | clave limitada a ese bucket |
+| `STORAGE_ENCRYPTION_KEYS` | **Sí** | `id:clave` (base64url de 32 bytes). Perderla = perder los originales |
+| `STORAGE_URL_SIGNING_KEY` | **Sí** | ≥ 43 caracteres aleatorios; firma enlaces de 60 s |
+| `EXPO_ACCESS_TOKEN` | **Sí** (opcional) | solo el worker; avisos push |
+
 Opcionales (tienen default seguro en `config.py`; solo definirlas si se decide cambiarlas):
 `AUTH_ACCESS_TTL_SECONDS` (900, 60–900), `AUTH_REFRESH_TTL_DAYS` (30, 1–90), `AUTH_REGISTER_LIMIT` (10),
 `AUTH_LOGIN_LIMIT` (20), `AUTH_REFRESH_LIMIT` (60), `AUTH_ABUSE_WINDOW_SECONDS` (60), `AUTH_ISSUER`,
 `AUTH_AUDIENCE`, `PROJECT_NAME`, `VERSION`, `PASSWORD_RESET_TTL_MINUTES` (30), `PASSWORD_RESET_ACCOUNT_LIMIT` (3),
 `DOCUMENT_UNCONFIRMED_RETENTION_DAYS` (7: originales de factura sin confirmar; propuesta pendiente de ERD-LEGAL-FINAL),
 `DOCUMENT_MAX_PHOTO_BYTES` (10 MiB), `DOCUMENT_MAX_PDF_BYTES` (20 MiB), `SENTRY_DSN` (vacío = sin telemetría; `https://`; ver
-`docs/ops/OBSERVABILITY.md`), `SENTRY_TRACES_SAMPLE_RATE` (0.05).
+`docs/ops/OBSERVABILITY.md`), `SENTRY_TRACES_SAMPLE_RATE` (0.05), `WORKER_POLL_SECONDS` (2), `JOB_*` (reintentos, backoff y retención de la cola), `OCR_*` (páginas, tiempo y trabajos activos), `ANOMALY_*` (umbrales de detección, **sin calibrar con datos reales**), `NOTIFY_DAILY_CAP` (10 avisos por persona y día), `MAX_DEVICES_PER_USER` (10).
 
 > ⚠️ Límites anti-abuso detrás de Render: la API cuenta intentos **por IP de transporte** y arranca con
 > `--no-proxy-headers` (decisión documentada en `services/api/AUTH_ABUSE_PROTECTION.md`). Detrás del proxy de

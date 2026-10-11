@@ -15,6 +15,14 @@
   Si la redacción fallara, sale un evento mínimo (nunca el original).
 - `LoggingIntegration` apagada para no duplicar cada `logger.exception` como evento; `send_default_pii=False`.
 
+## Qué existe (worker de trabajos)
+- El worker (`python -m app.worker`) inicia la misma telemetría (`init_telemetry`): sin DSN no envía nada.
+- Un trabajo que llega a «muerto» (agotó reintentos) se reporta a Sentry con **solo** tipo, id y el error ya redactado
+  (`scrub_text`: correos, JWT, `Bearer`, tokens). Probado con un doble de Sentry; **no** contra un DSN real.
+- Estado de la cola a demanda: `python -m scripts.jobs stats` (JSON; sale con 1 si hay muertos o concesiones vencidas).
+- Alertas sugeridas (sin configurar, requieren cuenta): `dead > 0`; `oldest_queued_age_seconds > 300`; `stuck > 0`;
+  `storage_reconcile` con salida 1 (documentos sin objeto).
+
 ## Variables
 | Variable | Secreto | Notas |
 |---|---|---|

@@ -10,7 +10,7 @@ de abajo son **objetivos propuestos**, no medidos en producción.
 |---|---|---|---|---|
 | Neon PITR / historial de restauración | borrado o migración mala reciente | segundos (WAL continuo) dentro de la ventana: Free 6 h, Launch 7 días | restaurar la rama a un instante o crear una rama desde el pasado (minutos) | ⛔ por verificar en Neon real |
 | Respaldo lógico cifrado (`scripts/db_backup.sh`) | pérdida de proyecto/cuenta Neon, corrupción lógica anterior a la ventana de PITR, auditoría | cadencia del respaldo: **diario → 24 h** | `scripts/db_restore_verify.sh` en una base nueva | ✅ probado en local |
-| Almacenamiento privado de originales (ERD-STORE-01) | fotos/PDF de facturas | por definir (versionado del bucket) | — | ⛔ no existe aún |
+| Almacenamiento privado de originales (ERD-STORE-01) | fotos/PDF de facturas (cifradas AES-256-GCM antes de subir) | el del bucket: **activar versionado** y una regla de ciclo de vida que conserve versiones borradas ≥ 30 días (⛔ a configurar en el proveedor) | `python -m scripts.storage_reconcile` tras cualquier restauración de la base; recuperar objetos faltantes de versiones anteriores del bucket | ✅ conciliación probada en local (moto/disco); ⛔ versionado y restauración sin verificar en un bucket real |
 
 ## Respaldo cifrado
 ```bash
@@ -60,8 +60,16 @@ de producción y registrar el tiempo.
    quedó atrás, actualizar `DATABASE_URL` en Render.
 3. **Pérdida de Render:** recrear con el Blueprint (`render.yaml`); los secretos están en el gestor del propietario.
 4. **Credenciales comprometidas:** ver rotación abajo; revocar sesiones cambiando `AUTH_SIGNING_KEY`.
-5. **Archivos de originales borrados/corruptos:** depende de ERD-STORE-01 (versionado y comprobación de `sha256` por
-   documento: la huella ya está registrada en `documents`).
+5. **Archivos de originales borrados/corruptos:** correr `python -m scripts.storage_reconcile` (solo lee; informa filas sin
+   objeto y objetos sin fila). Un objeto alterado nunca se sirve (el descifrado lo detecta y la huella `sha256` se verifica).
+   Los faltantes se recuperan de una versión anterior del bucket (si hay versionado) o la persona los vuelve a subir.
+6. **Después de restaurar la BASE a un instante pasado** (escenarios 1 y 2): la base y el bucket quedan desfasados.
+   (a) Con el worker **detenido**, restaurar la base. (b) `python -m scripts.storage_reconcile`: `missing` > 0 son documentos
+   cuyo objeto se borró después de ese instante (recuperarlos del versionado); `orphans` son objetos subidos después
+   (inofensivos; borrarlos con `--delete-orphans` pasado el margen). (c) Arrancar el worker: los trabajos son idempotentes
+   (clave única por trabajo y por aviso), pero **los avisos ya enviados pueden repetirse** si la tabla `notifications` volvió
+   atrás; revisar `python -m scripts.jobs stats` antes de reanudar. (d) Si se había rotado `STORAGE_ENCRYPTION_KEYS`
+   después del respaldo, conservar la clave vieja en el anillo hasta reconciliar.
 
 ## Rotación de secretos
 Ninguno de estos cambios se ha ensayado en Render/Neon (⛔ requiere las cuentas). Efecto y orden:
@@ -73,9 +81,19 @@ Ninguno de estos cambios se ha ensayado en Render/Neon (⛔ requiere las cuentas
 | `RESEND_API_KEY` | Sin cambio si se hace en orden | crear clave nueva → actualizar Render → comprobar un correo de recuperación → borrar la anterior |
 | `SENTRY_DSN` | Eventos nuevos al DSN nuevo | rotar en Sentry, actualizar Render |
 | Clave `age` de respaldo | Los respaldos nuevos usan la clave nueva | generar par nuevo, cambiar `BACKUP_AGE_RECIPIENT`, **conservar la identidad anterior hasta que expiren los respaldos cifrados con ella** |
+| `STORAGE_ENCRYPTION_KEYS` | **Perderla = perder los originales cifrados.** Rotar es antepone-una-nueva, nunca reemplazar | `services/api/STORAGE.md`: anteponer clave nueva → redeploy API **y** worker → `python -m scripts.storage_maintenance --reencrypt` hasta `already_current` = total → solo entonces quitar la vieja; guardar la copia en el gestor, **separada** de la de la base |
+| `STORAGE_URL_SIGNING_KEY` | Los enlaces de descarga vigentes (60 s) dejan de valer | cambiar en API y worker; sin migración de datos |
+| Claves S3/R2 del bucket | El OCR y las descargas fallan hasta actualizar | crear clave nueva limitada al bucket → actualizar API y worker → comprobar una subida → revocar la anterior |
+| `EXPO_ACCESS_TOKEN` | Sin cambio si se hace en orden | crear token → actualizar el worker → comprobar un envío → revocar el anterior |
 | Tokens de EAS / Expo | Compilaciones fallan hasta actualizar | revocar y crear en expo.dev, actualizar el secreto de CI |
 
+## Verificado en local en esta etapa
+`tests/test_storage_reconcile.py` (9): estado consistente; fila sin objeto (informa el id); huérfanos solo con `--delete-orphans`
+y pasado el margen; objeto en cola de borrado no es huérfano; fallos de borrado contados; listado S3 (moto) con prefijo y claves
+ajenas; archivos parciales ignorados; códigos de salida; el informe no contiene claves de objeto.
+
 ## Pendiente (todo requiere acceso del propietario)
+Activar versionado y ciclo de vida del bucket real y ensayar la recuperación de una versión borrada; programar `storage_reconcile` (semanal) y alertar si sale 1;
 Verificar PITR/restauración de rama en Neon; elegir bucket de respaldos externo y programar el job diario; guardar la clave
 privada `age` (gestor + copia offline); ensayar una rotación de `AUTH_SIGNING_KEY` en staging; primer simulacro real con
 datos de producción y registro del tiempo; añadir `scripts/test_db_dr.sh` a CI una vez verificado en Actions.

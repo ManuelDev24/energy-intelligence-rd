@@ -10,6 +10,7 @@ vida corta. Los metadatos, la retención y la cola de borrado están en `DOCUMEN
 | Almacén local (desarrollo/pruebas) y S3/R2 (probado contra S3 simulado con `moto`) | Hecho |
 | Subida, metadatos, enlace firmado, descarga, borrado | Hecho (API) |
 | Vaciado de la cola de borrado, expiración, rotación de claves | Hecho: `python -m scripts.storage_maintenance` |
+| Conciliación base ↔ bucket (tras restaurar la base) | Hecho: `python -m scripts.storage_reconcile` (ver `docs/ops/DISASTER_RECOVERY.md`) |
 | **Bucket real (S3/R2), credenciales, política del bucket, TLS** | **Pendiente: requiere la cuenta del dueño (ERD-DEPLOY-01)**. Nunca se probó contra un proveedor real |
 | Que el worker ejecute el mantenimiento de forma periódica | ERD-WORKER-01 |
 | Pantallas web/móvil para subir y ver originales, y conectar el OCR | ERD-OCR-PROD (el BFF aún no expone estas rutas) |

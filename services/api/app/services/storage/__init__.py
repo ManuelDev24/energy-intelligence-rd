@@ -24,6 +24,9 @@ class EncryptedStore:
     def delete(self, key: str) -> None:
         self.inner.delete(check_key(key))
 
+    def iter_objects(self):
+        return self.inner.iter_objects()
+
     def reencrypt(self, key: str) -> bool:
         """Reescribe el objeto con la clave activa. Devuelve False si ya la usaba."""
         blob = self.inner.get(check_key(key))
