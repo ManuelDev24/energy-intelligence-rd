@@ -72,10 +72,45 @@ def test_importe_read_only_once_is_inferred_and_two_different_reads_do_not_agree
     assert split.amount_dop.confidence == "inferred"
 
 
+CONCEPTS = "Cargo Fijo\n29 días, RD$ 137.25 RD$ 137.25\nEnergía\n85 kWh X RD$ 4.44 RD$ 377.40\n"   # 137.25 + 377.40 = 514.65
+
+
 def test_edenorte_uses_the_month_billed_and_warns_when_total_to_pay_includes_other_balances():
-    d = parse("FACTURADO DE MAY RD$512.30\nPAGUE ANTES DE 16/06/2020\nVALOR TOTAL A PAGAR: RD $1,190.00\n")
-    assert (d.amount_dop.value, d.amount_dop.confidence) == ("512.30", "high")
+    d = parse(CONCEPTS + "FACTURADO DE MAY RD$514.65\nPAGUE ANTES DE 16/06/2020\nVALOR TOTAL A PAGAR: RD $1,190.00\n")
+    assert (d.amount_dop.value, d.amount_dop.confidence) == ("514.65", "high")      # confirmado por la suma de los conceptos
     assert any("difiere de lo facturado" in w for w in d.warnings)
+
+
+def test_a_single_read_of_the_month_billed_is_only_inferred():
+    d = parse("FACTURADO DE MAY RD$514.65\n")
+    assert (d.amount_dop.value, d.amount_dop.confidence) == ("514.65", "inferred")
+
+
+def test_an_amount_that_contradicts_the_sum_of_its_concepts_is_inferred_with_a_warning():
+    d = parse(CONCEPTS + "FACTURADO DE MAY RD$614.65\n")                            # un dígito mal leído
+    assert (d.amount_dop.value, d.amount_dop.confidence) == ("614.65", "inferred")
+    assert any("no coincide con la suma de los conceptos (514.65)" in w for w in d.warnings)
+
+
+def test_a_missing_amount_is_computed_from_the_concepts_and_flagged():
+    d = parse(CONCEPTS)
+    assert (d.amount_dop.value, d.amount_dop.confidence) == ("514.65", "inferred")
+    assert any("se calculó sumando" in w for w in d.warnings)
+
+
+def test_concepts_with_noisy_currency_symbols_still_add_up():
+    d = parse("Cargo Fijo\n26 días, ROS 137.25 RDS 137.25\nEnergía\n200 kWh X ROS 4.44 RD$ 888.00\n40 kWh X R0S 6.97 RDS 278.80\nIMPORTE TOTAL RD$ 1,304.05\n")
+    assert (d.amount_dop.value, d.amount_dop.confidence) == ("1304.05", "high")
+
+
+def test_without_a_readable_cargo_fijo_or_tiers_the_amount_is_not_cross_checked():
+    d = parse("Energía\n85 kWh X RD$ 4.44 RD$ 377.40\nTOTAL A PAGAR RD$ 999.00\n")
+    assert (d.amount_dop.value, d.amount_dop.confidence) == ("999.00", "high")
+
+
+def test_days_misread_as_diaz_still_parse_the_period():
+    d = parse("12/08/2026 - 07/09/2026 = 26 diaz\n")
+    assert (d.period_start.value, d.days.value, d.period_start.confidence) == ("2026-08-12", "26", "high")
 
 
 def test_total_a_pagar_alone_stays_high_confidence():

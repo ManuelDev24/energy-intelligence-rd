@@ -42,3 +42,8 @@ documentó en `DEMO_GUIDE.md`. **Sin esta réplica local del job de CI, GitHub A
 ## Estado por criterio del plan de cierre
 Todo lo que es **código y se puede probar en local** está hecho y probado. Lo pendiente es, sin excepción, de cuentas, dispositivos,
 datos reales o personas (lista arriba). La checklist `docs/RELEASE_CHECKLIST.md` queda actualizada (§5b) para quien promueva.
+
+## Actualización 2026-10-11 (tarde): simulaciones
+Se añadieron un simulacro local del despliegue (17/17), el autoensayo de respaldo (10/10), 7 pruebas de facturas sintéticas con Tesseract real y
+Sentry web contra un servidor local (7/7). Detalle, límites y qué NO cierran: `docs/qa/ERD-SIMULACIONES-2026-10-11.md`. El CI de GitHub sigue
+sin haberse ejecutado sobre estos commits.

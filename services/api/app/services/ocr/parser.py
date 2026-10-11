@@ -24,13 +24,13 @@ _RANGE_SEP = r"[\s:.,]*(?:al|a|-|–)[\s:.,]*"
 # DATOS DEL CONTRATO, a veces en otra línea que la etiqueta "PERIODO DE FACTURACION".
 # Ruido OCR habitual: "-" leído como "=", y "=" leído como ">" o perdido.
 _RANGE_DAYS_RE = re.compile(
-    rf"{_DATE_LOOSE}[\s:.,]*(?:al|a|-|–|=|>)[\s:.,]*{_DATE_LOOSE}[\s:.,]*[=>]?\s*(\d{{1,3}})[.,]?\s*d[ií]as", re.IGNORECASE)
+    rf"{_DATE_LOOSE}[\s:.,]*(?:al|a|-|–|=|>)[\s:.,]*{_DATE_LOOSE}[\s:.,]*[=>]?\s*(\d{{1,3}})[.,]?\s*d[ií1l]a[sz5]", re.IGNORECASE)
 _PERIOD_RE = re.compile(
     rf"per[ií1]+[od]+o?(?:\s+de\s+(?:facturaci[oó]n|consumo|lectura))?\s*:?\s*(?:del?)?\s*"
     rf"{_DATE_NUM}{_RANGE_SEP}{_DATE_NUM}", re.IGNORECASE)
 # Escalones de energía: "200 kWh X RD$ 4.44" (uno por escalón; se suman).
 # "RD$" suele salir "RDS" y las cifras junto a «kWh» salen con letras parecidas: «108» → «1OB» (observado en una factura real).
-_TIER_RE = re.compile(r"([\dOoIlB][\dOoIlB,]*)\s*k\s*w\s*h\s*[xX×*]\s*RD\s*[$S5]", re.IGNORECASE)
+_TIER_RE = re.compile(r"([\dOoIlB][\dOoIlB,]*)\s*k\s*w\s*h\s*[xX×*]\s*R[D0O]\s*[$S5]", re.IGNORECASE)
 _OCR_DIGITS = str.maketrans("OoIlB", "00118")
 _NUM_TOKEN_RE = re.compile(r"\d[\d,.]*")
 # Columnas numéricas de la tabla de lecturas, en el orden en que aparezcan en el encabezado.
@@ -176,6 +176,26 @@ def _importe_numbers(text: str) -> tuple[list[Decimal], bool]:
     return values, fixed
 
 
+_MONEY = r"\d[\d,]*\.\d{2}"
+_TIER_AMOUNT_RE = re.compile(rf"\d[\dOoIlB,]*\s*k\s*w\s*h\s*[xX×*]\s*R[D0O]\s*[$S5][^\n]*?({_MONEY})\s*$", re.IGNORECASE | re.MULTILINE)
+_CARGO_RE = re.compile(rf"cargo\s+fijo[^\n]*(?:\n[^\n]*)?", re.IGNORECASE)
+
+
+def _concept_sum(text: str) -> Decimal | None:
+    """Suma «cargo fijo + cada escalón de energía» tal como se imprime. En las 3 facturas reales vistas (EDESUR, EDENORTE, EDEESTE)
+    esta suma coincide al centavo con el monto de la factura; sirve para CONFIRMAR o dudar de una lectura, no para cambiarla
+    (otras facturas pueden traer más cargos). `None` si no se leyó el cargo fijo y al menos un escalón."""
+    tiers = [_num(m.group(1)) for m in _TIER_AMOUNT_RE.finditer(text)]
+    cargo_block = _CARGO_RE.search(text)
+    if not tiers or any(v is None for v in tiers) or not cargo_block:
+        return None
+    window = [m for m in re.findall(_MONEY, cargo_block.group(0)) if not re.search(rf"k\s*w\s*h.*{re.escape(m)}", cargo_block.group(0), re.IGNORECASE)]
+    cargo = _num(window[-1]) if window else None
+    if cargo is None:
+        return None
+    return cargo + sum(tiers, Decimal(0))  # type: ignore[arg-type]
+
+
 def _read_amount(text: str, warnings: list[str]) -> tuple[Decimal | None, Confidence]:
     """Monto de la factura. «FACTURADO DE <mes>» (EDENORTE) manda sobre «TOTAL A PAGAR», que puede incluir saldos anteriores;
     luego «TOTAL A PAGAR»; luego «IMPORTE TOTAL / IMPORTE EN» (EDESUR/EDEESTE: alta solo si dos lecturas independientes
@@ -186,7 +206,8 @@ def _read_amount(text: str, warnings: list[str]) -> tuple[Decimal | None, Confid
         if to_pay and to_pay[0] != billed[0]:
             warnings.append(f"El «total a pagar» ({to_pay[0]:.2f}) difiere de lo facturado en el mes ({billed[0]:.2f}); "
                             "suele incluir saldos anteriores. Se usó lo facturado del mes.")
-        return billed[0], "high"
+        # Una sola lectura de cifras no basta para «alta»: la suma de los conceptos (`_cross_check_amount`) la confirma o la deja dudosa.
+        return billed[0], "inferred"
     if to_pay:
         return to_pay[0], "high"
     importes, reinterpreted = _importe_numbers(text)
@@ -205,6 +226,19 @@ def _read_amount(text: str, warnings: list[str]) -> tuple[Decimal | None, Confid
             return n, "inferred"
     warnings.append("No se encontró el monto total a pagar.")
     return None, "high"
+
+
+def _cross_check_amount(text: str, amount: Decimal | None, conf: Confidence, warnings: list[str]) -> tuple[Decimal | None, Confidence]:
+    total = _concept_sum(text)
+    if total is None:
+        return amount, conf
+    if amount is None:
+        warnings.append("El monto no se leyó; se calculó sumando el cargo fijo y la energía impresos. Compárelo con la factura.")
+        return total, "inferred"
+    if amount == total:  # exacto: una diferencia de un centavo suele ser un dígito mal leído
+        return amount, "high"  # dos lecturas independientes (el total y los conceptos) coinciden
+    warnings.append(f"El monto ({amount:.2f}) no coincide con la suma de los conceptos ({total:.2f}); revíselo contra la factura.")
+    return amount, "inferred"
 
 
 def parse_bill_text(text: str | None) -> OcrDraft:
@@ -243,7 +277,7 @@ def parse_bill_text(text: str | None) -> OcrDraft:
                 warnings.append(f"Los {int(explicit_days)} días impresos no coinciden con las fechas leídas "
                                 f"({elapsed} días); revise el período contra la foto.")
     if period_start and period_end:
-        explicit = re.search(r"\((\d{1,3})\s*d[ií]as\)", text, re.IGNORECASE)
+        explicit = re.search(r"\((\d{1,3})\s*d[ií1l]a[sz5]\)", text, re.IGNORECASE)
         if explicit_days is not None:
             days_field = OcrField(value=str(int(explicit_days)), confidence="high")
         elif explicit:
@@ -269,6 +303,7 @@ def parse_bill_text(text: str | None) -> OcrDraft:
             due_conf = "inferred"
 
     amount, amount_conf = _read_amount(text, warnings)
+    amount, amount_conf = _cross_check_amount(text, amount, amount_conf, warnings)
 
     kwh = None
     kwh_conf: Confidence = "high"
