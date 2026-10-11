@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 /**
  * ERD-ALERT-02: registro del dispositivo para avisos push (Expo). La lógica es pura (dependencias inyectadas) para poder
  * probarla; `nativeDeps()` carga `expo-notifications` bajo demanda y solo corre en el teléfono.
@@ -54,8 +56,10 @@ export const PUSH_MESSAGES: Record<PushOutcome, string> = {
 
 /** Implementación real con Expo; se importa bajo demanda para que las pruebas y la web no carguen módulos nativos. */
 export async function nativeDeps(api: { registerDevice: PushDeps['register']; removeDevice: PushDeps['remove'] }): Promise<PushDeps> {
-  const [{ Platform }, Notifications, Constants] = await Promise.all([
-    import('react-native'), import('expo-notifications'), import('expo-constants').then((m) => m.default),
+  // Metro importAll enumerates React Native's lazy getters (including unsupported
+  // PushNotificationIOS in Expo Go). Import only Platform statically above.
+  const [Notifications, Constants] = await Promise.all([
+    import('expo-notifications'), import('expo-constants').then((m) => m.default),
   ]);
   const os = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'other';
   if (os === 'android') {

@@ -1,8 +1,8 @@
 # ERD-E2E-MAESTRO-AUTH — recorrido con cuentas reales (AUTH_ENABLED): registro → onboarding → perfil → consumo → meta →
 # cerrar sesión → iniciar sesión → solicitar recuperación de contraseña. SIN OCR. Datos sintéticos.
 #
-# ESTADO: AUTORADO, NO EJECUTADO. Este entorno no tiene simulador, emulador ni Maestro; los identificadores se comprueban
-# contra el código en `src/maestroFlows.test.ts`, pero NINGÚN paso se ha corrido en un dispositivo.
+# ESTADO: iOS EJECUTADO (dos corridas verdes en simulador, 2026-10-11); Android NO EJECUTADO.
+# Evidencia y límites: docs/qa/ERD-E2E-MAESTRO-AUTH.md. Las pruebas estáticas NO sustituyen el recorrido nativo.
 #
 # Requisitos: API con AUTH_ENABLED=true, SIN datos piloto sembrados, `EMAIL_BACKEND` de desarrollo (no se envía correo real) y
 # Metro con EXPO_PUBLIC_AUTH_ENABLED=true EXPO_PUBLIC_API_URL=<url>. Lo prepara `run-auth.sh`.
@@ -143,8 +143,8 @@ appId: ${APP_ID || 'host.exp.Exponent'}
 - tapOn:
     id: "profile-home"
 - assertVisible: ".*Casa Maestro.*"
-- back
-- back
+- runFlow: back.yaml
+- runFlow: back.yaml
 - takeScreenshot: evidence/auth/04-perfil
 
 # 4. Consumo: cuenta nueva = sin lecturas, estado vacío honesto (no se inventan cifras).
@@ -167,11 +167,18 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     visible:
       id: "goal-card"
     timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: "goal-edit"
+    direction: DOWN
+    visibilityPercentage: 100
 - tapOn:
     id: "goal-edit"
-- assertVisible:
-    id: "f-goal-kwh"
-- back
+- extendedWaitUntil:
+    visible:
+      id: "f-goal-kwh"
+    timeout: 20000
+- runFlow: back.yaml
 
 # 6. Cerrar sesión y volver a entrar.
 - tapOn:
@@ -180,6 +187,9 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     id: "profile-homes"
 - tapOn:
     id: "auth-logout"
+- tapOn:
+    text: "^Cerrar sesión$"
+    below: "^¿Cerrar sesión.*"
 - extendedWaitUntil:
     visible: "Iniciar sesión"
     timeout: 20000
@@ -201,9 +211,10 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     id: "auth-submit"
 # Tras iniciar sesión hay que elegir la vivienda (la selección no sobrevive al cierre de sesión).
 - extendedWaitUntil:
-    visible: "Casa Maestro"
+    visible: ".*Casa Maestro.*"
     timeout: 30000
-- tapOn: "Casa Maestro"
+- tapOn:
+    id: "home-.+"
 - extendedWaitUntil:
     visible:
       id: "tab-Dashboard"
@@ -218,6 +229,9 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     id: "profile-homes"
 - tapOn:
     id: "auth-logout"
+- tapOn:
+    text: "^Cerrar sesión$"
+    below: "^¿Cerrar sesión.*"
 - extendedWaitUntil:
     visible: "Iniciar sesión"
     timeout: 20000

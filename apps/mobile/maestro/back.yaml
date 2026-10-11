@@ -1,0 +1,16 @@
+# Back is Android-only in Maestro. Use native-stack edge-back on iOS.
+appId: ${APP_ID || 'host.exp.Exponent'}
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: "1%,50%"
+          end: "85%,50%"
+          duration: 600
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
