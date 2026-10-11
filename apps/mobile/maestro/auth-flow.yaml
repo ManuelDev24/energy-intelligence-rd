@@ -14,13 +14,40 @@ appId: ${APP_ID || 'host.exp.Exponent'}
 - openLink: ${EXPO_URL || 'exp://127.0.0.1:8081'}
 # Expo Go muestra su menú de desarrollo la primera vez y tapa la app (mismo manejo que pilot-flow.yaml).
 - extendedWaitUntil:
-    visible: "(Iniciar sesión|This is the developer menu.*)"
+    visible: "(Iniciar sesión|This is the developer menu.*|Development servers)"
     timeout: 120000
+# openLink puede resolver de forma intermitente en la propia pantalla Home de Expo Go
+# en vez de abrir el proyecto: si ocurre, reintentar el deep link.
+- runFlow:
+    when:
+      visible: "Development servers"
+    commands:
+      - openLink: ${EXPO_URL || 'exp://127.0.0.1:8081'}
+      - extendedWaitUntil:
+          visible: "(Iniciar sesión|This is the developer menu.*)"
+          timeout: 60000
 - runFlow:
     when:
       visible: "This is the developer menu.*"
     commands:
       - tapOn: "Continue"
+      - waitForAnimationToEnd
+# Variante completa del menú de desarrollo (abre con "TOOLS": Reload/Go home/Toggle
+# performance monitor…) distinta del diálogo de bienvenida anterior; mismo manejo que pilot-flow.yaml.
+- runFlow:
+    when:
+      visible: "Toggle performance monitor"
+      platform: Android
+    commands:
+      - back
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "Toggle performance monitor"
+      platform: iOS
+    commands:
+      - tapOn:
+          point: "50%,15%"   # fondo atenuado: cierra la hoja del menú
       - waitForAnimationToEnd
 - extendedWaitUntil:
     visible: "Iniciar sesión"
@@ -49,6 +76,12 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     commands:
       - tapOn:
           id: "keyboard-done"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+      - waitForAnimationToEnd
 - tapOn:
     id: "auth-submit"
 # Sin aceptar los términos no se crea la cuenta.
@@ -89,6 +122,12 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     commands:
       - tapOn:
           id: "keyboard-done"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+      - waitForAnimationToEnd
 - tapOn:
     id: "account-onboarding-next"
 - assertVisible: "Paso 2 de 6"
@@ -108,6 +147,12 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     commands:
       - tapOn:
           id: "keyboard-done"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+      - waitForAnimationToEnd
 - tapOn:
     id: "account-onboarding-next"
 - assertVisible: "Paso 4 de 6"
@@ -125,6 +170,12 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     commands:
       - tapOn:
           id: "keyboard-done"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+      - waitForAnimationToEnd
 - tapOn:
     id: "account-onboarding-next"
 - assertVisible: "Paso 6 de 6"
@@ -207,6 +258,12 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     commands:
       - tapOn:
           id: "keyboard-done"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+      - waitForAnimationToEnd
 - tapOn:
     id: "auth-submit"
 # Tras iniciar sesión hay que elegir la vivienda (la selección no sobrevive al cierre de sesión).
