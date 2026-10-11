@@ -105,4 +105,13 @@ correos de los miembros de su vivienda. Legal debe decidir el aviso y la base le
 - Re-consentimiento al cambiar de versión (hoy no se fuerza a cuentas existentes ni legadas).
 - Revisar los DPA de Neon, Render, Resend y Sentry y las transferencias internacionales (§6).
 - Decidir el aviso para los correos de terceros en invitaciones y la visibilidad de correos entre miembros.
+- **Decisiones nuevas (2026-10-11) que necesitan criterio legal:**
+  1. Avisos push: el token del teléfono viaja a Expo/FCM/APNs (EE. UU.); el texto es genérico, sin cifras ni nombre de vivienda.
+  2. Avisos por correo (Resend): el destinatario es el usuario, sin cifras; ¿basta con la opción de apagarlos en «Mi cuenta» o
+     se requiere consentimiento previo al primer envío?
+  3. Registro de avisos (`notifications`) y anomalías: propuesta de 12 meses; ¿es proporcional?
+  4. Originales de factura cifrados en un bucket de un tercero (S3/R2): ¿encargado del tratamiento adicional? ¿región?
+  5. Borrador de OCR (`document_ocr.draft`): contiene campos leídos de la factura (montos, períodos, fecha límite) y un extracto
+     de texto; se conserva hasta que la persona confirma o el original expira (7 días sin factura). Confirmar el plazo.
+  6. Marca y modelo de equipos son texto libre del usuario: ¿se advierte que no deben incluir datos personales?
 - Hasta que firme legal, `GET /api/v1/legal` seguirá devolviendo `status = "draft"` y la UI lo mostrará como borrador.
