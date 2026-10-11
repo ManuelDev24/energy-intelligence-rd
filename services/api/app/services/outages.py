@@ -7,7 +7,7 @@ antes de llegar a ella.
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models import PowerOutage

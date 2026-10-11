@@ -191,7 +191,7 @@ def summarize(results: Sequence[BucketResult]) -> Summary:
         return Summary(None, None, Decimal(0), Decimal(0), None, None)
     values = [(r, r.kwh) for r in valued if r.kwh is not None]
     total = sum((kwh for _, kwh in values), Decimal(0))
-    quality = "REAL" if all(r.quality == "REAL" for r in valued) else "ESTIMATED"
+    quality: Literal["REAL", "ESTIMATED"] = "REAL" if all(r.quality == "REAL" for r in valued) else "ESTIMATED"
     peak, peak_kwh = values[0]
     for r, kwh in values[1:]:
         if kwh > peak_kwh:  # empate: se conserva el bucket más antiguo

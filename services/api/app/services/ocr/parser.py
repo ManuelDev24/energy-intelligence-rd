@@ -178,7 +178,7 @@ def _importe_numbers(text: str) -> tuple[list[Decimal], bool]:
 
 _MONEY = r"\d[\d,]*\.\d{2}"
 _TIER_AMOUNT_RE = re.compile(rf"\d[\dOoIlB,]*\s*k\s*w\s*h\s*[xX×*]\s*R[D0O]\s*[$S5][^\n]*?({_MONEY})\s*$", re.IGNORECASE | re.MULTILINE)
-_CARGO_RE = re.compile(rf"cargo\s+fijo[^\n]*(?:\n[^\n]*)?", re.IGNORECASE)
+_CARGO_RE = re.compile(r"cargo\s+fijo[^\n]*(?:\n[^\n]*)?", re.IGNORECASE)
 
 
 def _concept_sum(text: str) -> Decimal | None:

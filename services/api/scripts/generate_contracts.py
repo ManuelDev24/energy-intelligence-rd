@@ -31,7 +31,7 @@ from app.schemas.bill_detail import BillItemsReplace, BillItemsOut, BillAssessme
 from app.schemas.ocr import OcrDraft, OcrJobOut
 from app.schemas.anomaly import AnomalyRecord, AnomalyStatusIn
 from app.schemas.outage import OutageIn, OutageOut, OutageSummaryOut
-from app.schemas.energy_score import EnergyScoreOut, ScoreComponentOut
+from app.schemas.energy_score import EnergyScoreOut
 from app.schemas.recommendation import RecommendationListOut, RecommendationRecord, RecommendationStatusIn
 
 ROOT = Path(__file__).resolve().parents[3]

@@ -7,7 +7,6 @@ Así nunca queda un objeto sin fila que lo gobierne.
 import hashlib
 import io
 import logging
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from PIL import Image, UnidentifiedImageError

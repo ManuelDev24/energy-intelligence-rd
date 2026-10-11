@@ -6,7 +6,6 @@ la factura y borra el borrador. Nunca OCR → base de datos de facturas sin conf
 """
 import logging
 import time
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select

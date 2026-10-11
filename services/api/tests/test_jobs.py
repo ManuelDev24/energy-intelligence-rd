@@ -172,7 +172,7 @@ def test_expired_lease_is_retaken_and_the_late_result_is_discarded(db, migrated)
 def test_a_job_that_keeps_dying_ends_in_the_dead_letter_queue(db, migrated):
     job = queue.enqueue(db, 'demo.task', max_attempts=2, now=NOW)[0]
     t = NOW
-    for n in range(2):
+    for _ in range(2):
         assert take(db, now=t)
         t += timedelta(seconds=61)
     assert take(db, now=t) == []

@@ -48,13 +48,17 @@ jobs:
           tesseract --version
           tesseract --list-langs
       - run: uv sync --frozen
+      # Auditoría C-17: lint (errores reales) y tipado gradual de los módulos listados en pyproject.toml.
+      - run: uv run ruff check .
+      - run: uv run mypy
       - run: uv run python -m scripts.generate_contracts --check
       - run: python scripts/check_architecture.py
         working-directory: .
       - run: uv run alembic upgrade head
       - run: uv run alembic downgrade -1 && uv run alembic upgrade head
       - run: uv run python -m app.seed && uv run python -m app.seed
-      - run: uv run pytest -q
+      # Cobertura de líneas y ramas (informe en el log; el umbral mínimo se fija en pyproject.toml cuando haya medición estable).
+      - run: uv run pytest -q --cov=app --cov-report=term:skip-covered
 
   web-mobile:
     name: web + mobile + core (typecheck, lint, test, build)

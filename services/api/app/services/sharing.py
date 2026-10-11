@@ -7,7 +7,7 @@ y la transferencia, para serializar). Los datos personales (correos) nunca van a
 import secrets
 from datetime import timedelta
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.config import settings

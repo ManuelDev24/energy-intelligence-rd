@@ -111,5 +111,5 @@ def health():
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
     except Exception:
-        raise HTTPException(status_code=503, detail="database unavailable")
+        raise HTTPException(status_code=503, detail="database unavailable") from None
     return {"status": "healthy", "database": "ok"}

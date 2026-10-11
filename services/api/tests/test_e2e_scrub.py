@@ -27,7 +27,7 @@ def test_scrub_dir_removes_videos_and_cleans_text_and_zip(tmp_path):
     (tmp_path / "error-context.md").write_text(f"token={JWT} usuario a@example.com", encoding="utf-8")
     archive = tmp_path / "trace.zip"
     with zipfile.ZipFile(archive, "w") as z:
-        z.writestr("0-trace.trace", f'{{"headers":"Cookie: erd-session=secreto","password":"abc"}}')
+        z.writestr("0-trace.trace", '{"headers":"Cookie: erd-session=secreto","password":"abc"}')
         z.writestr("resources/body.json", '{"access_token":"xyz"}')
     stats = scrub.scrub_dir(tmp_path)
     assert not (tmp_path / "video.webm").exists()

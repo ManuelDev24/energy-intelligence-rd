@@ -109,8 +109,9 @@ def init_telemetry(settings, transport=None) -> bool:
         include_local_variables=False,
         max_request_body_size="never",
         traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
-        before_send=scrub_event,
-        before_send_transaction=scrub_event,
+        # Los hooks del SDK reciben un TypedDict `Event`; el filtro trabaja con dict genérico (misma forma en tiempo de ejecución).
+        before_send=scrub_event,  # type: ignore[arg-type]
+        before_send_transaction=scrub_event,  # type: ignore[arg-type]
         before_breadcrumb=scrub_breadcrumb,
         # Los errores se reportan explícitamente; evita duplicar cada logger.exception como evento.
         integrations=[LoggingIntegration(level=None, event_level=None)],
