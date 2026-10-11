@@ -1,6 +1,6 @@
 # ERD-OCR-REAL-QA — evaluación del OCR con facturas reales
 
-**Estado: arnés listo; evaluación ⛔ pendiente de las facturas (las aporta Manuel).** Ninguna factura real entra al
+**Estado: arnés listo; evaluación ⛔ pendiente de las facturas (las aporta Manuel).** Hallazgos de la investigación sin facturas (2026-10-11), etiquetas alternativas y qué sigue sin confirmar: `docs/qa/OCR_FORMATOS_FACTURAS_RD.md` (sección final). Ninguna factura real entra al
 repositorio: se guardan fuera de él (o en `qa-private/`, ignorado por git) con los datos personales tapados.
 
 ## Qué se necesita

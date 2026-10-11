@@ -63,3 +63,48 @@ Imágenes sintéticas con el diseño de cada distribuidora (etiquetas reales, da
 
 **Pendiente:** confirmar con fotos reales de las tres distribuidoras (datos personales tapados). Esto cubre el
 formato documentado, no la calidad de una foto real de celular.
+
+---
+
+## Hallazgos 2026-10-11 (ERD-OCR-REAL-QA, **sin** facturas reales ni PDF)
+
+Se intentó obtener un duplicado real desde el portal de EDESUR (`ov.edesur.com.do/duplicado-facturas`). **No se pudo**: la red del
+entorno de trabajo bloquea ese dominio (el proxy rechaza la conexión y `getaddrinfo` no lo resuelve). No se llegó a iniciar sesión,
+no se guardó ninguna credencial y **no hay ninguna factura real, PDF ni captura** en el repositorio ni en `qa-private/`.
+(Las credenciales de una cuenta quedaron pegadas en la conversación: conviene cambiar esa contraseña.)
+
+### Qué se investigó y qué se encontró
+| Tema | Hallazgo | Fuente |
+|---|---|---|
+| Etiquetas de campos | Sin novedades respecto a la tabla de arriba (2026-10-10); la búsqueda web devuelve sobre todo Edenor/Edesur **de Argentina**, que son otras empresas | búsquedas web |
+| Base legal | Sigue vigente: la factura debe traer días facturados, lecturas con fecha y si es promediada o por lectura (Reglamento de la Ley 125-01) | arriba |
+| Factura electrónica (e-CF) | La Ley 32-23 la hace obligatoria con plazos escalonados (hasta 36 meses para contribuyentes pequeños). **No se halló** que EDESUR, EDENORTE o EDEESTE hayan cambiado el diseño de su factura; si lo hacen aparecerían campos nuevos (e-NCF, código QR) que el parser no conoce | DGII, Siempre Al Día |
+| Consumo promediado de EDENORTE | Sigue sin confirmarse cómo se etiqueta | — |
+| Duplicado del portal | No se pudo ver si el duplicado es un PDF con texto o una imagen. El pipeline ya soporta ambos (capa de texto o OCR por página, máx. 6 páginas) | — |
+
+### Lo que sigue **sin confirmar** (la fila de cada uno es una hipótesis, no un hecho)
+1. Etiqueta literal del **total** en EDESUR y EDENORTE (el parser busca `TOTAL A PAGAR`).
+2. Etiqueta de la **fecha límite de pago** en EDENORTE y EDEESTE (solo EDESUR está documentada: `FECHA LIMITE DE PAGO`). Es el campo que
+   alimenta la alerta de pago: un error aquí avisaría un día equivocado.
+3. Calidad con **fotos reales de celular** (todo lo medido fue con imágenes sintéticas).
+4. Si el PDF descargado del portal trae capa de texto o es una imagen.
+
+### Qué se cambió en el código por esto (con pruebas sintéticas; **no** es una confirmación)
+- `parser.py`: si falta `TOTAL A PAGAR`, el total se busca en etiquetas alternativas (`MONTO A PAGAR`, `VALOR A PAGAR`, `IMPORTE A PAGAR`,
+  `TOTAL FACTURA(DO)`, `TOTAL GENERAL`, `IMPORTE TOTAL`, `MONTO TOTAL`, `TOTAL A COBRAR`). Sale con confianza **`inferred`** y un aviso
+  («se leyó de una etiqueta distinta de TOTAL A PAGAR»), así que la persona siempre lo revisa antes de guardar. Nunca se toman
+  `SUBTOTAL`, `Total energía`, `Total impuestos` ni `Total cargos`. `TOTAL A PAGAR` conserva confianza alta y gana si coexiste.
+- La fecha límite ya aceptaba `fecha límite (de pago)`, `fecha de vencimiento`, `vencimiento`, `vence`, `pague/pagar antes del`; ahora hay
+  pruebas para cada variante, para la incoherencia con el período (se descarta con aviso) y para no confundirla con la fecha de emisión.
+- `tests/test_ocr_label_variants.py` (22 pruebas). El arnés `scripts.ocr_qa` puntúa también `due_date` (desde ERD-ALERT-02).
+
+### Riesgos que quedan abiertos
+- Una etiqueta alternativa mal supuesta no rompe nada (sale `inferred` y se confirma), pero **no mejora la lectura** si la real es otra.
+- Una factura con **e-NCF/QR** podría traer números que el parser no distingue de montos; no hay forma de saberlo sin una muestra.
+- Las 3 etiquetas dudosas de arriba solo se cierran con facturas reales.
+
+### Para cerrar la tarea (lo único que falta)
+Mínimo 1 factura real por distribuidora —idealmente 3, una de ellas foto de celular— con nombre, dirección, NIC/contrato y medidor
+tapados (no tapar fechas, lecturas, consumo, total ni fecha límite), guardadas en `qa-private/` (ignorado por git) con su
+`expected.json`, y correr `cd services/api && uv run python -m scripts.ocr_qa ../../qa-private/<carpeta> --json informe.json`
+(criterio: 0 errores silenciosos). Instrucciones completas en `docs/qa/OCR_REAL_QA.md`.

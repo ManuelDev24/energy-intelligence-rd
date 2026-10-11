@@ -34,6 +34,12 @@ _TABLE_COLUMNS = {"meter": r"(?:no\.?\s*de\s*)?(?:contador|medidor)", "previous"
                   "current": r"lec\w{0,5}a\s*actual", "multiplier": r"m[uú]ltiplo", "consumption": r"consumo"}
 _ND = r"[^\d\n]"  # "no dígito" pero sin cruzar de línea (evita que \D arrastre números de otra línea)
 _AMOUNT_RE = re.compile(rf"total[\s/._-]+a[\s/._-]+pagar{_ND}{{0,20}}?(\d[\d,.\s]*\d)", re.IGNORECASE)
+# Etiquetas alternativas del total (SIN verificar con facturas reales; solo se usan si falta «TOTAL A PAGAR» y salen como
+# `inferred`). Nunca «subtotal», «total energía» ni «total impuestos»: no son el monto a pagar.
+_AMOUNT_ALT_RES = tuple(
+    re.compile(rf"(?<![a-z]){label}{_ND}{{0,20}}?(\d[\d,.\s]*\d)", re.IGNORECASE)
+    for label in (r"monto\s+a\s+pagar", r"valor\s+a\s+pagar", r"importe\s+a\s+pagar", r"total\s+(?:de\s+la\s+)?factura(?:do)?",
+                  r"total\s+general", r"importe\s+total", r"monto\s+total", r"total\s+(?:a\s+)?cobrar"))
 _KWH_RE = re.compile(rf"consum\w*{_ND}{{0,30}}?(\d[\d,.\s]*\d)\s*k\s*w\s*h", re.IGNORECASE)
 _PREV_RE = re.compile(rf"lec\w{{0,5}}a\s*(?:anterior|previa){_ND}{{0,20}}?(\d[\d,.\s]*\d)", re.IGNORECASE)
 _CURR_RE = re.compile(rf"lec\w{{0,5}}a\s*(?:actua\w*){_ND}{{0,20}}?(\d[\d,.\s]*\d)", re.IGNORECASE)
@@ -135,9 +141,17 @@ def parse_bill_text(text: str | None) -> OcrDraft:
             due_conf = "inferred"  # sin período con qué contrastarla
 
     amount = None
+    amount_conf: Confidence = "high"
     m = _AMOUNT_RE.search(text)
     if m:
         amount = _num(m.group(1))
+    if amount is None:
+        for alt in _AMOUNT_ALT_RES:
+            m = alt.search(text)
+            if m and _num(m.group(1)) is not None:
+                amount, amount_conf = _num(m.group(1)), "inferred"
+                warnings.append("El total se leyó de una etiqueta distinta de «TOTAL A PAGAR»; compárelo con la factura.")
+                break
     if amount is None:
         warnings.append("No se encontró el monto total a pagar.")
 
@@ -183,7 +197,7 @@ def parse_bill_text(text: str | None) -> OcrDraft:
 
     return OcrDraft(
         period_start=field(period_start, period_conf), period_end=field(period_end, period_conf), days=days_field,
-        kwh=field(kwh, kwh_conf), amount_dop=field(amount),
+        kwh=field(kwh, kwh_conf), amount_dop=field(amount, amount_conf),
         reading_previous=field(prev), reading_current=field(curr), due_date=field(due, due_conf),
         warnings=warnings, raw_text_excerpt=text.strip()[:500],
     )
