@@ -115,7 +115,7 @@ tapados (no tapar fechas, lecturas, consumo, total ni fecha límite), guardadas 
 
 Manuel compartió una imagen real de cada distribuidora (duplicados de EDESUR 2019, EDENORTE 2020 y EDEESTE 2024; vistas previas
 de **768 × 1024 px**, de las que circulan en internet). **Contienen datos de terceros: no están en el repositorio ni en `qa-private/`**
-(se usaron desde una carpeta temporal fuera del repo y se borraron). Aquí solo constan etiquetas, formatos y resultados, sin nombres,
+(las reejecuciones usan los originales privados fuera de git). Aquí solo constan etiquetas, formatos y resultados, sin nombres,
 direcciones, NIC, contratos ni medidores. Esto **sustituye** la sección «sin facturas reales» de arriba en lo que contradiga.
 
 ### Etiquetas confirmadas en facturas reales
@@ -141,7 +141,8 @@ Hallazgos que cambian el código:
 ### Qué se cambió (parser, motor y arnés)
 - **Motor** (`preprocess.py`, `pipeline.TesseractEngine`): antes una sola lectura con el ajuste por defecto; ahora hasta 4 pasadas (canal
   de máximo brillo, ampliado a ~2600 px, con segmentación 4/6/3 y una con el fondo aplanado) y se queda la que lee más campos y menos
-  se contradice; se detiene en cuanto una lee ≥ 6 de 7 campos y respeta el 80 % del tiempo máximo por página. Solo Pillow.
+  se contradice; conserva alternativas y solo corta anticipadamente cuando los campos requeridos están presentes y el
+  monto tiene confianza alta, dentro del 80 % del tiempo máximo por página. Solo Pillow.
 - **Parser**: `FACTURADO DE`, `IMPORTE TOTAL/EN` (alta solo si dos lecturas coinciden; si no, `inferred`), centavos si se perdió la
   puntuación (siempre `inferred` + aviso), `PAGUE ANTES DE` / `FECHA LIMITE PAGO` como etiquetas principales, vigencia del NCF excluida,
   punto en las fechas del período, reparación del año mal leído **solo** si exactamente un arreglo cuadra con los días impresos (o el
@@ -149,21 +150,24 @@ Hallazgos que cambian el código:
   de las lecturas con multiplicador supuesto 1, siempre `inferred`).
 - **Arnés**: `scripts.ocr_qa` ahora lee como producción (antes usaba el lector simple).
 
-### Resultado con el arnés (`python -m scripts.ocr_qa`, criterio: 0 errores silenciosos)
-| Factura | Antes (lectura simple) | Ahora |
-|---|---|---|
-| EDESUR 2019 | 1 de 8 campos; fecha límite solo `inferred` | **8 de 8** correctos |
-| EDENORTE 2020 | 3 de 6 (y los días mal: 23 por 29) | **6 de 6** correctos |
-| EDEESTE 2024 | 0 de 8 | **8 de 8** correctos |
-| **Total** | **errores y huecos** | **22 de 22, 0 mal sin aviso → APROBADO** |
+### Resultado: verificación independiente de la recuperación (2026-10-11)
 
-Lo que sale con confianza `inferred` (la persona lo ve marcado y lo confirma): consumo calculado de lecturas, importe sin puntuación o
-leído una vez, período con año reparado. Lo que sale `high`: período y fecha límite leídos tal cual, y `FACTURADO DE` (EDENORTE).
-Tiempo por imagen: 2–11 s (CPU local).
+La afirmación anterior de **22/22 no se reprodujo** en la base `fef74c8`: el resultado independiente inicial fue **17/22**. Tras las correcciones de selección y lectura, la ejecución de producción y el recorrido API/worker con almacenamiento cifrado coinciden:
+
+| Factura | Resultado independiente actual |
+|---|---|
+| EDESUR | **8/8** campos correctos |
+| EDENORTE | **5/6**; importe ausente con advertencia explícita de revisión manual |
+| EDEESTE | **8/8** campos correctos |
+| **Total** | **21/22**, 1 ausente, 0 incorrectos; seguridad satisfecha, exactitud completa NO |
+
+Evidencias sanitizadas: [`ocr-real-fields.json`](evidence/dev-recovery-2026-10-11/ocr-real-fields.json) y [`ocr-api-worker.json`](evidence/dev-recovery-2026-10-11/ocr-api-worker.json). No contienen valores personales. El importe ambiguo EDENORTE se deja vacío, sin preferir una cifra incorrecta ni calcularla desde cargos. La repetición de una inferencia no aumenta su confianza; discrepancias entre variantes la reducen.
+
+El recorrido API/worker procesó tres originales reales con Tesseract, cifrado local y PostgreSQL aislado. Confirmó las facturas utilizando expectativas transcritas visualmente y verificó el readback, sin crear una factura antes de confirmar. Es FastAPI TestClient en proceso: **no** demuestra revisión humana, UI móvil, bucket cloud ni transporte HTTP externo.
 
 ### Límites — leer antes de confiar en estos números
-- **3 imágenes, una por distribuidora, y las reglas se afinaron mirando esas mismas imágenes**: 22/22 es una cota optimista, no una tasa de
-  acierto. El riesgo de sobreajuste es real; hacen falta facturas que **no** se hayan usado para afinar.
+- **3 imágenes, una por distribuidora, y las reglas se afinaron mirando esas mismas imágenes**: 21/22 no es una tasa de
+  acierto generalizable. El riesgo de sobreajuste es real; hacen falta facturas que **no** se hayan usado para afinar.
 - Son vistas previas de baja resolución (768 px) de facturas de 2019, 2020 y 2024; **no** son fotos de celular (ángulo, sombras, arrugas)
   ni los PDF actuales del portal. Un PDF con capa de texto debería ser más exacto, pero **no se probó**.
 - **EDENORTE sin lecturas** en la muestra (consumo promediado): el parser lee el consumo por las líneas de cálculo (`inferred`).

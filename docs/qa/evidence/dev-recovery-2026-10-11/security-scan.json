@@ -1,0 +1,87 @@
+{
+  "scanner": "gitleaks 8.30.1",
+  "download_checksum_verified": true,
+  "worktree_files": 22,
+  "worktree_paths": [
+    "apps/mobile/maestro/auth-flow.yaml",
+    "apps/mobile/maestro/back.yaml",
+    "apps/mobile/src/maestroFlows.test.ts",
+    "apps/mobile/src/notifications/push.native-loading.test.ts",
+    "apps/mobile/src/notifications/push.ts",
+    "docs/qa/ERD-E2E-MAESTRO-AUTH.md",
+    "docs/qa/ERD-ONB-ACCEPTANCE.md",
+    "docs/qa/ERD-RELEASE-QA.md",
+    "docs/qa/OCR_FORMATOS_FACTURAS_RD.md",
+    "docs/qa/OCR_REAL_QA.md",
+    "docs/qa/evidence/dev-recovery-2026-10-11/api-gates.json",
+    "docs/qa/evidence/dev-recovery-2026-10-11/js-gates.json",
+    "docs/qa/evidence/dev-recovery-2026-10-11/native-ios-auth.json",
+    "docs/qa/evidence/dev-recovery-2026-10-11/ocr-api-worker.json",
+    "docs/qa/evidence/dev-recovery-2026-10-11/ocr-real-fields.json",
+    "docs/qa/evidence/dev-recovery-2026-10-11/security-scan.json",
+    "services/api/app/services/ocr/parser.py",
+    "services/api/app/services/ocr/pipeline.py",
+    "services/api/app/services/ocr/preprocess.py",
+    "services/api/app/services/ocr/qa.py",
+    "services/api/tests/test_ocr_qa.py",
+    "services/api/tests/test_ocr_selection_safety.py"
+  ],
+  "scans": [
+    {
+      "scope": "history",
+      "exit_code": 1,
+      "findings": 2,
+      "locations": [
+        {
+          "rule": "jwt",
+          "file": "packages/core/src/telemetry.test.ts",
+          "line": 6,
+          "description": "Uncovered a JSON Web Token, which may lead to unauthorized access to web applications and sensitive user data."
+        },
+        {
+          "rule": "generic-api-key",
+          "file": "services/api/tests/test_telemetry.py",
+          "line": 12,
+          "description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations."
+        }
+      ]
+    },
+    {
+      "scope": "working",
+      "exit_code": 1,
+      "findings": 1,
+      "locations": [
+        {
+          "rule": "generic-api-key",
+          "file": "/Users/macbookpro/.hermes/cache/scratch/erd-dev-recovery-20261011-000727/scan-input/docs/qa/evidence/dev-recovery-2026-10-11/native-ios-auth.json",
+          "line": 19,
+          "description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations."
+        }
+      ]
+    }
+  ],
+  "redacted": true,
+  "classified_findings": [
+    {
+      "file": "packages/core/src/telemetry.test.ts",
+      "line": 6,
+      "rule": "jwt",
+      "classification": "malformed synthetic JWT sanitization fixture, cannot authenticate HS256"
+    },
+    {
+      "file": "services/api/tests/test_telemetry.py",
+      "line": 12,
+      "rule": "generic-api-key",
+      "classification": "malformed synthetic JWT sanitization fixture, cannot authenticate HS256"
+    },
+    {
+      "file": "docs/qa/evidence/dev-recovery-2026-10-11/native-ios-auth.json",
+      "line": 19,
+      "rule": "generic-api-key",
+      "classification": "SHA256 source metadata, independently matches executed flow file"
+    }
+  ],
+  "real_secret_findings": 0,
+  "reviewed": true,
+  "allowlist_added": false
+}
