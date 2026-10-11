@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from app.api.auth_deps import authorize_home
 
-from app.api.v1 import alerts, anomalies, auth, bills, consumption, dashboard, documents, energy_score, equipment, goals, homes, legal, outages, readings, recommendations, sharing, tariffs
+from app.api.v1 import admin, alerts, anomalies, auth, bills, consumption, dashboard, documents, energy_score, equipment, goals, homes, legal, outages, readings, recommendations, sharing, tariffs
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
+api_router.include_router(admin.router)
 api_router.include_router(homes.router, dependencies=[Depends(authorize_home)])
 api_router.include_router(bills.router, dependencies=[Depends(authorize_home)])
 api_router.include_router(dashboard.router, dependencies=[Depends(authorize_home)])

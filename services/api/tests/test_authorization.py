@@ -110,7 +110,9 @@ def test_private_route_inventory_remains_covered(auth_client):
     assert actual == {(method, path.split('?')[0]) for method, path, _ in tested}
     # Únicas rutas fuera de /homes y /auth: tarifas y versiones legales (públicas) y aceptar invitación (exige sesión; su
     # comportamiento sin token se prueba en test_home_sharing).
-    public = {path for path in paths if path.startswith('/api/v1/') and not path.startswith('/api/v1/homes')}
+    # /admin/* exige bearer real y scopes; se verifica por separado en test_admin_rbac.py.
+    public = {path for path in paths if path.startswith('/api/v1/') and not path.startswith('/api/v1/homes')
+              and not path.startswith('/api/v1/admin')}
     assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal', '/api/v1/invitations/accept'}
     # Rutas /auth sin access token (las credenciales o el token opaco van en el cuerpo) más las que lo exigen
     # (/me y el cambio de contraseña, que además reautentica).

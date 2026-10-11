@@ -120,6 +120,16 @@ def test_percentage_downgrade_refuses_loss_of_extreme_values(migrated, alembic_c
             ScriptDirectory.from_config(alembic_cfg).get_current_head()
 
 
+# Admin RBAC de Módulo 4: migración 0024 sigue a 0023; no alterar el head de Módulo 1.
+ADMIN_TABLES = {"admin_roles", "admin_scopes", "admin_role_scopes", "admin_role_assignments", "admin_audit_events"}
+
+def test_0024_admin_rbac_roundtrip(migrated, alembic_cfg):
+    assert ADMIN_TABLES <= _tables(migrated)
+    command.downgrade(alembic_cfg, "0023")
+    assert not (ADMIN_TABLES & _tables(migrated))
+    command.upgrade(alembic_cfg, "head")
+    assert ADMIN_TABLES <= _tables(migrated)
+
 PHASE2_TABLES = {"meter_readings", "home_goals", "tariffs", "tariff_fixed_charges", "tariff_blocks"}
 OFFICIAL = ("SIE-121-2026-TF",)
 

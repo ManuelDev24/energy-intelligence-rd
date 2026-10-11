@@ -59,6 +59,12 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint --workspace apps/web
       - run: npm test
+      - run: npm run test --workspace apps/admin
+      - run: npm run e2e:safety --workspace apps/admin
+      - run: npm run build --workspace apps/admin
+        env:
+          ADMIN_API_BASE_URL: https://api.example.invalid
+          ADMIN_ORIGIN: https://admin.example.invalid
       # Producción exige auth activa y orígenes HTTPS (next.config.mjs falla cerrado sin ellos).
       # Valores de marcador solo para compilar; no apuntan a ningún servicio real.
       - run: npm run build --workspace apps/web

@@ -16,6 +16,13 @@
 - El toolchain móvil fue corregido: `npm run test --workspace apps/mobile` pasó 39 pruebas y `npm run typecheck --workspace apps/mobile` pasó; API 68 pruebas, web 35 pruebas/lint/typecheck/build verdes.
 - Se consolidó la contabilidad del MVP en `docs/REMAINING_WORK_ORDERED.md`: 13 tareas totales, 7 completadas y 6 pendientes; cuatro tareas completadas adicionales llevan el MVP a 84.6%.
 
+## 2026-10-10 — Auditoría del producto completo
+- Se verificó `origin/Dev` en `92d39f5`, CI `38082199280` verde y cero PR abiertos.
+- Se revisaron plan maestro, API/BD, web, móvil, QA, infraestructura y fases 4–8 en tres auditorías paralelas y comprobaciones directas.
+- Se creó `docs/COMPLETE_PROJECT_GAP_ANALYSIS_2026-10-10.md` con 59 paquetes ordenados por dependencia: 19 parciales y 40 no construidos.
+- Validación mecánica: numeración 1–59 continua, 59 IDs únicos y `git diff --check` limpio.
+- `pygount` no estaba instalado; se omitió el conteo LOC porque no es necesario para el inventario funcional.
+
 ## 2026-10-04 — Continuación integral autorizada
 - Revalidación ejecutada bajo Node24: npm test/typecheck/lint y build web exit 0. API pytest 134 pasan usando energy_rd_baseline_test; datos piloto no se usan para pruebas destructivas.
 - Evidencia: ~/.hermes/cache/scratch/energy-fullscope-20261004/baseline-results.json y baseline-*.log.
@@ -48,4 +55,13 @@
 - Migraciones nuevas `0022` (recomendaciones) y `0023` (apagones, con restricción de exclusión contra solapes); ida y vuelta verificadas, sin deriva (`alembic check`).
 - Verificación: API 1082 pasan; web 816 (+5 omitidas); móvil 541 (+11 omitidas); core 85; contratos 17; cliente 66; `next build`, `tsc`, `eslint`, contratos y arquitectura OK.
 - No ejecutado: flujos Maestro (sin emulador), CI remoto del job nuevo. Las 8 tareas externas (OCR real, Maestro, a11y nativa, release, legal, deploy, observabilidad, DR) siguen abiertas.
+
+## 2026-10-11 — Módulo 2: ERD-ADM-RBAC + ERD-OCR-03 (local en `Dev`, sin publicar)
+- Capa administrativa separada de los permisos domésticos: roles/scopes fijos (migración `0024`), auditoría inmutable (triggers `BEFORE UPDATE/DELETE/TRUNCATE`), bootstrap CLI del primer `super_admin` (sin endpoint HTTP), rutas `/api/v1/admin/*`, consola `apps/admin` (Next.js) con BFF de mismo origen y cookies `HttpOnly`/`SameSite=Strict` (nunca tokens en `localStorage`).
+- Cola administrativa de OCR (`ERD-OCR-03`, migración `0025`): proyección saneada de estados (`queued/processing/completed/failed_retryable/failed_permanent/dead_letter/cancelled`), reintento idempotente con motivo obligatorio saneado contra patrones de credenciales/PII, fencing por generación para evitar que un resultado tardío del worker pise un reintento o una confirmación.
+- Trabajo hecho con delegación en paralelo (implementación + revisión de seguridad independiente + port a `Dev` actual tras detectar que la primera pasada se había basado en un commit local desactualizado) y verificado por el coordinador, no solo reportado por los workers.
+- Hallazgos corregidos con prueba RED→GREEN: carrera de revocación del último `super_admin` (dos revocaciones concurrentes podían dejar cero activos), bootstrap que permitía promover un segundo `super_admin` tras el primero, auditoría que marcaba éxito de autorización como si fuera éxito de la operación, filtro `active` que incluía asignaciones vencidas, FK de auditoría que chocaba con la inmutabilidad al borrar la cuenta del actor.
+- Bug real encontrado SOLO al ejecutar el E2E Playwright contra el stack vivo (Postgres + FastAPI + Next, no mocks): en `next dev`, `request.url` reporta el host `localhost` aunque el servidor escuche en otro host; el BFF debía confiar en el header `Host`, no en `url.origin`, para el chequeo de mismo origen (si no, todo devolvía 403). Corregido con prueba de regresión.
+- Verificación final sobre canónico (tras fast-forward `Dev` a `origin/Dev` `5e761c6`, 53 commits): API 1081 pasan (omitidos solo `test_ocr_prod`/`test_ocr_synthetic_layouts` por falta de la fuente DejaVu en este Mac, no relacionado al cambio); arquitectura y contratos OK; migraciones `0024`→`0025` reversibles; typecheck/lint/test de todos los workspaces OK; build de producción de `apps/web` y `apps/admin` OK; consola admin 17/17 unit + **E2E real 2/2** (usuario normal → 403, admin asigna/revoca/audita/cierra sesión por UI, nunca localStorage).
+- Pendiente: revisión legal de retención del `actor_user_id` seudónimo en auditoría; el saneado del campo `reason` es heurístico (no prueba formal de ausencia de PII); CI remoto del job nuevo `apps/admin` no ejecutado en GitHub todavía.
 

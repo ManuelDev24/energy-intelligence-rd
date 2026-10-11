@@ -778,3 +778,108 @@ export const DeviceRemoveInSchema = z.object({
   "token": z.string().min(20).max(200)
 });
 export type DeviceRemoveIn = z.infer<typeof DeviceRemoveInSchema>;
+
+export const AdminOcrJobOutSchema = z.object({
+  "id": z.number().finite().int(),
+  "document_id": z.string().uuid(),
+  "status": z.string(),
+  "attempts": z.number().finite().int(),
+  "max_attempts": z.number().finite().int(),
+  "run_at": z.string().datetime({ offset: true }),
+  "created_at": z.string().datetime({ offset: true }),
+  "finished_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "error_code": z.union([z.string(), z.null()])
+});
+export type AdminOcrJobOut = z.infer<typeof AdminOcrJobOutSchema>;
+
+export const AdminOcrJobsPageSchema = z.object({
+  "items": z.array(AdminOcrJobOutSchema),
+  "total": z.number().finite().int(),
+  "limit": z.number().finite().int(),
+  "offset": z.number().finite().int()
+});
+export type AdminOcrJobsPage = z.infer<typeof AdminOcrJobsPageSchema>;
+
+export const OcrOperationReasonSchema = z.object({
+  "reason": z.string().min(1).max(500)
+});
+export type OcrOperationReason = z.infer<typeof OcrOperationReasonSchema>;
+
+export const AuditEventOutSchema = z.object({
+  "id": z.string().uuid(),
+  "actor_user_id": z.union([z.string().uuid(), z.null()]),
+  "action": z.string(),
+  "resource": z.string(),
+  "scope_used": z.union([z.string(), z.null()]),
+  "reason": z.union([z.string(), z.null()]),
+  "result": z.string(),
+  "request_id": z.union([z.string(), z.null()]),
+  "created_at": z.string().datetime({ offset: true })
+});
+export type AuditEventOut = z.infer<typeof AuditEventOutSchema>;
+
+export const AuditEventsPageSchema = z.object({
+  "items": z.array(AuditEventOutSchema),
+  "total": z.number().finite().int(),
+  "limit": z.number().finite().int(),
+  "offset": z.number().finite().int()
+});
+export type AuditEventsPage = z.infer<typeof AuditEventsPageSchema>;
+
+export const MyAccessOutSchema = z.object({
+  "user_id": z.string().uuid(),
+  "email": z.string(),
+  "roles": z.array(z.string()),
+  "scopes": z.array(z.string())
+});
+export type MyAccessOut = z.infer<typeof MyAccessOutSchema>;
+
+export const RoleAssignmentCreateSchema = z.object({
+  "user_id": z.string().uuid(),
+  "role_name": z.string().min(1).max(32),
+  "reason": z.string().min(1).max(500),
+  "expires_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
+});
+export type RoleAssignmentCreate = z.infer<typeof RoleAssignmentCreateSchema>;
+
+export const RoleAssignmentOutSchema = z.object({
+  "id": z.string().uuid(),
+  "user_id": z.string().uuid(),
+  "role_name": z.string(),
+  "assigned_by_user_id": z.union([z.string().uuid(), z.null()]),
+  "reason": z.string(),
+  "granted_at": z.string().datetime({ offset: true }),
+  "expires_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "revoked_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "revoked_by_user_id": z.union([z.string().uuid(), z.null()]),
+  "revoke_reason": z.union([z.string(), z.null()]),
+  "status": z.string()
+});
+export type RoleAssignmentOut = z.infer<typeof RoleAssignmentOutSchema>;
+
+export const RoleAssignmentRevokeSchema = z.object({
+  "reason": z.string().min(1).max(500)
+});
+export type RoleAssignmentRevoke = z.infer<typeof RoleAssignmentRevokeSchema>;
+
+export const RoleAssignmentsPageSchema = z.object({
+  "items": z.array(RoleAssignmentOutSchema),
+  "total": z.number().finite().int(),
+  "limit": z.number().finite().int(),
+  "offset": z.number().finite().int()
+});
+export type RoleAssignmentsPage = z.infer<typeof RoleAssignmentsPageSchema>;
+
+export const RoleOutSchema = z.object({
+  "id": z.string().uuid(),
+  "name": z.string(),
+  "description": z.string(),
+  "scopes": z.array(z.string())
+});
+export type RoleOut = z.infer<typeof RoleOutSchema>;
+
+export const ScopeOutSchema = z.object({
+  "name": z.string(),
+  "description": z.string()
+});
+export type ScopeOut = z.infer<typeof ScopeOutSchema>;
