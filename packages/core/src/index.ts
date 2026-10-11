@@ -9,3 +9,6 @@ export * from './trend';
 export * from './alerts';
 export * from './equipmentCatalog';
 export * from './telemetry';
+export * from './recommendations';
+export * from './energyScore';
+export * from './outages';

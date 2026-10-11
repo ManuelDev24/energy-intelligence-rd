@@ -12,8 +12,10 @@ from app.models.document import Document, DocumentOcr, StorageDeletion
 from app.models.goal import HomeGoal
 from app.models.job import Job
 from app.models.notification import DeviceToken, Notification
+from app.models.outage import PowerOutage
 from app.models.reading import MeterReading
+from app.models.recommendation import Recommendation
 from app.models.tariff import TARIFF_DISTRIBUTORS, Tariff, TariffBlock, TariffFixedCharge
 
-__all__ = ["Alert", "Anomaly", "AlertSettings", "Bill", "Equipment", "Home", "Contract", "DISTRIBUTORS", "DeviceToken", "Document", "DocumentOcr", "Notification", "StorageDeletion", "HomeGoal", "Job", "MeterReading",
+__all__ = ["Alert", "Anomaly", "AlertSettings", "Bill", "Equipment", "Home", "Contract", "DISTRIBUTORS", "DeviceToken", "Document", "DocumentOcr", "Notification", "StorageDeletion", "HomeGoal", "Job", "MeterReading", "PowerOutage", "Recommendation",
            "TARIFF_DISTRIBUTORS", "Tariff", "TariffBlock", "TariffFixedCharge"]

@@ -16,7 +16,7 @@ it('BillCard: nombres accesibles con el período y eliminar solo en facturas man
 it('RecommendationCard no pinta nada sin texto de la API y se usa en el panel', () => {
   expect(read('./RecommendationCard.tsx')).toContain('if (!text) return null;');
   const dashboard = read('../features/dashboard/DashboardScreen.tsx');
-  expect(dashboard).toContain('<RecommendationCard text={recommendation} />');
+  expect(dashboard).toContain('<RecommendationCard text={recommendation} onPress={onOpenSavings} />');
   expect(dashboard).not.toContain('<Card title="Recomendación"');
 });
 it('BottomSheet aísla el fondo para el lector de pantalla, se cierra con «atrás» y siempre tiene botón Cerrar', () => {

@@ -18,7 +18,7 @@ from app.schemas.goal import GoalMetricProgress, GoalOut, GoalProgressOut
 from app.schemas.tariff import TariffRef
 from app.services import calculations as calc
 from app.services import consumption_calc as cc
-from app.services import tariff_calc
+from app.services import recommendations, tariff_calc
 from app.services.audit import record_change, snapshot
 from app.services.consumption import TIMEZONE_NAME, intervals, load_points, local_range
 from app.services.tariffs import resolve_tariff
@@ -51,6 +51,8 @@ def save_goal(db, home_id, payload):
             # Canónico como Numeric(12,2): la auditoría guarda "250.00", no "250".
             setattr(goal, key, None if value is None else value.quantize(Decimal("0.01")))
         record_change(db, home_id, goal, "update" if before else "create", before)
+        db.flush()
+        recommendations.refresh_after_write(db, home_id)
     return goal
 
 

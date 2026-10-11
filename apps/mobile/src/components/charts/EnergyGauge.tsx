@@ -1,13 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import { scoreBand } from '@energyrd/core';
 import { chartColors, colors, spacing } from '../../theme';
 import { EmptyState } from '../states';
 import { gaugeArcPath, scoreFraction } from './chartMath';
 
 /**
- * CH-09 — Energy Score 0–100 en un semicírculo. Aún NO se usa en pantallas: la API no expone
- * un puntaje (ERD-SCORE-01). Sin `score` muestra un estado vacío; nunca un valor inventado.
+ * CH-09 — Energy Score 0–100 en un semicírculo. El puntaje lo calcula el backend (ERD-SCORE-01).
+ * Sin `score` muestra un estado vacío; nunca un valor inventado.
  */
 export function EnergyGauge({
   score,
@@ -33,8 +34,9 @@ export function EnergyGauge({
   const h = cy + stroke / 2;
   const value = Math.round(fraction * 100);
   // Banda de color por tramos; el número y el texto también comunican el nivel.
-  const color = value >= 70 ? chartColors.real : value >= 40 ? colors.warning : colors.danger;
-  const level = value >= 70 ? 'bueno' : value >= 40 ? 'mejorable' : 'bajo';
+  const band = scoreBand(value);
+  const color = band.key === 'good' ? chartColors.real : band.key === 'fair' ? colors.warning : colors.danger;
+  const level = band.word.toLowerCase();
 
   return (
     <View

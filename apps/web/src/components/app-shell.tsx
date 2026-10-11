@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronsUpDown, Gauge, Home as HomeIcon, NotebookPen, Plug, Receipt, BarChart3, Target, UserRound } from "lucide-react";
+import { Bell, ChevronsUpDown, Gauge, Home as HomeIcon, NotebookPen, PiggyBank, Plug, Zap, Receipt, BarChart3, Target, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -17,6 +17,8 @@ const NAV = [
   { href: "/goal", label: "Meta", icon: Target, sideOnly: true },
   { href: "/equipment", label: "Equipos", icon: Plug },
   { href: "/alerts", label: "Alertas", icon: Bell },
+  { href: "/savings", label: "Ahorro", icon: PiggyBank, sideOnly: true },
+  { href: "/outages", label: "Apagones", icon: Zap, sideOnly: true },
   { href: "/profile", label: "Perfil", icon: UserRound, sideOnly: true },
 ] as const;
 

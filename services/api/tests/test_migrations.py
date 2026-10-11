@@ -245,3 +245,36 @@ def test_0021_existing_equipment_becomes_other_without_guessing_and_downgrade_ro
     with migrated.connect() as c:
         assert c.execute(text("SELECT name FROM equipment")).scalar_one() == "Aire sala"
     command.upgrade(alembic_cfg, "head")
+
+
+def test_0022_recommendations_table_roundtrips_and_cascades_with_the_home(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0021")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT to_regclass('public.recommendations')")).scalar() is None
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'r','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO recommendations(id,home_id,rule_id,rule_version,ruleset_version,category,title,summary,action,confidence,dedupe_key) "
+                       "VALUES(gen_random_uuid(),:h,'ac-one-hour',1,1,'equipment','t','s','a','medium','k')"), {"h": hid})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM homes WHERE id=:h"), {"h": hid})
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM recommendations")).scalar() == 0
+
+
+def test_0023_power_outages_roundtrips_and_the_database_blocks_overlaps(migrated, alembic_cfg):
+    from sqlalchemy.exc import IntegrityError
+    command.downgrade(alembic_cfg, "0022")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT to_regclass('public.power_outages')")).scalar() is None
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'o','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO power_outages(id,home_id,started_at,ended_at) VALUES(gen_random_uuid(),:h,'2026-09-01T10:00Z','2026-09-01T12:00Z')"), {"h": hid})
+    with pytest.raises(IntegrityError):
+        with migrated.begin() as c:
+            c.execute(text("INSERT INTO power_outages(id,home_id,started_at) VALUES(gen_random_uuid(),:h,'2026-09-01T11:00Z')"), {"h": hid})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM homes WHERE id=:h"), {"h": hid})
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM power_outages")).scalar() == 0

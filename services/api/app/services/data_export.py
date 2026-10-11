@@ -10,7 +10,7 @@ from pydantic_core import to_jsonable_python
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
-from app.models import (Alert, AlertSettings, Anomaly, Bill, Contract, DeviceToken, Document, Equipment, Home, HomeGoal, MeterReading,
+from app.models import (Alert, AlertSettings, Anomaly, Bill, Contract, PowerOutage, Recommendation, DeviceToken, Document, Equipment, Home, HomeGoal, MeterReading,
                         Notification)
 from app.models.bill_detail import BillItem
 from app.models.auth import AuthSession, HomeMember, NotificationPreference, User
@@ -51,6 +51,8 @@ def export_user_data(db: Session, user: User, now: datetime | None = None) -> di
             "bills": bills,
             "equipment": _rows(db, Equipment, home.id, (Equipment.created_at, Equipment.id)),
             "readings": _rows(db, MeterReading, home.id, (MeterReading.read_at, MeterReading.id)),
+            "outages": _rows(db, PowerOutage, home.id, (PowerOutage.started_at, PowerOutage.id)),
+            "recommendations": _rows(db, Recommendation, home.id, (Recommendation.created_at, Recommendation.id), exclude=frozenset({"dedupe_key"})),
             "alerts": _rows(db, Alert, home.id, (Alert.created_at, Alert.id), exclude=frozenset({"dedupe_key"})),
             "anomalies": _rows(db, Anomaly, home.id, (Anomaly.period_start, Anomaly.id), exclude=frozenset({"dedupe_key"})),
             "documents": _rows(db, Document, home.id, (Document.created_at, Document.id),

@@ -14,6 +14,8 @@
     "test:all": "npm test && npm run test:api",
     "db:migrate": "cd services/api && uv run alembic upgrade head",
     "db:generate": "cd services/api && uv run alembic revision --autogenerate",
+    "e2e": "npm run e2e --workspace apps/web",
+    "e2e:smoke": "npm run e2e:smoke --workspace apps/web",
     "contracts:generate": "cd services/api && uv run python -m scripts.generate_contracts",
     "contracts:check": "cd services/api && uv run python -m scripts.generate_contracts --check",
     "audit:monitor": "node scripts/audit-monitor.mjs",

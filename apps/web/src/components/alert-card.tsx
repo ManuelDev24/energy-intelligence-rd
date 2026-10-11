@@ -27,6 +27,7 @@ interface AlertCardProps {
   announce?: boolean;
   as?: "article" | "li" | "div";
   className?: string;
+  "data-testid"?: string;
 }
 
 /** Tarjeta de alerta/aviso en 4 tonos: crítica, advertencia, información y ahorro. */
@@ -40,6 +41,7 @@ export function AlertCard({
   announce = false,
   as: Tag = "article",
   className,
+  "data-testid": testId,
 }: AlertCardProps) {
   const s = SEVERITY[tone];
   const Icon = ICON[tone];
@@ -50,6 +52,7 @@ export function AlertCard({
       role={announce ? "alert" : Tag === "li" ? undefined : "article"}
       aria-label={title ? `${s.short}: ${title}` : s.short}
       data-tone={tone}
+      data-testid={testId}
       className={cn("flex items-start gap-3 rounded-xl border p-4", className)}
       style={{ backgroundColor: s.bg, borderColor: s.border }}
     >

@@ -8,6 +8,7 @@ from app.models import Bill, Equipment, Home
 from app.schemas.dashboard import Metric
 from app.schemas.equipment import EquipmentEstimateItem, EquipmentEstimateOut
 from app.services import calculations as calc
+from app.services import recommendations
 from app.services.audit import record_change, snapshot
 from app.services.errors import NotFound
 from app.services.transactions import require_home, write_transaction
@@ -35,6 +36,8 @@ def save_equipment(db, home_id, payload, equipment_id=None):
             setattr(item, key, value)
         db.add(item)
         record_change(db, home_id, item, "update" if equipment_id else "create", before)
+        db.flush()
+        recommendations.refresh_after_write(db, home_id)
     return item
 
 
@@ -44,6 +47,8 @@ def delete_equipment(db, home_id, equipment_id):
         item = get_equipment(db, home_id, equipment_id)
         record_change(db, home_id, item, "delete", snapshot(item))
         db.delete(item)
+        db.flush()
+        recommendations.refresh_after_write(db, home_id)
 
 NOTE = ("Estimación por potencia nominal × horas de uso declaradas × 30 días. "
         "No es una medición: el consumo real depende del uso, la eficiencia y el ciclo de cada equipo. "

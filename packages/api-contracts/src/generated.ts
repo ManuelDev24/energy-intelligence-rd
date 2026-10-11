@@ -640,6 +640,129 @@ export const AnomalyStatusInSchema = z.object({
 });
 export type AnomalyStatusIn = z.infer<typeof AnomalyStatusInSchema>;
 
+export const RecommendationRecordSchema = z.object({
+  "id": z.string().uuid(),
+  "home_id": z.string().uuid(),
+  "equipment_id": z.union([z.string().uuid(), z.null()]),
+  "anomaly_id": z.union([z.string().uuid(), z.null()]),
+  "rule_id": z.string(),
+  "rule_version": z.number().finite().int(),
+  "ruleset_version": z.number().finite().int(),
+  "category": z.enum(["equipment", "goal", "anomaly", "data"]),
+  "title": z.string(),
+  "summary": z.string(),
+  "action": z.string(),
+  "confidence": z.enum(["low", "medium", "high"]),
+  "status": z.enum(["active", "applied", "dismissed", "resolved"]),
+  "savings_kwh_month": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "savings_dop_month": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "assumptions": z.array(z.string()),
+  "evidence": z.record(z.string(), z.string()),
+  "created_at": z.string().datetime({ offset: true }),
+  "last_seen_at": z.string().datetime({ offset: true }),
+  "status_changed_at": z.string().datetime({ offset: true })
+});
+export type RecommendationRecord = z.infer<typeof RecommendationRecordSchema>;
+
+export const RecommendationStatusInSchema = z.object({
+  "status": z.enum(["active", "applied", "dismissed"])
+});
+export type RecommendationStatusIn = z.infer<typeof RecommendationStatusInSchema>;
+
+export const RecommendationListOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "ruleset_version": z.number().finite().int(),
+  "items": z.array(RecommendationRecordSchema),
+  "total_savings_kwh_month": z.union([MetricSchema, z.null()]),
+  "total_savings_dop_month": z.union([MetricSchema, z.null()]),
+  "note": z.string()
+});
+export type RecommendationListOut = z.infer<typeof RecommendationListOutSchema>;
+
+export const ScoreComponentOutSchema = z.object({
+  "key": z.enum(["consumption", "efficiency", "habits", "consistency"]),
+  "label": z.string(),
+  "weight": z.number().finite().int(),
+  "score": z.union([z.number().finite().int(), z.null()]),
+  "available": z.boolean(),
+  "summary": z.string(),
+  "detail": z.string(),
+  "inputs": z.record(z.string(), z.string()),
+  "reasons": z.array(z.string()),
+  "next_step": z.string()
+});
+export type ScoreComponentOut = z.infer<typeof ScoreComponentOutSchema>;
+
+export const EnergyScoreOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "score_version": z.number().finite().int(),
+  "as_of": z.string().date(),
+  "status": z.enum(["ok", "insufficient_data"]),
+  "score": z.union([z.number().finite().int(), z.null()]),
+  "band": z.union([z.enum(["good", "fair", "poor"]), z.null()]),
+  "band_label": z.union([z.string(), z.null()]),
+  "quality": z.literal("INFERRED"),
+  "coverage_pct": z.number().finite().int(),
+  "components": z.array(ScoreComponentOutSchema),
+  "reasons": z.array(z.string()),
+  "method": z.string(),
+  "note": z.string()
+});
+export type EnergyScoreOut = z.infer<typeof EnergyScoreOutSchema>;
+
+export const OutageInSchema = z.object({
+  "started_at": z.string().datetime({ offset: true }),
+  "ended_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null),
+  "cause": z.enum(["unknown", "utility_fault", "scheduled", "weather", "home_fault"]).default("unknown"),
+  "note": z.union([z.string().max(255), z.null()]).default(null)
+});
+export type OutageIn = z.infer<typeof OutageInSchema>;
+
+export const OutageOutSchema = z.object({
+  "id": z.string().uuid(),
+  "home_id": z.string().uuid(),
+  "started_at": z.string().datetime({ offset: true }),
+  "ended_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "cause": z.enum(["unknown", "utility_fault", "scheduled", "weather", "home_fault"]),
+  "note": z.union([z.string(), z.null()]),
+  "source": z.literal("manual"),
+  "created_at": z.string().datetime({ offset: true }),
+  "updated_at": z.string().datetime({ offset: true }),
+  "ongoing": z.boolean(),
+  "duration_minutes": z.union([z.number().finite().int(), z.null()])
+});
+export type OutageOut = z.infer<typeof OutageOutSchema>;
+
+export const OutageMonthSchema = z.object({
+  "month": z.string(),
+  "count": z.number().finite().int(),
+  "total_minutes": z.number().finite().int(),
+  "longest_minutes": z.number().finite().int(),
+  "average_minutes": z.union([z.number().finite().int(), z.null()]),
+  "ongoing": z.number().finite().int()
+});
+export type OutageMonth = z.infer<typeof OutageMonthSchema>;
+
+export const OutageTotalsSchema = z.object({
+  "count": z.number().finite().int(),
+  "total_minutes": z.number().finite().int(),
+  "longest_minutes": z.number().finite().int(),
+  "average_minutes": z.union([z.number().finite().int(), z.null()]),
+  "ongoing": z.number().finite().int()
+});
+export type OutageTotals = z.infer<typeof OutageTotalsSchema>;
+
+export const OutageSummaryOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "timezone": z.string(),
+  "from_month": z.string(),
+  "to_month": z.string(),
+  "months": z.array(OutageMonthSchema),
+  "totals": OutageTotalsSchema,
+  "note": z.string()
+});
+export type OutageSummaryOut = z.infer<typeof OutageSummaryOutSchema>;
+
 export const BillPaymentInSchema = z.object({
   "paid": z.boolean()
 });

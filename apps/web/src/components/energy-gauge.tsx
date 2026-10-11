@@ -1,13 +1,12 @@
-import { tokens } from "@energyrd/core";
+import { scoreBand, tokens } from "@energyrd/core";
 import { cn } from "@/lib/cn";
 
 const c = tokens.color;
 
 /** Banda del valor: color + palabra (el color nunca va solo). Bandas orientativas, configurables. */
 export function gaugeBand(value: number): { word: string; color: string } {
-  if (value >= 70) return { word: "Bueno", color: c.success };
-  if (value >= 40) return { word: "Regular", color: c.notice };
-  return { word: "Mejorable", color: c.warning };
+  const { key, word } = scoreBand(value);   // umbrales compartidos con el móvil y con el backend (ERD-SCORE-01)
+  return { word, color: key === "good" ? c.success : key === "fair" ? c.notice : c.warning };
 }
 
 interface EnergyGaugeProps {
@@ -21,7 +20,7 @@ interface EnergyGaugeProps {
 
 /**
  * CH-09: medidor semicircular 0–100. Expone role="meter" con su valor para lectores de pantalla.
- * Aún no se usa en ninguna página: no existe API de puntuación y no se inventan datos.
+ * Se alimenta con el Energy Score del backend (ERD-SCORE-01); sin puntaje no se dibuja (ver `EnergyScoreCard`).
  */
 export function EnergyGauge({ value, label, helper, className }: EnergyGaugeProps) {
   const v = Math.round(Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0)));

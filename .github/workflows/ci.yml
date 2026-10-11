@@ -67,6 +67,59 @@ jobs:
           API_BASE_URL: https://api.example.invalid
           WEB_ORIGIN: https://app.example.invalid
 
+  e2e-web:
+    name: e2e web (Playwright vs PostgreSQL + API + worker reales)
+    runs-on: ubuntu-latest
+    needs: [api]
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: energy_rd
+          POSTGRES_USER: energy
+          POSTGRES_PASSWORD: change_me_local_only
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U energy -d energy_rd"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CI: "true"
+      # Base EXCLUSIVA de las pruebas (`_e2e`): la guarda de e2e_prepare rechaza cualquier otro nombre.
+      E2E_DATABASE_URL: postgresql+psycopg://energy:change_me_local_only@localhost:5433/energy_rd_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar motor OCR e idiomas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng
+      - run: uv sync --frozen
+        working-directory: services/api
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Playwright (base, API, worker y web se levantan y se apagan solos)
+        run: npm run e2e --workspace apps/web
+      - name: Depurar evidencias (sin tokens, cookies, contraseñas ni correos; sin videos)
+        if: failure()
+        run: python3 scripts/scrub_e2e_artifacts.py apps/web/e2e/.results apps/web/e2e/.report apps/web/e2e/.tmp
+      - name: Publicar diagnósticos (solo si falló)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-diagnostics
+          path: |
+            apps/web/e2e/.results
+            apps/web/e2e/.report
+            apps/web/e2e/.tmp/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
   mobile-e2e:
     name: web + mobile (recorridos vs API real)
     runs-on: ubuntu-latest
