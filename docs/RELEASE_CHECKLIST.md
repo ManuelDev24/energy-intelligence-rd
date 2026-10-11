@@ -54,6 +54,17 @@ Seguir `docs/DEMO_GUIDE.md` §2 en un directorio nuevo, **sin** reutilizar `node
 - [ ] Smoke test móvil (Maestro) en Android y/o iOS pasa — `docs/qa/ERD-MOB-QUALITY.md`.
 - [ ] Verificación web (ERD-WEB-QUALITY) pasa.
 
+### 5b. Funcionalidad añadida desde el piloto (cuentas reales; ver `docs/qa/ERD-RELEASE-QA.md`)
+
+- [ ] Worker en ejecución (`python -m scripts.jobs stats` sin muertos ni concesiones vencidas) y bucket privado configurado.
+- [ ] Subir una foto/PDF → el original queda cifrado en el bucket, el borrador aparece, nada se guarda sin confirmar.
+- [ ] Alertas: variación, pago por vencer (con fecha límite), factura faltante; correo de aviso recibido **sin cifras**.
+- [ ] Anomalías: aparecen y se pueden revisar/descartar; las descartadas no reaparecen.
+- [ ] Equipos: tipo, marca, modelo, icono; los porcentajes suman 100 %.
+- [ ] Preferencias de avisos (correo/push) se respetan; borrar la cuenta borra tokens y avisos.
+- [ ] Push en un teléfono real (solo con build nativo, FCM/APNs y `projectId`): **no verificado hasta hoy**.
+- [ ] `python -m scripts.storage_reconcile` sale con 0.
+
 ## 6. Seguridad y datos
 
 - [ ] Sin secretos en el repo (`.env` no versionado; `.env.example` solo con placeholders `change_me_local_only`).

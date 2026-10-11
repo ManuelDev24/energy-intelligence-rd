@@ -171,8 +171,9 @@ appId: ${APP_ID || 'host.exp.Exponent'}
 - assertVisible: ".*Crítica · nueva.*"
 - takeScreenshot: evidence/06-alertas
 - tapOn: "Descartar"
+# ERD-ALERT-02: pueden quedar alertas por el paso del tiempo (factura faltante); lo que debe desaparecer es la crítica.
 - extendedWaitUntil:
-    visible: ".*Sin alertas.*"
+    notVisible: ".*Crítica · nueva.*"
     timeout: 20000
 
 # 6. Equipos: estimado etiquetado

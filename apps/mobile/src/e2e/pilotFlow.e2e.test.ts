@@ -51,7 +51,7 @@ run('recorrido piloto contra API real', () => {
     const d = await api.getDashboard(home.id);
     expect(d.data_status.bills_count).toBe(2);
     expect(d.alert).toBeNull();
-    expect(await api.listAlerts(home.id)).toEqual([]);
+    expect((await api.listAlerts(home.id)).filter((a) => a.type === 'bill_variation')).toEqual([]);
   });
 
   it('3. rechaza una factura inválida con errores por campo', async () => {
@@ -81,11 +81,14 @@ run('recorrido piloto contra API real', () => {
   });
 
   it('6. la alerta se persiste como no leída y se puede leer y descartar', async () => {
-    const [alert] = await api.listAlerts(home.id);
+    // ERD-ALERT-02: además de la variación hay alertas por el paso del tiempo (factura faltante); dependen de la fecha de hoy,
+    // así que este recorrido solo mira la alerta de variación de la factura que él mismo registró.
+    const variation = async () => (await api.listAlerts(home.id)).filter((a) => a.type === 'bill_variation');
+    const [alert] = await variation();
     expect(alert).toMatchObject({ severity: 'critical', status: 'unread', bill_id: created?.id, basis_period_start: '2026-07-01' });
     expect((await api.setAlertStatus(home.id, alert.id, 'read')).status).toBe('read');
     expect((await api.setAlertStatus(home.id, alert.id, 'dismissed')).status).toBe('dismissed');
-    expect(await api.listAlerts(home.id)).toEqual([]);
+    expect(await variation()).toEqual([]);
   });
 
   it('7. equipos: alta, estimado ESTIMATED y validación', async () => {

@@ -109,6 +109,11 @@ Etiquetas de calidad que aparecen junto a cada número (el móvil las muestra en
 
 ---
 
+> **Alertas que dependen de la fecha de hoy (ERD-ALERT-02):** además de la alerta por variación de la tabla, las reglas por tiempo
+> (factura faltante, lecturas desactualizadas, pago por vencer) se evalúan contra la fecha actual. Los datos demo son de 2026:
+> con el paso de los meses, la pestaña *Alertas* puede mostrar «factura faltante» (advertencia) en cualquier vivienda demo. No es
+> un fallo: es lo que haría con datos reales. La **alerta crítica** de PILOT-01 y el dashboard «sin alerta» de PILOT-02 no cambian.
+
 ## 4. Guion de la demo (≈10 min)
 
 ### 4.1 Web — panorama (3 min)
