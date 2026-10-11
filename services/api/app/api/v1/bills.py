@@ -27,14 +27,14 @@ def _ocr_out(db, home_id, document_id):
 
 
 @router.post("/ocr-jobs", response_model=OcrJobOut, status_code=status.HTTP_202_ACCEPTED)
-async def start_ocr_job(home_id: uuid.UUID, response: Response, file: UploadFile = File(...),
-                        source: Literal["web", "mobile", "api"] = Form("api"), db: Session = Depends(get_db),
-                        user=Depends(current_user)):
+def start_ocr_job(home_id: uuid.UUID, response: Response, file: UploadFile = File(...),
+                  source: Literal["web", "mobile", "api"] = Form("api"), db: Session = Depends(get_db),
+                  user=Depends(current_user)):
     """ERD-OCR-PROD: guarda el original (foto o PDF, cifrado) y lo lee en segundo plano. Responde 202 de inmediato;
     consulte `GET /bills/ocr-jobs/{document_id}`. Nunca crea una factura: solo deja un BORRADOR."""
     get_store()
     limit = max(settings.DOCUMENT_MAX_PDF_BYTES, settings.DOCUMENT_MAX_PHOTO_BYTES)
-    content = await file.read(limit + 1)
+    content = file.file.read(limit + 1)
     if len(content) > limit:
         raise InvalidInput("El archivo supera el tamaño máximo permitido")
     state = ocr_jobs.submit(db, home_id, user.id if user else None, content, uploaded_via=source)

@@ -18,13 +18,13 @@ _NO_STORE = {"Cache-Control": "no-store"}
 
 
 @router.post("", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)
-async def upload_document(home_id: uuid.UUID, response: Response, file: UploadFile = File(...),
-                          source: Literal["web", "mobile", "api"] = Form("api"), db: Session = Depends(get_db),
-                          user=Depends(current_user)):
+def upload_document(home_id: uuid.UUID, response: Response, file: UploadFile = File(...),
+                    source: Literal["web", "mobile", "api"] = Form("api"), db: Session = Depends(get_db),
+                    user=Depends(current_user)):
     """Guarda el original (foto o PDF) cifrado en el almacenamiento privado. El tipo se decide por los bytes."""
     get_store()
     limit = max(settings.DOCUMENT_MAX_PDF_BYTES, settings.DOCUMENT_MAX_PHOTO_BYTES)
-    content = await file.read(limit + 1)  # nunca se lee más de lo que podría aceptarse
+    content = file.file.read(limit + 1)  # nunca se lee más de lo que podría aceptarse (función `def`: corre en el threadpool, no en el bucle de eventos)
     if len(content) > limit:
         raise InvalidInput("El archivo supera el tamaño máximo permitido")
     response.headers.update(_NO_STORE)
