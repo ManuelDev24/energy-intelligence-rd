@@ -31,7 +31,7 @@ estado HTTP) y lo mismo en alta/edición/borrado de facturas, OCR, equipos y ale
 `apps/web/src/test/error-text.test.tsx` (RED → GREEN). Tras el cambio: "Error del servidor. Inténtalo de nuevo más tarde."
 
 ## Observaciones sin corregir (no bloquean)
-- El "+15.87 % vs. la última factura" del inicio se calcula en el cliente (H1 de ERD-WEB-QUALITY).
+- H1 quedó resuelto posteriormente en `ERD-PROJECTION-METRIC-API`: la variación procede de `projection.kwh_pct_vs_latest`, con calidad PROJECTED; el cliente solo la formatea.
 - Con la API apagada se ven dos tarjetas de error (períodos y dashboard), cada una con su Reintentar.
 
 ## Puertas

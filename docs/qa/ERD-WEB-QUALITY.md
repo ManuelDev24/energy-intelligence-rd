@@ -32,10 +32,10 @@ Hallazgos nuevos de esta revisión, corregidos (TDD, RED → GREEN):
 | H8 | `<article role="alert">` en la alerta del inicio (axe `aria-allowed-role`) | la alerta anunciada se pinta como `<div role="alert">` |
 | H9 | Acceso demo sin "Reintentar" cuando no cargan las viviendas (smoke PR #17) | `PilotLogin` pasa `onRetry` |
 
-Siguen abiertos (no bloquean): **H1 (resuelto en ERD-PROJECTION-METRIC-API)** el "+15.87 % vs. la última factura" del inicio lo calculaba el cliente
-(también en móvil); debe venir de la API como métrica `PROJECTED` (tarea propia). **H5** el `input type=file`
-oculto es enfocable (accesible por la etiqueta "Seleccionar foto"). **H6** con la API caída aparecen dos
-tarjetas de error (períodos y dashboard), cada una con su Reintentar. No se usó lector de pantalla real.
+**H1 resuelto en ERD-PROJECTION-METRIC-API:** la variación del inicio procede de la API como métrica `PROJECTED`.
+**H5 corregido en revisión cruzada del 2026-10-11:** el input de archivo conserva su acceso por teclado y la etiqueta visible muestra un anillo al recibir foco; su altura mínima es 44 px.
+**H6 histórico:** describía la espera de más de 8 s por reintentos. La ejecución posterior registra el error en 1.3 s con la API apagada; son entornos distintos y no una garantía de latencia.
+Las dos tarjetas independientes con Reintentar son una observación posterior distinta de H6. No se usó lector de pantalla real.
 
 ---
 
