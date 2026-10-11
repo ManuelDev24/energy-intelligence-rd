@@ -14,7 +14,7 @@ from typing import Callable
 from app.services.ocr.engine import extract_text
 from app.services.ocr.parser import parse_bill_text
 
-FIELDS = ("period_start", "period_end", "days", "kwh", "amount_dop", "reading_previous", "reading_current")
+FIELDS = ("period_start", "period_end", "days", "kwh", "amount_dop", "reading_previous", "reading_current", "due_date")
 DISTRIBUTORS = ("EDESUR", "EDENORTE", "EDEESTE")
 MANIFEST = "expected.json"
 

@@ -19,10 +19,10 @@ mis-facturas/
 {
   "edesur-01.jpg": {"distributor": "EDESUR", "period_start": "2026-09-01", "period_end": "2026-09-30",
                     "days": "30", "kwh": "320", "amount_dop": "4500.00",
-                    "reading_previous": "1000", "reading_current": "1320"}
+                    "reading_previous": "1000", "reading_current": "1320", "due_date": "2026-10-15"}
 }
 ```
-Cada campo es opcional: solo se puntúan los que escribas (valores copiados de la factura, no del OCR).
+Cada campo es opcional: solo se puntúan los que escribas (valores copiados de la factura, no del OCR). `due_date` (fecha límite de pago) se añadió con ERD-ALERT-02: un error silencioso ahí haría que la alerta de pago avise un día equivocado.
 
 ## Ejecutar
 ```bash

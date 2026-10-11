@@ -70,3 +70,12 @@ def test_run_directory_requires_every_file_in_manifest(tmp_path):
     (tmp_path / "expected.json").write_text(json.dumps({"a.jpg": {"distributor": "EDESUR", "kwh": "320"}}))
     with pytest.raises(FileNotFoundError, match="a.jpg"):
         qa.run_directory(tmp_path, reader=lambda raw: "")
+
+
+def test_due_date_is_scored_when_the_manifest_has_it_and_a_wrong_one_is_a_silent_error():
+    expected = {**EXPECTED, "due_date": "2026-10-15"}
+    ok = qa.evaluate(draft(due_date=("2026-10-15", "high")), expected)
+    assert {f.name: f.status for f in ok.fields}["due_date"] == "ok"
+    wrong = qa.evaluate(draft(due_date=("2026-10-05", "high")), expected)
+    assert [f.name for f in wrong.silent_errors] == ["due_date"]
+    assert "due_date" not in {f.name for f in qa.evaluate(draft(), EXPECTED).fields}
