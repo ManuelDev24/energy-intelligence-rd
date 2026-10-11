@@ -6,9 +6,23 @@ import { OUTBOX_FILE, RUN_FILE, WEB_URL, type RunData } from "./env";
 
 export { expect };
 
-export const test = base.extend<{ run: RunData }>({
+export const test = base.extend<{ run: RunData; cspGuard: boolean; cspWatch: void }>({
   // eslint-disable-next-line no-empty-pattern
   run: async ({}, use) => use(JSON.parse(fs.readFileSync(RUN_FILE, "utf8")) as RunData),
+  // Auditoría C-06: cualquier prueba falla si el navegador bloquea algo por la CSP (un script, estilo, imagen o conexión legítimos
+  // bloqueados = pantalla rota para quien usa la app). Una prueba que provoca la violación a propósito lo apaga con `test.use({ cspGuard: false })`.
+  cspGuard: [true, { option: true }],
+  cspWatch: [async ({ context, cspGuard }, use) => {
+    const violations: string[] = [];
+    const watch = (page: Page) => page.on("console", (message) => {
+      const text = message.text();
+      if (/content security policy|violates the following/i.test(text)) violations.push(text.slice(0, 240));
+    });
+    context.pages().forEach(watch);
+    context.on("page", watch);
+    await use();
+    if (cspGuard) expect(violations, "El navegador bloqueó recursos por la CSP").toEqual([]);
+  }, { auto: true }],
 });
 
 export const uniqueEmail = (tag = "u") => `${tag}-${crypto.randomBytes(6).toString("hex")}@example.com`;

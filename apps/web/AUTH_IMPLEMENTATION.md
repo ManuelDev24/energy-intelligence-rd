@@ -308,3 +308,17 @@ Modified: `src/lib/session.tsx` (account-aware, cache/home reset, cross-tab sync
 (account nav links, auth-aware redirect target), `next.config.mjs` (production fail-closed guard).
 
 Unchanged by requirement: `packages/**`, root `node_modules`, backend, lockfiles, any file outside `apps/web/`.
+
+## Cabeceras de seguridad y CSP (auditoría C-06)
+
+- `next.config.mjs` añade a toda respuesta `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`,
+  `Cross-Origin-Opener-Policy` y (fuera de desarrollo) HSTS; `poweredByHeader` está apagado. Son las de `src/lib/security-headers.ts`
+  (una prueba comprueba que no se desincronicen).
+- `src/middleware.ts` pone una **CSP con nonce distinto por petición** en toda página (`script-src 'self' 'nonce-…' 'strict-dynamic'`;
+  sin `unsafe-inline` ni `unsafe-eval` en producción; `frame-ancestors 'none'`, `object-src 'none'`, `base-uri` y `form-action` en
+  `'self'`; `connect-src 'self'` más el origen de ingesta de Sentry si hay DSN). `next dev` añade `unsafe-eval` y WebSocket (HMR).
+- Por eso el layout raíz es dinámico (`export const dynamic = "force-dynamic"`): Next solo puede poner el nonce a sus scripts en línea
+  si la página se renderiza por petición.
+- Las pruebas E2E fallan solas si el navegador bloquea algo por la CSP (fixture `cspWatch` en `e2e/support/test.ts`) y
+  `e2e/specs/10-security-headers.spec.ts` comprueba las cabeceras reales y que un script inyectado no se ejecuta.
+- Al añadir un recurso externo (fuente, imagen, API de terceros) hay que ampliar la directiva correspondiente en `buildCsp`.
