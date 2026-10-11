@@ -1147,20 +1147,6 @@
         "title": "BillValidationRequest",
         "type": "object"
       },
-      "Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post": {
-        "properties": {
-          "file": {
-            "contentMediaType": "application/octet-stream",
-            "title": "File",
-            "type": "string"
-          }
-        },
-        "required": [
-          "file"
-        ],
-        "title": "Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post",
-        "type": "object"
-      },
       "Body_start_ocr_job_api_v1_homes__home_id__bills_ocr_jobs_post": {
         "properties": {
           "file": {
@@ -6737,68 +6723,9 @@
         ]
       }
     },
-    "/api/v1/homes/{home_id}/bills/ocr": {
-      "post": {
-        "description": "ERD-OCR-01/02: lee una foto de factura y devuelve un BORRADOR para que la persona lo confirme\no corrija. Nunca crea ni modifica una factura: el \u00fanico camino real a la base de datos sigue\nsiendo POST /homes/{home_id}/bills (ya validado), llamado despu\u00e9s de que alguien confirme.",
-        "operationId": "ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "home_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Home Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OcrDraft"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Ocr Bill Photo",
-        "tags": [
-          "bills"
-        ]
-      }
-    },
     "/api/v1/homes/{home_id}/bills/ocr-jobs": {
       "post": {
-        "description": "ERD-OCR-PROD: guarda el original (foto o PDF, cifrado) y lo lee en segundo plano. Responde 202 de inmediato;\nconsulte `GET /bills/ocr-jobs/{document_id}`. Como `/ocr`, nunca crea una factura: solo deja un BORRADOR.",
+        "description": "ERD-OCR-PROD: guarda el original (foto o PDF, cifrado) y lo lee en segundo plano. Responde 202 de inmediato;\nconsulte `GET /bills/ocr-jobs/{document_id}`. Nunca crea una factura: solo deja un BORRADOR.",
         "operationId": "start_ocr_job_api_v1_homes__home_id__bills_ocr_jobs_post",
         "parameters": [
           {

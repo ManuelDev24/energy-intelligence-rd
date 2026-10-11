@@ -3,7 +3,7 @@ import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
-  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema, EnergyScoreSchema, OutageSchema, OutageSummarySchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema, EnergyScoreSchema, OutageSchema, OutageSummarySchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
   type Distributor, type OutageInput, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
@@ -176,16 +176,6 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     listBills: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/bills`, BillSchema, signal),
     getBill: (id: string, bill: string, signal?: AbortSignal) => request(`${homePath(id)}/bills/${idPath(bill)}`, BillSchema, { signal }),
     createBill: (id: string, input: BillInput) => request(`${homePath(id)}/bills`, BillSchema, write("POST", { ...input, source: "manual" })),
-    ocrBill: (id: string, image: BillImage | File) => {
-      const body = new FormData();
-      if (typeof File !== "undefined" && image instanceof File) {
-        body.append("file", image);
-      } else {
-        // React Native FormData accepts the `{uri,name,type}` upload object.
-        body.append("file", image as unknown as Blob);
-      }
-      return request(`${homePath(id)}/bills/ocr`, OcrDraftSchema, { method: "POST", body });
-    },
     // ERD-OCR-PROD: lectura asíncrona. startOcrJob responde 202 con el estado `pending`; se consulta con getOcrJob.
     // Acepta fotos y PDF; el servidor decide el tipo por los bytes. Nunca crea una factura: deja un borrador.
     startOcrJob: (id: string, file: BillImage | File, source: "web" | "mobile") => {

@@ -48,7 +48,7 @@
 | Disponibilidad de la API (`/health` 200 y respuestas ≠ 5xx) | 99.5 % | 30 días | Render health check + Sentry |
 | Latencia p95 de lecturas (`GET /homes/*`, `/dashboard`) | < 500 ms | 7 días | Sentry Performance / log `duration_ms` |
 | Latencia p95 de escrituras (facturas, lecturas) | < 800 ms | 7 días | ídem |
-| OCR (`POST /bills/ocr`) p95 | < 15 s | 7 días | ídem (Tesseract en CPU compartida) |
+| Lectura de factura (`ocr-jobs`: de `pending` a `done`) p95 | < 60 s | 7 días | tabla `jobs` / log del worker (Tesseract en CPU compartida) |
 | Correo de recuperación entregado a Resend | 99 % | 30 días | log `email_delivery_failed` |
 | Errores 5xx | < 0.5 % de las peticiones | 7 días | Sentry |
 

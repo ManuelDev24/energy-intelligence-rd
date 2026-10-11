@@ -41,7 +41,6 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('GET',u+'/bills/'+bill,None),('PUT',u+'/bills/'+bill,BILL),('DELETE',u+'/bills/'+bill,None),
             ('GET',u+'/bills/'+bill+'/items',None),('PUT',u+'/bills/'+bill+'/items',{'items': []}),
             ('POST',u+'/bills/'+bill+'/validate',{}),('PUT',u+'/bills/'+bill+'/payment',{'paid':True}),
-            ('POST',u+'/bills/ocr',MULTIPART),
             ('GET',u+'/equipment',None),('POST',u+'/equipment',EQ),('GET',u+'/equipment/estimate',None),
             ('GET',u+'/equipment/'+eq,None),('PUT',u+'/equipment/'+eq,EQ),('DELETE',u+'/equipment/'+eq,None),
             ('GET',u+'/alerts',None),('GET',u+'/anomalies',None),('POST',u+'/anomalies/scan',None),

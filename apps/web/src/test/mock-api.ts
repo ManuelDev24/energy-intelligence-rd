@@ -244,9 +244,6 @@ export function createMockApi(): Api {
       bills = [...bills, created];
       return created;
     },
-    ocrBill: async () => {
-      throw new ApiError(501, "OCR no disponible en el mock");
-    },
     // ERD-OCR-PROD: el trabajo termina tras `ocrPolls` consultas; `ocrOutcome` decide si sale un borrador o un fallo.
     startOcrJob: async (homeId) => {
       requireHome(homeId);

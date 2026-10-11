@@ -51,12 +51,14 @@ describe("OCR asíncrono por BFF (ERD-OCR-PROD)", () => {
     expect(refused).not.toHaveBeenCalled();
   });
 
-  it("la ruta síncrona antigua conserva su tope de 10 MB", async () => {
+  it("la ruta síncrona antigua (/bills/ocr) ya no existe y no llega a la API (auditoría C-02)", async () => {
     const form = new FormData();
-    form.append("file", new Blob([new Uint8Array(12 * 1024 * 1024)], { type: "image/png" }), "x.png");
-    const request = new Request(`http://localhost:3000/api/bff/homes/${HOME}/bills/ocr`, { method: "POST", body: form, headers: { origin: config.origin, cookie } });
+    form.append("file", new Blob([new Uint8Array(64)], { type: "image/png" }), "x.png");
     const upstream = vi.fn();
-    expect((await handleBff(request, config, upstream)).status).toBe(413);
+    const multipart = new Request(`http://localhost:3000/api/bff/homes/${HOME}/bills/ocr`, { method: "POST", body: form, headers: { origin: config.origin, cookie } });
+    expect([404, 415]).toContain((await handleBff(multipart, config, upstream)).status);
+    const json_ = new Request(`http://localhost:3000/api/bff/homes/${HOME}/bills/ocr`, { method: "POST", body: "{}", headers: { origin: config.origin, cookie, "content-type": "application/json" } });
+    expect((await handleBff(json_, config, upstream)).status).toBe(404);
     expect(upstream).not.toHaveBeenCalled();
   });
 

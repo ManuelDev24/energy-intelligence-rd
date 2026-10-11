@@ -1,4 +1,4 @@
-import type { Bill, BillAssessment, BillInput, BillItemsOut, BillItemsReplace, Dashboard, Home, OcrDraft, OcrJob } from "./schemas";
+import type { Bill, BillAssessment, BillInput, BillItemsOut, BillItemsReplace, Dashboard, Home, OcrJob } from "./schemas";
 import type {
   Anomaly,
   Outage,
@@ -30,7 +30,6 @@ export interface Api {
   listBills(homeId: string, signal?: AbortSignal): Promise<Bill[]>;
   getBill(homeId: string, billId: string, signal?: AbortSignal): Promise<Bill>;
   createBill(homeId: string, input: BillInput): Promise<Bill>;
-  ocrBill(homeId: string, file: File): Promise<OcrDraft>;
   // ERD-OCR-PROD: lectura asíncrona de fotos y PDF (borrador; nunca crea la factura).
   startOcrJob(homeId: string, file: File, source: "web" | "mobile"): Promise<OcrJob>;
   getOcrJob(homeId: string, documentId: string, signal?: AbortSignal): Promise<OcrJob>;

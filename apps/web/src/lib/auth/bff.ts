@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -317,7 +317,7 @@ function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-OCR-PROD
   if (status === 409 && code === "document_quota_exceeded") return "Ya hay varias facturas en proceso o sin confirmar en esta vivienda. Espera a que terminen o confirma o elimina alguna.";
   if (status === 503 && code === "storage_unavailable") return "La lectura de facturas no está disponible en este momento. Puedes registrar la factura manualmente.";
-  if (status === 422 && /\/bills\/ocr(-jobs)?$/.test(path)) return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC) o un PDF.";
+  if (status === 422 && /\/bills\/ocr-jobs$/.test(path)) return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC) o un PDF.";
   // Fase 2: mensajes propios por ruta (el texto de la API nunca se reenvía).
   if (status === 409 && /\/readings$/.test(path)) return "Ya existe una lectura con esa fecha y hora.";
   if (status === 409 && /\/outages(\/[0-9a-f-]{36})?$/.test(path)) return "Ya hay una interrupción registrada que se solapa con ese período. Edita esa o ajusta las horas.";
@@ -359,10 +359,8 @@ function safeError(body: unknown, status: number, path: string) {
     ...(typeof value.request_id === "string" && SAFE_REQUEST_ID.test(value.request_id) ? { request_id: value.request_id } : {}),
   };
 }
-// ERD-BILL-LIVE-QA: única ruta multipart. La foto va tal cual a la API (que valida tipo y tamaño de imagen);
-// aquí solo se acota el total (10 MiB de imagen + sobre multipart) para no leer cuerpos arbitrarios en memoria.
-const OCR_MAX_BYTES = 10 * 1024 * 1024 + 4096;
-// ERD-OCR-PROD: la lectura asíncrona también acepta PDF (hasta 20 MiB); la API valida el tipo real por los bytes.
+// ERD-OCR-PROD: única ruta multipart (`bills/ocr-jobs`; la antigua `bills/ocr` síncrona se retiró, auditoría C-02). Acepta foto o PDF
+// (hasta 20 MiB + sobre multipart); la API valida el tipo real por los bytes. Aquí solo se acota el total para no leer cuerpos arbitrarios.
 const OCR_JOB_MAX_BYTES = 20 * 1024 * 1024 + 4096;
 const OCR_TIMEOUT_MS = 45_000; // Tesseract tarda más que una consulta normal
 const MULTIPART = /^multipart\/form-data;\s*boundary=[^\s;]+$/i;
@@ -374,12 +372,12 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const method = request.method;
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) return reply({ detail: "Método no permitido." }, 405);
   const ocrJobStart = method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr-jobs$`).test(path);
-  const ocr = ocrJobStart || (method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr$`).test(path));
-  const ocrLimit = ocrJobStart ? OCR_JOB_MAX_BYTES : OCR_MAX_BYTES;
+  const ocr = ocrJobStart;
+  const ocrLimit = OCR_JOB_MAX_BYTES;
   if (method !== "GET") {
     if (request.headers.get("origin") !== config.origin || (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) return reply({ detail: "Origen no permitido." }, 403);
     if (ocr) {
-      if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: ocrJobStart ? "Se requiere una foto o un PDF." : "Se requiere una imagen." }, 415);
+      if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: "Se requiere una foto o un PDF." }, 415);
     } else if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
   }
   const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
@@ -387,7 +385,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const recovery = method === "POST" && (path === FORGOT || path === RESET);
   const passwordChange = method === "POST" && path === PASSWORD_CHANGE;
   const phase2 = auth || legal || recovery || passwordChange ? null : phase2Route(path, method);
-  const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocrJobStart ? OcrJobSchema : ocr ? OcrDraftSchema : phase2 ? phase2.response : domainRoute(path, method);
+  const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocrJobStart ? OcrJobSchema : phase2 ? phase2.response : domainRoute(path, method);
   if (!auth && !legal && !recovery && !schema) return reply({ detail: "Ruta no permitida." }, 404);
   if (new RegExp(`^/homes/${UUID}$`).test(path) && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   if (phase2 && !phase2QueryOk(phase2, url.searchParams)) return reply({ detail: "Consulta no permitida." }, 400);
