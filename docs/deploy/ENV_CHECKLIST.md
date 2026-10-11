@@ -98,8 +98,14 @@ habla con la API únicamente a través del BFF (`API_BASE_URL`). No definirla.
 Nada secreto debe ir en `EXPO_PUBLIC_*`: queda embebido en el binario. Si cambia la URL real de Render (sufijo)
 o se usa dominio propio, editar `eas.json` antes de compilar.
 
-## Sentry (más adelante, solo documentado)
+## Sentry
 
-Plan Free. Cuando se integre: `SENTRY_DSN` (API), `NEXT_PUBLIC_SENTRY_DSN` (web), `EXPO_PUBLIC_SENTRY_DSN`
-(móvil), `SENTRY_AUTH_TOKEN` (**secreto**, solo build para subir sourcemaps), `SENTRY_ENVIRONMENT`
-(`staging`/`production`). Hoy **ninguna** existe en el código: no definirlas todavía.
+Plan Free. Un proyecto por entorno y por plataforma. `docs/ops/OBSERVABILITY.md` explica qué se envía y qué no.
+
+| Variable | Dónde | Secreto | Estado |
+|---|---|---|---|
+| `SENTRY_DSN` | API y worker | No fuerte (no se imprime) | **ya en el código** (inactivo sin valor); HTTPS obligatorio |
+| `NEXT_PUBLIC_SENTRY_DSN` | web (se incrusta al compilar) | No (va dentro del JS público) | **ya en el código** (inactivo sin valor); redeploy tras cambiarla |
+| `NEXT_PUBLIC_SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_RELEASE` | web | No | opcionales |
+| `EXPO_PUBLIC_SENTRY_DSN` | móvil | No | **aún no existe** en el código (módulo nativo; requiere nuevo build) |
+| `SENTRY_AUTH_TOKEN` | solo el build (sourcemaps) | **Sí** | no se usa todavía |

@@ -1,0 +1,37 @@
+[
+  {
+    "check": "el navegador envió el error no capturado al DSN",
+    "ok": true,
+    "detail": "1 evento(s)"
+  },
+  {
+    "check": "el correo y el token NO aparecen en ninguna parte del sobre",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el mensaje llegó con [Filtered]",
+    "ok": true,
+    "detail": "\"fall\\u00f3 para [Filtered] con [Filtered]\""
+  },
+  {
+    "check": "la URL llegó sin query ni fragmento",
+    "ok": true,
+    "detail": "(el evento no lleva URL de petición)"
+  },
+  {
+    "check": "no hay usuario, cookies, ni cuerpo",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "no hay migas de pan",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "no se envió ninguna sesión ni traza",
+    "ok": true,
+    "detail": "['event']"
+  }
+]

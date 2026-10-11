@@ -1,7 +1,7 @@
 # Observabilidad — ERD-OBS-01
 
-**Estado: API lista y probada (errores + trazas con redacción). ⛔ Pendiente: cuenta/proyecto de Sentry y DSN, web
-(Next.js) y móvil (Expo), reglas de alerta y panel, y verificar con un error real en staging.**
+**Estado: API, worker y web (navegador) listos y probados con redacción. ⛔ Pendiente: cuenta/proyecto de Sentry y DSN, móvil
+(Expo, módulo nativo), reglas de alerta y panel, y verificar con un error real en staging.**
 
 ## Qué existe (API)
 - Log JSON por petición con `request_id` (ya existía) y `X-Request-ID` en cada respuesta.
@@ -14,6 +14,19 @@
   como `password`, `token`, `email`, `account_number`, `address`, `raw_text_excerpt`, `ip_address`.
   Si la redacción fallara, sale un evento mínimo (nunca el original).
 - `LoggingIntegration` apagada para no duplicar cada `logger.exception` como evento; `send_default_pii=False`.
+
+## Qué existe (web, navegador) — 2026-10-11
+- `@sentry/browser` (versión fija) en `apps/web/src/lib/telemetry.ts`, **inactivo sin `NEXT_PUBLIC_SENTRY_DSN`** (verificado: cero
+  peticiones). Solo errores no capturados (`globalHandlers`) y los que reporte `app/error.tsx` (que muestra un texto fijo, nunca el
+  error). Sin migas de pan (llevan URLs y texto), sin sesiones, sin trazas, sin repetición, sin usuario: `sendDefaultPii=false`.
+- Cada evento pasa por `scrubSentryEvent` de `@energyrd/core` (mismas reglas que la API, 10 pruebas): correos, JWT, `Bearer`, tokens de
+  43 caracteres y claves sensibles → `[Filtered]`; URL sin query ni fragmento; sin cookies, cuerpo, variables ni líneas de código.
+- DSN válido solo `https://` (http solo hacia loopback fuera de producción, para probar con un servidor local).
+- **El BFF (servidor de Next) NO envía nada**: ve cookies y tokens; se dejó fuera a propósito.
+- Verificación en un navegador real contra un servidor local que hace de Sentry: `docs/qa/evidence/obs-web-2026-10-11/web-telemetry.py`
+  (7/7 con DSN: el correo y el token del error y de la URL no salen; 1/1 sin DSN: nada sale). **No** prueba Sentry real ni sus alertas.
+- Variables: `NEXT_PUBLIC_SENTRY_DSN` (se incrusta al compilar: exige redeploy), `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`
+  (opcionales). No están en `render.yaml` para no forzar un valor al crear el Blueprint: se añaden tras crear el proyecto de Sentry.
 
 ## Qué existe (worker de trabajos)
 - El worker (`python -m app.worker`) inicia la misma telemetría (`init_telemetry`): sin DSN no envía nada.
@@ -57,7 +70,7 @@ de Render. Nunca pedir capturas con tokens ni el cuerpo de la petición.
 | Pendiente | Bloqueo |
 |---|---|
 | Proyecto y DSN de Sentry (staging y production) | requiere la cuenta del propietario |
-| Web: `@sentry/nextjs` con el mismo filtro (el BFF ve cookies y tokens, hay que probarlo con cuidado) | pide DSN para probarlo extremo a extremo |
+| Web: probar con un DSN real (el SDK y el filtro ya están y se probaron contra un servidor local) | pide DSN |
 | Móvil: `@sentry/react-native` + `beforeSend` equivalente; EAS | pide DSN y compilación nativa |
 | Reglas de alerta, panel y SLO reales | requieren tráfico en producción |
 | Verificación con un error provocado en staging | requiere el despliegue (ERD-DEPLOY-01) |

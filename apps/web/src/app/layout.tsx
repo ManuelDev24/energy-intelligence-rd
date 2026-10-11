@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { TelemetryInit } from "@/components/telemetry-init";
 import { QueryProvider } from "@/lib/query-provider";
 import { SessionProvider } from "@/lib/session";
 import "./globals.css";
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
       <body>
+        <TelemetryInit />
         <QueryProvider>
           <SessionProvider>{children}</SessionProvider>
         </QueryProvider>
