@@ -88,3 +88,35 @@ describe("anomalías por BFF (ERD-ANOM-01-COMPLETE)", () => {
     expect(JSON.stringify(await response.json())).not.toContain("TEXTO-INTERNO");
   });
 });
+
+describe("pago de facturas por BFF (ERD-ALERT-02)", () => {
+  const BILL = "77777777-7777-4777-8777-777777777777";
+  const bill = (over: Record<string, unknown> = {}) => ({ id: BILL, home_id: HOME, period_start: "2026-09-01", period_end: "2026-09-30", kwh: "300.00",
+    amount_dop: "3600.00", days: 30, reading_previous: null, reading_current: null, due_date: "2026-10-15", paid_at: "2026-10-10T12:00:00Z",
+    source: "manual", created_at: "2026-10-01T00:00:00Z", ...over });
+  const put = (body: unknown) => new Request(`http://localhost:3000/api/bff/homes/${HOME}/bills/${BILL}/payment`, {
+    method: "PUT", body: JSON.stringify(body), headers: { origin: config.origin, cookie, "content-type": "application/json" } });
+
+  it("marca pagada y exige que la respuesta sea esa factura de esa vivienda", async () => {
+    const upstream = vi.fn().mockResolvedValue(json(bill()));
+    const response = await handleBff(put({ paid: true }), config, upstream);
+    expect(response.status).toBe(200);
+    expect(JSON.parse(upstream.mock.calls[0][1].body)).toEqual({ paid: true });
+    for (const wrong of [bill({ id: OTHER }), bill({ home_id: OTHER })]) {
+      expect((await handleBff(put({ paid: true }), config, vi.fn().mockResolvedValue(json(wrong)))).status).toBeGreaterThanOrEqual(500);
+    }
+  });
+
+  it.each([[{}], [{ paid: "sí" }], [{ paid: true, extra: 1 }]])("cuerpo inválido %j no llega a la API", async (body) => {
+    const upstream = vi.fn();
+    expect((await handleBff(put(body), config, upstream)).status).toBe(422);
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it("solo PUT: otros métodos en esa ruta no existen", async () => {
+    const upstream = vi.fn();
+    const post = new Request(`http://localhost:3000/api/bff/homes/${HOME}/bills/${BILL}/payment`, { method: "POST", body: "{}", headers: { origin: config.origin, cookie, "content-type": "application/json" } });
+    expect((await handleBff(post, config, upstream)).status).toBe(404);
+    expect(upstream).not.toHaveBeenCalled();
+  });
+});

@@ -10,6 +10,7 @@ const valid: BillFormValues = {
   amount: '3100',
   readingPrevious: '',
   readingCurrent: '',
+  dueDate: '',
 };
 
 describe('parseDate', () => {
@@ -80,5 +81,24 @@ describe('validateBill', () => {
     const { input } = validateBill(valid);
     expect(input?.reading_previous).toBeNull();
     expect(input?.reading_current).toBeNull();
+  });
+});
+
+describe('fecha límite de pago (ERD-ALERT-02)', () => {
+  it('es opcional: vacía no envía nada', () => {
+    expect(validateBill(valid).input?.due_date).toBeNull();
+  });
+  it('se envía tal cual cuando es válida', () => {
+    expect(validateBill({ ...valid, dueDate: ' 2026-09-15 ' }).input?.due_date).toBe('2026-09-15');
+  });
+  it.each([
+    ['2026-09-31', 'AAAA-MM-DD'], ['15/09/2026', 'AAAA-MM-DD'], ['2026-07-31', 'anterior al inicio'], ['2027-01-15', 'más de 120 días'],
+  ])('rechaza %s', (dueDate, message) => {
+    const r = validateBill({ ...valid, dueDate });
+    expect(r.input).toBeNull();
+    expect(r.errors.dueDate).toContain(message);
+  });
+  it('120 días después del fin todavía es válido', () => {
+    expect(validateBill({ ...valid, dueDate: '2026-12-29' }).input?.due_date).toBe('2026-12-29');
   });
 });

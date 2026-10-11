@@ -9,7 +9,7 @@ const cookie = `erd-epoch=${EPOCH}; erd-access=${EPOCH}~access-token`;
 const field = (value: string | null) => ({ value, confidence: value === null ? "none" : "high" });
 const draft = {
   period_start: field("2026-09-01"), period_end: field("2026-09-30"), days: field("30"), kwh: field("320"),
-  amount_dop: field("4500.00"), reading_previous: field(null), reading_current: field(null), warnings: [], raw_text_excerpt: "TOTAL",
+  amount_dop: field("4500.00"), reading_previous: field(null), reading_current: field(null), due_date: field(null), warnings: [], raw_text_excerpt: "TOTAL",
 };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 

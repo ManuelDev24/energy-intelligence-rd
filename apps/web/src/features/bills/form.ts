@@ -29,6 +29,9 @@ export const billFormSchema = z
       .refine((n) => n <= 366, "Entero entre 0 y 366"),
     reading_previous: optionalMoney,
     reading_current: optionalMoney,
+    // ERD-ALERT-02: fecha límite de pago (opcional). Sin ella no hay alertas de pago.
+    due_date: z.string().trim().refine((v) => v === "" || z.string().date().safeParse(v).success, "Fecha inválida (AAAA-MM-DD)")
+      .transform((v) => (v === "" ? null : v)),
   })
   .superRefine((v, ctx) => {
     if ((Date.parse(v.period_end) - Date.parse(v.period_start)) / 86400000 > 366) {
@@ -40,6 +43,13 @@ export const billFormSchema = z
         path: ["period_end"],
         message: "La fecha final debe ser igual o posterior a la inicial",
       });
+    }
+    if (v.due_date !== null && v.period_start <= v.period_end) {
+      if (v.due_date < v.period_start) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["due_date"], message: "La fecha límite no puede ser anterior al inicio del período" });
+      } else if ((Date.parse(v.due_date) - Date.parse(v.period_end)) / 86400000 > 120) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["due_date"], message: "La fecha límite no puede estar a más de 120 días del fin del período" });
+      }
     }
     if (
       v.reading_previous !== null &&
@@ -62,6 +72,7 @@ export type BillFormValues = {
   days: string;
   reading_previous: string;
   reading_current: string;
+  due_date: string;
 };
 
 export const emptyBillForm: BillFormValues = {
@@ -72,6 +83,7 @@ export const emptyBillForm: BillFormValues = {
   days: "",
   reading_previous: "",
   reading_current: "",
+  due_date: "",
 };
 
 export type BillFormResult =

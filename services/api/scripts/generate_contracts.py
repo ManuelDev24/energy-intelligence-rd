@@ -9,12 +9,12 @@ from pathlib import Path
 
 from app.main import app
 from app.schemas.home import HomeOut
-from app.schemas.bill import BillOut, BillCreate, BillUpdate
+from app.schemas.bill import BillOut, BillCreate, BillUpdate, BillPaymentIn
 from app.schemas.dashboard import DashboardOut
 from app.schemas.equipment import EquipmentOut, EquipmentEstimateOut, EquipmentIn
 from app.schemas.alert import AlertRecord, AlertSettingsOut, AlertSettingsIn, AlertStatusUpdate
 from app.schemas.auth import (UserOut, TokensOut, RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn,
-                              PasswordForgotAccepted, PasswordResetIn, PasswordChangeIn, InvitationCreateIn,
+                              PasswordForgotAccepted, PasswordResetIn, PasswordChangeIn, DeviceIn, DeviceRemoveIn, InvitationCreateIn,
                               InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
                               NotificationPreferencesIn, NotificationPreferencesOut, SessionOut)
 from app.schemas.reading import ReadingCreate, ReadingOut
@@ -33,7 +33,7 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
           PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
-          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn]
+          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, BillPaymentIn, DeviceIn, DeviceRemoveIn]
 
 
 def generate():

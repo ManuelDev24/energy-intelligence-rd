@@ -22,6 +22,18 @@
       },
       "AlertRecord": {
         "properties": {
+          "anomaly_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly Id"
+          },
           "basis_bill_id": {
             "anyOf": [
               {
@@ -103,8 +115,10 @@
           },
           "severity": {
             "enum": [
+              "info",
               "warning",
-              "critical"
+              "critical",
+              "savings"
             ],
             "title": "Severity",
             "type": "string"
@@ -131,6 +145,13 @@
             "title": "Threshold Pct"
           },
           "type": {
+            "enum": [
+              "bill_variation",
+              "anomaly",
+              "payment_due",
+              "missing_bill",
+              "stale_readings"
+            ],
             "title": "Type",
             "type": "string"
           }
@@ -141,6 +162,7 @@
           "bill_id",
           "type",
           "severity",
+          "anomaly_id",
           "status",
           "message",
           "kwh_pct",
@@ -605,6 +627,18 @@
             ],
             "title": "Document Id"
           },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
           "kwh": {
             "anyOf": [
               {
@@ -842,6 +876,18 @@
             "title": "Days",
             "type": "integer"
           },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
           "home_id": {
             "format": "uuid",
             "title": "Home Id",
@@ -856,6 +902,18 @@
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Kwh",
             "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
           },
           "period_end": {
             "format": "date",
@@ -910,10 +968,27 @@
           "days",
           "reading_previous",
           "reading_current",
+          "due_date",
+          "paid_at",
           "source",
           "created_at"
         ],
         "title": "BillOut",
+        "type": "object"
+      },
+      "BillPaymentIn": {
+        "additionalProperties": false,
+        "description": "Marcar una factura como pagada (`true`) o volver a dejarla pendiente (`false`).",
+        "properties": {
+          "paid": {
+            "title": "Paid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "paid"
+        ],
+        "title": "BillPaymentIn",
         "type": "object"
       },
       "BillProvenance": {
@@ -987,6 +1062,18 @@
             "minimum": 0.0,
             "title": "Days",
             "type": "integer"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
           },
           "kwh": {
             "anyOf": [
@@ -1720,6 +1807,49 @@
           "insufficient_reasons"
         ],
         "title": "DataStatus",
+        "type": "object"
+      },
+      "DeviceIn": {
+        "additionalProperties": false,
+        "description": "ERD-ALERT-02: registra el token de notificaciones push (Expo) de este dispositivo.",
+        "properties": {
+          "platform": {
+            "enum": [
+              "ios",
+              "android"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 200,
+            "minLength": 20,
+            "pattern": "^Expo(nent)?PushToken\\[[A-Za-z0-9_-]{10,}\\]$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "platform"
+        ],
+        "title": "DeviceIn",
+        "type": "object"
+      },
+      "DeviceRemoveIn": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 200,
+            "minLength": 20,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "DeviceRemoveIn",
         "type": "object"
       },
       "DocumentOut": {
@@ -3220,6 +3350,12 @@
           "days": {
             "$ref": "#/components/schemas/OcrField"
           },
+          "due_date": {
+            "$ref": "#/components/schemas/OcrField",
+            "default": {
+              "confidence": "none"
+            }
+          },
           "kwh": {
             "$ref": "#/components/schemas/OcrField"
           },
@@ -4166,6 +4302,86 @@
           }
         },
         "summary": "Root"
+      }
+    },
+    "/api/v1/auth/devices": {
+      "put": {
+        "description": "Registra (o renueva) el dispositivo para recibir avisos push. Idempotente.",
+        "operationId": "put_device_api_v1_auth_devices_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Put Device",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/devices/remove": {
+      "post": {
+        "description": "Quita el dispositivo (al cerrar sesi\u00f3n). POST con cuerpo porque el token no debe viajar en la URL.",
+        "operationId": "remove_device_api_v1_auth_devices_remove_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRemoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Device",
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/login": {
@@ -6125,6 +6341,75 @@
           }
         ],
         "summary": "Replace Items",
+        "tags": [
+          "bills"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/bills/{bill_id}/payment": {
+      "put": {
+        "description": "ERD-ALERT-02: marcar pagada (`paid: true`) o pendiente (`false`).",
+        "operationId": "set_bill_payment_api_v1_homes__home_id__bills__bill_id__payment_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "bill_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillPaymentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Bill Payment",
         "tags": [
           "bills"
         ]

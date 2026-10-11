@@ -8,12 +8,15 @@ export interface BillFormValues {
   amount: string;
   readingPrevious: string;
   readingCurrent: string;
+  /** ERD-ALERT-02: fecha límite de pago (opcional, AAAA-MM-DD). */
+  dueDate: string;
 }
 
 export type BillFormErrors = Partial<Record<keyof BillFormValues, string>>;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const MAX_PERIOD_DAYS = 366;
+export const MAX_DUE_AFTER_END_DAYS = 120;
 
 export function parseDate(s: string): Date | null {
   if (!DATE_RE.test(s)) return null;
@@ -80,6 +83,16 @@ export function validateBill(v: BillFormValues): { errors: BillFormErrors; input
   if (rp !== null && rc !== null && rc < rp && !errors.readingCurrent)
     errors.readingCurrent = 'Debe ser mayor o igual a la lectura anterior';
 
+  let due: string | null = null;
+  if (v.dueDate.trim()) {
+    const dueDate = parseDate(v.dueDate.trim());
+    if (!dueDate) errors.dueDate = 'Use el formato AAAA-MM-DD';
+    else if (start && dueDate < start) errors.dueDate = 'No puede ser anterior al inicio del período';
+    else if (end && (dueDate.getTime() - end.getTime()) / 86400000 > MAX_DUE_AFTER_END_DAYS)
+      errors.dueDate = `No puede estar a más de ${MAX_DUE_AFTER_END_DAYS} días del fin del período`;
+    else due = v.dueDate.trim();
+  }
+
   if (Object.keys(errors).length > 0) return { errors, input: null };
   return {
     errors,
@@ -91,6 +104,7 @@ export function validateBill(v: BillFormValues): { errors: BillFormErrors; input
       days: days as number,
       reading_previous: rp === null ? null : String(rp),
       reading_current: rc === null ? null : String(rc),
+      due_date: due,
     },
   };
 }

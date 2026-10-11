@@ -79,3 +79,35 @@ def test_never_raises_on_garbage_input():
     for garbage in ("", "asdkjaslkdj129381", "RD$RD$RD$", "/////", None):
         draft = parse_bill_text(garbage or "")
         assert draft is not None
+
+
+# ---------- ERD-ALERT-02: fecha límite de pago ----------
+def _with_due(line):
+    return SAMPLE_EDESUR + line + "\n"
+
+
+def test_due_date_is_read_from_common_labels():
+    for line in ("Fecha límite de pago: 15/09/2026", "FECHA DE VENCIMIENTO 15/09/2026", "Vence el 15/09/2026", "Pague antes del 15 / 09 / 2026"):
+        draft = parse_bill_text(_with_due(line))
+        assert draft.due_date.value == "2026-09-15" and draft.due_date.confidence == "high", line
+    assert parse_bill_text(SAMPLE_EDESUR).due_date.value is None and parse_bill_text(SAMPLE_EDESUR).due_date.confidence == "none"
+
+
+def test_an_incoherent_due_date_is_dropped_with_a_warning():
+    draft = parse_bill_text(_with_due("Fecha límite de pago: 15/03/2025"))        # antes del período
+    assert draft.due_date.value is None and any("fecha límite" in w for w in draft.warnings)
+    far = parse_bill_text(_with_due("Fecha límite de pago: 15/01/2027"))          # más de 120 días después
+    assert far.due_date.value is None
+
+
+def test_due_date_without_a_period_is_only_inferred_and_invalid_dates_are_ignored():
+    draft = parse_bill_text("Total a pagar: RD$ 100.00\nFecha límite de pago: 15/09/2026")
+    assert draft.due_date.value == "2026-09-15" and draft.due_date.confidence == "inferred"
+    assert parse_bill_text(_with_due("Fecha límite de pago: 31/02/2026")).due_date.value is None
+
+
+def test_old_stored_drafts_without_due_date_still_validate():
+    from app.schemas.ocr import OcrDraft
+    old = parse_bill_text(SAMPLE_EDESUR).model_dump()
+    old.pop("due_date")
+    assert OcrDraft(**old).due_date.value is None

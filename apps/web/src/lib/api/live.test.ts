@@ -15,6 +15,8 @@ const billJson = {
   days: 31,
   reading_previous: null,
   reading_current: null,
+  due_date: null,
+  paid_at: null,
   source: "manual",
   created_at: "2026-08-01T00:00:00Z",
 };

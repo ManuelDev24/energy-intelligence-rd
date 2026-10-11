@@ -30,6 +30,7 @@ export interface Api {
   getOcrJob(homeId: string, documentId: string, signal?: AbortSignal): Promise<OcrJob>;
   retryOcrJob(homeId: string, documentId: string): Promise<OcrJob>;
   updateBill(homeId: string, billId: string, input: BillInput): Promise<Bill>;
+  setBillPayment(homeId: string, billId: string, paid: boolean): Promise<Bill>;
   deleteBill(homeId: string, billId: string): Promise<void>;
   getDashboard(homeId: string, signal?: AbortSignal, billId?: string): Promise<Dashboard>;
   listAnomalies(homeId: string, opts?: { status?: "active" | "all" | "dismissed" | "resolved" }, signal?: AbortSignal): Promise<Anomaly[]>;

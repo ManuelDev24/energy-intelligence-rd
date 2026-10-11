@@ -32,6 +32,8 @@ export const BillOutSchema = z.object({
   "days": z.number().finite().int(),
   "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
   "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "due_date": z.union([z.string().date(), z.null()]),
+  "paid_at": z.union([z.string().datetime({ offset: true }), z.null()]),
   "source": z.enum(["manual", "seed"]),
   "created_at": z.string().datetime({ offset: true })
 });
@@ -153,8 +155,9 @@ export const AlertRecordSchema = z.object({
   "id": z.string().uuid(),
   "home_id": z.string().uuid(),
   "bill_id": z.union([z.string().uuid(), z.null()]),
-  "type": z.string(),
-  "severity": z.enum(["warning", "critical"]),
+  "type": z.enum(["bill_variation", "anomaly", "payment_due", "missing_bill", "stale_readings"]),
+  "severity": z.enum(["info", "warning", "critical", "savings"]),
+  "anomaly_id": z.union([z.string().uuid(), z.null()]),
   "status": z.enum(["unread", "read", "dismissed"]),
   "message": z.string(),
   "kwh_pct": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
@@ -181,6 +184,7 @@ export const BillCreateSchema = z.object({
   "days": z.number().finite().int().min(0).max(366),
   "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
   "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
+  "due_date": z.union([z.string().date(), z.null()]).default(null),
   "source": z.literal("manual").default("manual"),
   "document_id": z.union([z.string().uuid(), z.null()]).default(null)
 });
@@ -193,7 +197,8 @@ export const BillUpdateSchema = z.object({
   "amount_dop": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
   "days": z.number().finite().int().min(0).max(366),
   "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
-  "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null)
+  "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
+  "due_date": z.union([z.string().date(), z.null()]).default(null)
 });
 export type BillUpdate = z.infer<typeof BillUpdateSchema>;
 
@@ -574,6 +579,7 @@ export const OcrDraftSchema = z.object({
   "amount_dop": OcrFieldSchema,
   "reading_previous": OcrFieldSchema,
   "reading_current": OcrFieldSchema,
+  "due_date": OcrFieldSchema.default({"value": null, "confidence": "none"}),
   "warnings": z.array(z.string()),
   "raw_text_excerpt": z.string()
 });
@@ -620,3 +626,19 @@ export const AnomalyStatusInSchema = z.object({
   "status": z.enum(["open", "acknowledged", "dismissed"])
 });
 export type AnomalyStatusIn = z.infer<typeof AnomalyStatusInSchema>;
+
+export const BillPaymentInSchema = z.object({
+  "paid": z.boolean()
+});
+export type BillPaymentIn = z.infer<typeof BillPaymentInSchema>;
+
+export const DeviceInSchema = z.object({
+  "token": z.string().regex(new RegExp("^Expo(nent)?PushToken\\[[A-Za-z0-9_-]{10,}\\]$")).min(20).max(200),
+  "platform": z.enum(["ios", "android"])
+});
+export type DeviceIn = z.infer<typeof DeviceInSchema>;
+
+export const DeviceRemoveInSchema = z.object({
+  "token": z.string().min(20).max(200)
+});
+export type DeviceRemoveIn = z.infer<typeof DeviceRemoveInSchema>;

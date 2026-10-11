@@ -170,6 +170,10 @@ export const useCreateBill = (homeId: string) =>
 export const useUpdateBill = (homeId: string, billId: string) =>
   useHomeMutation(homeId, (input: BillInput) => getApi().updateBill(homeId, billId, input));
 
+/** ERD-ALERT-02: marcar la factura como pagada o pendiente (retira o restituye su alerta de pago). */
+export const useSetBillPayment = (homeId: string, billId: string) =>
+  useHomeMutation(homeId, (paid: boolean) => getApi().setBillPayment(homeId, billId, paid));
+
 export const useDeleteBill = (homeId: string) =>
   useHomeMutation(homeId, (billId: string) => getApi().deleteBill(homeId, billId));
 

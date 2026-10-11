@@ -3,7 +3,7 @@ from sqlalchemy import select
 from app.models.bill_detail import BillSnapshot
 
 from app.models import Bill
-from app.services.alerts import recompute_alerts
+from app.services.alerts import finish_write, recompute_alerts
 from app.services.anomaly_scan import scan_after_write
 from app.services.audit import record_change, snapshot
 from app.services.errors import ApplicationError, NotFound
@@ -50,7 +50,7 @@ def create_bill(db, home_id, payload):
         if document_id is not None:  # ERD-OCR-PROD: el original queda ligado a la factura confirmada, en la misma transacción
             db.flush()
             ocr_jobs.confirm_document(db, home_id, document_id, bill.id)
-        recompute_alerts(db, home_id)
+        finish_write(db, home_id, recompute_alerts(db, home_id))
         scan_after_write(db, home_id)
     return bill
 
@@ -64,7 +64,7 @@ def update_bill(db, home_id, bill_id, payload):
         for key, value in normalized_fields(payload).items():
             setattr(bill, key, value)
         record_change(db, home_id, bill, "update", before)
-        recompute_alerts(db, home_id)
+        finish_write(db, home_id, recompute_alerts(db, home_id))
         scan_after_write(db, home_id)
     return bill
 
@@ -78,5 +78,18 @@ def delete_bill(db, home_id, bill_id):
         db.flush()
         # Expire identity-map alerts removed through PostgreSQL cascades.
         db.expire_all()
-        recompute_alerts(db, home_id)
+        finish_write(db, home_id, recompute_alerts(db, home_id))
         scan_after_write(db, home_id)
+
+
+def set_payment(db, home_id, bill_id, paid: bool, *, now=None):
+    """Marca la factura como pagada o pendiente. Retira (o restituye) la alerta de pago de inmediato."""
+    from datetime import datetime, timezone
+    with write_transaction(db):
+        require_home(db, home_id, lock=True)
+        bill = get_bill(db, home_id, bill_id)
+        before = snapshot(bill)
+        bill.paid_at = (now or datetime.now(timezone.utc)) if paid else None
+        record_change(db, home_id, bill, "update", before)
+        finish_write(db, home_id)
+    return bill

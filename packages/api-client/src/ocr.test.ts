@@ -10,6 +10,7 @@ const draft = {
   amount_dop: { value: '1500', confidence: 'high' },
   reading_previous: { value: null, confidence: 'none' },
   reading_current: { value: '200', confidence: 'inferred' },
+  due_date: { value: '2026-10-15', confidence: 'high' },
   warnings: ['Revise la lectura actual'],
   raw_text_excerpt: 'EDE ...',
 };

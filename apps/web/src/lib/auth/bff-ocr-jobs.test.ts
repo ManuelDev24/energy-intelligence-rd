@@ -10,7 +10,7 @@ const cookie = `erd-epoch=${EPOCH}; erd-access=${EPOCH}~access-token`;
 const field = (value: string | null) => ({ value, confidence: value === null ? "none" : "high" });
 const draft = {
   period_start: field("2026-09-01"), period_end: field("2026-09-30"), days: field("30"), kwh: field("320"),
-  amount_dop: field("4500.00"), reading_previous: field(null), reading_current: field(null), warnings: [], raw_text_excerpt: "TOTAL",
+  amount_dop: field("4500.00"), reading_previous: field(null), reading_current: field(null), due_date: field(null), warnings: [], raw_text_excerpt: "TOTAL",
 };
 const job = (over: Record<string, unknown> = {}) => ({
   document_id: DOC, status: "pending", attempts: 0, method: null, pages_read: null, pages_total: null, draft: null,
@@ -138,7 +138,7 @@ describe("OCR asíncrono por BFF (ERD-OCR-PROD)", () => {
   it("al confirmar la factura se permite document_id y nada más", async () => {
     const bill = { period_start: "2026-08-01", period_end: "2026-08-31", days: 31, kwh: "300", amount_dop: "4000", document_id: DOC };
     const created = { id: "44444444-4444-4444-8444-444444444444", home_id: HOME, period_start: "2026-08-01", period_end: "2026-08-31", kwh: "300.00",
-      amount_dop: "4000.00", days: 31, reading_previous: null, reading_current: null, source: "manual", created_at: "2026-10-10T12:00:00Z", updated_at: "2026-10-10T12:00:00Z" };
+      amount_dop: "4000.00", days: 31, reading_previous: null, reading_current: null, due_date: null, paid_at: null, source: "manual", created_at: "2026-10-10T12:00:00Z", updated_at: "2026-10-10T12:00:00Z" };
     const upstream = vi.fn().mockResolvedValue(json(created, 201));
     const request = new Request(`http://localhost:3000/api/bff/homes/${HOME}/bills`, {
       method: "POST", body: JSON.stringify(bill), headers: { origin: config.origin, cookie, "content-type": "application/json" } });

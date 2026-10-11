@@ -114,7 +114,7 @@ export function BillOcrScreen({ onManual, onDone, pickImage = unavailableImagePi
   }
 
   const draft = job.draft;
-  const field = (key: 'period_start' | 'period_end' | 'days' | 'kwh' | 'amount_dop' | 'reading_previous' | 'reading_current', formKey: keyof BillFormValues, label: string, testID: string) => <Field label={label} value={values[formKey]} onChangeText={update(formKey)} confidence={confidenceText(draft[key].confidence)} testID={testID} />;
+  const field = (key: 'period_start' | 'period_end' | 'days' | 'kwh' | 'amount_dop' | 'reading_previous' | 'reading_current' | 'due_date', formKey: keyof BillFormValues, label: string, testID: string) => <Field label={label} value={values[formKey]} onChangeText={update(formKey)} confidence={confidenceText(draft[key].confidence)} testID={testID} />;
   return <ScrollView contentContainerStyle={s.container}>
     <Text style={s.title}>Revisar borrador de factura</Text>
     <Text style={s.note}>La lectura es solo un borrador. Corrija lo necesario y confirme explícitamente para crear la factura. {ocrSourceText(job)}</Text>
@@ -126,6 +126,7 @@ export function BillOcrScreen({ onManual, onDone, pickImage = unavailableImagePi
     {field('amount_dop', 'amount', 'Monto total (RD$)', 'ocr-amount')}
     {field('reading_previous', 'readingPrevious', 'Lectura anterior (opcional)', 'ocr-rprev')}
     {field('reading_current', 'readingCurrent', 'Lectura actual (opcional)', 'ocr-rcurr')}
+    {field('due_date', 'dueDate', 'Fecha límite de pago (opcional)', 'ocr-due')}
     <Text style={s.raw}>Texto detectado: {draft.raw_text_excerpt || 'Sin texto'}</Text>
     {error ? <Text style={s.error} accessibilityRole="alert" testID="ocr-error">{error}</Text> : null}
     <Button title={create.isPending ? 'Guardando…' : 'Confirmar y guardar factura'} onPress={confirm} disabled={create.isPending} testID="confirm-ocr-bill" />

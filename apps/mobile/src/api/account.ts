@@ -10,6 +10,7 @@ import { localApiError, serverError } from './errors';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PUSH_TOKEN = /^Expo(?:nent)?PushToken\[[A-Za-z0-9_-]{10,}\]$/;
 const OFFLINE = 'No se pudo confirmar la operación. Revise los datos antes de volver a intentar.';
 const none = z.undefined();
 const length = (value: string) => Array.from(value).length;
@@ -68,6 +69,15 @@ export function createAccountApi(baseUrl: string, transport: typeof fetch) {
     getPreferences: async () => request('/api/v1/auth/me/preferences', 'GET', undefined, NotificationPreferencesOutSchema),
     savePreferences: async (alertsEmail: boolean, alertsPush: boolean) =>
       request('/api/v1/auth/me/preferences', 'PUT', { alerts_email: alertsEmail, alerts_push: alertsPush }, NotificationPreferencesOutSchema),
+    // ERD-ALERT-02: token de notificaciones push de este dispositivo (idempotente) y su retirada al cerrar sesión.
+    registerDevice: async (token: string, platform: 'ios' | 'android') => {
+      if (!PUSH_TOKEN.test(token)) throw localApiError(422, 'El token de notificaciones no es válido.', { token: 'x' });
+      return request('/api/v1/auth/devices', 'PUT', { token, platform }, none);
+    },
+    removeDevice: async (token: string) => {
+      if (!PUSH_TOKEN.test(token)) throw localApiError(422, 'El token de notificaciones no es válido.', { token: 'x' });
+      return request('/api/v1/auth/devices/remove', 'POST', { token }, none);
+    },
     listSessions: async () => request('/api/v1/auth/sessions', 'GET', undefined, SessionOutSchema.array()),
     revokeSession: async (sessionId: string) => request(`/api/v1/auth/sessions/${uuid(sessionId, 'La sesión')}`, 'DELETE', undefined, none),
     revokeOtherSessions: async () => request('/api/v1/auth/sessions/revoke-others', 'POST', undefined, none),

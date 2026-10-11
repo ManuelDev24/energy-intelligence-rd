@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from app.api.auth_deps import auth_required, current_session, current_user
 from app.api.auth_abuse import forgot_budget, login_budget, register_budget, refresh_budget, reset_budget
 from app.database import get_db
-from app.schemas.auth import (AccountDeletionIn, Credentials, NotificationPreferencesIn, NotificationPreferencesOut,
+from app.config import settings
+from app.schemas.auth import (AccountDeletionIn, Credentials, DeviceIn, DeviceRemoveIn, NotificationPreferencesIn, NotificationPreferencesOut,
                               PasswordChangeIn, PasswordForgotAccepted, PasswordForgotIn, PasswordResetIn, RefreshIn,
                               RegisterIn, SessionOut, TokensOut, UserOut)
 from app.services import account, account_settings, auth, data_export, email, password_recovery
@@ -69,6 +70,20 @@ def put_preferences(payload: NotificationPreferencesIn, response: Response, user
                     db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
     return account_settings.save_preferences(db, user, payload.alerts_email, payload.alerts_push)
+
+
+@router.put("/devices", status_code=204)
+def put_device(payload: DeviceIn, user=Depends(current_user), db: Session = Depends(get_db)):
+    """Registra (o renueva) el dispositivo para recibir avisos push. Idempotente."""
+    account_settings.register_device(db, user, payload.token, payload.platform, max_devices=settings.MAX_DEVICES_PER_USER)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/devices/remove", status_code=204)
+def remove_device(payload: DeviceRemoveIn, user=Depends(current_user), db: Session = Depends(get_db)):
+    """Quita el dispositivo (al cerrar sesión). POST con cuerpo porque el token no debe viajar en la URL."""
+    account_settings.remove_device(db, user, payload.token)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/sessions", response_model=list[SessionOut])

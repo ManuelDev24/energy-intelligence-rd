@@ -82,6 +82,8 @@ function bill(
     days,
     reading_previous: null,
     reading_current: null,
+    due_date: null,
+    paid_at: null,
     source: "seed",
     created_at: "2026-01-01T00:00:00Z",
   };
@@ -168,7 +170,7 @@ export const OCR_DOC = "99999999-9999-4999-8999-999999999999";
 const ocrField = (value: string | null) => ({ value, confidence: value === null ? "none" as const : "high" as const });
 export const OCR_DRAFT = {
   period_start: ocrField("2026-10-01"), period_end: ocrField("2026-10-31"), days: ocrField("31"), kwh: ocrField("320"),
-  amount_dop: ocrField("4500.00"), reading_previous: ocrField(null), reading_current: ocrField(null),
+  amount_dop: ocrField("4500.00"), reading_previous: ocrField(null), reading_current: ocrField(null), due_date: ocrField("2026-11-10"),
   warnings: [], raw_text_excerpt: "TOTAL A PAGAR",
 };
 const OCR_JOB: OcrJob = {
@@ -232,6 +234,8 @@ export function createMockApi(): Api {
         ...input,
         reading_previous: input.reading_previous ?? null,
         reading_current: input.reading_current ?? null,
+        due_date: input.due_date ?? null,
+        paid_at: null,
         id: `bbbbbbbb-0000-4000-8000-${String(counter).padStart(12, "0")}`,
         home_id: homeId,
         source: "manual",
@@ -256,7 +260,7 @@ export function createMockApi(): Api {
       ocrJob = ocrOutcome === "done"
         ? { ...OCR_JOB, status: "done", method: "text_layer", pages_read: 2, pages_total: 2, finished_at: "2026-10-10T12:00:05Z", draft: OCR_DRAFT }
         : { ...OCR_JOB, status: "failed", attempts: 1, error_code: ocrFailure, error_message: ocrFailure === "unreadable" ? "No se pudo leer el archivo. Pruebe con una foto más nítida o con el PDF original de la distribuidora." : "No se pudo leer la factura en este momento. Intente de nuevo en unos minutos.", finished_at: "2026-10-10T12:00:05Z" };
-      return ocrJob;
+      return ocrJob!;
     },
     retryOcrJob: async () => {
       ocrOutcome = "done";
@@ -264,10 +268,16 @@ export function createMockApi(): Api {
       ocrJob = { ...OCR_JOB, status: "pending" };
       return ocrJob;
     },
+    setBillPayment: async (homeId, billId, paid) => {
+      const current = requireBill(homeId, billId);
+      const updated: Bill = { ...current, paid_at: paid ? "2026-10-10T12:00:00Z" : null };
+      bills = bills.map((b) => (b.id === billId ? updated : b));
+      return updated;
+    },
     updateBill: async (homeId, billId, input) => {
       const current = requireBill(homeId, billId);
       assertNoOverlap(homeId, input, billId);
-      const updated: Bill = { ...current, ...input };
+      const updated: Bill = { ...current, ...input, due_date: input.due_date ?? null };
       bills = bills.map((b) => (b.id === billId ? updated : b));
       return updated;
     },
@@ -569,6 +579,7 @@ export const ALERT_A: AlertItem = {
   id: "dddddddd-0000-4000-8000-000000000001",
   home_id: HOME_A,
   bill_id: BILLS[2].id,
+  anomaly_id: null,
   type: "bill_variation",
   severity: "critical",
   status: "unread",

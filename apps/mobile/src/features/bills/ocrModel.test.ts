@@ -11,16 +11,17 @@ const draft = {
   amount_dop: { value: '1500', confidence: 'high' as const },
   reading_previous: { value: null, confidence: 'none' as const },
   reading_current: { value: '200', confidence: 'inferred' as const },
+  due_date: { value: '2026-10-15', confidence: 'high' as const },
   warnings: ['Revise la lectura actual'], raw_text_excerpt: 'texto',
 };
 
 describe('OCR draft model', () => {
   it('maps nullable OCR values to editable manual form strings', () => {
-    expect(draftToFormValues(draft)).toEqual({ periodStart: '2026-09-01', periodEnd: '2026-09-30', days: '30', kwh: '100', amount: '1500', readingPrevious: '', readingCurrent: '200' });
+    expect(draftToFormValues(draft)).toEqual({ periodStart: '2026-09-01', periodEnd: '2026-09-30', days: '30', kwh: '100', amount: '1500', readingPrevious: '', readingCurrent: '200', dueDate: '2026-10-15' });
   });
 
   it('builds a manual bill input only after the edited draft validates', () => {
-    expect(ocrDraftToBillInput(draftToFormValues(draft))).toEqual({ period_start: '2026-09-01', period_end: '2026-09-30', days: 30, kwh: '100', amount_dop: '1500', reading_previous: null, reading_current: '200' });
+    expect(ocrDraftToBillInput(draftToFormValues(draft))).toEqual({ period_start: '2026-09-01', period_end: '2026-09-30', days: 30, kwh: '100', amount_dop: '1500', reading_previous: null, reading_current: '200', due_date: '2026-10-15' });
   });
 });
 
@@ -65,7 +66,7 @@ describe('OCR asíncrono (ERD-OCR-PROD)', () => {
     expect(ocrSourceText(job())).toBe('');
   });
   it('la factura confirmada lleva el id del original y solo si los campos son válidos', () => {
-    const values = { periodStart: '2026-09-01', periodEnd: '2026-09-30', days: '30', kwh: '300', amount: '3000', readingPrevious: '', readingCurrent: '' };
+    const values = { periodStart: '2026-09-01', periodEnd: '2026-09-30', days: '30', kwh: '300', amount: '3000', readingPrevious: '', readingCurrent: '', dueDate: '' };
     expect(ocrJobBillInput(values, 'doc-1')).toMatchObject({ document_id: 'doc-1', kwh: '300' });
     expect(() => ocrJobBillInput({ ...values, kwh: '' }, 'doc-1')).toThrow();
   });

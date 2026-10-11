@@ -204,6 +204,12 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
         if (job.document_id !== document) throw new ContractError();
         return job;
       }),
+    // ERD-ALERT-02: marcar la factura como pagada (retira la alerta de pago) o pendiente.
+    setBillPayment: (id: string, bill: string, paid: boolean) =>
+      request(`${homePath(id)}/bills/${idPath(bill)}/payment`, BillSchema, write("PUT", { paid })).then(updated => {
+        if (updated.id !== bill) throw new ContractError();
+        return updated;
+      }),
     updateBill: (id: string, bill: string, input: BillInput) => request(`${homePath(id)}/bills/${idPath(bill)}`, BillSchema, write("PUT", input)),
     deleteBill: (id: string, bill: string) => request(`${homePath(id)}/bills/${idPath(bill)}`, z.undefined(), write("DELETE")),
     // ERD-BILL-02: detalle manual (cargos/descuentos) y evaluación de solo lectura (nunca aprueba).

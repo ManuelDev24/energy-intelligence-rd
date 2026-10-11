@@ -186,3 +186,15 @@ class SessionOut(BaseModel):
     created_at: datetime
     expires_at: datetime
     current: bool
+
+
+class DeviceIn(BaseModel):
+    """ERD-ALERT-02: registra el token de notificaciones push (Expo) de este dispositivo."""
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=20, max_length=200, pattern=r"^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,}\]$")
+    platform: Literal["ios", "android"]
+
+
+class DeviceRemoveIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=20, max_length=200)

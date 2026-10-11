@@ -1,0 +1,77 @@
+[
+  {
+    "check": "la factura guarda la fecha límite",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "la página de alertas muestra la factura por vencer, con su mensaje y la acción «Ver factura»",
+    "ok": true,
+    "detail": "Alertas |  | Avisos de consumo que sube o baja, desviaciones detectadas, facturas por vencer y datos que faltan. Las importantes también te llegan por correo o al teléfono, según tus preferencias. |  | Advert"
+  },
+  {
+    "check": "el worker envió un correo de aviso",
+    "ok": true,
+    "detail": "1 correo(s)"
+  },
+  {
+    "check": "el correo no lleva cifras ni montos y enlaza a las alertas",
+    "ok": true,
+    "detail": "Energy RD: Su factura vence pronto"
+  },
+  {
+    "check": "hay una alerta de pago con severidad «warning»",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "al marcarla pagada la alerta de pago desaparece",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "y vuelve al dejarla pendiente",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "pagar y deshacer avisa una vez más (la alerta es nueva); no se repite sin cambios",
+    "ok": true,
+    "detail": "2 correos"
+  },
+  {
+    "check": "repetir «pendiente» sin cambios no envía nada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "una última factura de hace más de dos ciclos genera «falta registrar una factura» (advertencia)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "lo informativo/incompleto NO manda correo",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "las preferencias se guardan",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "con el correo desactivado no se envía otro aviso",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "pero la alerta nueva sí está en la app",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el texto de preferencias ya no dice que no se envía nada",
+    "ok": true,
+    "detail": ""
+  }
+]

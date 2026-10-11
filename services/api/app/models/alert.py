@@ -3,16 +3,21 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, func,
+    CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, func, text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
-SEVERITIES = ("warning", "critical")
+SEVERITIES = ("info", "warning", "critical", "savings")
+ALERT_TYPES = ("bill_variation", "anomaly", "payment_due", "missing_bill", "stale_readings")
 STATUSES = ("unread", "read", "dismissed")
 ALERT_TYPE_BILL_VARIATION = "bill_variation"
+ALERT_TYPE_ANOMALY = "anomaly"
+ALERT_TYPE_PAYMENT = "payment_due"
+ALERT_TYPE_MISSING_BILL = "missing_bill"
+ALERT_TYPE_STALE_READINGS = "stale_readings"
 
 
 def _in(col: str, vals) -> str:
@@ -25,9 +30,11 @@ class Alert(Base):
     __tablename__ = "alerts"
     __table_args__ = (
         CheckConstraint(_in("severity", SEVERITIES), name="ck_alerts_severity"),
+        CheckConstraint(_in("type", ALERT_TYPES), name="ck_alerts_type"),
         CheckConstraint(_in("status", STATUSES), name="ck_alerts_status"),
         UniqueConstraint("home_id", "bill_id", "type", name="uq_alerts_home_bill_type"),
         Index("ix_alerts_home_status", "home_id", "status"),
+        Index("uq_alerts_home_key", "home_id", "dedupe_key", unique=True, postgresql_where=text("dedupe_key IS NOT NULL")),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -46,6 +53,9 @@ class Alert(Base):
     # Valid bill values can produce 14 integer digits when the baseline is 0.01.
     kwh_pct: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
     threshold_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    # Alertas de anomalía: la anomalía que las origina; las de reglas (pago, datos incompletos) llevan clave de deduplicación.
+    anomaly_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("anomalies.id", ondelete="CASCADE"))
+    dedupe_key: Mapped[str | None] = mapped_column(String(80))
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     severity: Mapped[str] = mapped_column(String(20), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="unread", server_default="unread")

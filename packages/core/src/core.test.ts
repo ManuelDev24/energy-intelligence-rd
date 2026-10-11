@@ -203,3 +203,23 @@ describe('mini-tendencias (ERD-CHARTS-01)', () => {
     expect(sparklineSummary('consumo', sparkline([100, 150, 100])!, f)).toContain('se mantuvo');
   });
 });
+
+describe('alertas (ERD-ALERT-02)', () => {
+  it('cada tipo tiene un titular, y el pago vencido se distingue del que vence pronto', async () => {
+    const { alertTitle } = await import('./index');
+    expect(alertTitle({ type: 'payment_due', severity: 'critical' })).toBe('Factura vencida');
+    expect(alertTitle({ type: 'payment_due', severity: 'warning' })).toBe('Factura por vencer');
+    expect(alertTitle({ type: 'bill_variation', severity: 'savings' })).toBe('Ahorro frente al período anterior');
+    expect(alertTitle({ type: 'bill_variation', severity: 'critical' })).toBe('Consumo más alto que el período anterior');
+    expect(alertTitle({ type: 'stale_readings', severity: 'info' })).toBe('Lecturas atrasadas');
+  });
+  it('el destino de «resolver» depende del tipo y nunca inventa una factura', async () => {
+    const { alertTarget, SEVERITY_ORDER } = await import('./index');
+    expect(alertTarget({ type: 'payment_due', bill_id: 'b1' })).toEqual({ kind: 'bill', billId: 'b1', label: 'Ver factura' });
+    expect(alertTarget({ type: 'payment_due', bill_id: null })).toBeNull();
+    expect(alertTarget({ type: 'missing_bill', bill_id: 'b1' })?.kind).toBe('new-bill');
+    expect(alertTarget({ type: 'stale_readings', bill_id: null })?.kind).toBe('new-reading');
+    expect(alertTarget({ type: 'anomaly', bill_id: null })?.kind).toBe('home');
+    expect(Object.entries(SEVERITY_ORDER).sort((a, b) => a[1] - b[1]).map(([k]) => k)).toEqual(['critical', 'warning', 'info', 'savings']);
+  });
+});

@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { api } from '../../api/client';
 import { describeError } from '../../api/errors';
 import { authSession } from '../../auth/runtime';
+import { nativeDeps, PUSH_MESSAGES, registerForPush } from '../../notifications/push';
 import { Field, formStyles } from '../../components/Field';
 import { Button, ErrorView, Loading } from '../../components/ui';
 import { colors, spacing } from '../../theme';
@@ -84,6 +85,13 @@ function NotificationsSection() {
   const prefs = useQuery({ queryKey: key, queryFn: () => api.getPreferences(), enabled, retry: false });
   const [draft, setDraft] = useState<{ email: boolean; push: boolean } | null>(null);
   const [saved, setSaved] = useState(false);
+  const [pushNote, setPushNote] = useState<string | null>(null);
+  // Al activar los avisos del teléfono se pide el permiso del sistema (solo entonces) y se registra este dispositivo.
+  const activatePush = async () => {
+    setPushNote(null);
+    const deps = await nativeDeps(api).catch(() => null);
+    setPushNote(PUSH_MESSAGES[deps ? await registerForPush(deps, { ask: true }) : 'unavailable']);
+  };
   const save = useMutation({
     retry: false,
     mutationFn: (value: { email: boolean; push: boolean }) => api.savePreferences(value.email, value.push),
@@ -96,8 +104,9 @@ function NotificationsSection() {
     <View style={s.card} testID="account-notifications-section">
       <Text style={s.title} accessibilityRole="header">Notificaciones</Text>
       <Text style={s.hint}>
-        Sus elecciones se guardan ahora y se aplicarán cuando se activen los envíos de alertas. Todavía no se envía ningún aviso por
-        correo ni al teléfono.
+        Elija cómo recibir los avisos importantes: consumo que sube, desviaciones y facturas por vencer. El correo llega a la dirección
+        de su cuenta; el teléfono, a esta app con las notificaciones permitidas. Las alertas informativas (por ejemplo, falta
+        registrar una factura) solo se ven dentro de la app.
       </Text>
       {prefs.isLoading ? <Loading label="Cargando preferencias…" /> : null}
       {prefs.isError ? <ErrorView error={prefs.error} onRetry={() => void prefs.refetch()} /> : null}
@@ -111,8 +120,9 @@ function NotificationsSection() {
           <View style={s.row}>
             <Text style={s.label} accessibilityRole="text">Avisos en este teléfono</Text>
             <Switch testID="account-pref-push" value={current.push} disabled={save.isPending}
-              accessibilityLabel="Avisos en este teléfono" onValueChange={(push) => { setSaved(false); setDraft({ ...current, push }); }} />
+              accessibilityLabel="Avisos en este teléfono" onValueChange={(push) => { setSaved(false); setDraft({ ...current, push }); if (push) void activatePush(); }} />
           </View>
+          {pushNote ? <Text accessibilityLiveRegion="polite" style={s.hint} testID="account-push-note">{pushNote}</Text> : null}
           {save.isError ? <Text accessibilityRole="alert" style={formStyles.serverErr}>{describeError(save.error).message}</Text> : null}
           {saved ? <Text accessibilityLiveRegion="polite" style={s.ok}>Preferencias guardadas.</Text> : null}
           <Button title={save.isPending ? 'Guardando…' : 'Guardar preferencias'} testID="account-pref-save"

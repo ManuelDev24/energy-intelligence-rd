@@ -53,7 +53,7 @@ export function PasswordSection() {
   );
 }
 
-/** ERD-PROF-01: preferencias de aviso. Se guardan ya; los envíos llegan con ERD-ALERT-02. */
+/** ERD-PROF-01 / ERD-ALERT-02: preferencias de aviso; se aplican al enviar cada aviso. */
 export function NotificationsSection() {
   const qc = useQueryClient();
   const prefs = useQuery({ queryKey: ["account", "preferences"], queryFn: getPreferences, retry: false });
@@ -68,8 +68,9 @@ export function NotificationsSection() {
     <Card>
       <h2 className="text-xl font-semibold">Notificaciones</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Elige cómo quieres recibir los avisos de consumo. Tus elecciones se guardan ahora y se aplicarán cuando se activen los
-        envíos de alertas (todavía no se envía ningún aviso por correo ni al teléfono).
+        Elige cómo quieres recibir los avisos importantes: consumo que sube, desviaciones y facturas por vencer. El correo llega a
+        la dirección de tu cuenta; el teléfono, a la app móvil con las notificaciones permitidas. Las alertas informativas
+        (por ejemplo, falta registrar una factura) solo se ven dentro de la app.
       </p>
       {prefs.isLoading ? <p role="status" className="mt-3 text-sm">Cargando…</p> : null}
       {prefs.isError ? (

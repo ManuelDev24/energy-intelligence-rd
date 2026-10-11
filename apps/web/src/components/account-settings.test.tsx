@@ -75,7 +75,8 @@ it("notificaciones: muestra los valores guardados, guarda solo si hay cambios y 
   expect(email).toBeChecked();
   expect(screen.getByLabelText(/Avisos en el teléfono/)).not.toBeChecked();
   expect(screen.getByRole("button", { name: "Guardar preferencias" })).toBeDisabled();
-  expect(screen.getByText(/todavía no se envía ningún aviso/)).toBeInTheDocument();
+  expect(screen.getByText(/solo se ven dentro de la app/)).toBeInTheDocument();
+  expect(screen.queryByText(/todavía no se envía/)).not.toBeInTheDocument();
   fireEvent.click(email);
   fireEvent.click(screen.getByRole("button", { name: "Guardar preferencias" }));
   await waitFor(() => expect(settings.savePreferences).toHaveBeenCalledWith(false, false));

@@ -51,3 +51,26 @@ def revoke_other_sessions(db: Session, user, current_session_id) -> None:
         db.execute(update(AuthSession).where(
             AuthSession.user_id == user.id, AuthSession.id != current_session_id, AuthSession.revoked_at.is_(None))
             .values(revoked_at=now()))
+
+
+def register_device(db: Session, user, token: str, platform: str, *, max_devices: int) -> None:
+    """Idempotente. Si el token ya estaba en otra cuenta (mismo teléfono, otra persona) pasa a esta; así un aviso nunca llega
+    a quien ya no usa el teléfono. Tope por persona: al excederlo se descarta el token más antiguo."""
+    from app.models import DeviceToken
+    with write_transaction(db):
+        row = db.scalar(select(DeviceToken).where(DeviceToken.token == token).with_for_update())
+        if row is None:
+            db.add(DeviceToken(user_id=user.id, token=token, platform=platform))
+        else:
+            row.user_id, row.platform, row.last_seen_at = user.id, platform, now()
+        db.flush()
+        mine = list(db.scalars(select(DeviceToken).where(DeviceToken.user_id == user.id).order_by(DeviceToken.last_seen_at.desc(), DeviceToken.id)))
+        for extra in mine[max_devices:]:
+            db.delete(extra)
+
+
+def remove_device(db: Session, user, token: str) -> None:
+    """Solo borra el token si es de esta cuenta; que no exista no es un error (cerrar sesión es idempotente)."""
+    from app.models import DeviceToken
+    with write_transaction(db):
+        db.execute(DeviceToken.__table__.delete().where(DeviceToken.token == token, DeviceToken.user_id == user.id))

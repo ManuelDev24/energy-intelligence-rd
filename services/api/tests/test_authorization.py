@@ -39,7 +39,7 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('GET',u+'/bills',None),('POST',u+'/bills',BILL),
             ('GET',u+'/bills/'+bill,None),('PUT',u+'/bills/'+bill,BILL),('DELETE',u+'/bills/'+bill,None),
             ('GET',u+'/bills/'+bill+'/items',None),('PUT',u+'/bills/'+bill+'/items',{'items': []}),
-            ('POST',u+'/bills/'+bill+'/validate',{}),
+            ('POST',u+'/bills/'+bill+'/validate',{}),('PUT',u+'/bills/'+bill+'/payment',{'paid':True}),
             ('POST',u+'/bills/ocr',MULTIPART),
             ('GET',u+'/equipment',None),('POST',u+'/equipment',EQ),('GET',u+'/equipment/estimate',None),
             ('GET',u+'/equipment/'+eq,None),('PUT',u+'/equipment/'+eq,EQ),('DELETE',u+'/equipment/'+eq,None),
@@ -112,7 +112,8 @@ def test_private_route_inventory_remains_covered(auth_client):
 
 # Rutas de /auth que SÍ exigen access token (se prueban en test_auth*, test_password_change, test_account_settings).
 PRIVATE_AUTH_ROUTES = {'/api/v1/auth/me', '/api/v1/auth/me/export', '/api/v1/auth/me/preferences', '/api/v1/auth/password/change',
-                       '/api/v1/auth/sessions', '/api/v1/auth/sessions/revoke-others', '/api/v1/auth/sessions/{session_id}'}
+                       '/api/v1/auth/sessions', '/api/v1/auth/sessions/revoke-others', '/api/v1/auth/sessions/{session_id}',
+                       '/api/v1/auth/devices', '/api/v1/auth/devices/remove'}
 PUBLIC_AUTH_ROUTES = {'/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout',
                       '/api/v1/auth/password/forgot', '/api/v1/auth/password/reset'}
 

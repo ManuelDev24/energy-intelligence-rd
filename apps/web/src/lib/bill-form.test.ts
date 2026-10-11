@@ -9,6 +9,7 @@ const valid: BillFormValues = {
   days: "31",
   reading_previous: "",
   reading_current: "",
+  due_date: "",
 };
 
 describe("validateBillForm", () => {
@@ -24,8 +25,18 @@ describe("validateBillForm", () => {
         days: 31,
         reading_previous: null,
         reading_current: null,
+        due_date: null,
       },
     });
+  });
+
+  it("ERD-ALERT-02: la fecha límite es opcional, debe ser una fecha y caer entre el inicio y 120 días después del fin", () => {
+    const ok = validateBillForm({ ...valid, due_date: "2026-09-15" });
+    expect(ok.ok && ok.value.due_date).toBe("2026-09-15");
+    for (const [due, message] of [["2026-07-31", /anterior al inicio/], ["2027-01-15", /120 días/], ["15/09/2026", /inválida/]] as const) {
+      const r = validateBillForm({ ...valid, due_date: due });
+      expect(!r.ok && r.errors.due_date).toMatch(message);
+    }
   });
 
   it("exige fechas", () => {

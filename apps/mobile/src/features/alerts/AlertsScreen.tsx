@@ -1,4 +1,4 @@
-import { SEVERITY } from '@energyrd/core';
+import { alertTarget, alertTitle, SEVERITY } from '@energyrd/core';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { useAlerts, useSetAlertStatus } from '../../api/hooks';
@@ -9,9 +9,17 @@ import { fmtNumber, fmtPeriod, fmtPct } from '../../lib/format';
 import { useSession } from '../../store/session';
 import { colors, spacing } from '../../theme';
 
-export { unreadCount } from '../../lib/alerts';
+export { sortAlerts, unreadCount } from '../../lib/alerts';
+import { sortAlerts } from '../../lib/alerts';
 
-export function AlertsScreen() {
+export interface AlertsNav {
+  onOpenBill?: (billId: string) => void;
+  onNewBill?: () => void;
+  onNewReading?: () => void;
+  onHome?: () => void;
+}
+
+export function AlertsScreen({ onOpenBill, onNewBill, onNewReading, onHome }: AlertsNav = {}) {
   const homeId = useSession((st) => st.selectedHomeId);
   const { data, isLoading, isError, error, refetch, isRefetching } = useAlerts(homeId);
   const setStatus = useSetAlertStatus(homeId ?? '');
@@ -29,7 +37,7 @@ export function AlertsScreen() {
         </Text>
       ) : null}
       <FlatList
-        data={data ?? []}
+        data={sortAlerts(data ?? [])}
         keyExtractor={(a) => a.id}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
@@ -37,17 +45,19 @@ export function AlertsScreen() {
           <EmptyState
             icon="checkmark-circle-outline"
             title="Sin alertas"
-            hint="Se genera una alerta cuando el consumo de una factura sube por encima del umbral frente a la anterior."
+            hint="Le avisaremos si el consumo sube de golpe, si se detecta una desviación o si una factura está por vencer."
           />
         }
         renderItem={({ item }) => {
           const unread = item.status === 'unread';
           const sev = SEVERITY[item.severity];
+          const target = alertTarget(item);
+          const go = !target ? null : target.kind === 'bill' ? () => onOpenBill?.(target.billId) : target.kind === 'new-bill' ? onNewBill : target.kind === 'new-reading' ? onNewReading : onHome;
           return (
             <AlertCard
               tone={item.severity}
               testID={`alert-${item.id}`}
-              title={`${sev.short}${unread ? ' · nueva' : ''}`}
+              title={`${sev.short}: ${alertTitle(item)}${unread ? ' · nueva' : ''}`}
               trailing={item.kwh_pct ? fmtPct(item.kwh_pct) : undefined}
               message={item.message}
               highlighted={unread}
@@ -60,6 +70,7 @@ export function AlertsScreen() {
               }
               actions={
                 <>
+                  {target && go ? <TextAction title={target.label} testID={`open-${item.id}`} onPress={go} /> : null}
                   {unread ? (
                     <TextAction
                       title="Marcar como leída"

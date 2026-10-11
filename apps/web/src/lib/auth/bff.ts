@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -173,6 +173,8 @@ function phase2Route(path: string, method: string): Phase2Route | null {
   } } : null;
   if (new RegExp(`^/homes/${UUID}/anomalies/${UUID}$`).test(path)) return method === "PATCH" ? { response: AnomalySchema, body: AnomalyStatusInSchema.strict(), query: {} } : null;
   if (/\/anomalies(\/|$)/.test(path)) return null;
+  // ERD-ALERT-02: marcar una factura como pagada/pendiente.
+  if (new RegExp(`^/homes/${UUID}/bills/${UUID}/payment$`).test(path)) return method === "PUT" ? { response: BillSchema, body: BillPaymentInSchema.strict(), query: {} } : null;
   const job = path.match(new RegExp(`^/homes/${UUID}/bills/ocr-jobs/${UUID}(/retry)?$`));
   if (job) return job[1] ? (method === "POST" ? { response: OcrJobSchema, body: z.object({}).strict(), query: {} } : null)
     : method === "GET" ? { response: OcrJobSchema, query: {} } : null;
@@ -480,6 +482,11 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
           (url.searchParams.has("bill_id") && dashboard.latest_bill?.bill_id !== url.searchParams.get("bill_id"))) throw new Error("Mismatched dashboard");
     }
     if (parsed !== undefined && phase2 && new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path) && !ownsBill(path, parsed)) throw new Error("Mismatched bill");
+    if (parsed !== undefined && /\/bills\/[0-9a-f-]{36}\/payment$/.test(path)) {
+      const [, , home, , bill] = path.split("/");
+      const row = parsed as { id: string; home_id: string };
+      if (row.id !== bill || row.home_id !== home) throw new Error("Mismatched bill");
+    }
     if (parsed !== undefined && /\/anomalies(\/[0-9a-f-]{36})?$/.test(path)) {
       const [, , home, , child] = path.split("/");
       const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id: string }[];

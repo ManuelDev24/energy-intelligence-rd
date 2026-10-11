@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Anomaly, Bill, MeterReading
+from app.services import alerts
 from app.services import anomaly_engine as engine
 from app.services import consumption_calc as cc
 from app.services.errors import ApplicationError, InvalidInput, NotFound
@@ -124,6 +125,7 @@ def scan_home(db: Session, home_id, *, now: datetime | None = None, commit: bool
                 row.status, row.status_changed_at = "resolved", current
                 result.resolved += 1
         db.flush()
+        alerts.sync_anomaly_alerts(db, home_id, now=current)   # alertas por anomalías recientes (y avisos de las nuevas)
         return result
 
     if not commit:
@@ -169,6 +171,7 @@ def set_status(db: Session, home_id, anomaly_id, status: str, *, now: datetime |
             raise ApplicationError("Esta anomalía ya no se detecta; no se puede cambiar su estado")
         if row.status != status:
             row.status, row.status_changed_at = status, now or datetime.now(timezone.utc)
+            alerts.sync_anomaly_alerts(db, home_id, now=now, notify=False)   # la alerta asociada sigue el estado
     return row
 
 

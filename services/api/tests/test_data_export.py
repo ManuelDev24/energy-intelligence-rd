@@ -84,3 +84,26 @@ def test_export_requires_a_valid_session_and_is_rate_limited(auth_client, monkey
 
 def test_export_is_hidden_without_accounts(client):
     assert client.get(EXPORT).status_code == 404
+
+
+def test_export_includes_anomalies_preferences_devices_and_notifications_but_never_the_push_token(auth_client, migrated):
+    alice = register(auth_client)
+    home = full_home(auth_client, alice)
+    token = 'ExponentPushToken[exportcheckabcdefghijk]'
+    auth_client.put('/api/v1/auth/devices', headers=bearer(alice), json={'token': token, 'platform': 'android'})
+    auth_client.put('/api/v1/auth/me/preferences', headers=bearer(alice), json={'alerts_email': False, 'alerts_push': True})
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO anomalies(id,home_id,kind,source,granularity,severity,confidence,period_start,period_end,observed_kwh,"
+                       "baseline_kwh,days,explanation,dedupe_key) VALUES(gen_random_uuid(),:h,'peak','readings','day','warning','low',"
+                       "'2026-09-01','2026-09-01',30,10,1,'explicación','peak:k')"), {'h': home})
+        c.execute(text("INSERT INTO notifications(id,alert_id,user_id,channel,severity,status) "
+                       "SELECT gen_random_uuid(),a.id,u.id,'email','warning','sent' FROM alerts a, users u WHERE u.email='alice@example.com' LIMIT 1"))
+    r = export(auth_client, alice)
+    data = r.json()
+    [h] = data['homes']
+    assert [a['kind'] for a in h['anomalies']] == ['peak'] and 'dedupe_key' not in h['anomalies'][0] and 'dedupe_key' not in h['alerts'][0]
+    assert data['notification_preferences'] == {'alerts_email': False, 'alerts_push': True, 'updated_at': data['notification_preferences']['updated_at']}
+    assert [set(d) for d in data['devices']] == [{'platform', 'created_at', 'last_seen_at'}] and data['devices'][0]['platform'] == 'android'
+    assert ('email', 'sent') in [(n['channel'], n['status']) for n in data['notifications']]   # además de los creados por el propio flujo
+    assert all(set(n) >= {'channel', 'severity', 'status', 'created_at'} and 'user_id' not in n for n in data['notifications'])
+    assert token not in r.text and 'exportcheck' not in r.text

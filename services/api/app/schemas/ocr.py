@@ -21,6 +21,8 @@ class OcrDraft(BaseModel):
     amount_dop: OcrField
     reading_previous: OcrField
     reading_current: OcrField
+    # ERD-ALERT-02: fecha límite de pago, si la factura la imprime. Los borradores guardados antes de este campo no la tienen.
+    due_date: OcrField = OcrField(value=None, confidence="none")
     warnings: list[str]
     raw_text_excerpt: str  # primeros ~500 caracteres, para que la persona confirme contra el original
 

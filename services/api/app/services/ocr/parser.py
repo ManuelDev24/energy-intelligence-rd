@@ -6,7 +6,7 @@ de llamar al POST /bills ya existente (que es el único camino real hacia la bas
 Nunca lanza excepción: entrada rara o vacía siempre produce un draft con campos en None.
 """
 import re
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from app.schemas.ocr import Confidence, OcrDraft, OcrField
@@ -37,6 +37,12 @@ _AMOUNT_RE = re.compile(rf"total[\s/._-]+a[\s/._-]+pagar{_ND}{{0,20}}?(\d[\d,.\s
 _KWH_RE = re.compile(rf"consum\w*{_ND}{{0,30}}?(\d[\d,.\s]*\d)\s*k\s*w\s*h", re.IGNORECASE)
 _PREV_RE = re.compile(rf"lec\w{{0,5}}a\s*(?:anterior|previa){_ND}{{0,20}}?(\d[\d,.\s]*\d)", re.IGNORECASE)
 _CURR_RE = re.compile(rf"lec\w{{0,5}}a\s*(?:actua\w*){_ND}{{0,20}}?(\d[\d,.\s]*\d)", re.IGNORECASE)
+
+
+# ERD-ALERT-02: fecha límite de pago. Etiquetas habituales en facturas dominicanas (SIN verificar con facturas reales).
+_DUE_RE = re.compile(
+    rf"(?:fecha\s+l[ií]mite(?:\s+de\s+pago)?|fecha\s+de\s+vencimiento|vencimiento|vence(?:\s+el)?|pague\s+antes\s+del?|pagar\s+antes\s+del?)"
+    rf"{_ND}{{0,12}}?{_DATE_NUM}", re.IGNORECASE)
 
 
 def _num(raw: str) -> Decimal | None:
@@ -116,6 +122,18 @@ def parse_bill_text(text: str | None) -> OcrDraft:
         else:
             days_field = OcrField(value=str((period_end - period_start).days + 1), confidence="inferred")
 
+    due = None
+    due_conf: Confidence = "high"
+    m = _DUE_RE.search(text)
+    if m:
+        due = _date_from_match(m.group(1, 2, 3))
+        if due is not None and period_start and period_end:
+            if not period_start <= due <= period_end + timedelta(days=120):
+                warnings.append("La fecha límite de pago leída no es coherente con el período; revísela.")
+                due = None
+        elif due is not None:
+            due_conf = "inferred"  # sin período con qué contrastarla
+
     amount = None
     m = _AMOUNT_RE.search(text)
     if m:
@@ -166,6 +184,6 @@ def parse_bill_text(text: str | None) -> OcrDraft:
     return OcrDraft(
         period_start=field(period_start, period_conf), period_end=field(period_end, period_conf), days=days_field,
         kwh=field(kwh, kwh_conf), amount_dop=field(amount),
-        reading_previous=field(prev), reading_current=field(curr),
+        reading_previous=field(prev), reading_current=field(curr), due_date=field(due, due_conf),
         warnings=warnings, raw_text_excerpt=text.strip()[:500],
     )

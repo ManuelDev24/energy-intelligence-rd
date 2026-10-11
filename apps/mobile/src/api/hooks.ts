@@ -86,6 +86,15 @@ export function useCreateBill(homeId: string) {
   });
 }
 
+/** ERD-ALERT-02: pagada/pendiente; cambia la alerta de pago y la factura. */
+export function useSetBillPayment(homeId: string, billId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (paid: boolean) => api.setBillPayment(homeId, billId, paid),
+    onSuccess: () => invalidateBillData(qc, homeId),
+  });
+}
+
 export function useDeleteBill(homeId: string) {
   const qc = useQueryClient();
   return useMutation({

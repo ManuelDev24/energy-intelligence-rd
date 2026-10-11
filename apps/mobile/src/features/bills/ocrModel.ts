@@ -8,7 +8,7 @@ export function draftToFormValues(draft: OcrDraft): BillFormValues {
   return {
     periodStart: value(draft.period_start), periodEnd: value(draft.period_end), days: value(draft.days),
     kwh: value(draft.kwh), amount: value(draft.amount_dop),
-    readingPrevious: value(draft.reading_previous), readingCurrent: value(draft.reading_current),
+    readingPrevious: value(draft.reading_previous), readingCurrent: value(draft.reading_current), dueDate: value(draft.due_date),
   };
 }
 

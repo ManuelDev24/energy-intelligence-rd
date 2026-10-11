@@ -10,9 +10,10 @@ from pydantic_core import to_jsonable_python
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
-from app.models import Alert, AlertSettings, Bill, Contract, Document, Equipment, Home, HomeGoal, MeterReading
+from app.models import (Alert, AlertSettings, Anomaly, Bill, Contract, DeviceToken, Document, Equipment, Home, HomeGoal, MeterReading,
+                        Notification)
 from app.models.bill_detail import BillItem
-from app.models.auth import AuthSession, HomeMember, User
+from app.models.auth import AuthSession, HomeMember, NotificationPreference, User
 
 FORMAT_VERSION = 1
 # Los montos y kWh son Decimal: pydantic los serializa como texto exacto (igual que la API), nunca como float.
@@ -50,18 +51,27 @@ def export_user_data(db: Session, user: User, now: datetime | None = None) -> di
             "bills": bills,
             "equipment": _rows(db, Equipment, home.id, (Equipment.created_at, Equipment.id)),
             "readings": _rows(db, MeterReading, home.id, (MeterReading.read_at, MeterReading.id)),
-            "alerts": _rows(db, Alert, home.id, (Alert.created_at, Alert.id)),
+            "alerts": _rows(db, Alert, home.id, (Alert.created_at, Alert.id), exclude=frozenset({"dedupe_key"})),
+            "anomalies": _rows(db, Anomaly, home.id, (Anomaly.period_start, Anomaly.id), exclude=frozenset({"dedupe_key"})),
             "documents": _rows(db, Document, home.id, (Document.created_at, Document.id),
                                exclude=frozenset({"storage_key", "uploaded_by"})),
         })
     sessions = [_row(s, exclude=frozenset({"id", "user_id"})) for s in db.scalars(
         select(AuthSession).where(AuthSession.user_id == user.id).order_by(AuthSession.created_at))]
+    preferences = db.get(NotificationPreference, user.id)
+    devices = [_row(d, exclude=frozenset({"id", "user_id", "token"})) for d in db.scalars(
+        select(DeviceToken).where(DeviceToken.user_id == user.id).order_by(DeviceToken.created_at, DeviceToken.id))]
+    notifications = [_row(n, exclude=frozenset({"id", "user_id"})) for n in db.scalars(
+        select(Notification).where(Notification.user_id == user.id).order_by(Notification.created_at, Notification.id))]
     return {
         "format_version": FORMAT_VERSION,
         "generated_at": to_jsonable_python(now or datetime.now(timezone.utc)),
         "account": _row(user, exclude=frozenset({"password_hash", "active"})),
         "homes": homes,
         "sessions": sessions,
-        "not_included": ["contraseña y hashes", "tokens", "claves de almacenamiento de archivos",
+        "notification_preferences": _row(preferences, exclude=frozenset({"user_id"})) if preferences else None,
+        "devices": devices,
+        "notifications": notifications,
+        "not_included": ["contraseña y hashes", "tokens (incluidos los de notificaciones push)", "claves de almacenamiento de archivos",
                          "auditoría interna", "datos de otras personas", "invitaciones enviadas a terceros"],
     }

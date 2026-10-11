@@ -12,6 +12,8 @@ import { authSession, useAuth } from '../auth/runtime';
 import { hasOwnedSelection } from '../auth/policy';
 import { AuthScreen } from '../features/auth/AuthScreen';
 import { AlertsScreen, unreadCount } from '../features/alerts/AlertsScreen';
+import { api } from '../api/client';
+import { nativeDeps, registerForPush } from '../notifications/push';
 import { BillFormScreen } from '../features/bills/BillFormScreen';
 import { BillOcrScreen } from '../features/bills/BillOcrScreen';
 import { BillsScreen } from '../features/bills/BillsScreen';
@@ -147,11 +149,16 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
           />
         )}
       </Tab.Screen>
-      <Tab.Screen
-        name="Alerts"
-        component={AlertsScreen}
-        options={{ title: 'Alertas', tabBarBadge: unread > 0 ? unread : undefined }}
-      />
+      <Tab.Screen name="Alerts" options={{ title: 'Alertas', tabBarBadge: unread > 0 ? unread : undefined }}>
+        {({ navigation: tabs }) => (
+          <AlertsScreen
+            onOpenBill={(billId) => homeId && navigation.navigate('BillDetail', { homeId, billId })}
+            onNewBill={() => navigation.navigate('BillForm')}
+            onNewReading={() => navigation.navigate('ReadingForm')}
+            onHome={() => tabs.navigate('Dashboard')}
+          />
+        )}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -169,6 +176,8 @@ export function AppNavigator() {
 
 function AuthenticatedApp() {
   const homes = useHomes();
+  // ERD-ALERT-02: si ya hay permiso de notificaciones, este teléfono se registra para los avisos; nunca se pregunta aquí.
+  useEffect(() => { void nativeDeps(api).then((deps) => registerForPush(deps, { ask: false })).catch(() => undefined); }, []);
   const selected = useSession((st) => st.selectedHomeId);
   const ownsSelection = hasOwnedSelection(selected, homes.data ?? []);
   useEffect(() => {

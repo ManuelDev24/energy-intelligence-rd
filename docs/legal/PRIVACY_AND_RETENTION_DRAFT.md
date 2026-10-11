@@ -20,12 +20,16 @@ El registro exige `accept_terms: true`; el servidor guarda la versión vigente y
 | Contrato / onboarding | `contracts` | número de cuenta/contrato con la distribuidora |
 | Facturación | `bills`, `bill_items`, `bill_snapshots` | períodos, kWh, montos, lecturas, conceptos; original inmutable de cada factura |
 | Consumo | `meter_readings`, `home_goals` | lecturas del medidor, metas mensuales |
-| Equipos y alertas | `equipment`, `alerts`, `alert_settings` | equipos y potencias, alertas generadas, umbrales |
+| Equipos y alertas | `equipment`, `alerts`, `alert_settings` | equipos y potencias, alertas generadas (variación de factura, anomalía, vencimiento de pago, factura faltante, lecturas desactualizadas), umbrales; las facturas guardan fecha de vencimiento y de pago |
+| Anomalías | `anomalies` | tipo, severidad, consumo observado y de referencia, período y explicación; estado (abierta/vista/descartada/resuelta) |
+| Dispositivos para avisos push | `device_tokens` | token de Expo del teléfono (identificador técnico que permite enviarle avisos), plataforma, fechas; **no** se incluye en la exportación |
+| Registro de avisos | `notifications` | qué alerta se avisó, por qué canal (correo/push), estado y fecha; **sin** el contenido del mensaje |
 | Auditoría | `audit_events` | operación, entidad, fechas e instantáneas antes/después (sin identidad del usuario) |
 | Recuperación de contraseña | `password_reset_tokens` | hash SHA-256 del token (nunca el token), fechas de creación/caducidad/uso, HMAC del peer que lo pidió (sin IP en claro). El correo con el enlace se envía por el proveedor Resend (encargado del tratamiento, a reflejar en la política) |
-| Originales de factura (metadatos) | `documents`, `storage_deletions` | tipo, tamaño, huella SHA-256, vivienda, autor, factura asociada, fecha de carga; **sin el archivo ni su nombre** (el contenido irá al almacenamiento privado, ERD-STORE-01, todavía inexistente) |
+| Originales de factura | `documents`, `storage_deletions`, almacenamiento privado | tipo, tamaño, huella SHA-256, vivienda, autor, factura asociada, fecha de carga; el archivo se guarda **cifrado** (AES-256-GCM, clave por objeto) en el almacenamiento privado, sin su nombre original; descarga solo por enlace firmado de 60 s |
+| Trabajos de OCR | `document_ocr`, `jobs` | estado, campos leídos (borrador, nunca se convierten en factura sin confirmación humana) y extracto de texto; sin el archivo |
 | Invitaciones a viviendas | `home_invitations` | correo de la persona invitada (dato de un tercero, ver §6), hash SHA-256 del token, fechas y quién invitó |
-| Fotos de factura para OCR | memoria del proceso | la imagen se lee con Tesseract **local** y se descarta; solo se devuelven los campos y un extracto del texto leído a quien la subió. No se envía a ningún proveedor ni se conserva |
+| Lectura OCR de facturas | proceso del worker | la imagen/PDF se lee con Tesseract **local**; no se envía a ningún proveedor. El resultado queda como borrador en `document_ocr` |
 | Telemetría de errores | Sentry (opcional, `SENTRY_DSN`) | traza del error y `request_id`; **sin** cuerpos, cookies, cabeceras, IP, usuario, variables ni código fuente; correos/tokens filtrados antes de enviar. Inactivo hasta configurar el DSN |
 | Antiabuso | `auth_abuse_buckets` | HMAC del peer de red + contador por ventana (sin IP en claro, sin correo) |
 | Logs técnicos | stdout de la API | método, ruta (incluye ids), estado, duración, `request_id` |
@@ -48,6 +52,8 @@ El registro exige `accept_terms: true`; el servidor guarda la versión vigente y
 | Originales de factura | mientras exista la factura | se borran con la factura (regla de huérfano de 0011) |
 | Auditoría | propuesta: 24 meses | filas de viviendas borradas se conservan seudonimizadas (`actor='deleted-user'`, sin instantáneas) |
 | Tokens de recuperación | caducan a los 30 min; se purgan automáticamente 1 día después de caducar (en la siguiente solicitud de recuperación); un job global sigue pendiente | borrado inmediato (cascada) |
+| Tokens de dispositivo (push) | hasta cerrar sesión en la app, desactivar los avisos o ser invalidado por Expo (`DeviceNotRegistered`) | borrado inmediato (cascada) |
+| Registro de avisos y anomalías | propuesta: 12 meses (purga pendiente) | borrado inmediato (cascada con la vivienda/cuenta) |
 | Buckets antiabuso | propuesta: purgar ventanas vencidas > 7 días (job pendiente) | no vinculados a la cuenta |
 | Logs técnicos | propuesta: 30 días en el proveedor de logs | no se purgan por cuenta |
 | Originales de factura sin factura asociada | caducan a los 7 días (`DOCUMENT_UNCONFIRMED_RETENTION_DAYS`, propuesta) | borrado inmediato (cascada + cola de borrado del archivo) |
@@ -73,9 +79,10 @@ restauración puede resucitar cuentas ya borradas).
 |---|---|---|---|
 | Neon (PostgreSQL, AWS us-east-1) | base de datos | todos los datos de §1 | previsto (ERD-DEPLOY-01) |
 | Render (región Virginia) | alojamiento de API y web | tráfico y logs técnicos | previsto |
-| Resend | correo de recuperación y de invitaciones | correo del destinatario y el enlace (contiene un token de un solo uso); nombre de la vivienda en las invitaciones | previsto; revisar DPA y retención de sus logs |
+| Resend | correo de recuperación, de invitaciones y de avisos de alertas | correo del destinatario y el enlace (contiene un token de un solo uso en recuperación/invitación); nombre de la vivienda en las invitaciones; los avisos de alertas solo llevan un texto genérico y un enlace a `/alerts` (sin cifras) | previsto; revisar DPA y retención de sus logs |
 | Sentry | errores | ver §1 (sin datos personales por diseño) | opcional, inactivo |
 | Expo / EAS | compilar y distribuir la app | ninguno de los usuarios (solo el binario) | previsto |
+| Expo Push Service (y FCM/APNs detrás) | avisos push | token del dispositivo y un texto genérico («Tiene una alerta nueva…»), **sin cifras, sin dirección, sin nombre de la vivienda** | implementado, **nunca probado en un dispositivo**; revisar términos y transferencia internacional |
 | Cloudflare (opcional) | proxy delante de Render | IP del visitante (`CLIENT_IP_SOURCE=cf-connecting-ip`) | solo si se activa |
 
 **Datos de terceros:** una invitación guarda el correo de alguien que aún no aceptó términos; un propietario ve los
@@ -86,10 +93,10 @@ correos de los miembros de su vivienda. Legal debe decidir el aviso y la base le
 
 | Derecho | Mecanismo hoy | Hueco |
 |---|---|---|
-| **Acceso / portabilidad** | `GET /api/v1/auth/me/export` → JSON con la cuenta, las viviendas del titular (con su rol), facturas con conceptos, lecturas, equipos, alertas, metas, contrato, metadatos de documentos y sesiones. Excluye contraseñas, tokens, claves de archivos, auditoría interna y datos de otras personas. Montos como texto exacto. 6 pruebas | no hay botón en web/móvil todavía (ERD-PROF-01); no incluye los archivos originales (no se almacenan aún) |
+| **Acceso / portabilidad** | `GET /api/v1/auth/me/export` → JSON con la cuenta, las viviendas del titular (con su rol), facturas con conceptos, lecturas, equipos, alertas, anomalías, preferencias de avisos, dispositivos (sin el token), registro de avisos, metas, contrato, metadatos de documentos y sesiones. Excluye contraseñas, tokens, claves de archivos, auditoría interna y datos de otras personas. Montos como texto exacto. 6 pruebas | no hay botón en web/móvil todavía (ERD-PROF-01); no incluye los archivos originales (no se almacenan aún) |
 | **Rectificación** | editar vivienda, contrato, meta, equipos, facturas y lecturas; cambiar contraseña (`POST /auth/password/change`) | **no se puede cambiar el correo de la cuenta** (no hay endpoint) |
 | **Cancelación** | `DELETE /auth/me` con contraseña; borra las viviendas donde es el único miembro, sale de las compartidas y bloquea (409) al único propietario hasta transferir o expulsar | los backups conservan datos hasta expirar (§5); sin procedimiento de re-borrado tras restaurar |
-| **Oposición** | no hay perfilado publicitario ni cesión; retirar el consentimiento equivale a cancelar la cuenta | no hay preferencias de comunicaciones hasta ERD-PROF-01 / ERD-ALERT-02 |
+| **Oposición** | no hay perfilado publicitario ni cesión; retirar el consentimiento equivale a cancelar la cuenta | el usuario controla correo y push por separado en «Mi cuenta» (web y app); se respetan al encolar y al enviar; límite diario de avisos por usuario |
 | **Canal y plazo** | — | **sin definir**: correo de contacto del responsable, plazo de respuesta y verificación de identidad |
 
 ## 8. Pendiente (solo puede cerrarlo asesoría legal / el responsable del tratamiento)

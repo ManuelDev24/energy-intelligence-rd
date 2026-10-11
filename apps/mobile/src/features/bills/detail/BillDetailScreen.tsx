@@ -2,10 +2,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useBills } from '../../../api/hooks';
+import { useBills, useSetBillPayment } from '../../../api/hooks';
+import { ApiError } from '../../../api/client';
+import { describeError } from '../../../api/errors';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../../../components/states';
 import { Button } from '../../../components/ui';
-import { fmtPeriod } from '../../../lib/format';
+import { fmtDate, fmtPeriod } from '../../../lib/format';
 import { useSession } from '../../../store/session';
 import { colors, radius, spacing } from '../../../theme';
 import { assessmentView, type ReviewTone } from './assessmentModel';
@@ -26,6 +28,24 @@ function Tag({ icon, text, tone, testID }: { icon: string; text: string; tone: D
     <View style={[s.tag, { backgroundColor: t.bg, borderColor: t.border }]} testID={testID}>
       <Ionicons name={icon as IconName} size={18} color={t.fg} importantForAccessibility="no" accessibilityElementsHidden />
       <Text style={[s.tagText, { color: tone === 'neutral' ? colors.text : t.fg }]}>{text}</Text>
+    </View>
+  );
+}
+
+/** ERD-ALERT-02: fecha límite y estado de pago; solo existe si la factura tiene fecha límite. */
+function Payment({ homeId, billId, dueDate, paidAt }: { homeId: string; billId: string; dueDate: string; paidAt: string | null }) {
+  const pay = useSetBillPayment(homeId, billId);
+  return (
+    <View style={s.card} testID="bill-payment">
+      <Text style={s.h2} accessibilityRole="header">Pago</Text>
+      <View style={s.itemRow}>
+        <Text style={s.rowTitle}>Fecha límite de pago</Text>
+        <Text style={s.amount}>{fmtDate(dueDate)}</Text>
+      </View>
+      <Tag icon={paidAt ? 'checkmark-circle' : 'time-outline'} text={paidAt ? `Pagada el ${fmtDate(paidAt.slice(0, 10))}` : 'Pendiente de pago'} tone={paidAt ? 'success' : 'warning'} testID="bill-payment-status" />
+      <Button title={pay.isPending ? 'Guardando…' : paidAt ? 'Marcar como pendiente' : 'Marcar como pagada'} variant="secondary" disabled={pay.isPending}
+        onPress={() => pay.mutate(!paidAt)} testID="bill-payment-toggle" />
+      {pay.isError ? <Text style={s.notice} accessibilityRole="alert" testID="bill-payment-error">{pay.error instanceof ApiError ? describeError(pay.error).message : 'No se pudo actualizar el pago.'}</Text> : null}
     </View>
   );
 }
@@ -105,6 +125,7 @@ export function BillDetailScreen({ homeId: routeHomeId, billId, saved, onEdit }:
       testID="bill-detail"
     >
       {bill ? <Text style={s.h1} accessibilityRole="header">Factura {fmtPeriod(bill.period_start, bill.period_end)}</Text> : null}
+      {bill?.due_date ? <Payment homeId={homeId} billId={billId} dueDate={bill.due_date} paidAt={bill.paid_at} /> : null}
       {saved ? <Tag icon="checkmark-circle" text="Detalle guardado y confirmado." tone="success" testID="bill-detail-saved" /> : null}
       {state.kind === 'loading' ? <LoadingSkeleton label="Cargando detalle…" /> : null}
       {state.kind === 'unavailable' ? (

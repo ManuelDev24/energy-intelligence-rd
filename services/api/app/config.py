@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     ANOMALY_NIGHT_MIN_KWH_PER_HOUR: float = Field(default=0.15, ge=0, le=10)
     ANOMALY_HORIZON_DAYS: int = Field(default=60, ge=14, le=366)
     ANOMALY_HORIZON_MONTHS: int = Field(default=12, ge=3, le=36)
+    # ERD-ALERT-02: avisos. El push usa el servicio de Expo (el token de acceso es opcional); topes para no saturar a nadie.
+    EXPO_ACCESS_TOKEN: str = Field(default="", repr=False)
+    NOTIFY_DAILY_CAP: int = Field(default=10, ge=1, le=100)
+    MAX_DEVICES_PER_USER: int = Field(default=10, ge=1, le=50)
     EMAIL_BACKEND: Literal["console", "resend"] = "console"
     RESEND_API_KEY: str = Field(default="", repr=False)
     EMAIL_FROM: str = ""

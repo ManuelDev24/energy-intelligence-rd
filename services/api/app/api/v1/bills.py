@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas import BillCreate, BillOut, BillUpdate
+from app.schemas.bill import BillPaymentIn
 from app.schemas.ocr import OcrDraft, OcrJobOut
 from app.api.auth_deps import current_user
 from app.config import settings
@@ -103,6 +104,12 @@ def get_items(home_id: uuid.UUID, bill_id: uuid.UUID, db: Session = Depends(get_
 def get_bill(home_id: uuid.UUID, bill_id: uuid.UUID, db: Session = Depends(get_db)):
     require_home(db, home_id)
     return bills.get_bill(db, home_id, bill_id)
+
+
+@router.put("/{bill_id}/payment", response_model=BillOut)
+def set_bill_payment(home_id: uuid.UUID, bill_id: uuid.UUID, payload: BillPaymentIn, db: Session = Depends(get_db)):
+    """ERD-ALERT-02: marcar pagada (`paid: true`) o pendiente (`false`)."""
+    return bills.set_payment(db, home_id, bill_id, payload.paid)
 
 
 @router.put("/{bill_id}", response_model=BillOut)
