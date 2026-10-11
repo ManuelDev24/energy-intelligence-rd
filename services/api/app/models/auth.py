@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,6 +11,9 @@ from app.database import Base
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (CheckConstraint("role IN ('user', 'admin', 'support')", name="ck_users_role"),
+                      # Auditoría C-16 (migración 0024): el correo se guarda en minúsculas y es único sin distinguir mayúsculas.
+                      CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
+                      Index("uq_users_email_lower", text("lower(email)"), unique=True),
                       CheckConstraint("(terms_version IS NULL) = (terms_accepted_at IS NULL)",
                                       name="ck_users_terms_consent"))
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

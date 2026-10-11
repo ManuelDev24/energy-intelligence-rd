@@ -278,3 +278,37 @@ def test_0023_power_outages_roundtrips_and_the_database_blocks_overlaps(migrated
         c.execute(text("DELETE FROM homes WHERE id=:h"), {"h": hid})
     with migrated.connect() as c:
         assert c.execute(text("SELECT count(*) FROM power_outages")).scalar() == 0
+
+
+# ---------- auditoría C-16: correo único sin distinguir mayúsculas, garantizado por la base ----------
+def test_0024_the_database_refuses_mixed_case_and_case_only_duplicate_emails(migrated):
+    from sqlalchemy.exc import IntegrityError
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'ana@example.com','x')"))
+    for email in ("Ana@Example.com", "ANA@EXAMPLE.COM", "otra@Example.com"):
+        with pytest.raises(IntegrityError):
+            with migrated.begin() as c:
+                c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),:e,'x')"), {"e": email})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM users WHERE email='ana@example.com'"))
+
+
+def test_0024_upgrade_lowercases_existing_emails_and_stops_on_case_only_duplicates(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0023")
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'Mixto@Example.com','x')"))
+    command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT email FROM users WHERE lower(email)='mixto@example.com'")).scalar() == "mixto@example.com"
+    command.downgrade(alembic_cfg, "0023")
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'MIXTO@example.com','x')"))
+    with pytest.raises(Exception, match="mayúsculas"):
+        command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:  # no modificó nada: ambas cuentas siguen como estaban
+        assert sorted(r[0] for r in c.execute(text("SELECT email FROM users"))) == ["MIXTO@example.com", "mixto@example.com"]
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM users WHERE email='MIXTO@example.com'"))
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM users"))
