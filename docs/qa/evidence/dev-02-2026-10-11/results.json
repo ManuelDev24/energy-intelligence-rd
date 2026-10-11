@@ -1,0 +1,52 @@
+[
+  {
+    "check": "el servidor guarda tipo, marca, modelo e icono",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "los porcentajes por equipo vienen del servidor y suman exactamente 100,00",
+    "ok": true,
+    "detail": "{\"Aire sala\": \"69.77\", \"Luces\": \"2.32\", \"Nevera cocina\": \"27.91\"}"
+  },
+  {
+    "check": "la nota aclara que el % no es de la factura",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "la página muestra el mismo % que devolvió el servidor en cada tarjeta",
+    "ok": true,
+    "detail": "faltan=[] tarjetas=3 esperado={'Aire sala': '69.77%', 'Luces': '2.32%', 'Nevera cocina': '27.91%'}"
+  },
+  {
+    "check": "cada tarjeta lleva ESTIMADO y su marca/modelo cuando existe",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el formulario de edición trae los valores guardados",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "editar cambia el tipo y una marca en blanco se guarda vacía (null)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el BFF rechaza un tipo fuera del catálogo",
+    "ok": true,
+    "detail": "422"
+  },
+  {
+    "check": "el BFF rechaza una marca de más de 60 caracteres",
+    "ok": true,
+    "detail": "422"
+  },
+  {
+    "check": "a 375 px no hay desborde horizontal",
+    "ok": true,
+    "detail": "desborde=0"
+  }
+]

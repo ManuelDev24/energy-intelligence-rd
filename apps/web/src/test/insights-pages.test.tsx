@@ -51,8 +51,8 @@ describe("EquipmentPage", () => {
     fireEvent.change(screen.getByLabelText("Potencia (W)"), { target: { value: "150" } });
     expect(screen.getByText(/≈ 3.60 kWh\/día/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Guardar equipo" }));
-    await waitFor(() => expect(screen.getByRole("rowheader", { name: "Nevera" })).toBeInTheDocument());
-    expect(screen.getByText("150 W")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Nevera" })).toBeInTheDocument());
+    expect(screen.getByText("150 W · 24 h/día")).toBeInTheDocument();
   });
 
   // El API simulado conserva su estado entre pruebas del archivo: cada prueba usa un equipo con nombre propio.
@@ -63,7 +63,7 @@ describe("EquipmentPage", () => {
     fireEvent.change(screen.getByLabelText("Potencia (W)"), { target: { value: "150" } });
     fireEvent.change(screen.getByLabelText("Horas de uso por día"), { target: { value: "24" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar equipo" }));
-    await screen.findByRole("rowheader", { name });
+    await screen.findByRole("heading", { name });
   }
 
   it("ERD-UI-KIT: eliminar pide confirmación en un diálogo accesible y solo borra al confirmar", async () => {
@@ -75,10 +75,10 @@ describe("EquipmentPage", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(del).not.toHaveBeenCalled();
-    expect(screen.getByRole("rowheader", { name: "Horno" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Horno" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Eliminar Horno" }));
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Eliminar" }));
-    await waitFor(() => expect(screen.queryByRole("rowheader", { name: "Horno" })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Horno" })).not.toBeInTheDocument());
     expect(del).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -90,6 +90,6 @@ describe("EquipmentPage", () => {
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(del).not.toHaveBeenCalled();
-    expect(screen.getByRole("rowheader", { name: "Plancha" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Plancha" })).toBeInTheDocument();
   });
 });

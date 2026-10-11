@@ -20,7 +20,7 @@ El registro exige `accept_terms: true`; el servidor guarda la versión vigente y
 | Contrato / onboarding | `contracts` | número de cuenta/contrato con la distribuidora |
 | Facturación | `bills`, `bill_items`, `bill_snapshots` | períodos, kWh, montos, lecturas, conceptos; original inmutable de cada factura |
 | Consumo | `meter_readings`, `home_goals` | lecturas del medidor, metas mensuales |
-| Equipos y alertas | `equipment`, `alerts`, `alert_settings` | equipos y potencias, alertas generadas (variación de factura, anomalía, vencimiento de pago, factura faltante, lecturas desactualizadas), umbrales; las facturas guardan fecha de vencimiento y de pago |
+| Equipos y alertas | `equipment`, `alerts`, `alert_settings` | equipos (nombre, tipo, marca y modelo opcionales, icono, habitación) y potencias, alertas generadas (variación de factura, anomalía, vencimiento de pago, factura faltante, lecturas desactualizadas), umbrales; las facturas guardan fecha de vencimiento y de pago |
 | Anomalías | `anomalies` | tipo, severidad, consumo observado y de referencia, período y explicación; estado (abierta/vista/descartada/resuelta) |
 | Dispositivos para avisos push | `device_tokens` | token de Expo del teléfono (identificador técnico que permite enviarle avisos), plataforma, fechas; **no** se incluye en la exportación |
 | Registro de avisos | `notifications` | qué alerta se avisó, por qué canal (correo/push), estado y fecha; **sin** el contenido del mensaje |

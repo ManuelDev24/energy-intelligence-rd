@@ -1,4 +1,4 @@
-import { fmtNumber } from "@energyrd/core";
+import { fmtNumber, shareWidth } from "@energyrd/core";
 import type { EquipmentEstimateItem, Metric } from "@/lib/api/schemas";
 import { DataStatusBadge } from "@/components/data-status-badge";
 import { formatMetric } from "@/lib/format";
@@ -6,7 +6,7 @@ import { formatMetric } from "@/lib/format";
 interface EquipmentBreakdownChartProps {
   /** `items` de GET /equipment/estimate, tal cual. */
   items: readonly EquipmentEstimateItem[];
-  /** `total_monthly_kwh` del mismo estimado (base del porcentaje). */
+  /** `total_monthly_kwh` del mismo estimado (solo decide si hay algo que repartir y su calidad). */
   total: Metric;
 }
 
@@ -27,15 +27,14 @@ export const canShowBreakdown = (items: readonly EquipmentEstimateItem[], total:
 
 export function EquipmentBreakdownChart({ items, total }: EquipmentBreakdownChartProps) {
   if (!canShowBreakdown(items, total)) return null;
-  const totalKwh = Number(total.value);
   const rows = withConsumption(items);
 
   return (
     <figure className="flex flex-col gap-4">
       <ul className="flex flex-col gap-3">
         {rows.map((it) => {
-          // Proporción solo para presentar el reparto; los kWh vienen de la API.
-          const share = (Number(it.monthly_kwh.value) / totalKwh) * 100;
+          // ERD-DEV-02: el porcentaje lo calcula la API (suman 100,00); aquí solo se presenta.
+          const share = shareWidth(it.share_pct.value);
           return (
             <li key={it.equipment_id} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between gap-3 text-sm">

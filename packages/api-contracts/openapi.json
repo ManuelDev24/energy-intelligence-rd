@@ -1961,6 +1961,17 @@
       },
       "EquipmentEstimateItem": {
         "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "daily_kwh": {
             "$ref": "#/components/schemas/Metric"
           },
@@ -1968,6 +1979,58 @@
             "format": "uuid",
             "title": "Equipment Id",
             "type": "string"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "enum": [
+                  "snowflake",
+                  "refrigerator",
+                  "flame",
+                  "washing-machine",
+                  "tv",
+                  "fan",
+                  "lightbulb",
+                  "laptop",
+                  "microwave",
+                  "waves",
+                  "plug"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "kind": {
+            "enum": [
+              "air_conditioner",
+              "refrigerator",
+              "water_heater",
+              "washing_machine",
+              "tv",
+              "fan",
+              "lighting",
+              "computer",
+              "microwave",
+              "pool_pump",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
           },
           "monthly_kwh": {
             "$ref": "#/components/schemas/Metric"
@@ -1986,14 +2049,22 @@
               }
             ],
             "title": "Room"
+          },
+          "share_pct": {
+            "$ref": "#/components/schemas/Metric"
           }
         },
         "required": [
           "equipment_id",
           "name",
           "room",
+          "kind",
+          "brand",
+          "model",
+          "icon",
           "daily_kwh",
-          "monthly_kwh"
+          "monthly_kwh",
+          "share_pct"
         ],
         "title": "EquipmentEstimateItem",
         "type": "object"
@@ -2067,6 +2138,18 @@
       },
       "EquipmentIn": {
         "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "hours_per_day": {
             "anyOf": [
               {
@@ -2080,6 +2163,60 @@
               }
             ],
             "title": "Hours Per Day"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "enum": [
+                  "snowflake",
+                  "refrigerator",
+                  "flame",
+                  "washing-machine",
+                  "tv",
+                  "fan",
+                  "lightbulb",
+                  "laptop",
+                  "microwave",
+                  "waves",
+                  "plug"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "kind": {
+            "default": "other",
+            "enum": [
+              "air_conditioner",
+              "refrigerator",
+              "water_heater",
+              "washing_machine",
+              "tv",
+              "fan",
+              "lighting",
+              "computer",
+              "microwave",
+              "pool_pump",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
           },
           "name": {
             "maxLength": 120,
@@ -2124,6 +2261,17 @@
       },
       "EquipmentOut": {
         "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2139,10 +2287,62 @@
             "title": "Hours Per Day",
             "type": "string"
           },
+          "icon": {
+            "anyOf": [
+              {
+                "enum": [
+                  "snowflake",
+                  "refrigerator",
+                  "flame",
+                  "washing-machine",
+                  "tv",
+                  "fan",
+                  "lightbulb",
+                  "laptop",
+                  "microwave",
+                  "waves",
+                  "plug"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "air_conditioner",
+              "refrigerator",
+              "water_heater",
+              "washing_machine",
+              "tv",
+              "fan",
+              "lighting",
+              "computer",
+              "microwave",
+              "pool_pump",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
           },
           "name": {
             "title": "Name",
@@ -2170,6 +2370,10 @@
           "home_id",
           "name",
           "room",
+          "kind",
+          "brand",
+          "model",
+          "icon",
           "power_w",
           "hours_per_day",
           "created_at"

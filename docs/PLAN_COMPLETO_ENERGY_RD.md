@@ -100,7 +100,7 @@ Se crean en `packages/ui` (web) y `apps/mobile/src/components` con la **misma AP
 
 **Avance ERD-UI-KIT (2026-10-04, sin commit):** ✅ `MetricCard`, `DataStatusBadge` (+`INFERRED`), `AlertCard` (4 tonos 🔴🟠🟡🟢), `EmptyState`, `ErrorState` (Reintentar + sin conexión), `LoadingSkeleton` (respeta reducir movimiento), `ConsumptionChart`, `EquipmentBreakdown`, `EnergyGauge` en web (`apps/web/src/components`) y móvil (`apps/mobile/src/components`). ⛔ `DateRangePicker`, `BottomSheet`, `Modal`, `RecommendationCard`, `DeviceCard`, `BillCard` (llegan con sus módulos). Pendiente: mover la lógica de gráficos compartida (`chartMath`, `deltaTone`, iconos por tono) a `@energyrd/core`.
 
-**Cierre ERD-UI-KIT (2026-10-10):** `packages/ui` se elimina del diseño y no se construyen componentes sin consumidor; ver `docs/architecture/UI_KIT.md` (Modal/ConfirmDialog, BillCard, RecommendationCard, DateRangePicker, BottomSheet hechos; DeviceCard con ERD-DEV-02; el rango de fechas ya vive en `@energyrd/core`).
+**Cierre ERD-UI-KIT (2026-10-10):** `packages/ui` se elimina del diseño y no se construyen componentes sin consumidor; ver `docs/architecture/UI_KIT.md` (Modal/ConfirmDialog, BillCard, RecommendationCard, DateRangePicker, BottomSheet hechos; DeviceCard hecho con ERD-DEV-02 (2026-10-11, ver `docs/qa/ERD-DEV-02.md`); el rango de fechas ya vive en `@energyrd/core`).
 
 ### 2.5 Reglas de experiencia (obligatorias, 7 del chat)
 

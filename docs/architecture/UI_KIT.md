@@ -20,7 +20,7 @@ Los componentes pendientes se hicieron extrayéndolos de código que ya los usab
 | `RecommendationCard` | ✅ (sobre `AlertCard`, tono ahorro) | ✅ | panel (Inicio) |
 | `DateRangePicker` | ✅ extraído de los controles de Consumo | ✅ nuevo (atajos + hoja con dos fechas) | web: Consumo «Por lecturas»; móvil: lo usa ERD-CHARTS-01 |
 | `BottomSheet` | ❌ no aplica: la web usa `Modal` | ✅ nuevo | `DateRangePicker` móvil |
-| `DeviceCard` | ⏳ con ERD-DEV-02 | ⏳ con ERD-DEV-02 | DEV-02 define sus campos (marca, modelo, tipo, icono, % de consumo); hoy la web usa una tabla, mejor para comparar |
+| `DeviceCard` | ✅ `components/device-card.tsx` (ERD-DEV-02) | ✅ `components/DeviceCard.tsx` (ERD-DEV-02) | icono, nombre, tipo · habitación, marca y modelo, uso declarado y, si hay estimado, kWh/mes y % del total (calculado por la API); la web pasó de tabla a tarjetas |
 
 ## Verificación y límites
 - Web: 8 pruebas de `Modal`/`ConfirmDialog`, 8 de las tres tarjetas y el selector, y 4 de integración de los flujos de

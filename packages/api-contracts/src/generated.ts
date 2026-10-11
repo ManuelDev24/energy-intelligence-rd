@@ -123,6 +123,10 @@ export const EquipmentOutSchema = z.object({
   "home_id": z.string().uuid(),
   "name": z.string(),
   "room": z.union([z.string(), z.null()]),
+  "kind": z.enum(["air_conditioner", "refrigerator", "water_heater", "washing_machine", "tv", "fan", "lighting", "computer", "microwave", "pool_pump", "other"]),
+  "brand": z.union([z.string(), z.null()]),
+  "model": z.union([z.string(), z.null()]),
+  "icon": z.union([z.enum(["snowflake", "refrigerator", "flame", "washing-machine", "tv", "fan", "lightbulb", "laptop", "microwave", "waves", "plug"]), z.null()]),
   "power_w": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
   "hours_per_day": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
   "created_at": z.string().datetime({ offset: true })
@@ -133,8 +137,13 @@ export const EquipmentEstimateItemSchema = z.object({
   "equipment_id": z.string().uuid(),
   "name": z.string(),
   "room": z.union([z.string(), z.null()]),
+  "kind": z.enum(["air_conditioner", "refrigerator", "water_heater", "washing_machine", "tv", "fan", "lighting", "computer", "microwave", "pool_pump", "other"]),
+  "brand": z.union([z.string(), z.null()]),
+  "model": z.union([z.string(), z.null()]),
+  "icon": z.union([z.enum(["snowflake", "refrigerator", "flame", "washing-machine", "tv", "fan", "lightbulb", "laptop", "microwave", "waves", "plug"]), z.null()]),
   "daily_kwh": MetricSchema,
-  "monthly_kwh": MetricSchema
+  "monthly_kwh": MetricSchema,
+  "share_pct": MetricSchema
 });
 export type EquipmentEstimateItem = z.infer<typeof EquipmentEstimateItemSchema>;
 
@@ -205,6 +214,10 @@ export type BillUpdate = z.infer<typeof BillUpdateSchema>;
 export const EquipmentInSchema = z.object({
   "name": z.string().min(1).max(120),
   "room": z.union([z.string().max(80), z.null()]).default(null),
+  "kind": z.enum(["air_conditioner", "refrigerator", "water_heater", "washing_machine", "tv", "fan", "lighting", "computer", "microwave", "pool_pump", "other"]).default("other"),
+  "brand": z.union([z.string().max(60), z.null()]).default(null),
+  "model": z.union([z.string().max(60), z.null()]).default(null),
+  "icon": z.union([z.enum(["snowflake", "refrigerator", "flame", "washing-machine", "tv", "fan", "lightbulb", "laptop", "microwave", "waves", "plug"]), z.null()]).default(null),
   "power_w": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,11}0*$)\\d{0,8}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
   "hours_per_day": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String)
 });

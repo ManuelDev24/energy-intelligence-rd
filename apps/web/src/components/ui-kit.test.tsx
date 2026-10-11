@@ -174,18 +174,23 @@ describe("KwhTrendChart", () => {
 
 describe("EquipmentBreakdownChart", () => {
   const m = (value: string) => ({ value, unit: "kWh/mes", quality: "ESTIMATED" as const });
-  const item = (id: string, name: string, kwh: string) => ({
+  const item = (id: string, name: string, kwh: string, share = "0.00") => ({
     equipment_id: `cccccccc-0000-4000-8000-00000000000${id}`,
     name,
     room: null,
+    kind: "other" as const,
+    brand: null,
+    model: null,
+    icon: null,
     daily_kwh: m("1.00"),
     monthly_kwh: m(kwh),
+    share_pct: { value: share, unit: "%", quality: "ESTIMATED" as const },
   });
 
   it("ordena de mayor a menor y etiqueta el reparto como ESTIMADO", () => {
     render(
       <EquipmentBreakdownChart
-        items={[item("1", "Nevera", "45.00"), item("2", "Aire acondicionado", "108.00"), item("3", "TV", "0.00")]}
+        items={[item("1", "Nevera", "45.00", "29.41"), item("2", "Aire acondicionado", "108.00", "70.59"), item("3", "TV", "0.00")]}
         total={m("153.00")}
       />,
     );
@@ -194,6 +199,18 @@ describe("EquipmentBreakdownChart", () => {
     expect(rows[0]).toHaveTextContent("Aire acondicionado108 kWh · ≈71%");
     expect(rows[1]).toHaveTextContent("Nevera45 kWh · ≈29%");
     expect(screen.getByText("ESTIMADO")).toBeInTheDocument();
+  });
+
+  it("usa el porcentaje que calculó la API en lugar de recalcularlo", () => {
+    render(
+      <EquipmentBreakdownChart
+        items={[item("1", "Nevera", "45.00", "10.00"), item("2", "Aire acondicionado", "108.00", "90.00")]}
+        total={m("153.00")}
+      />,
+    );
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("≈90%");
+    expect(rows[1]).toHaveTextContent("≈10%");
   });
 
   it("con un solo equipo no hay reparto que dibujar", () => {

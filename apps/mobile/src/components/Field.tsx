@@ -33,6 +33,8 @@ export function Field({
 
 export const formStyles = StyleSheet.create({
   serverErr: { color: colors.danger, backgroundColor: colors.dangerBg, padding: spacing.md, borderRadius: 10 },
+  groupLabel: { fontSize: 13, color: colors.muted, fontWeight: '600' },
+  groupErr: { fontSize: 12, color: colors.danger },
 });
 
 const s = StyleSheet.create({

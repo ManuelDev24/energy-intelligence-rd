@@ -89,15 +89,19 @@ run('recorrido piloto contra API real', () => {
   });
 
   it('7. equipos: alta, estimado ESTIMATED y validación', async () => {
-    await expect(api.createEquipment(home.id, { name: 'X', room: null, power_w: '-5', hours_per_day: '1' }))
+    await expect(api.createEquipment(home.id, { name: 'X', room: null, kind: 'other', brand: null, model: null, icon: null, power_w: '-5', hours_per_day: '1' }))
       .rejects.toMatchObject({ status: 422 });
     const before = await api.getEstimate(home.id);
-    const e = await api.createEquipment(home.id, { name: 'Abanico E2E', room: 'Sala', power_w: '100', hours_per_day: '10' });
+    const e = await api.createEquipment(home.id, { name: 'Abanico E2E', room: 'Sala', kind: 'fan', brand: 'Acme', model: 'F1', icon: null, power_w: '100', hours_per_day: '10' });
     equipmentId = e.id;
     const after = await api.getEstimate(home.id);
     expect(after.equipment_count).toBe(before.equipment_count + 1);
     expect(Number(after.total_monthly_kwh.value) - Number(before.total_monthly_kwh.value)).toBeCloseTo(30, 2);
     expect(after.total_monthly_kwh.quality).toBe('ESTIMATED');
+    const mine = after.items.find((i) => i.equipment_id === e.id);
+    expect(mine).toMatchObject({ kind: 'fan', brand: 'Acme', model: 'F1' });
+    expect(mine?.share_pct.quality).toBe('ESTIMATED');
+    expect(after.items.reduce((acc, i) => acc + Number(i.share_pct.value), 0)).toBeCloseTo(100, 2);
   });
 
   it('8. borrar la factura elimina su alerta y restaura el estado', async () => {

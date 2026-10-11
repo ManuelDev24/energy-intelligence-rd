@@ -43,33 +43,39 @@ describe('layoutBars (CH-01)', () => {
   });
 });
 
-describe('equipmentShares (CH-10)', () => {
+describe('equipmentShares (CH-10 / ERD-DEV-02)', () => {
   const items = [
-    { key: 'a', label: 'Aire', value: 41 },
-    { key: 'n', label: 'Nevera', value: 17 },
-    { key: 'b', label: 'Bomba', value: 11 },
-    { key: 'o', label: 'Boiler', value: 9 },
-    { key: 'c', label: 'Cocina', value: 8 },
-    { key: 'x', label: 'Abanico', value: 7 },
-    { key: 'y', label: 'TV', value: 7 },
+    { key: 'a', label: 'Aire', value: 41, pct: 41 },
+    { key: 'n', label: 'Nevera', value: 17, pct: 17 },
+    { key: 'b', label: 'Bomba', value: 11, pct: 11 },
+    { key: 'o', label: 'Boiler', value: 9, pct: 9 },
+    { key: 'c', label: 'Cocina', value: 8, pct: 8 },
+    { key: 'x', label: 'Abanico', value: 7, pct: 7 },
+    { key: 'y', label: 'TV', value: 7, pct: 7 },
   ];
 
   it('ordena de mayor a menor y agrupa el resto en "Otros"', () => {
     const s = equipmentShares(items, 6);
     expect(s.map((r) => r.label)).toEqual(['Aire', 'Nevera', 'Bomba', 'Boiler', 'Cocina', 'Otros (2)']);
     expect(s[5].value).toBe(14);
-    expect(s[0].pct).toBe(41);
+    expect(s[5].pct).toBe(14);
     expect(s[0].ratio).toBe(1);
     expect(s.reduce((a, r) => a + r.pct, 0)).toBeCloseTo(100, 5);
   });
 
-  it('sin agrupar si cabe y descarta equipos con 0 kWh', () => {
-    const s = equipmentShares([{ key: 'a', label: 'A', value: 3 }, { key: 'b', label: 'B', value: 1 }, { key: 'z', label: 'Z', value: 0 }]);
-    expect(s.map((r) => [r.label, r.pct])).toEqual([['A', 75], ['B', 25]]);
+  it('usa el porcentaje del servidor, no lo recalcula', () => {
+    const s = equipmentShares([{ key: 'a', label: 'A', value: 3, pct: 71.43 }, { key: 'b', label: 'B', value: 1, pct: 28.57 }]);
+    expect(s.map((r) => r.pct)).toEqual([71.43, 28.57]);
+    expect(s[1].ratio).toBeCloseTo(28.57 / 71.43, 5);
+  });
+
+  it('descarta equipos con 0 kWh y valores no finitos', () => {
+    const s = equipmentShares([{ key: 'a', label: 'A', value: 3, pct: 100 }, { key: 'z', label: 'Z', value: 0, pct: 0 }, { key: 'n', label: 'N', value: Number.NaN, pct: 5 }]);
+    expect(s.map((r) => [r.label, r.pct])).toEqual([['A', 100]]);
   });
 
   it('total 0 → [] (no se dibuja un gráfico vacío)', () => {
-    expect(equipmentShares([{ key: 'a', label: 'A', value: 0 }])).toEqual([]);
+    expect(equipmentShares([{ key: 'a', label: 'A', value: 0, pct: 0 }])).toEqual([]);
     expect(equipmentShares([])).toEqual([]);
   });
 });

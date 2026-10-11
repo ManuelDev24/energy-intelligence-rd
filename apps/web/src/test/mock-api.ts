@@ -323,16 +323,23 @@ export function createMockApi(): Api {
       requireHome(homeId);
       equipment = equipment.filter((e) => !(e.id === id && e.home_id === homeId));
     },
-    // Estático: el estimado lo calcula el backend.
+    // Simplificado: el estimado real (y el reparto que suma 100,00) lo calcula el backend.
     getEstimate: async (homeId) => {
       requireHome(homeId);
       const own = equipment.filter((e) => e.home_id === homeId);
+      const daily = own.map((e) => (Number(e.power_w) * Number(e.hours_per_day)) / 1000);
+      const sum = daily.reduce((a, b) => a + b, 0);
+      const est = (value: number, unit: string) => ({ value: value.toFixed(2), unit, quality: "ESTIMATED" as const });
       return EquipmentEstimateSchema.parse({
         home_id: homeId,
         equipment_count: own.length,
-        items: [],
-        total_daily_kwh: { value: "0.00", unit: "kWh/día", quality: "ESTIMATED" },
-        total_monthly_kwh: { value: "0.00", unit: "kWh/mes", quality: "ESTIMATED" },
+        items: own.map((e, i) => ({
+          equipment_id: e.id, name: e.name, room: e.room, kind: e.kind, brand: e.brand, model: e.model, icon: e.icon,
+          daily_kwh: est(daily[i], "kWh/día"), monthly_kwh: est(daily[i] * 30, "kWh/mes"),
+          share_pct: est(sum > 0 ? (daily[i] / sum) * 100 : 0, "%"),
+        })),
+        total_daily_kwh: est(sum, "kWh/día"),
+        total_monthly_kwh: est(sum * 30, "kWh/mes"),
         days_per_month: 30,
         latest_bill_kwh: null,
         bill_coverage_pct: null,

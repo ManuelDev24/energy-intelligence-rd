@@ -4,10 +4,10 @@ import { describeError } from '../../api/errors';
 import { useDeleteEquipment, useEquipment, useEstimate } from '../../api/hooks';
 import type { EquipmentEstimate } from '../../api/types';
 import { EquipmentBreakdown } from '../../components/charts/EquipmentBreakdown';
+import { DeviceCard } from '../../components/DeviceCard';
 import { MetricCard } from '../../components/MetricCard';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../../components/states';
-import { Button, QualityBadge, TextAction } from '../../components/ui';
-import { fmtNumber, fmtMetric } from '../../lib/format';
+import { Button, QualityBadge } from '../../components/ui';
 import { metricParts } from '../../lib/metricParts';
 import { useSession } from '../../store/session';
 import { colors, radius, spacing } from '../../theme';
@@ -113,35 +113,14 @@ export function EquipmentScreen({ onAdd, onEdit }: { onAdd: () => void; onEdit: 
             hint="Agregue los equipos de la vivienda (nevera, aire, abanicos…) para estimar su consumo."
           />
         }
-        renderItem={({ item }) => {
-          const est = byId.get(item.id);
-          return (
-            <View style={s.card} testID={`equipment-${item.name}`}>
-              <View style={s.row}>
-                <Text style={s.title}>{item.name}</Text>
-                {est ? <QualityBadge quality={est.monthly_kwh.quality} /> : null}
-              </View>
-              <Text style={s.label}>
-                {item.room ? `${item.room} · ` : ''}
-                {fmtNumber(item.power_w, 0)} W · {fmtNumber(item.hours_per_day, Number(item.hours_per_day) % 1 ? 2 : 0)} h/día
-              </Text>
-              {est ? (
-                <Text style={s.value}>
-                  ≈ {fmtMetric(est.monthly_kwh.value, 'kWh')}/mes ({fmtNumber(est.daily_kwh.value)} kWh/día)
-                </Text>
-              ) : null}
-              <View style={[s.row, { justifyContent: 'flex-end', gap: spacing.md }]}>
-                <TextAction title="Editar" onPress={() => onEdit(item.id)} accessibilityLabel={`Editar ${item.name}`} />
-                <TextAction
-                  title="Eliminar"
-                  tone="danger"
-                  onPress={() => confirmDelete(item.id, item.name)}
-                  accessibilityLabel={`Eliminar ${item.name}`}
-                />
-              </View>
-            </View>
-          );
-        }}
+        renderItem={({ item }) => (
+          <DeviceCard
+            item={item}
+            estimate={byId.get(item.id)}
+            onEdit={() => onEdit(item.id)}
+            onDelete={() => confirmDelete(item.id, item.name)}
+          />
+        )}
       />
       <View style={s.footer}>
         <Button title="Agregar equipo" onPress={onAdd} testID="add-equipment" />
@@ -152,12 +131,10 @@ export function EquipmentScreen({ onAdd, onEdit }: { onAdd: () => void; onEdit: 
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  card: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.lg, borderWidth: 1, borderColor: colors.border, gap: 6 },
+  card: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.lg, borderWidth: 1, borderColor: colors.border, gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
   title: { fontWeight: '700', color: colors.text, fontSize: 15, flexShrink: 1 },
-  label: { color: colors.muted, fontSize: 13 },
-  value: { color: colors.text, fontWeight: '600', fontSize: 14, fontVariant: ['tabular-nums'] },
   note: { color: colors.muted, fontSize: 12, marginTop: 4 },
   footer: { padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card },
 });

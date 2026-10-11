@@ -1,15 +1,22 @@
 "use client";
 
 import {
+  EMPTY_EQUIPMENT_FORM,
+  EQUIPMENT_ICON_LABELS,
+  EQUIPMENT_ICONS,
+  EQUIPMENT_KIND_LABELS,
+  EQUIPMENT_KINDS,
   fmtNumber,
+  isEquipmentKind,
   previewDailyKwh,
   validateEquipment,
   type EquipmentFormErrors,
   type EquipmentFormValues,
 } from "@energyrd/core";
-import { Pencil, Plug, Plus, Trash2 } from "lucide-react";
+import { Plug, Plus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { DataStatusBadge } from "@/components/data-status-badge";
+import { DeviceCard, LUCIDE_BY_ICON } from "@/components/device-card";
 import { EmptyState } from "@/components/empty-state";
 import { canShowBreakdown, EquipmentBreakdownChart } from "@/components/equipment-breakdown-chart";
 import { MetricCard } from "@/components/metric-card";
@@ -25,7 +32,6 @@ import { userMessage } from "@/lib/api/errors";
 import { useSession } from "@/lib/session";
 import { useFocusFirstInvalid } from "@/lib/use-focus-first-invalid";
 
-const EMPTY: EquipmentFormValues = { name: "", room: "", powerW: "", hoursPerDay: "" };
 
 function EquipmentForm({
   homeId,
@@ -41,10 +47,14 @@ function EquipmentForm({
       ? {
           name: editing.name,
           room: editing.room ?? "",
+          kind: isEquipmentKind(editing.kind) ? editing.kind : "other",
+          brand: editing.brand ?? "",
+          model: editing.model ?? "",
+          icon: editing.icon ?? "",
           powerW: String(Number(editing.power_w)),
           hoursPerDay: String(Number(editing.hours_per_day)),
         }
-      : EMPTY,
+      : EMPTY_EQUIPMENT_FORM,
   );
   const [errors, setErrors] = useState<EquipmentFormErrors>({});
   const { formRef, flagInvalid } = useFocusFirstInvalid();
@@ -56,6 +66,7 @@ function EquipmentForm({
     error: errors[k],
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setV((p) => ({ ...p, [k]: e.target.value })),
   });
+  const kindId = "eq-kind";
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -70,7 +81,50 @@ function EquipmentForm({
       <CardTitle>{editing ? "Editar equipo" : "Nuevo equipo"}</CardTitle>
       <form ref={formRef} onSubmit={submit} noValidate className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field label="Nombre" placeholder="Nevera" {...bind("name")} />
+        <div className="flex flex-col gap-1">
+          <label htmlFor={kindId} className="text-sm font-medium">Tipo de equipo</label>
+          <select
+            id={kindId}
+            name={kindId}
+            value={v.kind}
+            aria-invalid={errors.kind ? true : undefined}
+            aria-describedby={errors.kind ? `${kindId}-error` : undefined}
+            onChange={(e) => setV((p) => ({ ...p, kind: e.target.value }))}
+            className="h-10 rounded-lg border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {EQUIPMENT_KINDS.map((k) => (
+              <option key={k} value={k}>{EQUIPMENT_KIND_LABELS[k]}</option>
+            ))}
+          </select>
+          {errors.kind ? <p id={`${kindId}-error`} role="alert" className="text-xs text-red-600">{errors.kind}</p> : null}
+        </div>
         <Field label="Habitación (opcional)" placeholder="Cocina" {...bind("room")} />
+        <Field label="Marca (opcional)" placeholder="Samsung" {...bind("brand")} />
+        <Field label="Modelo (opcional)" placeholder="AR12" {...bind("model")} />
+        <div role="radiogroup" aria-label="Icono" className="flex flex-col gap-1 sm:col-span-2">
+          <span className="text-sm font-medium">Icono</span>
+          <div className="flex flex-wrap gap-2">
+            {[{ key: "", label: "Por defecto del tipo" }, ...EQUIPMENT_ICONS.map((i) => ({ key: i as string, label: EQUIPMENT_ICON_LABELS[i] }))].map((o) => {
+              const selected = v.icon === o.key;
+              const Icon = o.key ? LUCIDE_BY_ICON[o.key as keyof typeof LUCIDE_BY_ICON] : null;
+              return (
+                <button
+                  key={o.key || "default"}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={`Icono: ${o.label}`}
+                  title={o.label}
+                  onClick={() => setV((p) => ({ ...p, icon: o.key }))}
+                  className={`flex h-10 min-w-10 items-center justify-center rounded-lg border px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? "border-primary bg-muted font-semibold" : "border-border"}`}
+                >
+                  {Icon ? <Icon className="h-5 w-5" aria-hidden /> : "Auto"}
+                </button>
+              );
+            })}
+          </div>
+          {errors.icon ? <p role="alert" className="text-xs text-red-600">{errors.icon}</p> : null}
+        </div>
         <Field label="Potencia (W)" inputMode="decimal" placeholder="150" {...bind("powerW")} />
         <Field label="Horas de uso por día" inputMode="decimal" placeholder="24" {...bind("hoursPerDay")} />
         {preview !== null ? (
@@ -189,61 +243,18 @@ export default function EquipmentPage() {
                 </div>
               </Card>
             ) : null}
-            <Card className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <caption className="sr-only">Equipos declarados y consumo estimado</caption>
-                  <thead>
-                    <tr className="border-b border-border text-muted-foreground">
-                      <th scope="col" className="px-6 py-3 font-medium">Equipo</th>
-                      <th scope="col" className="px-6 py-3 font-medium">Habitación</th>
-                      <th scope="col" className="px-6 py-3 text-right font-medium">Potencia</th>
-                      <th scope="col" className="px-6 py-3 text-right font-medium">Uso</th>
-                      <th scope="col" className="px-6 py-3 text-right font-medium">Estimado/mes</th>
-                      <th scope="col" className="px-6 py-3"><span className="sr-only">Acciones</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.data?.map((it) => {
-                      const est = byId.get(it.id);
-                      return (
-                        <tr key={it.id} className="border-b border-border last:border-0">
-                          <th scope="row" className="px-6 py-3 font-medium">{it.name}</th>
-                          <td className="px-6 py-3 text-muted-foreground">{it.room ?? "—"}</td>
-                          <td className="px-6 py-3 text-right tabular-nums">{fmtNumber(it.power_w, 0)} W</td>
-                          <td className="px-6 py-3 text-right tabular-nums">
-                            {fmtNumber(it.hours_per_day, Number(it.hours_per_day) % 1 ? 2 : 0)} h/día
-                          </td>
-                          <td className="px-6 py-3 text-right tabular-nums">
-                            {est ? formatMetric(est.monthly_kwh.value, "kWh") : "—"}
-                          </td>
-                          <td className="px-6 py-3">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                aria-label={`Editar ${it.name}`}
-                                onClick={() => setForm({ editing: it })}
-                              >
-                                <Pencil className="h-4 w-4" aria-hidden />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                aria-label={`Eliminar ${it.name}`}
-                                onClick={() => setDeleting(it)}
-                              >
-                                <Trash2 className="h-4 w-4 text-danger" aria-hidden />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+            <ul aria-label="Equipos declarados" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {list.data?.map((it) => (
+                <li key={it.id}>
+                  <DeviceCard
+                    item={it}
+                    estimate={byId.get(it.id)}
+                    onEdit={() => setForm({ editing: it })}
+                    onDelete={() => setDeleting(it)}
+                  />
+                </li>
+              ))}
+            </ul>
             {e ? <p className="text-xs text-muted-foreground">{e.note}</p> : null}
           </>
         )}
