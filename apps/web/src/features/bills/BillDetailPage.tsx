@@ -3,13 +3,15 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BillForm } from "@/components/bill-form";
+import { ConfirmDialog } from "@/components/modal";
 import { QueryState } from "@/components/query-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { billDetailUnavailable, userMessage } from "@/lib/api/errors";
-import { useBill, useBillItems, useDeleteBill, useUpdateBill } from "@/lib/api/hooks";
+import { useBill, useBillItems, useDeleteBill, useSetBillPayment, useUpdateBill } from "@/lib/api/hooks";
 import type { Bill } from "@/lib/api/schemas";
+import { fmtDate } from "@energyrd/core";
 import { formatDop, formatNumber, formatPeriod } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { BillAssessmentSection } from "./BillAssessmentSection";
@@ -33,6 +35,7 @@ function toFormValues(b: Bill) {
     days: String(b.days),
     reading_previous: b.reading_previous ?? "",
     reading_current: b.reading_current ?? "",
+    due_date: b.due_date ?? "",
   };
 }
 
@@ -47,7 +50,9 @@ export default function BillDetailPage() {
   const itemsUnavailable = billDetailUnavailable(items.error, authEnabled);
   const update = useUpdateBill(home, id);
   const remove = useDeleteBill(home);
+  const payment = useSetBillPayment(home, id);
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,8 +84,19 @@ export default function BillDetailPage() {
                 {data.reading_current !== null ? (
                   <Row label="Lectura actual" value={formatNumber(data.reading_current)} />
                 ) : null}
+                {data.due_date ? <Row label="Fecha límite de pago" value={fmtDate(data.due_date)} /> : null}
+                {data.due_date ? <Row label="Pago" value={data.paid_at ? `Pagada el ${fmtDate(data.paid_at.slice(0, 10))}` : "Pendiente"} /> : null}
               </dl>
             </Card>
+            {data.due_date ? (
+              <div className="flex flex-col gap-1">
+                <Button variant="outline" className="self-start" disabled={payment.isPending}
+                  onClick={() => payment.mutate(!data.paid_at)}>
+                  {data.paid_at ? "Marcar como pendiente" : "Marcar como pagada"}
+                </Button>
+                {payment.error ? <p role="alert" className="text-sm text-red-600">{userMessage(payment.error, "bill-save")}</p> : null}
+              </div>
+            ) : null}
             {remove.error ? (
               <p role="alert" className="text-sm text-red-600">
                 {userMessage(remove.error, "bill-delete")}
@@ -93,17 +109,20 @@ export default function BillDetailPage() {
               {data.source === "manual" ? (
                 <>
                   <Button onClick={() => setEditing(true)}>Editar</Button>
-                  <Button
-                    variant="outline"
-                    disabled={remove.isPending}
-                    onClick={() => {
-                      if (window.confirm("¿Eliminar esta factura?")) {
-                        remove.mutate(data.id, { onSuccess: () => router.push("/bills") });
-                      }
-                    }}
-                  >
+                  <Button variant="outline" disabled={remove.isPending} onClick={() => setConfirmingDelete(true)}>
                     Eliminar
                   </Button>
+                  <ConfirmDialog
+                    open={confirmingDelete}
+                    title="¿Eliminar esta factura?"
+                    message="Se borran la factura, sus conceptos y su evaluación. Esta acción no se puede deshacer."
+                    confirmLabel="Eliminar"
+                    pendingLabel="Eliminando…"
+                    destructive
+                    pending={remove.isPending}
+                    onCancel={() => setConfirmingDelete(false)}
+                    onConfirm={() => remove.mutate(data.id, { onSuccess: () => router.push("/bills"), onSettled: () => setConfirmingDelete(false) })}
+                  />
                 </>
               ) : null}
             </div>

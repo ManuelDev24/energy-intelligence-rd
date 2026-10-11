@@ -1,7 +1,8 @@
 "use client";
 
-import { fmtNumber, fmtPct } from "@energyrd/core";
+import { alertTarget, alertTitle, fmtNumber, fmtPct, SEVERITY_ORDER } from "@energyrd/core";
 import { BellOff, Check, X } from "lucide-react";
+import Link from "next/link";
 import { AlertCard } from "@/components/alert-card";
 import { EmptyState } from "@/components/empty-state";
 import { QueryState } from "@/components/query-state";
@@ -11,17 +12,22 @@ import { formatPeriod } from "@/lib/format";
 import { userMessage } from "@/lib/api/errors";
 import { useSession } from "@/lib/session";
 
+const linkClass = "inline-flex h-11 items-center rounded-lg px-2 text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+
 export default function AlertsPage() {
   const { homeId } = useSession();
   const { data, isLoading, error, refetch } = useAlerts(homeId ?? "");
   const setStatus = useSetAlertStatus(homeId ?? "");
+  // Lo urgente primero; dentro de cada gravedad, lo no leído primero (el orden de la API se conserva en los empates).
+  const sorted = data ? [...data].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || Number(b.status === "unread") - Number(a.status === "unread")) : data;
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold">Alertas</h1>
         <p className="text-pretty text-sm text-muted-foreground">
-          Se generan cuando el consumo de una factura sube por encima del umbral frente a la anterior.
+          Avisos de consumo que sube o baja, desviaciones detectadas, facturas por vencer y datos que faltan. Las importantes también
+          te llegan por correo o al teléfono, según tus preferencias.
         </p>
       </header>
       {setStatus.isError ? (
@@ -30,21 +36,25 @@ export default function AlertsPage() {
         </p>
       ) : null}
       <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()}>
-        {data && data.length === 0 ? (
+        {sorted && sorted.length === 0 ? (
           <EmptyState
             icon={BellOff}
             title="Sin alertas"
-            hint="Tu consumo está dentro de lo esperado. Te avisaremos si sube de golpe."
+            hint="Tu consumo está dentro de lo esperado. Te avisaremos si sube de golpe o si una factura está por vencer."
           />
         ) : (
           <ul className="flex flex-col gap-3">
-            {data?.map((a) => {
+            {sorted?.map((a) => {
               const unread = a.status === "unread";
+              const target = alertTarget(a);
+              const href = target === null ? null : target.kind === "bill" ? `/bills/${target.billId}` : target.kind === "new-bill" ? "/bills/new" : target.kind === "new-reading" ? "/readings" : "/dashboard";
+              const title = alertTitle(a);
               return (
                 <AlertCard
                   key={a.id}
                   as="li"
                   tone={a.severity}
+                  title={title}
                   meta={
                     <>
                       {unread ? (
@@ -65,6 +75,9 @@ export default function AlertsPage() {
                   }
                   action={
                     <>
+                      {target && href ? (
+                        <Link href={href} aria-label={`${target.label}: ${title}`} className={linkClass}>{target.label}</Link>
+                      ) : null}
                       {unread ? (
                         <Button
                           variant="outline"

@@ -32,6 +32,8 @@ export const BillOutSchema = z.object({
   "days": z.number().finite().int(),
   "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
   "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "due_date": z.union([z.string().date(), z.null()]),
+  "paid_at": z.union([z.string().datetime({ offset: true }), z.null()]),
   "source": z.enum(["manual", "seed"]),
   "created_at": z.string().datetime({ offset: true })
 });
@@ -99,6 +101,7 @@ export const ProjectionOutSchema = z.object({
   "bills_used": z.number().finite().int(),
   "kwh": MetricSchema,
   "amount_dop": MetricSchema,
+  "kwh_pct_vs_latest": z.union([MetricSchema, z.null()]).default(null),
   "note": z.string()
 });
 export type ProjectionOut = z.infer<typeof ProjectionOutSchema>;
@@ -120,6 +123,10 @@ export const EquipmentOutSchema = z.object({
   "home_id": z.string().uuid(),
   "name": z.string(),
   "room": z.union([z.string(), z.null()]),
+  "kind": z.enum(["air_conditioner", "refrigerator", "water_heater", "washing_machine", "tv", "fan", "lighting", "computer", "microwave", "pool_pump", "other"]),
+  "brand": z.union([z.string(), z.null()]),
+  "model": z.union([z.string(), z.null()]),
+  "icon": z.union([z.enum(["snowflake", "refrigerator", "flame", "washing-machine", "tv", "fan", "lightbulb", "laptop", "microwave", "waves", "plug"]), z.null()]),
   "power_w": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
   "hours_per_day": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
   "created_at": z.string().datetime({ offset: true })
@@ -130,8 +137,13 @@ export const EquipmentEstimateItemSchema = z.object({
   "equipment_id": z.string().uuid(),
   "name": z.string(),
   "room": z.union([z.string(), z.null()]),
+  "kind": z.enum(["air_conditioner", "refrigerator", "water_heater", "washing_machine", "tv", "fan", "lighting", "computer", "microwave", "pool_pump", "other"]),
+  "brand": z.union([z.string(), z.null()]),
+  "model": z.union([z.string(), z.null()]),
+  "icon": z.union([z.enum(["snowflake", "refrigerator", "flame", "washing-machine", "tv", "fan", "lightbulb", "laptop", "microwave", "waves", "plug"]), z.null()]),
   "daily_kwh": MetricSchema,
-  "monthly_kwh": MetricSchema
+  "monthly_kwh": MetricSchema,
+  "share_pct": MetricSchema
 });
 export type EquipmentEstimateItem = z.infer<typeof EquipmentEstimateItemSchema>;
 
@@ -152,8 +164,9 @@ export const AlertRecordSchema = z.object({
   "id": z.string().uuid(),
   "home_id": z.string().uuid(),
   "bill_id": z.union([z.string().uuid(), z.null()]),
-  "type": z.string(),
-  "severity": z.enum(["warning", "critical"]),
+  "type": z.enum(["bill_variation", "anomaly", "payment_due", "missing_bill", "stale_readings"]),
+  "severity": z.enum(["info", "warning", "critical", "savings"]),
+  "anomaly_id": z.union([z.string().uuid(), z.null()]),
   "status": z.enum(["unread", "read", "dismissed"]),
   "message": z.string(),
   "kwh_pct": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
@@ -180,7 +193,9 @@ export const BillCreateSchema = z.object({
   "days": z.number().finite().int().min(0).max(366),
   "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
   "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
-  "source": z.literal("manual").default("manual")
+  "due_date": z.union([z.string().date(), z.null()]).default(null),
+  "source": z.literal("manual").default("manual"),
+  "document_id": z.union([z.string().uuid(), z.null()]).default(null)
 });
 export type BillCreate = z.infer<typeof BillCreateSchema>;
 
@@ -191,13 +206,18 @@ export const BillUpdateSchema = z.object({
   "amount_dop": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
   "days": z.number().finite().int().min(0).max(366),
   "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
-  "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null)
+  "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
+  "due_date": z.union([z.string().date(), z.null()]).default(null)
 });
 export type BillUpdate = z.infer<typeof BillUpdateSchema>;
 
 export const EquipmentInSchema = z.object({
   "name": z.string().min(1).max(120),
   "room": z.union([z.string().max(80), z.null()]).default(null),
+  "kind": z.enum(["air_conditioner", "refrigerator", "water_heater", "washing_machine", "tv", "fan", "lighting", "computer", "microwave", "pool_pump", "other"]).default("other"),
+  "brand": z.union([z.string().max(60), z.null()]).default(null),
+  "model": z.union([z.string().max(60), z.null()]).default(null),
+  "icon": z.union([z.enum(["snowflake", "refrigerator", "flame", "washing-machine", "tv", "fan", "lightbulb", "laptop", "microwave", "waves", "plug"]), z.null()]).default(null),
   "power_w": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,11}0*$)\\d{0,8}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
   "hours_per_day": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String)
 });
@@ -499,6 +519,65 @@ export const PasswordResetInSchema = z.object({
 });
 export type PasswordResetIn = z.infer<typeof PasswordResetInSchema>;
 
+export const PasswordChangeInSchema = z.object({
+  "current_password": z.string().min(12).max(128),
+  "new_password": z.string().min(12).max(128)
+});
+export type PasswordChangeIn = z.infer<typeof PasswordChangeInSchema>;
+
+export const InvitationCreateInSchema = z.object({
+  "email": z.string().max(254)
+});
+export type InvitationCreateIn = z.infer<typeof InvitationCreateInSchema>;
+
+export const InvitationOutSchema = z.object({
+  "id": z.string().uuid(),
+  "email": z.string(),
+  "created_at": z.string().datetime({ offset: true }),
+  "expires_at": z.string().datetime({ offset: true })
+});
+export type InvitationOut = z.infer<typeof InvitationOutSchema>;
+
+export const InvitationAcceptInSchema = z.object({
+  "token": z.string().regex(new RegExp("^[A-Za-z0-9_-]{43}$")).min(43).max(43)
+});
+export type InvitationAcceptIn = z.infer<typeof InvitationAcceptInSchema>;
+
+export const MemberOutSchema = z.object({
+  "user_id": z.string().uuid(),
+  "email": z.string(),
+  "role": z.enum(["owner", "member"]),
+  "joined_at": z.string().datetime({ offset: true })
+});
+export type MemberOut = z.infer<typeof MemberOutSchema>;
+
+export const OwnershipTransferInSchema = z.object({
+  "user_id": z.string().uuid(),
+  "password": z.string().min(12).max(128)
+});
+export type OwnershipTransferIn = z.infer<typeof OwnershipTransferInSchema>;
+
+export const NotificationPreferencesInSchema = z.object({
+  "alerts_email": z.boolean(),
+  "alerts_push": z.boolean()
+});
+export type NotificationPreferencesIn = z.infer<typeof NotificationPreferencesInSchema>;
+
+export const NotificationPreferencesOutSchema = z.object({
+  "alerts_email": z.boolean(),
+  "alerts_push": z.boolean(),
+  "updated_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
+});
+export type NotificationPreferencesOut = z.infer<typeof NotificationPreferencesOutSchema>;
+
+export const SessionOutSchema = z.object({
+  "id": z.string().uuid(),
+  "created_at": z.string().datetime({ offset: true }),
+  "expires_at": z.string().datetime({ offset: true }),
+  "current": z.boolean()
+});
+export type SessionOut = z.infer<typeof SessionOutSchema>;
+
 export const OcrFieldSchema = z.object({
   "value": z.union([z.string(), z.null()]),
   "confidence": z.enum(["high", "inferred", "none"])
@@ -513,20 +592,66 @@ export const OcrDraftSchema = z.object({
   "amount_dop": OcrFieldSchema,
   "reading_previous": OcrFieldSchema,
   "reading_current": OcrFieldSchema,
+  "due_date": OcrFieldSchema.default({"value": null, "confidence": "none"}),
   "warnings": z.array(z.string()),
   "raw_text_excerpt": z.string()
 });
 export type OcrDraft = z.infer<typeof OcrDraftSchema>;
 
+export const OcrJobOutSchema = z.object({
+  "document_id": z.string().uuid(),
+  "status": z.enum(["pending", "processing", "done", "failed"]),
+  "attempts": z.number().finite().int(),
+  "method": z.union([z.enum(["text_layer", "ocr", "mixed"]), z.null()]),
+  "pages_read": z.union([z.number().finite().int(), z.null()]),
+  "pages_total": z.union([z.number().finite().int(), z.null()]),
+  "draft": z.union([OcrDraftSchema, z.null()]),
+  "error_code": z.union([z.enum(["unreadable", "protected_pdf", "file_missing", "engine_error"]), z.null()]),
+  "error_message": z.union([z.string(), z.null()]),
+  "created_at": z.string().datetime({ offset: true }),
+  "finished_at": z.union([z.string().datetime({ offset: true }), z.null()])
+});
+export type OcrJobOut = z.infer<typeof OcrJobOutSchema>;
+
 export const AnomalyRecordSchema = z.object({
+  "id": z.string().uuid(),
   "home_id": z.string().uuid(),
-  "granularity": z.enum(["day", "month"]),
-  "severity": z.enum(["warning", "critical"]),
+  "bill_id": z.union([z.string().uuid(), z.null()]),
+  "kind": z.enum(["increase", "drop", "peak", "night"]),
+  "source": z.enum(["readings", "bills"]),
+  "granularity": z.enum(["day", "month", "billing"]),
+  "severity": z.enum(["info", "warning", "critical"]),
+  "confidence": z.enum(["low", "medium", "high"]),
+  "status": z.enum(["open", "acknowledged", "dismissed", "resolved"]),
   "observed_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
   "baseline_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "delta_pct": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "delta_pct": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "days": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
   "period_start": z.string().date(),
   "period_end": z.string().date(),
-  "explanation": z.string()
+  "explanation": z.string(),
+  "detected_at": z.string().datetime({ offset: true }),
+  "last_seen_at": z.string().datetime({ offset: true })
 });
 export type AnomalyRecord = z.infer<typeof AnomalyRecordSchema>;
+
+export const AnomalyStatusInSchema = z.object({
+  "status": z.enum(["open", "acknowledged", "dismissed"])
+});
+export type AnomalyStatusIn = z.infer<typeof AnomalyStatusInSchema>;
+
+export const BillPaymentInSchema = z.object({
+  "paid": z.boolean()
+});
+export type BillPaymentIn = z.infer<typeof BillPaymentInSchema>;
+
+export const DeviceInSchema = z.object({
+  "token": z.string().regex(new RegExp("^Expo(nent)?PushToken\\[[A-Za-z0-9_-]{10,}\\]$")).min(20).max(200),
+  "platform": z.enum(["ios", "android"])
+});
+export type DeviceIn = z.infer<typeof DeviceInSchema>;
+
+export const DeviceRemoveInSchema = z.object({
+  "token": z.string().min(20).max(200)
+});
+export type DeviceRemoveIn = z.infer<typeof DeviceRemoveInSchema>;

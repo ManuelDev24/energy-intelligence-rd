@@ -102,3 +102,14 @@ def test_worst_goal_status():
     assert calc.worst_goal_status(["at_risk", "insufficient_data"]) == "at_risk"
     assert calc.worst_goal_status(["on_track"]) == "on_track"
     assert calc.worst_goal_status([]) == "insufficient_data"
+
+
+def test_projection_vs_latest_pct_rounds_half_up_and_keeps_sign():
+    assert calc.projection_vs_latest_pct(D("486.67"), D("420")) == D("15.87")
+    assert calc.projection_vs_latest_pct(D("200"), D("300")) == D("-33.33")
+    assert calc.projection_vs_latest_pct(D("300"), D("300")) == D("0.00")
+    assert calc.projection_vs_latest_pct(D("0"), D("300")) == D("-100.00")
+
+
+def test_projection_vs_latest_pct_has_no_value_without_a_base():
+    assert calc.projection_vs_latest_pct(D("10"), D("0")) is None

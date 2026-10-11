@@ -1,0 +1,243 @@
+# ERD-E2E-MAESTRO-AUTH — recorrido con cuentas reales (AUTH_ENABLED): registro → onboarding → perfil → consumo → meta →
+# cerrar sesión → iniciar sesión → solicitar recuperación de contraseña. SIN OCR. Datos sintéticos.
+#
+# ESTADO: AUTORADO, NO EJECUTADO. Este entorno no tiene simulador, emulador ni Maestro; los identificadores se comprueban
+# contra el código en `src/maestroFlows.test.ts`, pero NINGÚN paso se ha corrido en un dispositivo.
+#
+# Requisitos: API con AUTH_ENABLED=true, SIN datos piloto sembrados, `EMAIL_BACKEND` de desarrollo (no se envía correo real) y
+# Metro con EXPO_PUBLIC_AUTH_ENABLED=true EXPO_PUBLIC_API_URL=<url>. Lo prepara `run-auth.sh`.
+# Variables OBLIGATORIAS (-e): EMAIL (único por corrida) y PASSWORD (12–128 caracteres). `run-auth.sh` las genera.
+appId: ${APP_ID || 'host.exp.Exponent'}
+---
+- launchApp:
+    stopApp: true
+- openLink: ${EXPO_URL || 'exp://127.0.0.1:8081'}
+# Expo Go muestra su menú de desarrollo la primera vez y tapa la app (mismo manejo que pilot-flow.yaml).
+- extendedWaitUntil:
+    visible: "(Iniciar sesión|This is the developer menu.*)"
+    timeout: 120000
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - tapOn: "Continue"
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Iniciar sesión"
+    timeout: 30000
+- takeScreenshot: evidence/auth/01-login
+
+# 1. Registro: primero la validación, luego la cuenta.
+- tapOn:
+    id: "auth-mode"
+- assertVisible: "Crear cuenta"
+- tapOn:
+    id: "auth-submit"
+- assertVisible:
+    id: "auth-email-error"
+- tapOn:
+    id: "auth-email"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "auth-password"
+- inputText: ${PASSWORD}
+- runFlow:
+    when:
+      platform: iOS
+      visible:
+        id: "keyboard-done"
+    commands:
+      - tapOn:
+          id: "keyboard-done"
+- tapOn:
+    id: "auth-submit"
+# Sin aceptar los términos no se crea la cuenta.
+- assertVisible:
+    id: "auth-accept-terms-error"
+- tapOn:
+    id: "auth-accept-terms"
+- tapOn:
+    id: "auth-submit"
+- extendedWaitUntil:
+    visible:
+      id: "auth-add-home"
+    timeout: 30000
+- takeScreenshot: evidence/auth/02-sin-viviendas
+
+# 2. Onboarding de la primera vivienda (6 pasos).
+- tapOn:
+    id: "auth-add-home"
+- assertVisible: "Paso 1 de 6"
+- tapOn:
+    id: "account-onboarding-next"
+- assertVisible:
+    id: "account-onboarding-name-error"
+- tapOn:
+    id: "account-onboarding-name"
+- inputText: "Casa Maestro"
+- tapOn:
+    id: "account-onboarding-province"
+- inputText: "Santo Domingo"
+- tapOn:
+    id: "account-onboarding-municipality"
+- inputText: "Santo Domingo Este"
+- runFlow:
+    when:
+      platform: iOS
+      visible:
+        id: "keyboard-done"
+    commands:
+      - tapOn:
+          id: "keyboard-done"
+- tapOn:
+    id: "account-onboarding-next"
+- assertVisible: "Paso 2 de 6"
+- tapOn:
+    id: "account-onboarding-distributor-EDESUR"
+- tapOn:
+    id: "account-onboarding-next"
+- assertVisible: "Paso 3 de 6"
+- tapOn:
+    id: "account-onboarding-userType"
+- inputText: "Residencial"
+- runFlow:
+    when:
+      platform: iOS
+      visible:
+        id: "keyboard-done"
+    commands:
+      - tapOn:
+          id: "keyboard-done"
+- tapOn:
+    id: "account-onboarding-next"
+- assertVisible: "Paso 4 de 6"
+- tapOn:
+    id: "account-onboarding-next"
+- assertVisible: "Paso 5 de 6"
+- tapOn:
+    id: "account-onboarding-goalKwh"
+- inputText: "300"
+- runFlow:
+    when:
+      platform: iOS
+      visible:
+        id: "keyboard-done"
+    commands:
+      - tapOn:
+          id: "keyboard-done"
+- tapOn:
+    id: "account-onboarding-next"
+- assertVisible: "Paso 6 de 6"
+- assertVisible: "Vivienda: Casa Maestro.*"
+- takeScreenshot: evidence/auth/03-revision
+- tapOn:
+    id: "account-onboarding-next"
+- extendedWaitUntil:
+    visible:
+      id: "tab-Dashboard"
+    timeout: 30000
+
+# 3. Perfil: la vivienda y la meta quedaron guardadas.
+- tapOn:
+    id: "profile-entry"
+- tapOn:
+    id: "profile-home"
+- assertVisible: ".*Casa Maestro.*"
+- back
+- back
+- takeScreenshot: evidence/auth/04-perfil
+
+# 4. Consumo: cuenta nueva = sin lecturas, estado vacío honesto (no se inventan cifras).
+- tapOn:
+    id: "tab-Consumption"
+- extendedWaitUntil:
+    visible:
+      id: "consumption-screen"
+    timeout: 20000
+- tapOn:
+    id: "range-30d"
+- assertVisible:
+    id: "consumption-empty"
+- takeScreenshot: evidence/auth/05-consumo
+
+# 5. Meta mensual: el onboarding ya la dejó, el formulario de edición abre con ella.
+- tapOn:
+    id: "tab-Dashboard"
+- extendedWaitUntil:
+    visible:
+      id: "goal-card"
+    timeout: 20000
+- tapOn:
+    id: "goal-edit"
+- assertVisible:
+    id: "f-goal-kwh"
+- back
+
+# 6. Cerrar sesión y volver a entrar.
+- tapOn:
+    id: "profile-entry"
+- tapOn:
+    id: "profile-homes"
+- tapOn:
+    id: "auth-logout"
+- extendedWaitUntil:
+    visible: "Iniciar sesión"
+    timeout: 20000
+- tapOn:
+    id: "auth-email"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "auth-password"
+- inputText: ${PASSWORD}
+- runFlow:
+    when:
+      platform: iOS
+      visible:
+        id: "keyboard-done"
+    commands:
+      - tapOn:
+          id: "keyboard-done"
+- tapOn:
+    id: "auth-submit"
+# Tras iniciar sesión hay que elegir la vivienda (la selección no sobrevive al cierre de sesión).
+- extendedWaitUntil:
+    visible: "Casa Maestro"
+    timeout: 30000
+- tapOn: "Casa Maestro"
+- extendedWaitUntil:
+    visible:
+      id: "tab-Dashboard"
+    timeout: 30000
+- takeScreenshot: evidence/auth/06-reingreso
+
+# 7. Recuperación de contraseña: la confirmación es la misma exista o no la cuenta (no enumera correos).
+#    El enlace llega por correo y se abre en el NAVEGADOR del teléfono: ese último tramo no está automatizado.
+- tapOn:
+    id: "profile-entry"
+- tapOn:
+    id: "profile-homes"
+- tapOn:
+    id: "auth-logout"
+- extendedWaitUntil:
+    visible: "Iniciar sesión"
+    timeout: 20000
+- tapOn:
+    id: "auth-forgot-link"
+- tapOn:
+    id: "auth-forgot-email"
+- inputText: ${EMAIL}
+- runFlow:
+    when:
+      platform: iOS
+      visible:
+        id: "keyboard-done"
+    commands:
+      - tapOn:
+          id: "keyboard-done"
+- tapOn:
+    id: "auth-forgot-submit"
+- extendedWaitUntil:
+    visible:
+      id: "auth-forgot-confirmation"
+    timeout: 30000
+- takeScreenshot: evidence/auth/07-recuperacion

@@ -1,0 +1,62 @@
+[
+  {
+    "check": "el selector acepta fotos y PDF",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "la foto se envió a ocr-jobs (async) y se sondeó",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "la lectura NO creó ninguna factura",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "formulario precargado con lo leído de la foto",
+    "ok": true,
+    "detail": "kWh=300.00 monto=4520.75"
+  },
+  {
+    "check": "se creó una sola factura al confirmar",
+    "ok": true,
+    "detail": "[\"2026-08-31\"]"
+  },
+  {
+    "check": "un id inexistente da 404 con mensaje local",
+    "ok": true,
+    "detail": "{\"detail\": \"No encontrado o sin acceso.\", \"code\": \"not_found\", \"request_id\": \"da81b4ebe397"
+  },
+  {
+    "check": "PDF multipágina leído de la capa de texto (sin OCR)",
+    "ok": true,
+    "detail": "Leído del texto del PDF (2 de 2 páginas).\n\nInicio\nAlta\nFin\nAlta\nDías\nAlta\nkWh\nAl"
+  },
+  {
+    "check": "PDF escaneado leído con OCR",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "PDF corrupto: mensaje claro, sin Reintentar, con alternativa manual",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "HTML disfrazado de .jpg se rechaza al subir (422, mensaje local)",
+    "ok": true,
+    "detail": "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC de hasta 10 MB) "
+  },
+  {
+    "check": "la interfaz no filtra texto interno",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el navegador nunca habló con la API directamente (solo /api/bff)",
+    "ok": true,
+    "detail": ""
+  }
+]

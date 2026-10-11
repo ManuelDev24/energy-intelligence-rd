@@ -12,12 +12,15 @@ import { authSession, useAuth } from '../auth/runtime';
 import { hasOwnedSelection } from '../auth/policy';
 import { AuthScreen } from '../features/auth/AuthScreen';
 import { AlertsScreen, unreadCount } from '../features/alerts/AlertsScreen';
+import { api } from '../api/client';
+import { nativeDeps, registerForPush } from '../notifications/push';
 import { BillFormScreen } from '../features/bills/BillFormScreen';
 import { BillOcrScreen } from '../features/bills/BillOcrScreen';
 import { BillsScreen } from '../features/bills/BillsScreen';
 import { BillDetailScreen } from '../features/bills/detail/BillDetailScreen';
 import { BillItemsEditorScreen } from '../features/bills/detail/BillItemsEditorScreen';
 import { ConsumptionScreen } from '../features/consumption/ConsumptionScreen';
+import { initialRangeFromParams } from '../features/consumption/range';
 import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { EquipmentFormScreen } from '../features/equipment/EquipmentFormScreen';
 import { EquipmentScreen } from '../features/equipment/EquipmentScreen';
@@ -30,6 +33,8 @@ import { useSession } from '../store/session';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { HomeProfileScreen } from '../features/profile/HomeProfileScreen';
 import { ServiceProfileScreen } from '../features/profile/ServiceProfileScreen';
+import { AccountSettingsScreen } from '../features/profile/AccountSettingsScreen';
+import { ShareHomeScreen } from '../features/profile/ShareHomeScreen';
 import { colors, TOUCH } from '../theme';
 
 export type RootStackParams = {
@@ -46,9 +51,11 @@ export type RootStackParams = {
   Profile: undefined;
   HomeProfile: undefined;
   ServiceProfile: undefined;
+  AccountSettings: undefined;
+  ShareHome: undefined;
 };
 // 5 pestañas: cambiar de vivienda es poco frecuente y vive en el encabezado (hoja "Homes").
-export type TabParams = { Dashboard: undefined; Consumption: undefined; Bills: undefined; Equipment: undefined; Alerts: undefined };
+export type TabParams = { Dashboard: undefined; Consumption: { from?: string; to?: string; granularity?: string } | undefined; Bills: undefined; Equipment: undefined; Alerts: undefined };
 
 const AccountStack = createNativeStackNavigator<{ Account: undefined; AccountHomes: undefined }>();
 const Stack = createNativeStackNavigator<RootStackParams>();
@@ -117,12 +124,15 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
             onOpenAlerts={() => tabs.navigate('Alerts')}
             onAddReading={() => navigation.navigate('ReadingForm')}
             onEditGoal={() => navigation.navigate('GoalForm')}
+            onInvestigate={(range) => tabs.navigate('Consumption', range)}
+            onOpenBill={(homeId, billId) => navigation.navigate('BillDetail', { homeId, billId })}
           />
         )}
       </Tab.Screen>
       <Tab.Screen name="Consumption" options={{ title: 'Consumo' }}>
-        {() => (
+        {({ route }) => (
           <ConsumptionScreen
+            initialRange={initialRangeFromParams(route.params)}
             onAddReading={() => navigation.navigate('ReadingForm')}
             onOpenReadings={() => navigation.navigate('Readings')}
           />
@@ -139,11 +149,16 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
           />
         )}
       </Tab.Screen>
-      <Tab.Screen
-        name="Alerts"
-        component={AlertsScreen}
-        options={{ title: 'Alertas', tabBarBadge: unread > 0 ? unread : undefined }}
-      />
+      <Tab.Screen name="Alerts" options={{ title: 'Alertas', tabBarBadge: unread > 0 ? unread : undefined }}>
+        {({ navigation: tabs }) => (
+          <AlertsScreen
+            onOpenBill={(billId) => homeId && navigation.navigate('BillDetail', { homeId, billId })}
+            onNewBill={() => navigation.navigate('BillForm')}
+            onNewReading={() => navigation.navigate('ReadingForm')}
+            onHome={() => tabs.navigate('Dashboard')}
+          />
+        )}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -161,6 +176,8 @@ export function AppNavigator() {
 
 function AuthenticatedApp() {
   const homes = useHomes();
+  // ERD-ALERT-02: si ya hay permiso de notificaciones, este teléfono se registra para los avisos; nunca se pregunta aquí.
+  useEffect(() => { void nativeDeps(api).then((deps) => registerForPush(deps, { ask: false })).catch(() => undefined); }, []);
   const selected = useSession((st) => st.selectedHomeId);
   const ownsSelection = hasOwnedSelection(selected, homes.data ?? []);
   useEffect(() => {
@@ -236,10 +253,12 @@ function DomainNavigator() {
           {({ navigation }) => <GoalFormScreen onDone={() => navigation.goBack()} />}
         </Stack.Screen>
         <Stack.Screen name="Profile" options={{ title: 'Perfil' }}>
-          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} />}
+          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} onAccountSettings={() => navigation.navigate('AccountSettings')} onShare={() => navigation.navigate('ShareHome')} />}
         </Stack.Screen>
         <Stack.Screen name="HomeProfile" component={HomeProfileScreen} options={{ title: 'Mi vivienda' }} />
         <Stack.Screen name="ServiceProfile" component={ServiceProfileScreen} options={{ title: 'Mi servicio' }} />
+        <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} options={{ title: 'Ajustes de cuenta' }} />
+        <Stack.Screen name="ShareHome" component={ShareHomeScreen} options={{ title: 'Compartir vivienda' }} />
         <Stack.Screen name="Homes" options={{ title: 'Elegir vivienda', presentation: 'modal' }}>
           {({ navigation }) => <HomesScreen onPicked={() => navigation.goBack()} />}
         </Stack.Screen>

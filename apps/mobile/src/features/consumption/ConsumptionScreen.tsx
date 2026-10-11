@@ -1,12 +1,13 @@
 import type { ConsumptionBucketItem, Granularity } from '@energyrd/api-contracts';
 import { fmtMetric, fmtPeriod } from '@energyrd/core';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { useConsumption } from '../../api/hooks';
 import { ConsumptionBars } from '../../components/charts/ConsumptionBars';
 import { DataStatusBadge } from '../../components/DataStatusBadge';
+import { DateRangePicker } from '../../components/DateRangePicker';
 import { Segmented } from '../../components/Segmented';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../../components/states';
 import { Button } from '../../components/ui';
@@ -16,6 +17,8 @@ import { colors, radius, spacing, TOUCH } from '../../theme';
 import { isEndpointUnavailable } from '../goals/model';
 import { bucketLongLabel, bucketValueText, comparisonView, consumptionNotices, reasonText } from './model';
 import { GRANULARITIES, PRESETS, rangeForPreset, type PresetKey } from './range';
+
+type InitialRange = { from: string; to: string; granularity: Granularity } | null | undefined;
 
 function Card({ title, children, testID }: { title: string; children: ReactNode; testID?: string }) {
   return (
@@ -78,13 +81,24 @@ function BucketRow({ b, granularity }: { b: ConsumptionBucketItem; granularity: 
   );
 }
 
-export function ConsumptionScreen({ onAddReading, onOpenReadings }: { onAddReading: () => void; onOpenReadings: () => void }) {
+export function ConsumptionScreen({ onAddReading, onOpenReadings, initialRange }: { onAddReading: () => void; onOpenReadings: () => void; initialRange?: InitialRange }) {
   const homeId = useSession((st) => st.selectedHomeId);
-  const [preset, setPreset] = useState<PresetKey>('30d');
-  const [granularity, setGranularity] = useState<Granularity>('day');
+  const [preset, setPreset] = useState<PresetKey | 'custom'>(initialRange ? 'custom' : '30d');
+  const [custom, setCustom] = useState<{ from: string; to: string }>(initialRange ?? rangeForPreset('30d', todayRD()));
+  const [granularity, setGranularity] = useState<Granularity>(initialRange?.granularity ?? 'day');
   const [showDetail, setShowDetail] = useState(false);
+  const [compare, setCompare] = useState(true);
   const today = todayRD();
-  const range = useMemo(() => rangeForPreset(preset, today), [preset, today]);
+  // Esta pantalla sigue montada en la pestaña: un nuevo rango recibido por navegación (investigar una desviación) la actualiza.
+  const incoming = initialRange ? `${initialRange.from}:${initialRange.to}:${initialRange.granularity}` : null;
+  useEffect(() => {
+    if (!initialRange) return;
+    setPreset('custom');
+    setCustom({ from: initialRange.from, to: initialRange.to });
+    setGranularity(initialRange.granularity);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoming]);
+  const range = useMemo(() => (preset === 'custom' ? custom : rangeForPreset(preset, today)), [preset, custom, today]);
   const q = useConsumption(homeId, granularity, range.from, range.to);
 
   const pickPreset = (key: PresetKey) => {
@@ -96,8 +110,13 @@ export function ConsumptionScreen({ onAddReading, onOpenReadings }: { onAddReadi
 
   const controls = (
     <View style={{ gap: spacing.sm }}>
-      <Segmented label="Rango" options={PRESETS} value={preset} onChange={pickPreset} testIDPrefix="range" />
+      <DateRangePicker presets={PRESETS} selected={preset} from={range.from} to={range.to} today={today} onPreset={pickPreset}
+        onCustom={(next) => { setCustom(next); setPreset('custom'); }} testID="range" />
       <Segmented label="Agrupar por" options={GRANULARITIES} value={granularity} onChange={setGranularity} testIDPrefix="gran" />
+      <View style={s.row}>
+        <Text style={s.label} accessibilityRole="text">Comparar con el período anterior</Text>
+        <Switch testID="consumption-compare" value={compare} onValueChange={setCompare} accessibilityLabel="Comparar con el período anterior" />
+      </View>
       <Text style={s.rangeText} testID="consumption-range">
         {fmtPeriod(range.from, range.to)} · hora de RD
       </Text>
@@ -146,7 +165,7 @@ export function ConsumptionScreen({ onAddReading, onOpenReadings }: { onAddReadi
           {c.totals.kwh ? (
             <AggregateRow label="Total" value={fmtMetric(c.totals.kwh.value, c.totals.kwh.unit)} quality={c.totals.kwh.quality} testID="consumption-total" />
           ) : null}
-          <ComparisonNote view={comparisonView(c.comparison)} testID="consumption-comparison" />
+          {compare ? <ComparisonNote view={comparisonView(c.comparison)} testID="consumption-comparison" /> : null}
           {c.average_daily_kwh ? (
             <AggregateRow
               label="Promedio diario"

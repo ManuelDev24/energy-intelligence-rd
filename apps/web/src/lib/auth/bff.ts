@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -33,6 +33,12 @@ const FORGOT = "/auth/password/forgot";
 const RESET = "/auth/password/reset";
 const ForgotSchema = PasswordForgotInSchema.extend({ email: z.string().email().max(254) }).strict();
 const ResetSchema = PasswordResetInSchema.strict();
+// ERD-PROF-01: cambio con sesión iniciada; la nueva contraseña debe diferir de la actual (la API también lo exige).
+const PasswordChangeSchema = PasswordChangeInSchema.strict().refine(body => body.current_password !== body.new_password, { path: ["new_password"] });
+const PASSWORD_CHANGE = "/auth/password/change";
+// Exportación de datos del titular: se reenvía tal cual, solo se comprueba que lo sea.
+const ExportSchema = z.object({ format_version: z.literal(1) }).passthrough();
+const EXPORT_DISPOSITION = /^attachment; filename="energyrd-datos-\d{4}-\d{2}-\d{2}\.json"$/;
 const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const accessName = (config: BffConfig) => config.secure ? "__Host-erd-access" : "erd-access";
 const logoutName = (config: BffConfig) => config.secure ? "__Host-erd-logout" : "erd-logout";
@@ -120,10 +126,58 @@ function ownsBill(path: string, value: unknown) {
   const nested = (value as { detail?: unknown }).detail;
   return owns(value) && (nested === undefined || owns(nested));
 }
+/** ERD-SHARE-01: compartir vivienda. Cuerpos estrictos; el texto de error de la API nunca se reenvía. */
+function sharingRoute(path: string, method: string): Phase2Route | null {
+  if (path === "/invitations/accept") return method === "POST" ? { response: HomeSchema, body: InvitationAcceptInSchema.strict(), query: {} } : null;
+  const match = path.match(new RegExp(`^/homes/${UUID}/(members|invitations|transfer-ownership)(?:/(${UUID}|me))?$`));
+  if (!match) return null;
+  const [, kind, child] = match;
+  const none = z.undefined();
+  const empty = z.object({}).strict();
+  if (kind === "members") {
+    if (!child) return method === "GET" ? { response: MemberOutSchema.array(), query: {} } : null;
+    return method === "DELETE" ? { response: none, body: empty, query: {} } : null;
+  }
+  if (kind === "invitations") {
+    if (!child) return method === "GET" ? { response: InvitationOutSchema.array(), query: {} }
+      : method === "POST" ? { response: InvitationOutSchema, body: InvitationCreateInSchema.strict(), query: {} } : null;
+    return child !== "me" && method === "DELETE" ? { response: none, body: empty, query: {} } : null;
+  }
+  return !child && method === "POST" ? { response: none, body: OwnershipTransferInSchema.strict(), query: {} } : null;
+}
+/** ERD-PROF-01: preferencias, sesiones activas y exportación de datos de la cuenta. */
+function accountSettingsRoute(path: string, method: string): Phase2Route | null {
+  const none = z.undefined();
+  if (path === "/auth/me/preferences") return method === "GET" ? { response: NotificationPreferencesOutSchema, query: {} }
+    : method === "PUT" ? { response: NotificationPreferencesOutSchema, body: NotificationPreferencesInSchema.strict(), query: {} } : null;
+  if (path === "/auth/me/export") return method === "GET" ? { response: ExportSchema, query: {} } : null;
+  if (path === "/auth/sessions") return method === "GET" ? { response: SessionOutSchema.array(), query: {} } : null;
+  if (path === "/auth/sessions/revoke-others") return method === "POST" ? { response: none, body: z.object({}).strict(), query: {} } : null;
+  if (new RegExp(`^/auth/sessions/${UUID}$`).test(path)) return method === "DELETE" ? { response: none, body: z.object({}).strict(), query: {} } : null;
+  return null;
+}
 function phase2Route(path: string, method: string): Phase2Route | null {
+  const account = accountSettingsRoute(path, method);
+  if (account || /^\/auth\/(sessions|me\/preferences|me\/export)(\/|$)/.test(path)) return account;
+  const sharing = sharingRoute(path, method);
+  if (sharing || /\/(members|invitations|transfer-ownership)(\/|$)/.test(path)) return sharing;
   if (new RegExp(`^/homes/${UUID}/dashboard$`).test(path)) return method === "GET"
     ? { response: DashboardSchema, query: { bill_id: { pattern: v => z.string().uuid().safeParse(v).success } } }
     : null;
+  // ERD-ANOM-01-COMPLETE: lista con filtros cerrados y cambio de estado (el escaneo lo piden las escrituras y el trabajo diario).
+  if (new RegExp(`^/homes/${UUID}/anomalies$`).test(path)) return method === "GET" ? { response: AnomaliesSchema, query: {
+    status: { pattern: v => ["active", "open", "acknowledged", "dismissed", "resolved", "all"].includes(v) },
+    granularity: { pattern: v => ["day", "month", "billing"].includes(v) },
+    kind: { pattern: v => ["increase", "drop", "peak", "night"].includes(v) },
+    limit: { pattern: v => /^\d{1,3}$/.test(v) && Number(v) >= 1 && Number(v) <= 100 },
+  } } : null;
+  if (new RegExp(`^/homes/${UUID}/anomalies/${UUID}$`).test(path)) return method === "PATCH" ? { response: AnomalySchema, body: AnomalyStatusInSchema.strict(), query: {} } : null;
+  if (/\/anomalies(\/|$)/.test(path)) return null;
+  // ERD-ALERT-02: marcar una factura como pagada/pendiente.
+  if (new RegExp(`^/homes/${UUID}/bills/${UUID}/payment$`).test(path)) return method === "PUT" ? { response: BillSchema, body: BillPaymentInSchema.strict(), query: {} } : null;
+  const job = path.match(new RegExp(`^/homes/${UUID}/bills/ocr-jobs/${UUID}(/retry)?$`));
+  if (job) return job[1] ? (method === "POST" ? { response: OcrJobSchema, body: z.object({}).strict(), query: {} } : null)
+    : method === "GET" ? { response: OcrJobSchema, query: {} } : null;
   const bill = billDetailRoute(path, method);
   if (bill || new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path)) return bill;
   if (new RegExp(`^/homes/${UUID}/contract$`).test(path)) return method === "GET" ? { response: ContractOutSchema, query: {} } : method === "PUT" ? { response: ContractOutSchema, body: ContractInSchema.strict(), query: {} } : null;
@@ -177,6 +231,9 @@ function writeSchema(path: string, method: string) {
 const FIELD_MESSAGES: Record<string, string> = {
   email: "Introduce un correo electrónico válido.",
   password: "La contraseña debe tener entre 12 y 128 caracteres.",
+  current_password: "Escribe tu contraseña actual (entre 12 y 128 caracteres).",
+  alerts_email: "Indica si quieres avisos por correo.",
+  alerts_push: "Indica si quieres avisos en el teléfono.",
   name: "Revisa el nombre (obligatorio, máximo 120 caracteres).",
   distributor: "Selecciona una distribuidora válida.",
   code: "Revisa el código (letras, números, guion o guion bajo).",
@@ -219,7 +276,7 @@ const FIELD_MESSAGES: Record<string, string> = {
   token: "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.",
   new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
 };
-const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|http_[1-5]\d\d)$/;
+const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
@@ -227,7 +284,19 @@ function statusMessage(status: number, path: string, code?: unknown) {
   if (status === 400 && code === "reset_token_invalid") return "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.";
   if (status === 429 && (path === FORGOT || path === RESET)) return "Demasiadas solicitudes de recuperación. Espera unos minutos e inténtalo de nuevo.";
   if (status === 403 && code === "reauthentication_failed") return "La contraseña no es correcta.";
-  if (status === 409 && code === "ownership_transfer_required") return "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad antes de continuar (todavía no existe una función para transferirla).";
+  // ERD-SHARE-01: la propiedad ya se puede transferir; el mismo código lo usan borrar cuenta y salir de la vivienda.
+  if (status === 409 && code === "ownership_transfer_required") return path === "/auth/me" ? "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad o expulsa a los demás miembros antes de continuar." : "Eres el propietario: transfiere la propiedad a otro miembro antes de salir, o borra la vivienda si eres el único miembro.";
+  if (status === 400 && code === "invitation_invalid") return "La invitación no es válida o ha caducado. Pide al propietario que te envíe una nueva, y ábrela con la cuenta del correo invitado.";
+  if (status === 409 && code === "already_member") return "Esa persona ya es miembro de la vivienda.";
+  if (status === 409 && code === "invitation_pending") return "Ya hay una invitación pendiente para ese correo. Revócala para enviar otra.";
+  if (status === 409 && code === "invitation_limit_reached") return "Hay demasiadas invitaciones pendientes en esta vivienda. Revoca alguna o espera a que caduquen.";
+  if (status === 429 && code === "invitation_rate_limited") return "Has enviado demasiadas invitaciones hoy. Inténtalo mañana.";
+  if (status === 422 && /\/invitations$/.test(path)) return "Indica un correo válido que no sea el tuyo.";
+  if (status === 403 && /\/(members|invitations|transfer-ownership)/.test(path) && code !== "reauthentication_failed") return "Solo el propietario de la vivienda puede hacer esto.";
+  // ERD-OCR-PROD
+  if (status === 409 && code === "document_quota_exceeded") return "Ya hay varias facturas en proceso o sin confirmar en esta vivienda. Espera a que terminen o confirma o elimina alguna.";
+  if (status === 503 && code === "storage_unavailable") return "La lectura de facturas no está disponible en este momento. Puedes registrar la factura manualmente.";
+  if (status === 422 && /\/bills\/ocr(-jobs)?$/.test(path)) return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC) o un PDF.";
   // Fase 2: mensajes propios por ruta (el texto de la API nunca se reenvía).
   if (status === 409 && /\/readings$/.test(path)) return "Ya existe una lectura con esa fecha y hora.";
   if (status === 422 && code === "invalid_input" && /\/readings$/.test(path)) return "La lectura debe ser mayor o igual que la anterior y menor o igual que la siguiente.";
@@ -267,6 +336,13 @@ function safeError(body: unknown, status: number, path: string) {
     ...(typeof value.request_id === "string" && SAFE_REQUEST_ID.test(value.request_id) ? { request_id: value.request_id } : {}),
   };
 }
+// ERD-BILL-LIVE-QA: única ruta multipart. La foto va tal cual a la API (que valida tipo y tamaño de imagen);
+// aquí solo se acota el total (10 MiB de imagen + sobre multipart) para no leer cuerpos arbitrarios en memoria.
+const OCR_MAX_BYTES = 10 * 1024 * 1024 + 4096;
+// ERD-OCR-PROD: la lectura asíncrona también acepta PDF (hasta 20 MiB); la API valida el tipo real por los bytes.
+const OCR_JOB_MAX_BYTES = 20 * 1024 * 1024 + 4096;
+const OCR_TIMEOUT_MS = 45_000; // Tesseract tarda más que una consulta normal
+const MULTIPART = /^multipart\/form-data;\s*boundary=[^\s;]+$/i;
 /** Server-only boundary. No refresh endpoint: expiry always requires a fresh login. */
 export async function handleBff(request: Request, config: BffConfig, fetchImpl: typeof fetch = fetch): Promise<NextResponse> {
   if (!config.enabled) return reply({ detail: "Autenticación no disponible en el piloto local." }, 404);
@@ -274,15 +350,21 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const path = url.pathname.slice("/api/bff".length);
   const method = request.method;
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) return reply({ detail: "Método no permitido." }, 405);
+  const ocrJobStart = method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr-jobs$`).test(path);
+  const ocr = ocrJobStart || (method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr$`).test(path));
+  const ocrLimit = ocrJobStart ? OCR_JOB_MAX_BYTES : OCR_MAX_BYTES;
   if (method !== "GET") {
     if (request.headers.get("origin") !== config.origin || (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) return reply({ detail: "Origen no permitido." }, 403);
-    if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
+    if (ocr) {
+      if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: ocrJobStart ? "Se requiere una foto o un PDF." : "Se requiere una imagen." }, 415);
+    } else if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
   }
   const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
   const legal = path === "/legal" && method === "GET";
   const recovery = method === "POST" && (path === FORGOT || path === RESET);
-  const phase2 = auth || legal || recovery ? null : phase2Route(path, method);
-  const schema = legal ? LegalOutSchema : phase2 ? phase2.response : domainRoute(path, method);
+  const passwordChange = method === "POST" && path === PASSWORD_CHANGE;
+  const phase2 = auth || legal || recovery || passwordChange ? null : phase2Route(path, method);
+  const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocrJobStart ? OcrJobSchema : ocr ? OcrDraftSchema : phase2 ? phase2.response : domainRoute(path, method);
   if (!auth && !legal && !recovery && !schema) return reply({ detail: "Ruta no permitida." }, 404);
   if (new RegExp(`^/homes/${UUID}$`).test(path) && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   if (phase2 && !phase2QueryOk(phase2, url.searchParams)) return reply({ detail: "Consulta no permitida." }, 400);
@@ -293,10 +375,18 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const headers: Record<string, string> = { Accept: "application/json" };
   const forwardedIp = firstForwardedIp(request);
   if (config.bffApiSharedSecret && forwardedIp) headers["X-Forwarded-Client-Ip"] = signClientIp(forwardedIp, config.bffApiSharedSecret);
-  let body: string | undefined;
+  let body: string | ArrayBuffer | undefined;
   const logout = path === "/auth/logout";
   const deleteAccount = path === "/auth/me" && method === "DELETE";
-  if (method !== "GET") {
+  if (ocr) {
+    if (Number(request.headers.get("content-length") || 0) > ocrLimit) return reply({ detail: "Solicitud demasiado grande." }, 413);
+    try {
+      const bytes = await request.arrayBuffer();
+      if (bytes.byteLength > ocrLimit) return reply({ detail: "Solicitud demasiado grande." }, 413);
+      body = bytes;
+      headers["Content-Type"] = request.headers.get("content-type")!;
+    } catch { return reply({ detail: "Solicitud inválida." }, 400); }
+  } else if (method !== "GET") {
     try {
       const text = await request.text();
       if (text.length > 32_768) return reply({ detail: "Solicitud demasiado grande." }, 413);
@@ -308,6 +398,10 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
         body = JSON.stringify(credentials.data);
       } else if (recovery) {
         const parsed = (path === RESET ? ResetSchema : ForgotSchema).safeParse(value);
+        if (!parsed.success) return invalid(parsed.error.issues);
+        body = JSON.stringify(parsed.data);
+      } else if (passwordChange) {
+        const parsed = PasswordChangeSchema.safeParse(value);
         if (!parsed.success) return invalid(parsed.error.issues);
         body = JSON.stringify(parsed.data);
       } else if (logout) {
@@ -343,7 +437,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
     headers.Authorization = `Bearer ${access.token}`;
   }
   try {
-    const upstream = await fetchImpl(`${config.apiBase}/api/v1${path}${url.search}`, { method, headers, body, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(10_000) });
+    const upstream = await fetchImpl(`${config.apiBase}/api/v1${path}${url.search}`, { method, headers, body, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(ocr ? OCR_TIMEOUT_MS : 10_000) });
     if (upstream.status >= 300 && upstream.status < 400) throw new Error("Redirect rejected");
     const data: unknown = upstream.status === 204 ? undefined : await upstream.json();
     if (logout) return setEpoch(clear(reply(upstream.ok ? { ok: true } : safeError(data, upstream.status, path), upstream.ok ? 200 : upstream.status), config), config);
@@ -370,7 +464,8 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       // Revoked sessions are rejected by the normal 401 path; no second logout write.
       return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store, private", "Vary": "Cookie" } });
     }
-    if (path === "/auth/login" || path === "/auth/register") {
+    if (path === "/auth/login" || path === "/auth/register" || passwordChange) {
+      // El cambio de contraseña revoca TODAS las sesiones (también esta) y trae una nueva: se renuevan las cookies.
       const pair = PairSchema.parse(data);
       const response = reply({ ok: true }, upstream.status);
       const options = { httpOnly: true, secure: config.secure, sameSite: "strict" as const, path: "/" };
@@ -387,13 +482,29 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
           (url.searchParams.has("bill_id") && dashboard.latest_bill?.bill_id !== url.searchParams.get("bill_id"))) throw new Error("Mismatched dashboard");
     }
     if (parsed !== undefined && phase2 && new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path) && !ownsBill(path, parsed)) throw new Error("Mismatched bill");
+    if (parsed !== undefined && /\/bills\/[0-9a-f-]{36}\/payment$/.test(path)) {
+      const [, , home, , bill] = path.split("/");
+      const row = parsed as { id: string; home_id: string };
+      if (row.id !== bill || row.home_id !== home) throw new Error("Mismatched bill");
+    }
+    if (parsed !== undefined && /\/anomalies(\/[0-9a-f-]{36})?$/.test(path)) {
+      const [, , home, , child] = path.split("/");
+      const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id: string }[];
+      if (rows.some(row => row.home_id !== home) || (child && rows[0]?.id !== child)) throw new Error("Mismatched anomaly");
+    }
+    if (parsed !== undefined && /\/bills\/ocr-jobs\/[0-9a-f-]{36}(\/retry)?$/.test(path) && (parsed as { document_id: string }).document_id !== path.split("/")[5]) throw new Error("Mismatched OCR job");
     if (parsed !== undefined && phase2 && /\/contract$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched home");
     if (parsed !== undefined && new RegExp(`^/homes/${UUID}$`).test(path) && (parsed as { id: string }).id !== path.split("/")[2]) throw new Error("Mismatched home");
     if (parsed === undefined) {
       const response = new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
       return deleteAccount ? setEpoch(clear(response, config), config) : response;
     }
-    return reply(parsed, upstream.status);
+    const response = reply(parsed, upstream.status);
+    if (path === "/auth/me/export") {
+      const disposition = upstream.headers.get("content-disposition") ?? "";
+      response.headers.set("Content-Disposition", EXPORT_DISPOSITION.test(disposition) ? disposition : 'attachment; filename="energyrd-datos.json"');
+    }
+    return response;
   } catch {
     const response = reply({ detail: "No se pudo confirmar la respuesta de la API. No se reintentó la operación." }, 502);
     return logout ? setEpoch(clear(response, config), config) : response;

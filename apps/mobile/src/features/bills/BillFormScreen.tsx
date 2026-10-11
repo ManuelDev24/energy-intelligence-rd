@@ -18,6 +18,7 @@ const EMPTY: BillFormValues = {
   amount: '',
   readingPrevious: '',
   readingCurrent: '',
+  dueDate: '',
 };
 
 function Field({
@@ -95,7 +96,7 @@ export function BillFormScreen({ onDone, onOcr }: { onDone: () => void; onOcr?: 
           const fe: BillFormErrors = {};
           const map: Record<string, keyof BillFormValues> = {
             period_start: 'periodStart', period_end: 'periodEnd', kwh: 'kwh', amount_dop: 'amount',
-            days: 'days', reading_previous: 'readingPrevious', reading_current: 'readingCurrent',
+            days: 'days', reading_previous: 'readingPrevious', reading_current: 'readingCurrent', due_date: 'dueDate',
           };
           for (const [k, msg] of Object.entries(e.fieldErrors)) if (map[k]) fe[map[k]] = msg;
           setErrors(fe);
@@ -113,6 +114,7 @@ export function BillFormScreen({ onDone, onOcr }: { onDone: () => void; onOcr?: 
         <Field label="Días" testID="f-days" value={v.days} onChangeText={set('days')} error={errors.days} keyboardType="numeric" />
         <Field label="Consumo (kWh)" testID="f-kwh" value={v.kwh} onChangeText={set('kwh')} error={errors.kwh} keyboardType="decimal-pad" />
         <Field label="Monto total (RD$)" testID="f-amount" value={v.amount} onChangeText={set('amount')} error={errors.amount} keyboardType="decimal-pad" />
+        <Field label="Fecha límite de pago (opcional, AAAA-MM-DD)" testID="f-due" value={v.dueDate} onChangeText={set('dueDate')} error={errors.dueDate} placeholder="2026-10-15" autoCapitalize="none" />
         <Field label="Lectura anterior (opcional)" testID="f-rprev" value={v.readingPrevious} onChangeText={set('readingPrevious')} error={errors.readingPrevious} keyboardType="decimal-pad" />
         <Field label="Lectura actual (opcional)" testID="f-rcurr" value={v.readingCurrent} onChangeText={set('readingCurrent')} error={errors.readingCurrent} keyboardType="decimal-pad" />
         {serverError ? (

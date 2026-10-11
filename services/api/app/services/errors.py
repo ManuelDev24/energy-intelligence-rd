@@ -23,3 +23,14 @@ class Unauthorized(ApplicationError):
     """Generic authentication failure; the HTTP layer adds WWW-Authenticate."""
     status_code = 401
     code = "http_401"
+
+
+class StorageUnavailable(ApplicationError):
+    """El almacenamiento privado no está configurado o falló; nunca se expone el motivo interno."""
+    status_code = 503
+    code = "storage_unavailable"
+
+
+class QuotaExceeded(ApplicationError):
+    status_code = 409
+    code = "document_quota_exceeded"

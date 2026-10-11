@@ -1,4 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import type { BillImage } from '@energyrd/api-client';
+import { isOcrActive } from '@energyrd/api-contracts';
 
 import { api } from './client';
 import { authSession } from '../auth/runtime';
@@ -15,11 +18,13 @@ export const keys = {
   get homes() { return [...scope(), 'homes'] as const; },
   bills: (homeId: string) => [...scope(), 'bills', homeId] as const,
   dashboard: (homeId: string) => [...scope(), 'dashboard', homeId] as const,
-  anomalies: (homeId: string, granularity: 'day' | 'month') => [...scope(), 'anomalies', homeId, granularity] as const,
+  anomalies: (homeId: string) => [...scope(), 'anomalies', homeId] as const,
   equipment: (homeId: string) => [...scope(), 'equipment', homeId] as const,
   equipmentItem: (homeId: string, id: string) => [...scope(), 'equipment', homeId, id] as const,
   estimate: (homeId: string) => [...scope(), 'estimate', homeId] as const,
   alerts: (homeId: string) => [...scope(), 'alerts', homeId] as const,
+  /** ERD-OCR-PROD: fuera de la clave de facturas; guardar la factura no debe relanzar el sondeo. */
+  ocrJob: (homeId: string, documentId: string) => [...scope(), 'ocr-job', homeId, documentId] as const,
   /** Fase 2: lecturas, consumo, meta y progreso (mismo alcance por cuenta). */
   get phase2() { return phase2Keys(scope()); },
 };
@@ -36,8 +41,17 @@ export const useBills = (homeId: string | null) =>
   useQuery(perHome(keys.bills(homeId ?? 'none'), homeId, api.listBills));
 export const useDashboard = (homeId: string | null) =>
   useQuery(perHome(keys.dashboard(homeId ?? 'none'), homeId, api.getDashboard));
-export const useAnomalies = (homeId: string | null, granularity: 'day' | 'month' = 'month') =>
-  useQuery(perHome(keys.anomalies(homeId ?? 'none', granularity), homeId, (id, signal) => api.listAnomalies(id, granularity, signal)));
+/** ERD-ANOM-01-COMPLETE: anomalías vigentes persistidas (abiertas o revisadas); descartarlas las saca de la lista. */
+export const useAnomalies = (homeId: string | null) =>
+  useQuery(perHome(keys.anomalies(homeId ?? 'none'), homeId, (id, signal) => api.listAnomalies(id, undefined, signal)));
+
+export function useUpdateAnomaly(homeId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'open' | 'acknowledged' | 'dismissed' }) => api.updateAnomaly(homeId as string, id, status),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.anomalies(homeId ?? 'none') }),
+  });
+}
 export const useEquipment = (homeId: string | null) =>
   useQuery(perHome(keys.equipment(homeId ?? 'none'), homeId, api.listEquipment));
 export const useEstimate = (homeId: string | null) =>
@@ -68,6 +82,15 @@ export function useCreateBill(homeId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: BillInput) => api.createBill(homeId, input),
+    onSuccess: () => invalidateBillData(qc, homeId),
+  });
+}
+
+/** ERD-ALERT-02: pagada/pendiente; cambia la alerta de pago y la factura. */
+export function useSetBillPayment(homeId: string, billId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (paid: boolean) => api.setBillPayment(homeId, billId, paid),
     onSuccess: () => invalidateBillData(qc, homeId),
   });
 }
@@ -109,16 +132,20 @@ export function useSetAlertStatus(homeId: string) {
 export const useReadings = (homeId: string | null) =>
   useQuery(perHome(keys.phase2.readings(homeId ?? 'none'), homeId, api.listReadings));
 
-export const useConsumption = (homeId: string | null, granularity: Granularity, from: string, to: string) =>
-  useQuery({
-    ...perHome(keys.phase2.consumption(homeId ?? 'none', granularity, from, to), homeId,
-      (id, signal) => api.getConsumption(id, { granularity, from, to }, signal)),
+/** `from`/`to` null = no consultar (p. ej. un ciclo que aún no empieza). */
+export const useConsumption = (homeId: string | null, granularity: Granularity, from: string | null, to: string | null) => {
+  const base = perHome(keys.phase2.consumption(homeId ?? 'none', granularity, from ?? '', to ?? ''), homeId,
+    (id, signal) => api.getConsumption(id, { granularity, from: from ?? '', to: to ?? '' }, signal));
+  return useQuery({
+    ...base,
+    enabled: (base.enabled ?? true) && from !== null && to !== null,
     // Al cambiar de rango no parpadea a vacío; solo se reutiliza el dato de la MISMA cuenta y vivienda.
     placeholderData: (previous, previousQuery) => {
       const prefix = keys.phase2.consumptionAll(homeId ?? 'none');
       return previousQuery && prefix.every((p, i) => Object.is(previousQuery.queryKey[i], p)) ? previous : undefined;
     },
   });
+};
 
 export const useGoal = (homeId: string | null) =>
   useQuery(perHome(keys.phase2.goal(homeId ?? 'none'), homeId, api.getGoal));
@@ -153,4 +180,38 @@ export function useSaveGoal(homeId: string) {
     mutationFn: (input: GoalInput) => api.putGoal(homeId, input),
     onSuccess: () => invalidateAll(qc, goalInvalidations(keys.phase2, homeId)),
   });
+}
+
+
+export const OCR_POLL_MS = 2000;
+/** Pasado este tiempo sin terminar se avisa (sin cortar la espera): puede no haber un worker activo. */
+export const OCR_SLOW_AFTER_MS = 60_000;
+
+/**
+ * ERD-OCR-PROD: sube la foto o el PDF, consulta el estado cada 2 s mientras esté pendiente/procesando y se detiene al
+ * terminar (done/failed). El borrador solo llega al terminar; la factura nunca se crea aquí.
+ */
+export function useBillOcr(homeId: string | null, pollMs = OCR_POLL_MS) {
+  const qc = useQueryClient();
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState(0);
+  const id = homeId ?? 'none';
+  const start = useMutation({
+    mutationFn: (file: BillImage) => api.startOcrJob(homeId as string, file, 'mobile'),
+    onSuccess: (job) => { qc.setQueryData(keys.ocrJob(id, job.document_id), job); setStartedAt(Date.now()); setDocumentId(job.document_id); },
+  });
+  const poll = useQuery({
+    queryKey: keys.ocrJob(id, documentId ?? 'none'),
+    queryFn: ({ signal }) => api.getOcrJob(homeId as string, documentId as string, signal),
+    enabled: allowed() && !!homeId && documentId !== null,
+    retry: retryPolicy,
+    refetchInterval: (query) => (query.state.data && !isOcrActive(query.state.data) ? false : pollMs),
+    gcTime: 0,
+  });
+  const retry = useMutation({
+    mutationFn: () => api.retryOcrJob(homeId as string, documentId as string),
+    onSuccess: (job) => { qc.setQueryData(keys.ocrJob(id, job.document_id), job); setStartedAt(Date.now()); },
+  });
+  const reset = () => { setDocumentId(null); start.reset(); retry.reset(); };
+  return { start, retry, reset, job: poll.data ?? start.data ?? null, documentId, startedAt, pollError: poll.error };
 }

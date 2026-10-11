@@ -12,8 +12,9 @@ class AlertRecord(BaseModel):
     id: uuid.UUID
     home_id: uuid.UUID
     bill_id: uuid.UUID | None
-    type: str
-    severity: Literal["warning", "critical"]
+    type: Literal["bill_variation", "anomaly", "payment_due", "missing_bill", "stale_readings"]
+    severity: Literal["info", "warning", "critical", "savings"]
+    anomaly_id: uuid.UUID | None
     status: AlertStatus
     message: str
     kwh_pct: Decimal | None

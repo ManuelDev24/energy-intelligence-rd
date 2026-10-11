@@ -3,7 +3,7 @@ import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
-  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, AnomaliesSchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
   type Distributor, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
@@ -25,6 +25,7 @@ export class ContractError extends ApiError {
 export const retryPolicy = (count: number, error: unknown) =>
   !(error instanceof ContractError || (error instanceof ApiError && error.status >= 400 && error.status < 500)) && count < 1;
 
+export type AnomalyListStatus = "active" | "open" | "acknowledged" | "dismissed" | "resolved" | "all";
 export type BillImage = { uri: string; name?: string; type?: string };
 
 export function parseErrorBody(status: number, body: unknown): ApiError {
@@ -184,6 +185,31 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       }
       return request(`${homePath(id)}/bills/ocr`, OcrDraftSchema, { method: "POST", body });
     },
+    // ERD-OCR-PROD: lectura asíncrona. startOcrJob responde 202 con el estado `pending`; se consulta con getOcrJob.
+    // Acepta fotos y PDF; el servidor decide el tipo por los bytes. Nunca crea una factura: deja un borrador.
+    startOcrJob: (id: string, file: BillImage | File, source: "web" | "mobile") => {
+      const body = new FormData();
+      if (typeof File !== "undefined" && file instanceof File) body.append("file", file);
+      else body.append("file", file as unknown as Blob);
+      body.append("source", source);
+      return request(`${homePath(id)}/bills/ocr-jobs`, OcrJobSchema, { method: "POST", body }, 202);
+    },
+    getOcrJob: (id: string, document: string, signal?: AbortSignal) =>
+      request(`${homePath(id)}/bills/ocr-jobs/${idPath(document)}`, OcrJobSchema, { signal }).then(job => {
+        if (job.document_id !== document) throw new ContractError();
+        return job;
+      }),
+    retryOcrJob: (id: string, document: string) =>
+      request(`${homePath(id)}/bills/ocr-jobs/${idPath(document)}/retry`, OcrJobSchema, write("POST", {}), 202).then(job => {
+        if (job.document_id !== document) throw new ContractError();
+        return job;
+      }),
+    // ERD-ALERT-02: marcar la factura como pagada (retira la alerta de pago) o pendiente.
+    setBillPayment: (id: string, bill: string, paid: boolean) =>
+      request(`${homePath(id)}/bills/${idPath(bill)}/payment`, BillSchema, write("PUT", { paid })).then(updated => {
+        if (updated.id !== bill) throw new ContractError();
+        return updated;
+      }),
     updateBill: (id: string, bill: string, input: BillInput) => request(`${homePath(id)}/bills/${idPath(bill)}`, BillSchema, write("PUT", input)),
     deleteBill: (id: string, bill: string) => request(`${homePath(id)}/bills/${idPath(bill)}`, z.undefined(), write("DELETE")),
     // ERD-BILL-02: detalle manual (cargos/descuentos) y evaluación de solo lectura (nunca aprueba).
@@ -198,8 +224,19 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       if (billId !== undefined && data.latest_bill?.bill_id !== billId) throw new ContractError();
       return data;
     },
-    listAnomalies: (id: string, granularity: "day" | "month", signal?: AbortSignal): Promise<Anomaly[]> =>
-      request(`${homePath(id)}/anomalies?granularity=${granularity}`, AnomaliesSchema, { signal }),
+    // ERD-ANOM-01-COMPLETE: anomalías persistidas (por defecto las vigentes). Los filtros son opcionales.
+    listAnomalies: (id: string, opts: { status?: AnomalyListStatus; granularity?: Anomaly["granularity"]; kind?: Anomaly["kind"]; limit?: number } = {},
+      signal?: AbortSignal): Promise<Anomaly[]> => {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(opts)) if (value !== undefined) query.set(key, String(value));
+      const qs = query.toString();
+      return request(`${homePath(id)}/anomalies${qs ? `?${qs}` : ""}`, AnomaliesSchema, { signal });
+    },
+    updateAnomaly: (id: string, anomaly: string, status: "open" | "acknowledged" | "dismissed") =>
+      request(`${homePath(id)}/anomalies/${idPath(anomaly)}`, AnomalySchema, write("PATCH", { status })).then(updated => {
+        if (updated.id !== anomaly) throw new ContractError();
+        return updated;
+      }),
     listEquipment: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/equipment`, EquipmentSchema, signal),
     getEquipment: (id: string, item: string, signal?: AbortSignal) => request(`${homePath(id)}/equipment/${idPath(item)}`, EquipmentSchema, { signal }),
     createEquipment: (id: string, input: EquipmentInput) => request(`${homePath(id)}/equipment`, EquipmentSchema, write("POST", input)),

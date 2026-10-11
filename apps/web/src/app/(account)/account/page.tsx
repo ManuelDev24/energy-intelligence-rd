@@ -7,6 +7,7 @@ import { useSession } from "@/lib/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { AccountSettings } from "@/components/account-settings";
 
 function DeleteAccountSection() {
   const { deleteAccount } = useSession();
@@ -33,7 +34,7 @@ function DeleteAccountSection() {
       <p className="mt-2 text-sm text-muted-foreground">
         Esta acción es permanente. Las viviendas donde eres el único miembro se eliminarán junto con todos sus
         datos. Si eres el único propietario de una vivienda compartida, la eliminación quedará bloqueada hasta
-        transferir la propiedad a otro miembro; todavía no existe una función para transferir la propiedad.
+        transferir la propiedad a otro miembro o expulsar a los demás (en «Mis viviendas» → «Compartir»).
       </p>
       {!confirming ? (
         <Button type="button" variant="outline" className="mt-4 border-danger text-danger" onClick={() => setConfirming(true)}>
@@ -82,6 +83,7 @@ export default function AccountPage() {
         {error ? <p role="alert">{error}</p> : null}
         <Button onClick={() => void logout()} disabled={pending}>{pending ? "Cerrando…" : "Cerrar sesión"}</Button>
       </Card>
+      <AccountSettings />
       <DeleteAccountSection />
     </div>
   );

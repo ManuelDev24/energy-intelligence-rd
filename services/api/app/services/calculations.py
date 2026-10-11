@@ -40,6 +40,11 @@ def _pct(delta: Decimal, base: Decimal) -> Decimal | None:
     return None if base == 0 else q2(delta / base * 100)
 
 
+def projection_vs_latest_pct(projected_kwh: Decimal, latest_kwh: Decimal) -> Decimal | None:
+    """Variación % de los kWh proyectados frente a la última factura. None sin base positiva (no se inventa un %)."""
+    return None if latest_kwh <= 0 else _pct(projected_kwh - latest_kwh, latest_kwh)
+
+
 def variation(current: BillLike, previous: BillLike) -> Variation:
     kd = current.kwh - previous.kwh
     ad = current.amount_dop - previous.amount_dop

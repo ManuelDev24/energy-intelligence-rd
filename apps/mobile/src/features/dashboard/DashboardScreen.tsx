@@ -1,11 +1,12 @@
-import { fmtMonth, fmtPct, monthlySeries, projectionDeltaPct } from '@energyrd/core';
+import { fmtDop, fmtKwh, fmtMonth, fmtPct, monthlySeries, trendValues } from '@energyrd/core';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useBills, useDashboard, useGoalProgress, useAnomalies } from '../../api/hooks';
+import { useBills, useDashboard, useGoalProgress, useAnomalies, useUpdateAnomaly } from '../../api/hooks';
 import type { Dashboard, Metric } from '../../api/types';
 import { AlertCard } from '../../components/AlertCard';
+import { RecommendationCard } from '../../components/RecommendationCard';
 import { ConsumptionChart } from '../../components/charts/ConsumptionChart';
 import { deltaDisplay } from '../../components/charts/chartMath';
 import { MetricCard } from '../../components/MetricCard';
@@ -14,6 +15,7 @@ import { Button, QualityBadge } from '../../components/ui';
 import { fmtMetric, fmtPeriod } from '../../lib/format';
 import { GoalCard } from '../goals/GoalCard';
 import { AnomaliesSection } from './AnomaliesSection';
+import { CycleCard } from './CycleCard';
 import { metricParts } from '../../lib/metricParts';
 import { useSession } from '../../store/session';
 import { colors, radius, spacing, TOUCH } from '../../theme';
@@ -71,7 +73,8 @@ function Hero({ d, onAddBill }: { d: Dashboard; onAddBill?: () => void }) {
   const p = d.projection;
   const last = d.latest_bill;
   if (!last) return null;
-  const delta = p ? projectionDeltaPct(p.kwh.value, last.kwh.value) : null;
+  // La variación de la proyección frente a la última factura la calcula la API (PROJECTED); aquí solo se muestra.
+  const delta = p?.kwh_pct_vs_latest ? Number(p.kwh_pct_vs_latest.value) : null;
   const dd = delta !== null ? deltaDisplay(delta) : null;
   return (
     <View style={s.hero} testID="hero">
@@ -109,7 +112,12 @@ export function DashboardView({
   onAddBill,
   onOpenAlerts,
   goalSlot,
+  cycleSlot,
   anomalies = [],
+  onInvestigate,
+  onOpenBill,
+  onDismissAnomaly,
+  dismissingId,
 }: {
   d: Dashboard;
   bills?: Parameters<typeof monthlySeries>[0];
@@ -117,11 +125,19 @@ export function DashboardView({
   onOpenAlerts?: () => void;
   /** Tarjeta de meta mensual (Fase 2); falla en suave si la API no la ofrece. */
   goalSlot?: ReactNode;
+  /** Tarjeta del ciclo actual (ERD-CHARTS-01). */
+  cycleSlot?: ReactNode;
   anomalies?: import('../../api/types').Anomaly[];
+  onInvestigate?: (range: { from: string; to: string; granularity: 'day' }) => void;
+  onOpenBill?: (billId: string) => void;
+  onDismissAnomaly?: (anomaly: import('../../api/types').Anomaly) => void;
+  dismissingId?: string | null;
 }) {
   const { latest_bill: lb, comparison: c, projection: p, alert, recommendation, data_status: ds } = d;
   const [showLegend, setShowLegend] = useState(false);
   const series = bills ? monthlySeries(bills, p ? { kwh: p.kwh.value } : null) : [];
+  const kwhTrend = { values: trendValues(series, 'kwh'), label: 'consumo', format: fmtKwh };
+  const amountTrend = { values: trendValues(series, 'amountDop'), label: 'monto', format: fmtDop };
   const vsPrev = c ? `vs. ${fmtMonth(c.previous_period_end)}` : undefined;
 
   return (
@@ -135,6 +151,8 @@ export function DashboardView({
 
       <Hero d={d} onAddBill={onAddBill} />
 
+      {cycleSlot}
+
       {alert ? (
         <AlertCard
           tone={alert.severity}
@@ -145,7 +163,7 @@ export function DashboardView({
         />
       ) : null}
 
-      <AnomaliesSection anomalies={anomalies} />
+      <AnomaliesSection anomalies={anomalies} onInvestigate={onInvestigate} onOpenBill={onOpenBill} onDismiss={onDismissAnomaly} pendingId={dismissingId} />
 
       {goalSlot}
 
@@ -158,6 +176,7 @@ export function DashboardView({
               quality={lb.kwh.quality}
               delta={c?.kwh_pct ? { value: c.kwh_pct.value, text: fmtPct(c.kwh_pct.value), context: vsPrev, quality: c.kwh_pct.quality } : null}
               helper="kWh: la energía que marcó su contador."
+              trend={kwhTrend}
               testID="metric-kwh"
             />
             <MetricCard
@@ -170,6 +189,7 @@ export function DashboardView({
                   : null
               }
               helper="Lo que cobró la distribuidora, en pesos (RD$)."
+              trend={amountTrend}
               testID="metric-amount"
             />
             {lb.avg_daily_kwh ? (
@@ -217,11 +237,7 @@ export function DashboardView({
         </Card>
       ) : null}
 
-      {recommendation ? (
-        <Card title="Recomendación" testID="card-reco">
-          <Text style={{ color: colors.text }}>{recommendation}</Text>
-        </Card>
-      ) : null}
+      <RecommendationCard text={recommendation} />
 
       {ds.insufficient_reasons.length > 0 ? (
         <Card title="Datos insuficientes" testID="card-insufficient">
@@ -264,17 +280,22 @@ export function DashboardScreen({
   onOpenAlerts,
   onAddReading,
   onEditGoal,
+  onInvestigate,
+  onOpenBill,
 }: {
   onAddBill?: () => void;
   onOpenAlerts?: () => void;
   onAddReading?: () => void;
   onEditGoal?: () => void;
+  onInvestigate?: (range: { from: string; to: string; granularity: 'day' }) => void;
+  onOpenBill?: (homeId: string, billId: string) => void;
 }) {
   const homeId = useSession((st) => st.selectedHomeId);
   const { data, isLoading, isError, error, refetch, isRefetching } = useDashboard(homeId);
   const bills = useBills(homeId);
   const goal = useGoalProgress(homeId);
   const anomalies = useAnomalies(homeId);
+  const updateAnomaly = useUpdateAnomaly(homeId);
 
   if (!homeId)
     return <EmptyState icon="home-outline" title="Seleccione una vivienda" hint="Toque el nombre de la vivienda arriba para elegirla." />;
@@ -317,7 +338,12 @@ export function DashboardScreen({
         onAddBill={onAddBill}
         onOpenAlerts={onOpenAlerts}
         goalSlot={<GoalCard query={goal} onEdit={onEditGoal} onAddReading={onAddReading} onAddBill={onAddBill} />}
+        cycleSlot={data.latest_bill ? <CycleCard homeId={homeId} lastBill={data.latest_bill} /> : null}
         anomalies={anomalies.data ?? []}
+        onInvestigate={onInvestigate}
+        onOpenBill={onOpenBill ? (billId) => onOpenBill(homeId, billId) : undefined}
+        onDismissAnomaly={(anomaly) => updateAnomaly.mutate({ id: anomaly.id, status: 'dismissed' })}
+        dismissingId={updateAnomaly.isPending ? updateAnomaly.variables?.id : null}
       />
     </ScrollView>
   );

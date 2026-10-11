@@ -21,9 +21,10 @@ def add_bill(client, home_id, start, end, kwh, days=30, amount="1000"):
 
 
 def alerts(client, home_id, **params):
+    """Alertas de VARIACIÓN de factura; los demás tipos (pago, datos incompletos, anomalía) tienen sus propias pruebas."""
     r = client.get(f"/api/v1/homes/{home_id}/alerts", params=params)
     assert r.status_code == 200, r.text
-    return r.json()
+    return [a for a in r.json() if a["type"] == "bill_variation"]
 
 
 # ---------- equipos ----------

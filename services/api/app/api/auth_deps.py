@@ -9,7 +9,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.auth import HomeMember
 from app.services.transactions import require_home
-from app.services.auth import resolve_access, unauthorized
+from app.services.auth import resolve_access, resolve_access_session, unauthorized
 from app.services.errors import NotFound
 
 bearer = HTTPBearer(auto_error=False)
@@ -27,6 +27,16 @@ def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bear
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise unauthorized()
     return resolve_access(db, credentials.credentials)
+
+
+def current_session(credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+                    db: Session = Depends(get_db)):
+    """(usuario, sesión) del access token; para rutas que necesitan saber cuál es «esta sesión»."""
+    if not settings.AUTH_ENABLED:
+        return None
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise unauthorized()
+    return resolve_access_session(db, credentials.credentials)
 
 
 def authorize_home(request: Request, user=Depends(current_user), db: Session = Depends(get_db)):

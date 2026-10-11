@@ -82,6 +82,7 @@ export function fmtPeriod(start: string, end: string): string {
   const a = parseIso(start);
   const b = parseIso(end);
   if (!a || !b) return `${start} – ${end}`;
+  if (start === end) return fmtDate(start); // un solo día: "4 oct 2026", no "4–4 oct 2026"
   if (a.y === b.y && a.m === b.m) return `${a.d}–${b.d} ${MONTHS[b.m - 1]} ${b.y}`;
   if (a.y === b.y) return `${a.d} ${MONTHS[a.m - 1]} – ${b.d} ${MONTHS[b.m - 1]} ${b.y}`;
   return `${fmtDate(start)} – ${fmtDate(end)}`;

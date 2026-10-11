@@ -8,12 +8,15 @@ export function Button({
   disabled,
   variant = 'primary',
   testID,
+  accessibilityLabel,
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   variant?: 'primary' | 'secondary';
   testID?: string;
+  /** Nombre accesible cuando el texto visible no basta (p. ej. «Sacar» en una lista de personas). */
+  accessibilityLabel?: string;
 }) {
   const primary = variant === 'primary';
   return (
@@ -21,6 +24,7 @@ export function Button({
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: !!disabled }}
       testID={testID}
       style={({ pressed }) => [s.btn, !primary && s.btnSecondary, disabled && { opacity: 0.5 }, pressed && { opacity: 0.85 }]}

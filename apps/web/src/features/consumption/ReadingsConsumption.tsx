@@ -1,10 +1,11 @@
 "use client";
 
 import { QUALITY } from "@energyrd/core";
-import { CalendarRange, NotebookPen } from "lucide-react";
+import { NotebookPen } from "lucide-react";
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { DataStatusBadge } from "@/components/data-status-badge";
+import { DateRangePicker, segmentClass } from "@/components/date-range-picker";
 import { EmptyState } from "@/components/empty-state";
 import { MetricCard } from "@/components/metric-card";
 import { QueryState } from "@/components/query-state";
@@ -13,7 +14,6 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import {
   GRANULARITIES,
-  MAX_RANGE_DAYS,
   PRESETS,
   bucketLabel,
   groupGaps,
@@ -29,11 +29,7 @@ import type { Consumption, Granularity } from "@/lib/api/schemas";
 import { formatMetric, formatPeriod } from "@/lib/format";
 import { todayRD } from "@/lib/rd-time";
 
-const segment = (active: boolean) =>
-  cn(
-    "inline-flex h-11 items-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-    active ? "border-primary bg-brand-50 text-primary" : "border-border bg-background text-foreground hover:bg-muted",
-  );
+const segment = segmentClass;
 
 function Controls({
   preset,
@@ -45,7 +41,11 @@ function Controls({
   onGranularity,
   onFrom,
   onTo,
+  compare,
+  onCompare,
 }: {
+  compare: boolean;
+  onCompare: (value: boolean) => void;
   preset: Preset | "custom";
   granularity: Granularity;
   from: string;
@@ -56,58 +56,10 @@ function Controls({
   onFrom: (v: string) => void;
   onTo: (v: string) => void;
 }) {
-  const id = useId();
   const today = todayRD();
   return (
     <div className="flex flex-col gap-4">
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">Rango</legend>
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map((p) => (
-            <button key={p.id} type="button" aria-pressed={preset === p.id} className={segment(preset === p.id)} onClick={() => onPreset(p.id)}>
-              {p.label}
-            </button>
-          ))}
-          <button type="button" aria-pressed={preset === "custom"} className={segment(preset === "custom")} onClick={() => onPreset("custom")}>
-            <CalendarRange className="mr-1.5 h-4 w-4" aria-hidden /> Personalizado
-          </button>
-        </div>
-        {preset === "custom" ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-end gap-3">
-              <label className="flex flex-col gap-1 text-sm font-medium" htmlFor={`${id}-from`}>
-                Desde
-                <input
-                  id={`${id}-from`}
-                  type="date"
-                  value={from}
-                  max={today}
-                  aria-invalid={rangeError ? true : undefined}
-                  aria-describedby={`${id}-range`}
-                  onChange={(e) => onFrom(e.target.value)}
-                  className="h-11 rounded-lg border border-border bg-background px-3 text-base font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-sm"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm font-medium" htmlFor={`${id}-to`}>
-                Hasta
-                <input
-                  id={`${id}-to`}
-                  type="date"
-                  value={to}
-                  max={today}
-                  aria-invalid={rangeError ? true : undefined}
-                  aria-describedby={`${id}-range`}
-                  onChange={(e) => onTo(e.target.value)}
-                  className="h-11 rounded-lg border border-border bg-background px-3 text-base font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-sm"
-                />
-              </label>
-            </div>
-            <p id={`${id}-range`} role={rangeError ? "alert" : undefined} className={cn("text-xs", rangeError ? "text-danger" : "text-muted-foreground")}>
-              {rangeError ?? `Máximo ${MAX_RANGE_DAYS} días, ambos incluidos.`}
-            </p>
-          </div>
-        ) : null}
-      </fieldset>
+      <DateRangePicker presets={PRESETS} selected={preset} from={from} to={to} today={today} error={rangeError} onPreset={onPreset} onFrom={onFrom} onTo={onTo} />
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">Agrupar por</legend>
         <div className="flex flex-wrap gap-2">
@@ -118,6 +70,10 @@ function Controls({
           ))}
         </div>
       </fieldset>
+      <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
+        <input type="checkbox" checked={compare} onChange={(event) => onCompare(event.target.checked)} className="h-4 w-4" />
+        Comparar con el período anterior
+      </label>
     </div>
   );
 }
@@ -141,10 +97,10 @@ function ComparisonKwhDelta({ comparison }: { comparison: NonNullable<Consumptio
   );
 }
 
-function Summary({ data }: { data: Consumption }) {
+function Summary({ data, showComparison }: { data: Consumption; showComparison: boolean }) {
   const missing = data.insufficient_reasons[0] ?? "No hay lecturas que cubran este rango.";
   const peak = data.peak_bucket;
-  const comparison = data.comparison;
+  const comparison = showComparison ? data.comparison : null;
   const totalDelta = comparison?.kwh_pct
     ? { pct: comparison.kwh_pct.value, label: `vs. ${formatPeriod(comparison.previous_from, comparison.previous_to)}`, quality: comparison.kwh_pct.quality, goodWhen: "down" as const }
     : null;
@@ -215,13 +171,13 @@ function Gaps({ data }: { data: Consumption }) {
   );
 }
 
-function Result({ data }: { data: Consumption }) {
+function Result({ data, showComparison }: { data: Consumption; showComparison: boolean }) {
   const hasValue = data.buckets.some((b) => b.kwh !== null);
   return (
     <div className="flex flex-col gap-4">
       {hasValue ? (
         <>
-          <Summary data={data} />
+          <Summary data={data} showComparison={showComparison} />
           <Card>
             <CardTitle>
               {formatPeriod(data.from_date, data.to_date)}
@@ -270,12 +226,13 @@ function Result({ data }: { data: Consumption }) {
 }
 
 /** Vista "Por lecturas": consumo por día/semana/mes a partir de las lecturas del medidor. */
-export function ReadingsConsumption({ homeId }: { homeId: string }) {
-  const [preset, setPreset] = useState<Preset | "custom">("30d");
-  const initial = presetRange("30d", todayRD());
+export function ReadingsConsumption({ homeId, initialRange }: { homeId: string; initialRange?: RangeQuery | null }) {
+  const [preset, setPreset] = useState<Preset | "custom">(initialRange ? "custom" : "30d");
+  const initial = initialRange ?? presetRange("30d", todayRD());
   const [granularity, setGranularity] = useState<Granularity>(initial.granularity);
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
+  const [compare, setCompare] = useState(true);
 
   const rangeError = preset === "custom" ? validateRange(from, to) : null;
   let query: RangeQuery | null;
@@ -309,6 +266,8 @@ export function ReadingsConsumption({ homeId }: { homeId: string }) {
           onGranularity={setGranularity}
           onFrom={setFrom}
           onTo={setTo}
+          compare={compare}
+          onCompare={setCompare}
         />
         <Link href="/readings" className="inline-flex h-11 shrink-0 items-center gap-2 self-start rounded-lg px-1 text-sm font-medium text-primary underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <NotebookPen className="h-4 w-4" aria-hidden /> Gestionar lecturas
@@ -326,7 +285,7 @@ export function ReadingsConsumption({ homeId }: { homeId: string }) {
         >
           {consumption.data ? (
             <div className={cn("transition-opacity", consumption.isPlaceholderData && "opacity-60")} aria-busy={consumption.isPlaceholderData}>
-              <Result data={consumption.data} />
+              <Result data={consumption.data} showComparison={compare} />
             </div>
           ) : null}
         </QueryState>

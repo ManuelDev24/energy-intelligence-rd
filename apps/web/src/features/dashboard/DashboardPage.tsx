@@ -1,10 +1,11 @@
 "use client";
 
-import { QUALITY, fmtPct, monthlySeries, projectionDeltaPct, resolutionLabel, sourceLabel, suggestNextPeriod } from "@energyrd/core";
+import { QUALITY, fmtDop, fmtKwh, fmtPct, monthlySeries, resolutionLabel, sourceLabel, suggestNextPeriod, trendValues, type ChartBar } from "@energyrd/core";
 import { ArrowRight, Plus, Receipt } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { AlertCard } from "@/components/alert-card";
+import { RecommendationCard } from "@/components/recommendation-card";
 import { ConsumptionChart } from "@/components/consumption-chart";
 import { DataStatusBadge } from "@/components/data-status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -13,8 +14,9 @@ import { MetricCard } from "@/components/metric-card";
 import { QueryState } from "@/components/query-state";
 import { Card, CardTitle } from "@/components/ui/card";
 import { GoalProgressSection } from "@/features/goal/GoalProgressCard";
+import { CycleCard } from "@/features/dashboard/CycleCard";
 import { AnomalySection } from "@/features/anomalies/AnomalySection";
-import { useBills, useDashboard, useAnomalies } from "@/lib/api/hooks";
+import { useBills, useDashboard, useAnomalies, useUpdateAnomaly } from "@/lib/api/hooks";
 import type { Dashboard, Metric } from "@/lib/api/schemas";
 import { formatMetric, formatPeriod } from "@/lib/format";
 import { useSession } from "@/lib/session";
@@ -28,6 +30,7 @@ function ApiMetricCard({
   signed = false,
   deltaPct,
   helper,
+  trend,
 }: {
   label: string;
   metric: Metric | null;
@@ -35,6 +38,7 @@ function ApiMetricCard({
   /** Variación % de la API frente al período anterior. */
   deltaPct?: Metric | null;
   helper?: string;
+  trend?: import("@/components/sparkline").TrendInput | null;
 }) {
   if (!metric) return null;
   return (
@@ -44,6 +48,7 @@ function ApiMetricCard({
       quality={metric.quality}
       delta={deltaPct ? { pct: deltaPct.value, label: "vs. período anterior", quality: deltaPct.quality } : null}
       helper={helper}
+      trend={trend}
     />
   );
 }
@@ -66,7 +71,8 @@ function Hero({ data }: { data: Dashboard }) {
   const p = data.projection;
   const last = data.latest_bill;
   if (!last) return null;
-  const delta = p ? projectionDeltaPct(p.kwh.value, last.kwh.value) : null;
+  // La variación de la proyección frente a la última factura la calcula la API (PROJECTED); aquí solo se muestra.
+  const delta = p?.kwh_pct_vs_latest ? Number(p.kwh_pct_vs_latest.value) : null;
   return (
     <section
       aria-label="Resumen"
@@ -81,10 +87,11 @@ function Hero({ data }: { data: Dashboard }) {
           {formatMetric((p ? p.kwh : last.kwh).value, "kWh")}
           {p ? <DataStatusBadge quality="PROJECTED" /> : null}
           {delta !== null ? (
-            <span className={delta > 0 ? "text-accent" : "text-white/80"}>
-              {delta !== 0 ? <span aria-hidden>{delta > 0 ? "▲ " : "▼ "}</span> : null}
-              {fmtPct(delta)} vs. la última factura
-            </span>
+            <>
+              {delta !== 0 ? <span aria-hidden className={delta > 0 ? "text-accent" : "text-white/80"}>{delta > 0 ? "▲" : "▼"}</span> : null}
+              <span className={delta > 0 ? "text-accent" : "text-white/80"}>{fmtPct(delta)}</span>
+              <span className="text-white/80">vs. la última factura</span>
+            </>
           ) : null}
         </p>
       </div>
@@ -120,11 +127,16 @@ function HomeDashboard({ homeId }: { homeId: string }) {
   const [billId, setBillId] = useState("");
   const { data, isLoading, error, refetch } = useDashboard(homeId, billId || undefined);
   const anomalies = useAnomalies(homeId);
+  const updateAnomaly = useUpdateAnomaly(homeId);
   const bills = useBills(homeId);
   const periods = [...(bills.data ?? [])].sort((a, b) =>
     b.period_end.localeCompare(a.period_end) || b.id.localeCompare(a.id));
   const selectedIndex = periods.findIndex((bill) => bill.id === billId);
   const history = billId ? (selectedIndex >= 0 ? periods.slice(selectedIndex) : []) : periods;
+  // Mini-tendencias: solo facturas reales (nunca la proyección); con menos de 3 no se dibujan.
+  const realBars: ChartBar[] = monthlySeries(history, null);
+  const kwhTrend = { values: trendValues(realBars, "kwh"), label: "consumo", format: fmtKwh };
+  const amountTrend = { values: trendValues(realBars, "amountDop"), label: "monto", format: fmtDop };
 
   return (
     <div className="flex flex-col gap-6">
@@ -185,7 +197,10 @@ function HomeDashboard({ homeId }: { homeId: string }) {
                 }
               />
             ) : (
-              <Hero data={data} />
+              <>
+                <Hero data={data} />
+                {!billId && data.latest_bill && homeId ? <CycleCard homeId={homeId} lastBill={data.latest_bill} /> : null}
+              </>
             )}
 
             {data.alert ? (
@@ -205,7 +220,7 @@ function HomeDashboard({ homeId }: { homeId: string }) {
               </AlertCard>
             ) : null}
 
-            {!billId ? <AnomalySection anomalies={anomalies.data} isLoading={anomalies.isLoading} /> : null}
+            {!billId ? <AnomalySection anomalies={anomalies.data} isLoading={anomalies.isLoading} pendingId={updateAnomaly.isPending ? updateAnomaly.variables?.id : null} onDismiss={(anomaly) => updateAnomaly.mutate({ id: anomaly.id, status: "dismissed" })} /> : null}
 
             {!billId ? <GoalProgressSection homeId={homeId} /> : null}
 
@@ -242,11 +257,13 @@ function HomeDashboard({ homeId }: { homeId: string }) {
                     label="Consumo"
                     metric={data.latest_bill.kwh}
                     helper="kWh: la energía que usó tu hogar en el período."
+                    trend={kwhTrend}
                   />
                   <ApiMetricCard
                     label="Monto"
                     metric={data.latest_bill.amount_dop}
                     helper="Lo que cobró la distribuidora, en pesos (RD$)."
+                    trend={amountTrend}
                   />
                   <ApiMetricCard
                     label="Promedio diario"
@@ -312,20 +329,7 @@ function HomeDashboard({ homeId }: { homeId: string }) {
               ) : null}
             </Section>
 
-            <AlertCard
-              tone="savings"
-              title="Recomendación"
-              action={
-                <Link
-                  href="/equipment"
-                  className="inline-flex h-11 items-center gap-1 rounded-lg px-1 text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  Ver qué equipos consumen más <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                </Link>
-              }
-            >
-              {data.recommendation ?? "Sin recomendaciones por ahora."}
-            </AlertCard>
+            <RecommendationCard text={data.recommendation} action={{ href: "/equipment", label: "Ver qué equipos consumen más" }} />
 
             <details className="group rounded-xl border border-border bg-background p-4 text-sm">
               <summary className="cursor-pointer list-none font-semibold">

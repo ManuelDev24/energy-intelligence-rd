@@ -65,7 +65,12 @@ export function BillForm({
           hint="Tal como aparece en la factura"
           {...bind("days")}
         />
-        <div className="hidden sm:block" />
+        <Field
+          label="Fecha límite de pago (opcional)"
+          type="date"
+          hint="Si la indica, le avisamos antes de que venza"
+          {...bind("due_date")}
+        />
         <Field label="Lectura anterior (opcional)" inputMode="decimal" {...bind("reading_previous")} />
         <Field label="Lectura actual (opcional)" inputMode="decimal" {...bind("reading_current")} />
       </div>

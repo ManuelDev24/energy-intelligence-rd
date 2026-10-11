@@ -36,7 +36,21 @@ describe("BillForm", () => {
       days: 31,
       reading_previous: null,
       reading_current: null,
+      due_date: null,
     });
+  });
+
+  it("ERD-ALERT-02: envía la fecha límite de pago cuando se indica", () => {
+    const onSubmit = vi.fn();
+    render(<BillForm submitLabel="Guardar" onSubmit={onSubmit} />);
+    fill("Inicio del período", "2026-08-01");
+    fill("Fin del período", "2026-08-31");
+    fill("Consumo facturado (kWh)", "410.5");
+    fill("Monto (RD$)", "5480.00");
+    fill("Días facturados", "31");
+    fill("Fecha límite de pago (opcional)", "2026-09-15");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ due_date: "2026-09-15" }));
   });
 
   it("muestra el error devuelto por el servidor", () => {

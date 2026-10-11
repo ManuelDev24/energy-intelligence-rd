@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { previewDailyKwh, validateEquipment, type EquipmentFormValues } from './validation';
+import { EMPTY_EQUIPMENT_FORM, previewDailyKwh, validateEquipment, type EquipmentFormValues } from './validation';
 
-const valid: EquipmentFormValues = { name: 'Nevera', room: 'Cocina', powerW: '150', hoursPerDay: '24' };
+const valid: EquipmentFormValues = { ...EMPTY_EQUIPMENT_FORM, name: 'Nevera', room: 'Cocina', kind: 'refrigerator', powerW: '150', hoursPerDay: '24' };
 
 describe('validateEquipment', () => {
   it('accepts a valid equipment and trims text', () => {
     const { errors, input } = validateEquipment({ ...valid, name: '  Nevera ', room: '  ' });
     expect(errors).toEqual({});
-    expect(input).toEqual({ name: 'Nevera', room: null, power_w: '150', hours_per_day: '24' });
+    expect(input).toEqual({ name: 'Nevera', room: null, kind: 'refrigerator', brand: null, model: null, icon: null, power_w: '150', hours_per_day: '24' });
   });
 
   it('accepts zero power and zero hours', () => {
@@ -24,10 +24,20 @@ describe('validateEquipment', () => {
     ['hoursPerDay', ''],
     ['name', '   '],
     ['hoursPerDay', '1.234'],
+    ['kind', 'toaster'],
+    ['kind', ''],
+    ['icon', 'skull'],
+    ['brand', 'x'.repeat(61)],
+    ['model', 'x'.repeat(61)],
   ])('rejects %s = %j', (field, val) => {
     const { errors, input } = validateEquipment({ ...valid, [field]: val } as EquipmentFormValues);
     expect(errors[field as keyof EquipmentFormValues]).toBeDefined();
     expect(input).toBeNull();
+  });
+
+  it('trims brand and model, keeps a chosen icon and turns blanks into null', () => {
+    const { input } = validateEquipment({ ...valid, kind: 'air_conditioner', brand: ' LG ', model: '  ', icon: 'fan' });
+    expect(input).toMatchObject({ kind: 'air_conditioner', brand: 'LG', model: null, icon: 'fan' });
   });
 
   it('accepts decimal comma', () => {

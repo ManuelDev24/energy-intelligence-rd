@@ -15,6 +15,8 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from app.telemetry import capture_unhandled
+
 logger = logging.getLogger("energyrd.api")
 _VALID_ID = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
 
@@ -46,7 +48,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         start = time.perf_counter()
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception as exc:
+            capture_unhandled(exc, request_id)
             logger.exception(
                 "unhandled error",
                 extra={"extra_fields": {"request_id": request_id, "method": request.method, "path": request.url.path}},

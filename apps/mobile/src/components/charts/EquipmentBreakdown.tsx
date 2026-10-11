@@ -9,16 +9,18 @@ import { equipmentShares } from './chartMath';
 
 /**
  * CH-10 — Desglose del consumo estimado por equipo (kWh/mes y % del total de equipos).
- * Los kWh vienen del estimado de la API; el % solo reparte ese total para comparar equipos.
+ * Los kWh y el % vienen del estimado de la API (el % lo calcula el servidor); aquí solo se presentan.
  * Todo es ESTIMADO (potencia × horas declaradas), nunca una medición.
  */
+const fmtPct = (n: number) => String(Math.round(n * 10) / 10);
+
 export function EquipmentBreakdown({ estimate, maxItems = 6 }: { estimate: EquipmentEstimate; maxItems?: number }) {
   const unit = estimate.items[0]?.monthly_kwh.unit ?? 'kWh';
   const rows = equipmentShares(
-    estimate.items.map((i) => ({ key: i.equipment_id, label: i.name, value: Number(i.monthly_kwh.value) })),
+    estimate.items.map((i) => ({ key: i.equipment_id, label: i.name, value: Number(i.monthly_kwh.value), pct: Number(i.share_pct.value) })),
     maxItems,
   );
-  const summary = rows.map((r) => `${r.label} ${fmtMetric(r.value, unit)} al mes, ${r.pct}%`).join('; ');
+  const summary = rows.map((r) => `${r.label} ${fmtMetric(r.value, unit)} al mes, ${fmtPct(r.pct)}%`).join('; ');
 
   return (
     <View style={s.card} testID="equipment-breakdown">
@@ -45,7 +47,7 @@ export function EquipmentBreakdown({ estimate, maxItems = 6 }: { estimate: Equip
                   {r.label}
                 </Text>
                 <Text style={s.value}>
-                  {fmtMetric(r.value, unit)} · {r.pct}%
+                  {fmtMetric(r.value, unit)} · {fmtPct(r.pct)}%
                 </Text>
               </View>
               <View style={s.track}>

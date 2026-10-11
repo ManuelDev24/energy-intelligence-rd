@@ -51,7 +51,7 @@ run('recorrido piloto contra API real', () => {
     const d = await api.getDashboard(home.id);
     expect(d.data_status.bills_count).toBe(2);
     expect(d.alert).toBeNull();
-    expect(await api.listAlerts(home.id)).toEqual([]);
+    expect((await api.listAlerts(home.id)).filter((a) => a.type === 'bill_variation')).toEqual([]);
   });
 
   it('3. rechaza una factura inválida con errores por campo', async () => {
@@ -81,23 +81,30 @@ run('recorrido piloto contra API real', () => {
   });
 
   it('6. la alerta se persiste como no leída y se puede leer y descartar', async () => {
-    const [alert] = await api.listAlerts(home.id);
+    // ERD-ALERT-02: además de la variación hay alertas por el paso del tiempo (factura faltante); dependen de la fecha de hoy,
+    // así que este recorrido solo mira la alerta de variación de la factura que él mismo registró.
+    const variation = async () => (await api.listAlerts(home.id)).filter((a) => a.type === 'bill_variation');
+    const [alert] = await variation();
     expect(alert).toMatchObject({ severity: 'critical', status: 'unread', bill_id: created?.id, basis_period_start: '2026-07-01' });
     expect((await api.setAlertStatus(home.id, alert.id, 'read')).status).toBe('read');
     expect((await api.setAlertStatus(home.id, alert.id, 'dismissed')).status).toBe('dismissed');
-    expect(await api.listAlerts(home.id)).toEqual([]);
+    expect(await variation()).toEqual([]);
   });
 
   it('7. equipos: alta, estimado ESTIMATED y validación', async () => {
-    await expect(api.createEquipment(home.id, { name: 'X', room: null, power_w: '-5', hours_per_day: '1' }))
+    await expect(api.createEquipment(home.id, { name: 'X', room: null, kind: 'other', brand: null, model: null, icon: null, power_w: '-5', hours_per_day: '1' }))
       .rejects.toMatchObject({ status: 422 });
     const before = await api.getEstimate(home.id);
-    const e = await api.createEquipment(home.id, { name: 'Abanico E2E', room: 'Sala', power_w: '100', hours_per_day: '10' });
+    const e = await api.createEquipment(home.id, { name: 'Abanico E2E', room: 'Sala', kind: 'fan', brand: 'Acme', model: 'F1', icon: null, power_w: '100', hours_per_day: '10' });
     equipmentId = e.id;
     const after = await api.getEstimate(home.id);
     expect(after.equipment_count).toBe(before.equipment_count + 1);
     expect(Number(after.total_monthly_kwh.value) - Number(before.total_monthly_kwh.value)).toBeCloseTo(30, 2);
     expect(after.total_monthly_kwh.quality).toBe('ESTIMATED');
+    const mine = after.items.find((i) => i.equipment_id === e.id);
+    expect(mine).toMatchObject({ kind: 'fan', brand: 'Acme', model: 'F1' });
+    expect(mine?.share_pct.quality).toBe('ESTIMATED');
+    expect(after.items.reduce((acc, i) => acc + Number(i.share_pct.value), 0)).toBeCloseTo(100, 2);
   });
 
   it('8. borrar la factura elimina su alerta y restaura el estado', async () => {

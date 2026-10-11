@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, StrictBool, field_validator, model_validator
 
 
 class Credentials(BaseModel):
@@ -104,3 +104,97 @@ class PasswordResetIn(BaseModel):
     @classmethod
     def validate_password_encoding(cls, value):
         return Credentials.validate_password_encoding(value)
+
+
+class PasswordChangeIn(BaseModel):
+    """ERD-AUTH-06: cambio con sesión iniciada; reautentica con la contraseña actual."""
+    model_config = ConfigDict(extra="forbid")
+    current_password: SecretStr = Field(min_length=12, max_length=128)
+    new_password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("current_password", "new_password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)
+
+    @model_validator(mode="after")
+    def require_different_password(self):
+        # Compara solo lo enviado por el cliente: no revela nada de la contraseña almacenada.
+        if self.current_password.get_secret_value() == self.new_password.get_secret_value():
+            raise ValueError("La nueva contraseña debe ser distinta de la actual")
+        return self
+
+
+class InvitationCreateIn(BaseModel):
+    """ERD-SHARE-01: solo se invita como miembro; la propiedad se cede con transfer-ownership."""
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr = Field(max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        return str(value).lower()
+
+
+class InvitationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    email: str
+    created_at: datetime
+    expires_at: datetime
+
+
+class InvitationAcceptIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+
+
+class MemberOut(BaseModel):
+    user_id: uuid.UUID
+    email: str
+    role: Literal["owner", "member"]
+    joined_at: datetime
+
+
+class OwnershipTransferIn(BaseModel):
+    """Reautentica con la contraseña actual: ceder la propiedad es una acción de alto impacto."""
+    model_config = ConfigDict(extra="forbid")
+    user_id: uuid.UUID
+    password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)
+
+
+class NotificationPreferencesIn(BaseModel):
+    """Reemplazo completo: exactamente dos booleanos reales (nada de 0/1 ni "yes")."""
+    model_config = ConfigDict(extra="forbid")
+    alerts_email: StrictBool
+    alerts_push: StrictBool
+
+
+class NotificationPreferencesOut(BaseModel):
+    alerts_email: bool
+    alerts_push: bool
+    updated_at: datetime | None = None  # null = nunca guardadas (valores por defecto)
+
+
+class SessionOut(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    expires_at: datetime
+    current: bool
+
+
+class DeviceIn(BaseModel):
+    """ERD-ALERT-02: registra el token de notificaciones push (Expo) de este dispositivo."""
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=20, max_length=200, pattern=r"^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,}\]$")
+    platform: Literal["ios", "android"]
+
+
+class DeviceRemoveIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=20, max_length=200)

@@ -22,6 +22,18 @@
       },
       "AlertRecord": {
         "properties": {
+          "anomaly_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly Id"
+          },
           "basis_bill_id": {
             "anyOf": [
               {
@@ -103,8 +115,10 @@
           },
           "severity": {
             "enum": [
+              "info",
               "warning",
-              "critical"
+              "critical",
+              "savings"
             ],
             "title": "Severity",
             "type": "string"
@@ -131,6 +145,13 @@
             "title": "Threshold Pct"
           },
           "type": {
+            "enum": [
+              "bill_variation",
+              "anomaly",
+              "payment_due",
+              "missing_bill",
+              "stale_readings"
+            ],
             "title": "Type",
             "type": "string"
           }
@@ -141,6 +162,7 @@
           "bill_id",
           "type",
           "severity",
+          "anomaly_id",
           "status",
           "message",
           "kwh_pct",
@@ -236,15 +258,54 @@
         "type": "object"
       },
       "AnomalyRecord": {
+        "description": "Un hallazgo persistido del motor de anomal\u00edas. `baseline_kwh` est\u00e1 expresado sobre los MISMOS d\u00edas que\n`observed_kwh` (l\u00ednea base \u00d7 d\u00edas cubiertos), as\u00ed que `delta_pct` se lee directamente. `delta_pct` es nulo en las\nanomal\u00edas nocturnas (ah\u00ed `baseline_kwh` es lo que habr\u00eda marcado el medidor al ritmo promedio).",
         "properties": {
           "baseline_kwh": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Baseline Kwh",
             "type": "string"
           },
-          "delta_pct": {
+          "bill_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bill Id"
+          },
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "days": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Delta Pct",
+            "title": "Days",
+            "type": "string"
+          },
+          "delta_pct": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pct"
+          },
+          "detected_at": {
+            "format": "date-time",
+            "title": "Detected At",
             "type": "string"
           },
           "explanation": {
@@ -254,7 +315,8 @@
           "granularity": {
             "enum": [
               "day",
-              "month"
+              "month",
+              "billing"
             ],
             "title": "Granularity",
             "type": "string"
@@ -262,6 +324,26 @@
           "home_id": {
             "format": "uuid",
             "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "increase",
+              "drop",
+              "peak",
+              "night"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
             "type": "string"
           },
           "observed_kwh": {
@@ -281,25 +363,72 @@
           },
           "severity": {
             "enum": [
+              "info",
               "warning",
               "critical"
             ],
             "title": "Severity",
             "type": "string"
+          },
+          "source": {
+            "enum": [
+              "readings",
+              "bills"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "acknowledged",
+              "dismissed",
+              "resolved"
+            ],
+            "title": "Status",
+            "type": "string"
           }
         },
         "required": [
+          "id",
           "home_id",
+          "bill_id",
+          "kind",
+          "source",
           "granularity",
           "severity",
+          "confidence",
+          "status",
           "observed_kwh",
           "baseline_kwh",
           "delta_pct",
+          "days",
           "period_start",
           "period_end",
-          "explanation"
+          "explanation",
+          "detected_at",
+          "last_seen_at"
         ],
         "title": "AnomalyRecord",
+        "type": "object"
+      },
+      "AnomalyStatusIn": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "open",
+              "acknowledged",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "AnomalyStatusIn",
         "type": "object"
       },
       "BillAssessment": {
@@ -485,6 +614,30 @@
             "minimum": 0.0,
             "title": "Days",
             "type": "integer"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
           },
           "kwh": {
             "anyOf": [
@@ -723,6 +876,18 @@
             "title": "Days",
             "type": "integer"
           },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
           "home_id": {
             "format": "uuid",
             "title": "Home Id",
@@ -737,6 +902,18 @@
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Kwh",
             "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
           },
           "period_end": {
             "format": "date",
@@ -791,10 +968,27 @@
           "days",
           "reading_previous",
           "reading_current",
+          "due_date",
+          "paid_at",
           "source",
           "created_at"
         ],
         "title": "BillOut",
+        "type": "object"
+      },
+      "BillPaymentIn": {
+        "additionalProperties": false,
+        "description": "Marcar una factura como pagada (`true`) o volver a dejarla pendiente (`false`).",
+        "properties": {
+          "paid": {
+            "title": "Paid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "paid"
+        ],
+        "title": "BillPaymentIn",
         "type": "object"
       },
       "BillProvenance": {
@@ -868,6 +1062,18 @@
             "minimum": 0.0,
             "title": "Days",
             "type": "integer"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
           },
           "kwh": {
             "anyOf": [
@@ -953,6 +1159,54 @@
           "file"
         ],
         "title": "Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post",
+        "type": "object"
+      },
+      "Body_start_ocr_job_api_v1_homes__home_id__bills_ocr_jobs_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "source": {
+            "default": "api",
+            "enum": [
+              "web",
+              "mobile",
+              "api"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_start_ocr_job_api_v1_homes__home_id__bills_ocr_jobs_post",
+        "type": "object"
+      },
+      "Body_upload_document_api_v1_homes__home_id__documents_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "source": {
+            "default": "api",
+            "enum": [
+              "web",
+              "mobile",
+              "api"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_document_api_v1_homes__home_id__documents_post",
         "type": "object"
       },
       "Comparison": {
@@ -1555,8 +1809,169 @@
         "title": "DataStatus",
         "type": "object"
       },
+      "DeviceIn": {
+        "additionalProperties": false,
+        "description": "ERD-ALERT-02: registra el token de notificaciones push (Expo) de este dispositivo.",
+        "properties": {
+          "platform": {
+            "enum": [
+              "ios",
+              "android"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 200,
+            "minLength": 20,
+            "pattern": "^Expo(nent)?PushToken\\[[A-Za-z0-9_-]{10,}\\]$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "platform"
+        ],
+        "title": "DeviceIn",
+        "type": "object"
+      },
+      "DeviceRemoveIn": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 200,
+            "minLength": 20,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "DeviceRemoveIn",
+        "type": "object"
+      },
+      "DocumentOut": {
+        "description": "Metadatos del original. La clave interna del objeto (`storage_key`) no se expone nunca.",
+        "properties": {
+          "bill_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bill Id"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "bill_photo",
+              "bill_pdf"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "retention_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Until"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "uploaded_via": {
+            "enum": [
+              "web",
+              "mobile",
+              "api"
+            ],
+            "title": "Uploaded Via",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "home_id",
+          "bill_id",
+          "kind",
+          "content_type",
+          "size_bytes",
+          "sha256",
+          "uploaded_via",
+          "created_at",
+          "retention_until"
+        ],
+        "title": "DocumentOut",
+        "type": "object"
+      },
+      "DownloadUrlOut": {
+        "description": "Enlace de un solo prop\u00f3sito y vida corta (60 s por defecto). No lo guarde ni lo comparta.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "title": "DownloadUrlOut",
+        "type": "object"
+      },
       "EquipmentEstimateItem": {
         "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "daily_kwh": {
             "$ref": "#/components/schemas/Metric"
           },
@@ -1564,6 +1979,58 @@
             "format": "uuid",
             "title": "Equipment Id",
             "type": "string"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "enum": [
+                  "snowflake",
+                  "refrigerator",
+                  "flame",
+                  "washing-machine",
+                  "tv",
+                  "fan",
+                  "lightbulb",
+                  "laptop",
+                  "microwave",
+                  "waves",
+                  "plug"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "kind": {
+            "enum": [
+              "air_conditioner",
+              "refrigerator",
+              "water_heater",
+              "washing_machine",
+              "tv",
+              "fan",
+              "lighting",
+              "computer",
+              "microwave",
+              "pool_pump",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
           },
           "monthly_kwh": {
             "$ref": "#/components/schemas/Metric"
@@ -1582,14 +2049,22 @@
               }
             ],
             "title": "Room"
+          },
+          "share_pct": {
+            "$ref": "#/components/schemas/Metric"
           }
         },
         "required": [
           "equipment_id",
           "name",
           "room",
+          "kind",
+          "brand",
+          "model",
+          "icon",
           "daily_kwh",
-          "monthly_kwh"
+          "monthly_kwh",
+          "share_pct"
         ],
         "title": "EquipmentEstimateItem",
         "type": "object"
@@ -1663,6 +2138,18 @@
       },
       "EquipmentIn": {
         "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "hours_per_day": {
             "anyOf": [
               {
@@ -1676,6 +2163,60 @@
               }
             ],
             "title": "Hours Per Day"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "enum": [
+                  "snowflake",
+                  "refrigerator",
+                  "flame",
+                  "washing-machine",
+                  "tv",
+                  "fan",
+                  "lightbulb",
+                  "laptop",
+                  "microwave",
+                  "waves",
+                  "plug"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "kind": {
+            "default": "other",
+            "enum": [
+              "air_conditioner",
+              "refrigerator",
+              "water_heater",
+              "washing_machine",
+              "tv",
+              "fan",
+              "lighting",
+              "computer",
+              "microwave",
+              "pool_pump",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
           },
           "name": {
             "maxLength": 120,
@@ -1720,6 +2261,17 @@
       },
       "EquipmentOut": {
         "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1735,10 +2287,62 @@
             "title": "Hours Per Day",
             "type": "string"
           },
+          "icon": {
+            "anyOf": [
+              {
+                "enum": [
+                  "snowflake",
+                  "refrigerator",
+                  "flame",
+                  "washing-machine",
+                  "tv",
+                  "fan",
+                  "lightbulb",
+                  "laptop",
+                  "microwave",
+                  "waves",
+                  "plug"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "air_conditioner",
+              "refrigerator",
+              "water_heater",
+              "washing_machine",
+              "tv",
+              "fan",
+              "lighting",
+              "computer",
+              "microwave",
+              "pool_pump",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
           },
           "name": {
             "title": "Name",
@@ -1766,6 +2370,10 @@
           "home_id",
           "name",
           "room",
+          "kind",
+          "brand",
+          "model",
+          "icon",
           "power_w",
           "hours_per_day",
           "created_at"
@@ -2666,6 +3274,71 @@
         "title": "HomeUpdate",
         "type": "object"
       },
+      "InvitationAcceptIn": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 43,
+            "minLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "InvitationAcceptIn",
+        "type": "object"
+      },
+      "InvitationCreateIn": {
+        "additionalProperties": false,
+        "description": "ERD-SHARE-01: solo se invita como miembro; la propiedad se cede con transfer-ownership.",
+        "properties": {
+          "email": {
+            "format": "email",
+            "maxLength": 254,
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "InvitationCreateIn",
+        "type": "object"
+      },
+      "InvitationOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "InvitationOut",
+        "type": "object"
+      },
       "LatestBill": {
         "properties": {
           "amount_dop": {
@@ -2760,6 +3433,40 @@
         "title": "LegalOut",
         "type": "object"
       },
+      "MemberOut": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "joined_at": {
+            "format": "date-time",
+            "title": "Joined At",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "member"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "role",
+          "joined_at"
+        ],
+        "title": "MemberOut",
+        "type": "object"
+      },
       "Metric": {
         "properties": {
           "quality": {
@@ -2789,6 +3496,56 @@
         "title": "Metric",
         "type": "object"
       },
+      "NotificationPreferencesIn": {
+        "additionalProperties": false,
+        "description": "Reemplazo completo: exactamente dos booleanos reales (nada de 0/1 ni \"yes\").",
+        "properties": {
+          "alerts_email": {
+            "title": "Alerts Email",
+            "type": "boolean"
+          },
+          "alerts_push": {
+            "title": "Alerts Push",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "alerts_email",
+          "alerts_push"
+        ],
+        "title": "NotificationPreferencesIn",
+        "type": "object"
+      },
+      "NotificationPreferencesOut": {
+        "properties": {
+          "alerts_email": {
+            "title": "Alerts Email",
+            "type": "boolean"
+          },
+          "alerts_push": {
+            "title": "Alerts Push",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "alerts_email",
+          "alerts_push"
+        ],
+        "title": "NotificationPreferencesOut",
+        "type": "object"
+      },
       "OcrDraft": {
         "properties": {
           "amount_dop": {
@@ -2796,6 +3553,12 @@
           },
           "days": {
             "$ref": "#/components/schemas/OcrField"
+          },
+          "due_date": {
+            "$ref": "#/components/schemas/OcrField",
+            "default": {
+              "confidence": "none"
+            }
           },
           "kwh": {
             "$ref": "#/components/schemas/OcrField"
@@ -2868,6 +3631,191 @@
         "title": "OcrField",
         "type": "object"
       },
+      "OcrJobOut": {
+        "description": "ERD-OCR-PROD: estado de la lectura as\u00edncrona de un original. `draft` solo existe en `done` y hasta que se confirma\nla factura; es un BORRADOR (nunca una factura).",
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OcrDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "unreadable",
+                  "protected_pdf",
+                  "file_missing",
+                  "engine_error"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "text_layer",
+                  "ocr",
+                  "mixed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "pages_read": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages Read"
+          },
+          "pages_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages Total"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "processing",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "status",
+          "attempts",
+          "method",
+          "pages_read",
+          "pages_total",
+          "draft",
+          "error_code",
+          "error_message",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "OcrJobOut",
+        "type": "object"
+      },
+      "OwnershipTransferIn": {
+        "additionalProperties": false,
+        "description": "Reautentica con la contrase\u00f1a actual: ceder la propiedad es una acci\u00f3n de alto impacto.",
+        "properties": {
+          "password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "password"
+        ],
+        "title": "OwnershipTransferIn",
+        "type": "object"
+      },
+      "PasswordChangeIn": {
+        "additionalProperties": false,
+        "description": "ERD-AUTH-06: cambio con sesi\u00f3n iniciada; reautentica con la contrase\u00f1a actual.",
+        "properties": {
+          "current_password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Current Password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "new_password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChangeIn",
+        "type": "object"
+      },
       "PasswordForgotAccepted": {
         "description": "Cuerpo fijo del 202: nunca dice si la cuenta existe ni si se envi\u00f3 correo.",
         "properties": {
@@ -2938,6 +3886,16 @@
           },
           "kwh": {
             "$ref": "#/components/schemas/Metric"
+          },
+          "kwh_pct_vs_latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "method": {
             "title": "Method",
@@ -3107,6 +4065,51 @@
           "accept_terms"
         ],
         "title": "RegisterIn",
+        "type": "object"
+      },
+      "ScanQueuedOut": {
+        "properties": {
+          "status": {
+            "const": "queued",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "ScanQueuedOut",
+        "type": "object"
+      },
+      "SessionOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "expires_at",
+          "current"
+        ],
+        "title": "SessionOut",
         "type": "object"
       },
       "TariffBlockOut": {
@@ -3505,6 +4508,86 @@
         "summary": "Root"
       }
     },
+    "/api/v1/auth/devices": {
+      "put": {
+        "description": "Registra (o renueva) el dispositivo para recibir avisos push. Idempotente.",
+        "operationId": "put_device_api_v1_auth_devices_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Put Device",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/devices/remove": {
+      "post": {
+        "description": "Quita el dispositivo (al cerrar sesi\u00f3n). POST con cuerpo porque el token no debe viajar en la URL.",
+        "operationId": "remove_device_api_v1_auth_devices_remove_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRemoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Device",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",
@@ -3638,6 +4721,146 @@
           }
         ],
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me/export": {
+      "get": {
+        "operationId": "export_me_api_v1_auth_me_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me/preferences": {
+      "get": {
+        "operationId": "get_preferences_api_v1_auth_me_preferences_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Preferences",
+        "tags": [
+          "auth"
+        ]
+      },
+      "put": {
+        "operationId": "put_preferences_api_v1_auth_me_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferencesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Put Preferences",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/change": {
+      "post": {
+        "operationId": "change_password_api_v1_auth_password_change_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokensOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change Password",
         "tags": [
           "auth"
         ]
@@ -3795,6 +5018,96 @@
           }
         },
         "summary": "Register",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "operationId": "list_sessions_api_v1_auth_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "title": "Response List Sessions Api V1 Auth Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions/revoke-others": {
+      "post": {
+        "operationId": "revoke_other_sessions_api_v1_auth_sessions_revoke_others_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Other Sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions/{session_id}": {
+      "delete": {
+        "operationId": "revoke_session_api_v1_auth_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Session",
         "tags": [
           "auth"
         ]
@@ -4333,7 +5646,7 @@
     },
     "/api/v1/homes/{home_id}/anomalies": {
       "get": {
-        "description": "Detecta solo el \u00faltimo per\u00edodo comparable; no crea alertas persistentes.",
+        "description": "Anomal\u00edas persistidas (por defecto las vigentes: abiertas o revisadas). Solo lectura: las crea el escaneo.",
         "operationId": "get_anomalies_api_v1_homes__home_id__anomalies_get",
         "parameters": [
           {
@@ -4348,56 +5661,75 @@
           },
           {
             "in": "query",
-            "name": "granularity",
+            "name": "status",
             "required": false,
             "schema": {
-              "default": "month",
+              "default": "active",
               "enum": [
-                "day",
-                "month"
+                "active",
+                "open",
+                "acknowledged",
+                "dismissed",
+                "resolved",
+                "all"
               ],
-              "title": "Granularity",
+              "title": "Status",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "warning_delta_pct",
+            "name": "granularity",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "exclusiveMinimum": 0.0,
-                  "maximum": 1000.0,
-                  "type": "number"
+                  "enum": [
+                    "day",
+                    "month",
+                    "billing"
+                  ],
+                  "type": "string"
                 },
                 {
-                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                  "type": "string"
+                  "type": "null"
                 }
               ],
-              "default": "50",
-              "title": "Warning Delta Pct"
+              "title": "Granularity"
             }
           },
           {
             "in": "query",
-            "name": "critical_delta_pct",
+            "name": "kind",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "exclusiveMinimum": 0.0,
-                  "maximum": 1000.0,
-                  "type": "number"
+                  "enum": [
+                    "increase",
+                    "drop",
+                    "peak",
+                    "night"
+                  ],
+                  "type": "string"
                 },
                 {
-                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                  "type": "string"
+                  "type": "null"
                 }
               ],
-              "default": "100",
-              "title": "Critical Delta Pct"
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
             }
           }
         ],
@@ -4433,6 +5765,124 @@
           }
         ],
         "summary": "Get Anomalies",
+        "tags": [
+          "anomalies"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/anomalies/scan": {
+      "post": {
+        "description": "Pide un escaneo en segundo plano (una solicitud por minuto y vivienda; las repetidas se funden en una).",
+        "operationId": "request_scan_api_v1_homes__home_id__anomalies_scan_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanQueuedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Scan",
+        "tags": [
+          "anomalies"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/anomalies/{anomaly_id}": {
+      "patch": {
+        "description": "Marcar como revisada, descartar (no reaparece) o reabrir.",
+        "operationId": "update_anomaly_api_v1_homes__home_id__anomalies__anomaly_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anomaly_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Anomaly Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnomalyStatusIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnomalyRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Anomaly",
         "tags": [
           "anomalies"
         ]
@@ -4623,6 +6073,181 @@
           }
         ],
         "summary": "Ocr Bill Photo",
+        "tags": [
+          "bills"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/bills/ocr-jobs": {
+      "post": {
+        "description": "ERD-OCR-PROD: guarda el original (foto o PDF, cifrado) y lo lee en segundo plano. Responde 202 de inmediato;\nconsulte `GET /bills/ocr-jobs/{document_id}`. Como `/ocr`, nunca crea una factura: solo deja un BORRADOR.",
+        "operationId": "start_ocr_job_api_v1_homes__home_id__bills_ocr_jobs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_start_ocr_job_api_v1_homes__home_id__bills_ocr_jobs_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OcrJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Ocr Job",
+        "tags": [
+          "bills"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/bills/ocr-jobs/{document_id}": {
+      "get": {
+        "operationId": "get_ocr_job_api_v1_homes__home_id__bills_ocr_jobs__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OcrJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Ocr Job",
+        "tags": [
+          "bills"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/bills/ocr-jobs/{document_id}/retry": {
+      "post": {
+        "operationId": "retry_ocr_job_api_v1_homes__home_id__bills_ocr_jobs__document_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OcrJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retry Ocr Job",
         "tags": [
           "bills"
         ]
@@ -4920,6 +6545,75 @@
           }
         ],
         "summary": "Replace Items",
+        "tags": [
+          "bills"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/bills/{bill_id}/payment": {
+      "put": {
+        "description": "ERD-ALERT-02: marcar pagada (`paid: true`) o pendiente (`false`).",
+        "operationId": "set_bill_payment_api_v1_homes__home_id__bills__bill_id__payment_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "bill_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillPaymentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Bill Payment",
         "tags": [
           "bills"
         ]
@@ -5242,6 +6936,298 @@
         "summary": "Get Dashboard",
         "tags": [
           "dashboard"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/documents": {
+      "get": {
+        "operationId": "list_documents_api_v1_homes__home_id__documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bill_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bill Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentOut"
+                  },
+                  "title": "Response List Documents Api V1 Homes  Home Id  Documents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Documents",
+        "tags": [
+          "documents"
+        ]
+      },
+      "post": {
+        "description": "Guarda el original (foto o PDF) cifrado en el almacenamiento privado. El tipo se decide por los bytes.",
+        "operationId": "upload_document_api_v1_homes__home_id__documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_api_v1_homes__home_id__documents_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/documents/{document_id}": {
+      "delete": {
+        "description": "Borra la fila y encola el objeto; el worker lo elimina del almacenamiento.",
+        "operationId": "delete_document_api_v1_homes__home_id__documents__document_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Document",
+        "tags": [
+          "documents"
+        ]
+      },
+      "get": {
+        "operationId": "get_document_api_v1_homes__home_id__documents__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/documents/{document_id}/download-url": {
+      "post": {
+        "operationId": "create_download_url_api_v1_homes__home_id__documents__document_id__download_url_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadUrlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Download Url",
+        "tags": [
+          "documents"
         ]
       }
     },
@@ -5776,6 +7762,309 @@
         ]
       }
     },
+    "/api/v1/homes/{home_id}/invitations": {
+      "get": {
+        "operationId": "list_invitations_api_v1_homes__home_id__invitations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InvitationOut"
+                  },
+                  "title": "Response List Invitations Api V1 Homes  Home Id  Invitations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Invitations",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "post": {
+        "operationId": "create_invitation_api_v1_homes__home_id__invitations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Invitation",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/invitations/{invitation_id}": {
+      "delete": {
+        "operationId": "revoke_invitation_api_v1_homes__home_id__invitations__invitation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invitation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invitation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Invitation",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/members": {
+      "get": {
+        "operationId": "list_members_api_v1_homes__home_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberOut"
+                  },
+                  "title": "Response List Members Api V1 Homes  Home Id  Members Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Members",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/members/me": {
+      "delete": {
+        "operationId": "leave_home_api_v1_homes__home_id__members_me_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Leave Home",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/members/{user_id}": {
+      "delete": {
+        "operationId": "remove_member_api_v1_homes__home_id__members__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Member",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
     "/api/v1/homes/{home_id}/readings": {
       "get": {
         "operationId": "list_readings_api_v1_homes__home_id__readings_get",
@@ -5955,6 +8244,103 @@
         "summary": "Delete Reading",
         "tags": [
           "readings"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/transfer-ownership": {
+      "post": {
+        "operationId": "transfer_ownership_api_v1_homes__home_id__transfer_ownership_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnershipTransferIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Transfer Ownership",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/invitations/accept": {
+      "post": {
+        "operationId": "accept_invitation_api_v1_invitations_accept_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationAcceptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Invitation",
+        "tags": [
+          "sharing"
         ]
       }
     },

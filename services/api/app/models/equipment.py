@@ -11,6 +11,16 @@ from app.database import Base
 MAX_HOURS_PER_DAY = 24
 MAX_POWER_W = 100_000
 
+# ERD-DEV-02: catálogo cerrado. Debe coincidir con `packages/core/src/equipmentCatalog.ts` (lo vigila un test de contrato).
+EQUIPMENT_KINDS = (
+    "air_conditioner", "refrigerator", "water_heater", "washing_machine", "tv", "fan",
+    "lighting", "computer", "microwave", "pool_pump", "other",
+)
+EQUIPMENT_ICONS = (
+    "snowflake", "refrigerator", "flame", "washing-machine", "tv", "fan",
+    "lightbulb", "laptop", "microwave", "waves", "plug",
+)
+
 
 class Equipment(Base):
     """Equipo declarado por el usuario. Su consumo es siempre una ESTIMACIÓN (W × horas), no una medición."""
@@ -21,6 +31,12 @@ class Equipment(Base):
         CheckConstraint(
             f"hours_per_day >= 0 AND hours_per_day <= {MAX_HOURS_PER_DAY}", name="ck_equipment_hours_range"
         ),
+        CheckConstraint(
+            "kind IN (" + ", ".join(f"'{k}'" for k in EQUIPMENT_KINDS) + ")", name="ck_equipment_kind"
+        ),
+        CheckConstraint(
+            "icon IS NULL OR icon IN (" + ", ".join(f"'{i}'" for i in EQUIPMENT_ICONS) + ")", name="ck_equipment_icon"
+        ),
         Index("ix_equipment_home", "home_id"),
     )
 
@@ -30,6 +46,10 @@ class Equipment(Base):
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     room: Mapped[str | None] = mapped_column(String(80))
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default="other", server_default="other")
+    brand: Mapped[str | None] = mapped_column(String(60))
+    model: Mapped[str | None] = mapped_column(String(60))
+    icon: Mapped[str | None] = mapped_column(String(20))  # None = el icono por defecto del tipo
     power_w: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     hours_per_day: Mapped[Decimal] = mapped_column(Numeric(4, 2), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

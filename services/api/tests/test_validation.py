@@ -63,7 +63,7 @@ def test_db_insert_ok(session):
     assert a.status == "unread" and a.severity == "warning"
 
 
-@pytest.mark.parametrize("field,val", [("status", "open"), ("severity", "info")])
+@pytest.mark.parametrize("field,val", [("status", "open"), ("severity", "urgent"), ("type", "legacy_kind")])
 def test_db_rejects_legacy_alert_values(session, field, val):
     h = _home(session)
     kw = {"home_id": h.id, "type": "bill_variation", "severity": "warning", "message": "x", field: val}

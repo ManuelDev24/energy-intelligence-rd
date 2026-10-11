@@ -11,6 +11,8 @@ vi.mock("@/lib/session", () => ({
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ clear }) }));
+// Las secciones de ajustes tienen sus propias pruebas (components/account-settings.test.tsx); aquí se aísla la baja de cuenta.
+vi.mock("@/components/account-settings", () => ({ AccountSettings: () => null }));
 
 afterEach(() => { vi.clearAllMocks(); });
 

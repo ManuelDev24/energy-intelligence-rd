@@ -28,6 +28,7 @@ export function userMessage(error: unknown, context: ErrorContext): string {
   if (status === 409) {
     if (context === "reading-create") return "Ya existe una lectura con esa fecha y hora.";
     if (context === "bill-save") return "Ya existe una factura que se solapa con ese período.";
+    if (context === "ocr") return "Ya hay varias facturas en proceso o sin confirmar en esta vivienda. Espera a que terminen o confirma o elimina alguna.";
     return "La operación entra en conflicto con datos existentes.";
   }
   if (status === 422) {
@@ -46,11 +47,12 @@ export function userMessage(error: unknown, context: ErrorContext): string {
     }
     if (context === "goal-save") return "Revisa la meta: valores mayores que 0, con hasta 2 decimales, y al menos una meta.";
     if (context === "bill-save") return "Revisa los datos de la factura.";
-    if (context === "ocr") return "No se pudo leer la imagen (JPG, PNG o HEIC de hasta 10 MB). Puedes registrar la factura manualmente.";
+    if (context === "ocr") return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC de hasta 10 MB) o un PDF de hasta 20 MB. Puedes registrar la factura manualmente.";
     if (context === "equipment-save") return "Revisa los datos del equipo.";
     return "Datos inválidos. Revisa los campos marcados.";
   }
   if (status === 429) return "Demasiados intentos. Espera un momento e inténtalo de nuevo.";
+  if (status === 503 && context === "ocr") return "La lectura de facturas no está disponible en este momento. Puedes registrar la factura manualmente.";
   if (status >= 500) return "Error del servidor. Inténtalo de nuevo más tarde.";
   return "No se pudo completar la solicitud.";
 }

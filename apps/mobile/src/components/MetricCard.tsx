@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme';
 import { deltaDisplay } from './charts/chartMath';
 import { QualityBadge } from './DataStatusBadge';
+import { Sparkline, type TrendInput } from './Sparkline';
 
 export interface MetricDelta {
   /** Variación numérica tal como la envía la API (p. ej. `kwh_pct.value`). */
@@ -28,6 +29,7 @@ export function MetricCard({
   quality,
   delta,
   helper,
+  trend,
   testID,
 }: {
   label: string;
@@ -37,6 +39,8 @@ export function MetricCard({
   quality?: Quality;
   delta?: MetricDelta | null;
   helper?: string;
+  /** Mini-tendencia de las últimas facturas reales; no se dibuja con menos de 3. */
+  trend?: TrendInput | null;
   testID?: string;
 }) {
   const d = delta ? deltaDisplay(delta.value, delta.goodWhen) : null;
@@ -71,6 +75,7 @@ export function MetricCard({
         ) : null}
         {helper ? <Text style={s.helper}>{helper}</Text> : null}
       </View>
+      {trend ? <Sparkline trend={trend} testID={testID ? `${testID}-trend` : undefined} /> : null}
       {(quality && quality !== 'REAL') || (delta?.quality && delta.quality !== 'REAL') ? (
         <View style={s.badges}>
           {quality ? <QualityBadge quality={quality} /> : null}

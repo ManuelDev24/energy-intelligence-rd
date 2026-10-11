@@ -9,20 +9,22 @@ from pathlib import Path
 
 from app.main import app
 from app.schemas.home import HomeOut
-from app.schemas.bill import BillOut, BillCreate, BillUpdate
+from app.schemas.bill import BillOut, BillCreate, BillUpdate, BillPaymentIn
 from app.schemas.dashboard import DashboardOut
 from app.schemas.equipment import EquipmentOut, EquipmentEstimateOut, EquipmentIn
 from app.schemas.alert import AlertRecord, AlertSettingsOut, AlertSettingsIn, AlertStatusUpdate
 from app.schemas.auth import (UserOut, TokensOut, RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn,
-                              PasswordForgotAccepted, PasswordResetIn)
+                              PasswordForgotAccepted, PasswordResetIn, PasswordChangeIn, DeviceIn, DeviceRemoveIn, InvitationCreateIn,
+                              InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
+                              NotificationPreferencesIn, NotificationPreferencesOut, SessionOut)
 from app.schemas.reading import ReadingCreate, ReadingOut
 from app.schemas.consumption import ConsumptionOut
 from app.schemas.goal import GoalIn, GoalOut, GoalProgressOut
 from app.schemas.contract import ContractIn, ContractOut
 from app.schemas.tariff import TariffOut
 from app.schemas.bill_detail import BillItemsReplace, BillItemsOut, BillAssessment
-from app.schemas.ocr import OcrDraft
-from app.schemas.anomaly import AnomalyRecord
+from app.schemas.ocr import OcrDraft, OcrJobOut
+from app.schemas.anomaly import AnomalyRecord, AnomalyStatusIn
 
 ROOT = Path(__file__).resolve().parents[3]
 MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, AlertRecord,
@@ -30,7 +32,8 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           UserOut, TokensOut, ReadingOut, ReadingCreate, ConsumptionOut, GoalOut, GoalIn, GoalProgressOut,
           TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
-          OcrDraft, AnomalyRecord]
+          PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
+          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, BillPaymentIn, DeviceIn, DeviceRemoveIn]
 
 
 def generate():

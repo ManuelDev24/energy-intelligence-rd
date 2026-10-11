@@ -2,65 +2,105 @@
 
 import { suggestNextPeriod } from "@energyrd/core";
 import { useRouter } from "next/navigation";
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { isOcrActive } from "@energyrd/api-contracts";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { BillForm } from "@/components/bill-form";
 import { QueryState } from "@/components/query-state";
-import { useBills, useCreateBill, useOcrBill } from "@/lib/api/hooks";
-import type { OcrDraft } from "@/lib/api/schemas";
+import { OCR_SLOW_AFTER_MS, useBillOcr, useBills, useCreateBill } from "@/lib/api/hooks";
 import { emptyBillForm } from "@/lib/bill-form";
-import { OCR_FIELDS, ocrDraftToBillForm } from "@/lib/bill-ocr";
+import { OCR_FIELDS, ocrDraftToBillForm, ocrErrorText } from "@/lib/bill-ocr";
 import { userMessage } from "@/lib/api/errors";
 import { useSession } from "@/lib/session";
 
 const confidenceLabel = { high: "Alta", inferred: "Inferida", none: "No detectada" } as const;
+const methodLabel = { text_layer: "Leído del texto del PDF", ocr: "Leído con reconocimiento óptico (OCR)", mixed: "Leído del texto del PDF y con OCR" } as const;
 
 export default function NewBillPage() {
   const router = useRouter();
   const { homeId } = useSession();
   const create = useCreateBill(homeId ?? "");
-  const ocr = useOcrBill(homeId ?? "");
+  const ocr = useBillOcr(homeId ?? "");
   const bills = useBills(homeId ?? "");
-  const [draft, setDraft] = useState<OcrDraft | null>(null);
   const [manual, setManual] = useState(false);
+  const [slow, setSlow] = useState(false);
   const last = [...(bills.data ?? [])].sort((a, b) => b.period_end.localeCompare(a.period_end))[0];
   const next = suggestNextPeriod(last ?? null);
+  const job = ocr.job;
+  const active = ocr.start.isPending || ocr.retry.isPending || (job !== null && isOcrActive(job));
+  const draft = job?.status === "done" ? job.draft : null;
+  const failed = job?.status === "failed";
+
+  // Si la lectura tarda más de lo normal (p. ej. no hay un worker activo) se avisa, sin cortar la espera.
+  useEffect(() => {
+    setSlow(false);
+    if (!active || !ocr.startedAt) return;
+    const timer = setTimeout(() => setSlow(true), Math.max(0, OCR_SLOW_AFTER_MS - (Date.now() - ocr.startedAt)));
+    return () => clearTimeout(timer);
+  }, [active, ocr.startedAt]);
 
   function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setDraft(null);
-    ocr.mutate(file, { onSuccess: setDraft });
+    ocr.reset();
+    ocr.start.mutate(file);
     event.target.value = "";
   }
 
   const initial = draft
     ? ocrDraftToBillForm(draft)
     : { ...emptyBillForm, period_start: next.period_start, period_end: next.period_end, days: String(next.days) };
+  const startError = ocr.start.error ?? ocr.retry.error;
 
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Registrar factura</h1>
-      <p className="text-sm text-muted-foreground">Sube una foto para obtener una sugerencia editable o registra los datos manualmente.</p>
+      <p className="text-sm text-muted-foreground">Sube una foto o un PDF para obtener una sugerencia editable o registra los datos manualmente.</p>
 
       <Card className="max-w-xl">
-        <CardTitle>Importar desde una foto</CardTitle>
-        <CardDescription>La imagen se usa para extraer los campos de esta factura y no se conserva en la interfaz.</CardDescription>
+        <CardTitle>Importar desde una foto o un PDF</CardTitle>
+        <CardDescription>
+          El archivo se guarda cifrado y se asocia a la factura que confirmes. Si no la confirmas, se elimina automáticamente.
+        </CardDescription>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <label className="inline-flex cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
-            {ocr.isPending ? "Analizando…" : "Seleccionar foto"}
-            <input type="file" accept="image/*" className="sr-only" onChange={selectFile} disabled={ocr.isPending} />
+            {active ? "Analizando…" : "Seleccionar foto o PDF"}
+            <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={selectFile} disabled={active} />
           </label>
-          <span className="text-xs text-muted-foreground">JPG, PNG o HEIC</span>
+          <span className="text-xs text-muted-foreground">JPG, PNG, WEBP, HEIC o PDF</span>
         </div>
-        {ocr.error ? <p role="alert" className="mt-3 text-sm text-red-600">{userMessage(ocr.error, "ocr")}</p> : null}
+        {active ? (
+          <div role="status" className="mt-3 text-sm">
+            <p>Analizando tu factura… puede tardar unos segundos. No cierres esta página.</p>
+            {slow ? (
+              <p className="mt-1 text-amber-800">
+                Está tardando más de lo normal. Puedes seguir esperando o <button type="button" className="underline" onClick={() => setManual(true)}>registrar la factura manualmente</button>.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        {startError ? <p role="alert" className="mt-3 text-sm text-red-600">{userMessage(startError, "ocr")}</p> : null}
+        {failed ? (
+          <div role="alert" className="mt-3 text-sm text-red-600">
+            <p>{ocrErrorText(job?.error_code)}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {job?.error_code === "engine_error" ? (
+                <Button type="button" variant="outline" onClick={() => ocr.retry.mutate()} disabled={ocr.retry.isPending}>Reintentar</Button>
+              ) : null}
+              <Button type="button" variant="outline" onClick={() => setManual(true)}>Registrar manualmente</Button>
+            </div>
+          </div>
+        ) : null}
       </Card>
 
-      {draft ? (
+      {draft && job ? (
         <Card className="max-w-xl">
           <CardTitle>Revisa la sugerencia</CardTitle>
-          <CardDescription>OCR es una sugerencia. Revisa y corrige todos los campos antes de guardar la factura.</CardDescription>
+          <CardDescription>
+            La lectura es una sugerencia. Revisa y corrige todos los campos antes de guardar la factura.
+            {job.method ? ` ${methodLabel[job.method]}${job.pages_total && job.pages_total > 1 ? ` (${job.pages_read} de ${job.pages_total} páginas)` : ""}.` : ""}
+          </CardDescription>
           {draft.warnings.length > 0 ? (
             <div role="alert" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
               <strong>Advertencias</strong>
@@ -80,7 +120,7 @@ export default function NewBillPage() {
 
       <QueryState isLoading={bills.isLoading} error={null}>
         <div>
-          {!manual && !draft ? <Button type="button" variant="outline" onClick={() => setManual(true)}>Registrar manualmente</Button> : null}
+          {!manual && !draft && !failed ? <Button type="button" variant="outline" onClick={() => setManual(true)}>Registrar manualmente</Button> : null}
           {(manual || draft) ? (
             <div className="mt-4">
               {manual && !draft ? <h2 className="mb-3 text-lg font-semibold">Entrada manual</h2> : null}
@@ -90,7 +130,7 @@ export default function NewBillPage() {
                 submitLabel="Confirmar y guardar factura"
                 pending={create.isPending}
                 serverError={create.error ? userMessage(create.error, "bill-save") : undefined}
-                onSubmit={(value) => create.mutate(value, { onSuccess: () => router.push("/dashboard") })}
+                onSubmit={(value) => create.mutate(draft && job ? { ...value, document_id: job.document_id } : value, { onSuccess: () => router.push("/dashboard") })}
                 onCancel={() => router.push("/bills")}
               />
             </div>

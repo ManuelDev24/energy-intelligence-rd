@@ -150,6 +150,33 @@ describe("Consumo por lecturas", () => {
     expect(screen.queryByText(/Infinity/)).toBeNull();
   });
 
+  it("ERD-CHARTS-01: la comparación se puede desactivar y volver a activar", async () => {
+    vi.spyOn(getApi(), "getConsumption").mockResolvedValue(ConsumptionSchema.parse(CONSUMPTION_WITH_COMPARISON));
+    renderWithApp(<ConsumptionPage />, HOME_A);
+    await screen.findByText("Total del rango");
+    const toggle = screen.getByRole("checkbox", { name: "Comparar con el período anterior" });
+    expect(toggle).toBeChecked();
+    const total = () => screen.getByText("Total del rango").parentElement!;
+    expect(within(total()).getByText("+40.00%")).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(toggle).not.toBeChecked();
+    expect(within(total()).queryByText("+40.00%")).toBeNull();
+    expect(within(total()).queryByText(/vs\./)).toBeNull();
+    fireEvent.click(toggle);
+    expect(within(total()).getByText("+40.00%")).toBeInTheDocument();
+  });
+
+  it("ERD-CHARTS-01: desactivar la comparación también oculta el delta en kWh cuando no hay porcentaje", async () => {
+    vi.spyOn(getApi(), "getConsumption").mockResolvedValue(ConsumptionSchema.parse({
+      ...CONSUMPTION_WITH_COMPARISON,
+      comparison: { ...CONSUMPTION_WITH_COMPARISON.comparison!, kwh_pct: null, kwh_delta: { value: "140.00", unit: "kWh", quality: "ESTIMATED" } },
+    }));
+    renderWithApp(<ConsumptionPage />, HOME_A);
+    await screen.findByText("+140 kWh");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Comparar con el período anterior" }));
+    expect(screen.queryByText("+140 kWh")).toBeNull();
+  });
+
   it("sin comparación (poco historial): no muestra nada extra junto al total", async () => {
     renderWithApp(<ConsumptionPage />, HOME_A);
     await screen.findByText("Total del rango");

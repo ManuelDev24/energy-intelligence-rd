@@ -93,24 +93,26 @@ export const slotWidth = (count: number, width: number) => (count > 0 && width >
 export interface ShareInput {
   key: string;
   label: string;
+  /** kWh/mes estimados del equipo (de la API). */
   value: number;
+  /** % del total de los equipos declarados: lo calcula el SERVIDOR (ERD-DEV-02); aquí solo se presenta. */
+  pct: number;
 }
 
 export interface Share extends ShareInput {
-  /** Porcentaje del total de la serie (0–100), redondeado a 1 decimal. */
-  pct: number;
   /** Ancho relativo de la barra respecto a la mayor (0–1). */
   ratio: number;
 }
 
 /**
- * Desglose CH-10: ordena de mayor a menor, agrupa lo que exceda `maxItems` en "Otros" y expresa
- * cada parte como % del total de equipos declarados. El total 0 devuelve [] (no hay gráfico vacío).
+ * Desglose CH-10: ordena de mayor a menor, agrupa lo que exceda `maxItems` en "Otros" y presenta el porcentaje que
+ * calculó la API (no se recalcula en el cliente). Sin equipos con consumo devuelve [] (no hay gráfico vacío).
  */
 export function equipmentShares(items: readonly ShareInput[], maxItems = 6, othersLabel = 'Otros'): Share[] {
-  const clean = items.map((i) => ({ ...i, value: finiteNonNegative(i.value) })).filter((i) => i.value > 0);
-  const total = clean.reduce((acc, i) => acc + i.value, 0);
-  if (total <= 0) return [];
+  const clean = items
+    .map((i) => ({ ...i, value: finiteNonNegative(i.value), pct: finiteNonNegative(i.pct) }))
+    .filter((i) => i.value > 0);
+  if (clean.length === 0) return [];
   const sorted = [...clean].sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
   let rows: ShareInput[] = sorted;
   if (sorted.length > maxItems) {
@@ -118,11 +120,16 @@ export function equipmentShares(items: readonly ShareInput[], maxItems = 6, othe
     const rest = sorted.slice(maxItems - 1);
     rows = [
       ...head,
-      { key: 'others', label: `${othersLabel} (${rest.length})`, value: rest.reduce((acc, i) => acc + i.value, 0) },
+      {
+        key: 'others',
+        label: `${othersLabel} (${rest.length})`,
+        value: rest.reduce((acc, i) => acc + i.value, 0),
+        pct: Math.round(rest.reduce((acc, i) => acc + i.pct, 0) * 100) / 100,
+      },
     ];
   }
-  const max = Math.max(...rows.map((r) => r.value));
-  return rows.map((r) => ({ ...r, pct: Math.round((r.value / total) * 1000) / 10, ratio: r.value / max }));
+  const max = Math.max(...rows.map((r) => r.pct));
+  return rows.map((r) => ({ ...r, ratio: max > 0 ? r.pct / max : 0 }));
 }
 
 export type DeltaDirection = 'up' | 'down' | 'flat';

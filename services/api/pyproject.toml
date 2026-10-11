@@ -18,13 +18,20 @@ dependencies = [
     "httpx>=0.27,<1",
     # ERD-OCR-01: subida de foto de factura (multipart) + OCR local (sin SaaS, sin costo por página).
     "python-multipart>=0.0.9,<1",
-    "pillow>=10.3,<12",
+    "pillow>=12.3,<13",
     "pytesseract>=0.3.10,<1",
+    # ERD-OBS-01: errores y trazas a Sentry (opcional: sin SENTRY_DSN no se envía nada), con redacción de datos personales.
+    "sentry-sdk>=2.20,<3",
+    "cryptography>=50,<51",
+    "boto3>=1.35,<2",
+    "pypdfium2>=4.30,<6",
+    "pillow-heif>=0.18,<2",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest>=8,<9",
+    "moto[s3]>=5.0,<6",
+    "pytest>=9.0.3,<10",
 ]
 
 [tool.pytest.ini_options]

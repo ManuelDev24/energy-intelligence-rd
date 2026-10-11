@@ -9,10 +9,12 @@ from app.api.v1 import api_router
 from app.config import settings
 from app.database import engine
 from app.observability import RequestContextMiddleware, configure_logging
+from app.telemetry import init_telemetry
 from app.services.errors import ApplicationError
 from app.services.auth_abuse import RateLimited
 
 configure_logging()
+init_telemetry(settings)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

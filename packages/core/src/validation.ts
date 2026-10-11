@@ -1,4 +1,5 @@
 // Validaciones de formularios compartidas (mismas reglas que la API: devuelve 422 si no se cumplen).
+import { isEquipmentIcon, isEquipmentKind, type EquipmentIcon, type EquipmentKind } from './equipmentCatalog';
 
 /** Acepta "1,234.5", "1234,5" o "1234.5". null si no es número. */
 export function parseDecimal(s: string): number | null {
@@ -13,6 +14,12 @@ export function parseDecimal(s: string): number | null {
 export interface EquipmentFormValues {
   name: string;
   room: string;
+  /** Clave del catálogo (`EQUIPMENT_KINDS`). */
+  kind: string;
+  brand: string;
+  model: string;
+  /** '' = icono por defecto del tipo. */
+  icon: string;
   powerW: string;
   hoursPerDay: string;
 }
@@ -20,9 +27,17 @@ export interface EquipmentFormValues {
 export interface EquipmentPayload {
   name: string;
   room: string | null;
+  kind: EquipmentKind;
+  brand: string | null;
+  model: string | null;
+  icon: EquipmentIcon | null;
   power_w: string;
   hours_per_day: string;
 }
+
+export const EMPTY_EQUIPMENT_FORM: EquipmentFormValues = {
+  name: '', room: '', kind: 'other', brand: '', model: '', icon: '', powerW: '', hoursPerDay: '',
+};
 
 export type EquipmentFormErrors = Partial<Record<keyof EquipmentFormValues, string>>;
 
@@ -41,6 +56,10 @@ export function validateEquipment(v: EquipmentFormValues): {
   if (!name) errors.name = 'Ingrese un nombre';
   else if (name.length > 120) errors.name = 'Máximo 120 caracteres';
   if (v.room.trim().length > 80) errors.room = 'Máximo 80 caracteres';
+  if (!isEquipmentKind(v.kind)) errors.kind = 'Elija un tipo de equipo';
+  if (v.brand.trim().length > 60) errors.brand = 'Máximo 60 caracteres';
+  if (v.model.trim().length > 60) errors.model = 'Máximo 60 caracteres';
+  if (v.icon !== '' && !isEquipmentIcon(v.icon)) errors.icon = 'Elija un icono de la lista';
 
   const power = parseDecimal(v.powerW);
   if (power === null) errors.powerW = 'Ingrese un número';
@@ -57,7 +76,16 @@ export function validateEquipment(v: EquipmentFormValues): {
   if (Object.keys(errors).length > 0) return { errors, input: null };
   return {
     errors,
-    input: { name, room: v.room.trim() || null, power_w: String(power), hours_per_day: String(hours) },
+    input: {
+      name,
+      room: v.room.trim() || null,
+      kind: v.kind as EquipmentKind,
+      brand: v.brand.trim() || null,
+      model: v.model.trim() || null,
+      icon: v.icon === '' ? null : (v.icon as EquipmentIcon),
+      power_w: String(power),
+      hours_per_day: String(hours),
+    },
   };
 }
 

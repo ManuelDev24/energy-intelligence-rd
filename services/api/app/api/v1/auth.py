@@ -1,12 +1,17 @@
+import uuid
+
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.api.auth_deps import auth_required, current_user
+from app.api.auth_deps import auth_required, current_session, current_user
 from app.api.auth_abuse import forgot_budget, login_budget, register_budget, refresh_budget, reset_budget
 from app.database import get_db
-from app.schemas.auth import (AccountDeletionIn, Credentials, PasswordForgotAccepted, PasswordForgotIn, PasswordResetIn,
-                              RefreshIn, RegisterIn, TokensOut, UserOut)
-from app.services import account, auth, email, password_recovery
+from app.config import settings
+from app.schemas.auth import (AccountDeletionIn, Credentials, DeviceIn, DeviceRemoveIn, NotificationPreferencesIn, NotificationPreferencesOut,
+                              PasswordChangeIn, PasswordForgotAccepted, PasswordForgotIn, PasswordResetIn, RefreshIn,
+                              RegisterIn, SessionOut, TokensOut, UserOut)
+from app.services import account, account_settings, auth, data_export, email, password_recovery
 
 router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(auth_required)])
 
@@ -53,6 +58,63 @@ def delete_me(payload: AccountDeletionIn, user=Depends(_authenticated_login_budg
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
+# ERD-PROF-01: preferencias de aviso y sesiones activas (solo con sesión válida; siempre no-store).
+@router.get("/me/preferences", response_model=NotificationPreferencesOut)
+def get_preferences(response: Response, user=Depends(current_user), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return account_settings.get_preferences(db, user)
+
+
+@router.put("/me/preferences", response_model=NotificationPreferencesOut)
+def put_preferences(payload: NotificationPreferencesIn, response: Response, user=Depends(current_user),
+                    db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return account_settings.save_preferences(db, user, payload.alerts_email, payload.alerts_push)
+
+
+@router.put("/devices", status_code=204)
+def put_device(payload: DeviceIn, user=Depends(current_user), db: Session = Depends(get_db)):
+    """Registra (o renueva) el dispositivo para recibir avisos push. Idempotente."""
+    account_settings.register_device(db, user, payload.token, payload.platform, max_devices=settings.MAX_DEVICES_PER_USER)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/devices/remove", status_code=204)
+def remove_device(payload: DeviceRemoveIn, user=Depends(current_user), db: Session = Depends(get_db)):
+    """Quita el dispositivo (al cerrar sesión). POST con cuerpo porque el token no debe viajar en la URL."""
+    account_settings.remove_device(db, user, payload.token)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/sessions", response_model=list[SessionOut])
+def list_sessions(response: Response, auth_ctx=Depends(current_session), db: Session = Depends(get_db)):
+    user, session = auth_ctx
+    response.headers["Cache-Control"] = "no-store"
+    return account_settings.list_sessions(db, user, session.id)
+
+
+@router.post("/sessions/revoke-others", status_code=204)
+def revoke_other_sessions(auth_ctx=Depends(current_session), db: Session = Depends(get_db)):
+    user, session = auth_ctx
+    account_settings.revoke_other_sessions(db, user, session.id)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def revoke_session(session_id: uuid.UUID, user=Depends(current_user), db: Session = Depends(get_db)):
+    account_settings.revoke_session(db, user, session_id)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+# ERD-LEGAL-FINAL: derecho de acceso/portabilidad. Comparte el presupuesto de /login (es una lectura pesada y sensible).
+@router.get("/me/export")
+def export_me(user=Depends(_authenticated_login_budget), db: Session = Depends(get_db)):
+    data = data_export.export_user_data(db, user)
+    stamp = data["generated_at"][:10]
+    return JSONResponse(data, headers={"Cache-Control": "no-store",
+                                       "Content-Disposition": f'attachment; filename="energyrd-datos-{stamp}.json"'})
+
+
 # ERD-AUTH-05: recuperación de contraseña. Respuesta 202 idéntica exista o no la cuenta; el correo se
 # entrega en segundo plano DESPUÉS de enviar la respuesta, así su latencia o fallo no la delata.
 @router.post("/password/forgot", status_code=202, response_model=PasswordForgotAccepted,
@@ -65,6 +127,15 @@ def forgot_password(payload: PasswordForgotIn, request: Request, background: Bac
         background.add_task(email.deliver, message)
     response.headers["Cache-Control"] = "no-store"
     return PasswordForgotAccepted(status="accepted")
+
+
+# ERD-AUTH-06: cambio con sesión iniciada. Los intentos fallidos gastan el presupuesto de /login.
+@router.post("/password/change", response_model=TokensOut)
+def change_password(payload: PasswordChangeIn, response: Response, user=Depends(_authenticated_login_budget),
+                    db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return account.change_password(db, user, payload.current_password.get_secret_value(),
+                                   payload.new_password.get_secret_value())
 
 
 @router.post("/password/reset", status_code=204, dependencies=[Depends(reset_budget)])

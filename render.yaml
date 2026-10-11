@@ -40,6 +40,10 @@ projects:
               # Recuperación de contraseña (variables leídas por la API cuando se integre ese trabajo).
               - key: EMAIL_BACKEND
                 value: resend
+              # ERD-STORE-01 / ERD-WORKER-01: originales de factura cifrados en un bucket S3-compatible PRIVADO.
+              # Los secretos y el bucket van en cada servicio (sync: false); aquí solo lo no secreto.
+              - key: STORAGE_BACKEND
+                value: s3
         services:
           - type: web
             name: energyrd-api-staging
@@ -67,6 +71,18 @@ projects:
               - key: EMAIL_FROM # p. ej. "Energy RD <no-reply@staging.TU-DOMINIO>"
                 sync: false
               - key: PASSWORD_RESET_URL # https://<web-staging>.onrender.com/<ruta de restablecimiento>
+                sync: false
+              - key: STORAGE_S3_BUCKET
+                sync: false
+              - key: STORAGE_S3_ENDPOINT_URL # vacío = AWS S3; Cloudflare R2: https://<cuenta>.r2.cloudflarestorage.com
+                sync: false
+              - key: STORAGE_S3_ACCESS_KEY_ID
+                sync: false
+              - key: STORAGE_S3_SECRET_ACCESS_KEY
+                sync: false
+              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver services/api/STORAGE.md
+                sync: false
+              - key: STORAGE_URL_SIGNING_KEY # ≥43 caracteres aleatorios
                 sync: false
 
           - type: web
@@ -98,6 +114,49 @@ projects:
               - key: WEB_ORIGIN # https://<web-staging>.onrender.com (origen, sin ruta)
                 sync: false
 
+          # ERD-WORKER-01: ejecuta los trabajos en segundo plano (OCR de originales, anomalías, alertas y avisos,
+          # mantenimiento). La cola vive en PostgreSQL: mismo DATABASE_URL que la API. Docs: docs/ops/JOBS.md.
+          # Render no ofrece workers gratuitos: este servicio es de pago. Alternativa sin costo fijo: no desplegarlo y ejecutar
+          # `python -m app.worker --once` a mano o desde un Cron Job cuando se necesite (ver docs/ops/JOBS.md).
+          - type: worker
+            name: energyrd-worker-staging
+            runtime: docker
+            plan: starter
+            region: virginia
+            branch: Dev
+            dockerfilePath: ./services/api/Dockerfile
+            dockerContext: ./services/api
+            dockerCommand: python -m app.worker
+            autoDeployTrigger: commit
+            envVars:
+              - fromGroup: energyrd-api-staging-config
+              - key: DATABASE_URL # el MISMO que la API de este entorno
+                sync: false
+              - key: AUTH_SIGNING_KEY # la config se valida igual en el worker; usar el mismo valor que la API
+                sync: false
+              - key: CORS_ORIGINS
+                sync: false
+              - key: RESEND_API_KEY # avisos por correo (alertas)
+                sync: false
+              - key: EMAIL_FROM
+                sync: false
+              - key: PASSWORD_RESET_URL # su origen es el enlace «/alerts» de los correos de aviso
+                sync: false
+              - key: EXPO_ACCESS_TOKEN # opcional: avisos push (Expo Push Service); vacío = sin token de acceso
+                sync: false
+              - key: STORAGE_S3_BUCKET
+                sync: false
+              - key: STORAGE_S3_ENDPOINT_URL # vacío = AWS S3; Cloudflare R2: https://<cuenta>.r2.cloudflarestorage.com
+                sync: false
+              - key: STORAGE_S3_ACCESS_KEY_ID
+                sync: false
+              - key: STORAGE_S3_SECRET_ACCESS_KEY
+                sync: false
+              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver services/api/STORAGE.md
+                sync: false
+              - key: STORAGE_URL_SIGNING_KEY # ≥43 caracteres aleatorios
+                sync: false
+
       # --------------------------------------------------------------- PRODUCTION
       - name: production
         envVarGroups:
@@ -119,6 +178,10 @@ projects:
                 value: "10"
               - key: EMAIL_BACKEND
                 value: resend
+              # ERD-STORE-01 / ERD-WORKER-01: originales de factura cifrados en un bucket S3-compatible PRIVADO.
+              # Los secretos y el bucket van en cada servicio (sync: false); aquí solo lo no secreto.
+              - key: STORAGE_BACKEND
+                value: s3
         services:
           - type: web
             name: energyrd-api-prod
@@ -148,6 +211,18 @@ projects:
                 sync: false
               - key: PASSWORD_RESET_URL
                 sync: false
+              - key: STORAGE_S3_BUCKET
+                sync: false
+              - key: STORAGE_S3_ENDPOINT_URL # vacío = AWS S3; Cloudflare R2: https://<cuenta>.r2.cloudflarestorage.com
+                sync: false
+              - key: STORAGE_S3_ACCESS_KEY_ID
+                sync: false
+              - key: STORAGE_S3_SECRET_ACCESS_KEY
+                sync: false
+              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver services/api/STORAGE.md
+                sync: false
+              - key: STORAGE_URL_SIGNING_KEY # ≥43 caracteres aleatorios
+                sync: false
 
           - type: web
             name: energyrd-web-prod
@@ -169,4 +244,45 @@ projects:
               - key: API_BASE_URL
                 sync: false
               - key: WEB_ORIGIN
+                sync: false
+
+          # ERD-WORKER-01: ejecuta los trabajos en segundo plano (OCR de originales, anomalías, alertas y avisos,
+          # mantenimiento). La cola vive en PostgreSQL: mismo DATABASE_URL que la API. Docs: docs/ops/JOBS.md.
+          - type: worker
+            name: energyrd-worker-prod
+            runtime: docker
+            plan: starter
+            region: virginia
+            branch: main
+            dockerfilePath: ./services/api/Dockerfile
+            dockerContext: ./services/api
+            dockerCommand: python -m app.worker
+            autoDeployTrigger: "off"
+            envVars:
+              - fromGroup: energyrd-api-production-config
+              - key: DATABASE_URL # el MISMO que la API de este entorno
+                sync: false
+              - key: AUTH_SIGNING_KEY # la config se valida igual en el worker; usar el mismo valor que la API
+                sync: false
+              - key: CORS_ORIGINS
+                sync: false
+              - key: RESEND_API_KEY # avisos por correo (alertas)
+                sync: false
+              - key: EMAIL_FROM
+                sync: false
+              - key: PASSWORD_RESET_URL # su origen es el enlace «/alerts» de los correos de aviso
+                sync: false
+              - key: EXPO_ACCESS_TOKEN # opcional: avisos push (Expo Push Service); vacío = sin token de acceso
+                sync: false
+              - key: STORAGE_S3_BUCKET
+                sync: false
+              - key: STORAGE_S3_ENDPOINT_URL # vacío = AWS S3; Cloudflare R2: https://<cuenta>.r2.cloudflarestorage.com
+                sync: false
+              - key: STORAGE_S3_ACCESS_KEY_ID
+                sync: false
+              - key: STORAGE_S3_SECRET_ACCESS_KEY
+                sync: false
+              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver services/api/STORAGE.md
+                sync: false
+              - key: STORAGE_URL_SIGNING_KEY # ≥43 caracteres aleatorios
                 sync: false

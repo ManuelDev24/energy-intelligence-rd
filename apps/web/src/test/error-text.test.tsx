@@ -22,7 +22,7 @@ describe("la UI nunca muestra el texto de error de la API", () => {
   it.each([
     [409, "bill-save", "Ya existe una factura que se solapa con ese período."],
     [422, "bill-save", "Revisa los datos de la factura."],
-    [422, "ocr", "No se pudo leer la imagen (JPG, PNG o HEIC de hasta 10 MB). Puedes registrar la factura manualmente."],
+    [422, "ocr", "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC de hasta 10 MB) o un PDF de hasta 20 MB. Puedes registrar la factura manualmente."],
     [404, "bill-delete", "La factura ya no existe. Actualiza la lista."],
     [422, "equipment-save", "Revisa los datos del equipo."],
     [404, "alert-update", "La alerta ya no existe. Actualiza la lista."],

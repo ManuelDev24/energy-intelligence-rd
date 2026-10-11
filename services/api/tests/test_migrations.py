@@ -1,6 +1,7 @@
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import DataError
 from alembic import command
+from alembic.script import ScriptDirectory
 import pytest
 
 
@@ -114,7 +115,9 @@ def test_percentage_downgrade_refuses_loss_of_extreme_values(migrated, alembic_c
         command.downgrade(alembic_cfg, "0003")
     with migrated.connect() as c:
         assert str(c.execute(text("SELECT kwh_pct FROM alerts")).scalar()) == "99999999999800.00"
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0013"
+        # El downgrade fallido es transaccional: la base debe seguir en la revisión cabeza actual.
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == \
+            ScriptDirectory.from_config(alembic_cfg).get_current_head()
 
 
 PHASE2_TABLES = {"meter_readings", "home_goals", "tariffs", "tariff_fixed_charges", "tariff_blocks"}
@@ -227,3 +230,18 @@ def test_0007_unique_reading_time_and_overlapping_tariff_versions(migrated):
     with pytest.raises(IntegrityError):  # solapa con la BTS-1 oficial cargada en 0008
         with migrated.begin() as c:
             _tariff(c, code="BTS-1", start="2026-12-01", end="2027-03-31")
+
+
+def test_0021_existing_equipment_becomes_other_without_guessing_and_downgrade_roundtrips(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0020")
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'e','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO equipment(id,home_id,name,power_w,hours_per_day) VALUES(gen_random_uuid(),:h,'Aire sala',1500,6)"), {"h": hid})
+    command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:
+        row = c.execute(text("SELECT kind, brand, model, icon FROM equipment")).one()
+        assert tuple(row) == ("other", None, None, None)
+    command.downgrade(alembic_cfg, "0020")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT name FROM equipment")).scalar_one() == "Aire sala"
+    command.upgrade(alembic_cfg, "head")

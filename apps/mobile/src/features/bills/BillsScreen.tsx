@@ -4,12 +4,12 @@ import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-n
 import { describeError } from '../../api/errors';
 import { useBills, useDeleteBill } from '../../api/hooks';
 import type { Bill } from '../../api/types';
+import { BillCard } from '../../components/BillCard';
 import { ConsumptionChart } from '../../components/charts/ConsumptionChart';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../../components/states';
-import { Button, TextAction } from '../../components/ui';
-import { fmtDop, fmtKwh, fmtPeriod } from '../../lib/format';
+import { Button } from '../../components/ui';
+import { fmtPeriod } from '../../lib/format';
 import { useSession } from '../../store/session';
-import { billOpenTestID } from './detail/screenState';
 import { colors, radius, spacing } from '../../theme';
 
 /** Historial (CH-01 sin proyección): solo facturas registradas, hasta 12. */
@@ -61,40 +61,7 @@ export function BillsScreen({ onAdd, onOpen }: { onAdd: () => void; onOpen?: (ho
           <EmptyState icon="receipt-outline" title="Sin facturas todavía" hint="Registre la primera factura de esta vivienda." />
         }
         renderItem={({ item }) => (
-          <View style={s.card} testID={`bill-${item.period_start}`}>
-            <View style={s.row}>
-              <Text style={s.period}>{fmtPeriod(item.period_start, item.period_end)}</Text>
-              {item.source === 'seed' ? (
-                <Text style={s.demo} accessibilityLabel="Factura de demostración">
-                  DEMO
-                </Text>
-              ) : null}
-            </View>
-            <Text style={s.main}>
-              {fmtKwh(item.kwh)} · {fmtDop(item.amount_dop)}
-            </Text>
-            <View style={s.row}>
-              <Text style={s.meta}>{item.days} días</Text>
-              <View style={s.actions}>
-                {onOpen ? (
-                  <TextAction
-                    title="Ver detalle"
-                    onPress={() => onOpen(homeId, item.id)}
-                    testID={billOpenTestID(item.period_start)}
-                    accessibilityLabel={`Ver detalle de la factura de ${fmtPeriod(item.period_start, item.period_end)}`}
-                  />
-                ) : null}
-                {item.source === 'manual' ? (
-                  <TextAction
-                    title="Eliminar"
-                    tone="danger"
-                    onPress={() => confirmDelete(item)}
-                    accessibilityLabel={`Eliminar la factura de ${fmtPeriod(item.period_start, item.period_end)}`}
-                  />
-                ) : null}
-              </View>
-            </View>
-          </View>
+          <BillCard bill={item} onOpen={onOpen ? () => onOpen(homeId, item.id) : undefined} onDelete={() => confirmDelete(item)} />
         )}
       />
       <View style={s.footer}>
@@ -109,10 +76,5 @@ const s = StyleSheet.create({
   card: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.lg, borderWidth: 1, borderColor: colors.border, gap: 4 },
   chartTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  period: { fontWeight: '600', color: colors.text },
-  main: { fontSize: 16, color: colors.text, fontVariant: ['tabular-nums'] },
-  meta: { color: colors.muted, fontSize: 13 },
-  demo: { fontSize: 10, fontWeight: '700', color: colors.warning, backgroundColor: colors.warningBg, paddingHorizontal: 6, borderRadius: radius.full },
   footer: { padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card },
 });

@@ -22,6 +22,7 @@ import {
   type Consumption,
   type Goal,
   type GoalProgress,
+  type OcrJob,
   type Reading,
 } from "@/lib/api/schemas";
 import { ApiError, type Api } from "@/lib/api/types";
@@ -81,6 +82,8 @@ function bill(
     days,
     reading_previous: null,
     reading_current: null,
+    due_date: null,
+    paid_at: null,
     source: "seed",
     created_at: "2026-01-01T00:00:00Z",
   };
@@ -120,6 +123,7 @@ export const DASHBOARD_A = {
     bills_used: 3,
     kwh: { value: "486.67", unit: "kWh", quality: "PROJECTED" },
     amount_dop: { value: "6553.33", unit: "RD$", quality: "PROJECTED" },
+    kwh_pct_vs_latest: { value: "15.87", unit: "%", quality: "PROJECTED" },
     note: "Proyección de la próxima factura mensual por tendencia lineal; no incluye cambios de tarifa.",
   },
   alert: {
@@ -161,6 +165,25 @@ const dashboardWithoutProjection = (home: Home): Dashboard => ({
   },
   quality_legend: DASHBOARD_A.quality_legend,
 });
+
+export const OCR_DOC = "99999999-9999-4999-8999-999999999999";
+const ocrField = (value: string | null) => ({ value, confidence: value === null ? "none" as const : "high" as const });
+export const OCR_DRAFT = {
+  period_start: ocrField("2026-10-01"), period_end: ocrField("2026-10-31"), days: ocrField("31"), kwh: ocrField("320"),
+  amount_dop: ocrField("4500.00"), reading_previous: ocrField(null), reading_current: ocrField(null), due_date: ocrField("2026-11-10"),
+  warnings: [], raw_text_excerpt: "TOTAL A PAGAR",
+};
+const OCR_JOB: OcrJob = {
+  document_id: OCR_DOC, status: "pending", attempts: 0, method: null, pages_read: null, pages_total: null, draft: null,
+  error_code: null, error_message: null, created_at: "2026-10-10T12:00:00Z", finished_at: null,
+};
+/** Controles del mock de OCR asíncrono (solo tests). */
+let ocrOutcome: "done" | "failed" = "done";
+let ocrFailure: "unreadable" | "engine_error" = "unreadable";
+let ocrPolls = 1;
+let ocrPollsLeft = 0;
+let ocrJob: OcrJob | null = null;
+export function setMockOcr(outcome: "done" | "failed", polls = 1, failure: "unreadable" | "engine_error" = "unreadable") { ocrOutcome = outcome; ocrPolls = polls; ocrFailure = failure; }
 
 export function createMockApi(): Api {
   const homes = HOMES.map((h) => HomeSchema.parse(h));
@@ -211,6 +234,8 @@ export function createMockApi(): Api {
         ...input,
         reading_previous: input.reading_previous ?? null,
         reading_current: input.reading_current ?? null,
+        due_date: input.due_date ?? null,
+        paid_at: null,
         id: `bbbbbbbb-0000-4000-8000-${String(counter).padStart(12, "0")}`,
         home_id: homeId,
         source: "manual",
@@ -222,10 +247,37 @@ export function createMockApi(): Api {
     ocrBill: async () => {
       throw new ApiError(501, "OCR no disponible en el mock");
     },
+    // ERD-OCR-PROD: el trabajo termina tras `ocrPolls` consultas; `ocrOutcome` decide si sale un borrador o un fallo.
+    startOcrJob: async (homeId) => {
+      requireHome(homeId);
+      ocrPollsLeft = ocrPolls;
+      ocrJob = { ...OCR_JOB, status: "pending" };
+      return ocrJob;
+    },
+    getOcrJob: async (_homeId, documentId) => {
+      if (!ocrJob || ocrJob.document_id !== documentId) throw new ApiError(404, "No encontrado");
+      if (ocrPollsLeft > 0) { ocrPollsLeft -= 1; return { ...ocrJob, status: ocrPollsLeft === 0 ? "processing" : "pending" }; }
+      ocrJob = ocrOutcome === "done"
+        ? { ...OCR_JOB, status: "done", method: "text_layer", pages_read: 2, pages_total: 2, finished_at: "2026-10-10T12:00:05Z", draft: OCR_DRAFT }
+        : { ...OCR_JOB, status: "failed", attempts: 1, error_code: ocrFailure, error_message: ocrFailure === "unreadable" ? "No se pudo leer el archivo. Pruebe con una foto más nítida o con el PDF original de la distribuidora." : "No se pudo leer la factura en este momento. Intente de nuevo en unos minutos.", finished_at: "2026-10-10T12:00:05Z" };
+      return ocrJob!;
+    },
+    retryOcrJob: async () => {
+      ocrOutcome = "done";
+      ocrPollsLeft = ocrPolls;
+      ocrJob = { ...OCR_JOB, status: "pending" };
+      return ocrJob;
+    },
+    setBillPayment: async (homeId, billId, paid) => {
+      const current = requireBill(homeId, billId);
+      const updated: Bill = { ...current, paid_at: paid ? "2026-10-10T12:00:00Z" : null };
+      bills = bills.map((b) => (b.id === billId ? updated : b));
+      return updated;
+    },
     updateBill: async (homeId, billId, input) => {
       const current = requireBill(homeId, billId);
       assertNoOverlap(homeId, input, billId);
-      const updated: Bill = { ...current, ...input };
+      const updated: Bill = { ...current, ...input, due_date: input.due_date ?? null };
       bills = bills.map((b) => (b.id === billId ? updated : b));
       return updated;
     },
@@ -239,6 +291,9 @@ export function createMockApi(): Api {
       return DashboardSchema.parse(homeId === HOME_A ? DASHBOARD_A : dashboardWithoutProjection(home));
     },
     listAnomalies: async () => [],
+    updateAnomaly: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
 
     listEquipment: async (homeId) => {
       requireHome(homeId);
@@ -268,16 +323,23 @@ export function createMockApi(): Api {
       requireHome(homeId);
       equipment = equipment.filter((e) => !(e.id === id && e.home_id === homeId));
     },
-    // Estático: el estimado lo calcula el backend.
+    // Simplificado: el estimado real (y el reparto que suma 100,00) lo calcula el backend.
     getEstimate: async (homeId) => {
       requireHome(homeId);
       const own = equipment.filter((e) => e.home_id === homeId);
+      const daily = own.map((e) => (Number(e.power_w) * Number(e.hours_per_day)) / 1000);
+      const sum = daily.reduce((a, b) => a + b, 0);
+      const est = (value: number, unit: string) => ({ value: value.toFixed(2), unit, quality: "ESTIMATED" as const });
       return EquipmentEstimateSchema.parse({
         home_id: homeId,
         equipment_count: own.length,
-        items: [],
-        total_daily_kwh: { value: "0.00", unit: "kWh/día", quality: "ESTIMATED" },
-        total_monthly_kwh: { value: "0.00", unit: "kWh/mes", quality: "ESTIMATED" },
+        items: own.map((e, i) => ({
+          equipment_id: e.id, name: e.name, room: e.room, kind: e.kind, brand: e.brand, model: e.model, icon: e.icon,
+          daily_kwh: est(daily[i], "kWh/día"), monthly_kwh: est(daily[i] * 30, "kWh/mes"),
+          share_pct: est(sum > 0 ? (daily[i] / sum) * 100 : 0, "%"),
+        })),
+        total_daily_kwh: est(sum, "kWh/día"),
+        total_monthly_kwh: est(sum * 30, "kWh/mes"),
         days_per_month: 30,
         latest_bill_kwh: null,
         bill_coverage_pct: null,
@@ -524,6 +586,7 @@ export const ALERT_A: AlertItem = {
   id: "dddddddd-0000-4000-8000-000000000001",
   home_id: HOME_A,
   bill_id: BILLS[2].id,
+  anomaly_id: null,
   type: "bill_variation",
   severity: "critical",
   status: "unread",

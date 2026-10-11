@@ -1,6 +1,6 @@
 "use client";
 
-import { fmtDop, fmtKwh, fmtMonth, fmtNumber, tokens, type ChartBar } from "@energyrd/core";
+import { billDaysLabel, fmtDop, fmtKwh, fmtMonth, fmtNumber, tokens, type ChartBar } from "@energyrd/core";
 import { Table2 } from "lucide-react";
 import { useId, useState } from "react";
 import {
@@ -30,6 +30,8 @@ interface Point {
   month: string;
   kwh: number;
   amountDop: number | null;
+  /** Días facturados (solo facturas reales). */
+  days?: number;
   projected: boolean;
 }
 
@@ -39,12 +41,13 @@ const toPoint = (b: ChartBar): Point => ({
   month: fmtMonth(b.periodEnd),
   kwh: b.kwh,
   amountDop: b.amountDop,
+  days: b.days,
   projected: b.kind === "PROJECTED",
 });
 
 /** Resumen textual de la gráfica: lo que lee un lector de pantalla en lugar de las barras. */
 export function consumptionSummary(series: readonly ChartBar[]): string {
-  const parts = series.map(toPoint).map((p) => `${p.month}: ${fmtKwh(p.kwh)}${p.projected ? " (proyectado)" : ""}`);
+  const parts = series.map(toPoint).map((p) => `${p.month}: ${fmtKwh(p.kwh)}${p.days ? ` (${billDaysLabel(p.days)})` : ""}${p.projected ? " (proyectado)" : ""}`);
   return `Consumo mensual por factura, en kWh. ${parts.join("; ")}.`;
 }
 
@@ -58,6 +61,7 @@ function ChartTooltip({ active, payload }: TooltipContentProps) {
         {p.projected ? <DataStatusBadge quality="PROJECTED" /> : null}
       </p>
       <p className="tabular-nums">{fmtKwh(p.kwh)}</p>
+      {p.days ? <p className="tabular-nums text-muted-foreground">{billDaysLabel(p.days)} facturados</p> : null}
       {p.amountDop !== null ? <p className="tabular-nums text-muted-foreground">{fmtDop(p.amountDop)}</p> : null}
     </div>
   );
@@ -179,6 +183,7 @@ export function ConsumptionChart({ series, height = 220 }: ConsumptionChartProps
                 <th scope="col" className="py-2 pr-4 font-medium">Mes</th>
                 <th scope="col" className="py-2 pr-4 text-right font-medium">Consumo</th>
                 <th scope="col" className="py-2 pr-4 text-right font-medium">Monto</th>
+                <th scope="col" className="py-2 pr-4 text-right font-medium">Días</th>
                 <th scope="col" className="py-2 font-medium">Dato</th>
               </tr>
             </thead>
@@ -190,6 +195,7 @@ export function ConsumptionChart({ series, height = 220 }: ConsumptionChartProps
                   </th>
                   <td className="py-2 pr-4 text-right tabular-nums">{fmtKwh(p.kwh)}</td>
                   <td className="py-2 pr-4 text-right tabular-nums">{p.amountDop !== null ? fmtDop(p.amountDop) : "—"}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{p.days ? p.days : "—"}</td>
                   <td className="py-2">
                     <DataStatusBadge quality={p.projected ? "PROJECTED" : "REAL"} always />
                   </td>

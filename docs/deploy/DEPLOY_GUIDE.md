@@ -136,6 +136,32 @@ health check fallan, la versión anterior sigue sirviendo.
 *Deploy latest commit*; cuando esté *Live*, lo mismo en `energyrd-web-prod`. API primero (las migraciones
 deben ser compatibles con la web anterior durante unos minutos).
 
+## 4b. Bucket privado, worker y avisos push (ERD-STORE-01 / ERD-WORKER-01 / ERD-ALERT-02)
+
+El Blueprint ahora declara, por entorno, un **worker** (`energyrd-worker-staging` / `energyrd-worker-prod`) y las variables
+`STORAGE_*`. Sin ellas la API **no arranca** (`STORAGE_BACKEND=s3` exige bucket y claves); el OCR de facturas, las anomalías
+programadas, las alertas por tiempo y los avisos por correo/push los ejecuta el worker, no la API.
+
+1. **Bucket S3-compatible PRIVADO** (uno por entorno; p. ej. Cloudflare R2 o AWS S3): sin acceso público, sin listado público,
+   región/endpoint anotados. Crear una clave de acceso limitada **solo a ese bucket** (lectura, escritura y borrado de objetos).
+2. **Claves de cifrado** (por entorno, distintas): `STORAGE_ENCRYPTION_KEYS` = `k1:<base64url de 32 bytes>` y
+   `STORAGE_URL_SIGNING_KEY` (≥ 43 caracteres). Generación y rotación: `services/api/STORAGE.md`.
+   ```bash
+   python3 -c 'import os,base64;print("k1:"+base64.urlsafe_b64encode(os.urandom(32)).decode())'
+   python3 -c 'import secrets;print(secrets.token_urlsafe(48))'
+   ```
+   **Perder `STORAGE_ENCRYPTION_KEYS` = perder los originales cifrados.** Guardarla en un gestor de contraseñas, fuera del repo.
+3. **Mismos valores en API y worker** de cada entorno (`DATABASE_URL`, `AUTH_SIGNING_KEY`, `CORS_ORIGINS`, `RESEND_API_KEY`,
+   `EMAIL_FROM`, `PASSWORD_RESET_URL`, `STORAGE_*`): `check_deploy_config.py` falla si un servicio los declara y el otro no.
+4. **Worker de staging**: Render no ofrece workers gratuitos. Si no se quiere pagar en staging, borrar ese servicio del Blueprint
+   y ejecutar `python -m app.worker --once` a mano cuando se pruebe (la comprobación estática exigirá entonces quitar la
+   regla del worker de staging; decisión del dueño).
+5. **Push**: `EXPO_ACCESS_TOKEN` (opcional, solo si se activa «Enhanced Push Security» en Expo) en el worker. Para que lleguen
+   avisos a un teléfono hacen falta además credenciales **FCM** (Android) y **APNs** (iOS) en EAS, `eas init` (projectId) y un
+   build nuevo: `expo-notifications` y `expo-document-picker` son módulos nativos. **Nada de esto se ha probado en un dispositivo.**
+6. Verificación tras el primer deploy: `python -m scripts.jobs stats` (sin muertos ni concesiones vencidas) y subir una foto de
+   prueba; el original debe quedar cifrado en el bucket (el nombre del objeto no es el de la factura).
+
 ## 5. Verificar `/health` y humo post-deploy
 
 ```bash
@@ -204,6 +230,8 @@ Console** (USD 25 pago único). Identificador de la app: `do.energyrd.app` (iOS 
 | Render workspace *Hobby* | $0 | $0 (Pro $25/mes solo si se necesitan equipos/aislamiento) |
 | Render API | Free $0 | Starter $7/mes |
 | Render web | Free $0 | Starter $7/mes |
+| Render worker (ERD-WORKER-01) | Starter $7/mes (o no desplegarlo, ver §4b) | Starter $7/mes |
+| Bucket privado (R2/S3) | centavos con poco volumen; confirmar tarifa | centavos con poco volumen; confirmar tarifa |
 | Render minutos de build | 500 min/mes incluidos en Hobby (luego $5 por 1 000) | (compartidos) |
 | Neon Postgres | rama en el plan actual, $0 | Free $0 (6 h de restauración, 0,5 GB) **o** Launch por uso (gasto típico ~$15/mes, hasta 7 días de restauración) — recomendado Launch |
 | Resend | Free $0 (3 000/mes, 100/día, compartido) | Free $0; Pro $20/mes si se superan 100/día |
@@ -212,7 +240,7 @@ Console** (USD 25 pago único). Identificador de la app: `do.energyrd.app` (iOS 
 | Google Play | — | $25 una vez |
 | Sentry (futuro) | Free $0 | Free $0 |
 | Dominio | — | según registrador (anual) |
-| **Total mensual** | **$0** | **~$14/mes** con Neon Free · **~$29/mes** con Neon Launch (+ Apple $99/año, Google $25 único) |
+| **Total mensual** | **$0** (**~$7** con worker de staging) | **~$21/mes** con Neon Free · **~$36/mes** con Neon Launch (+ bucket, Apple $99/año, Google $25 único) |
 
 Notas Free de Render: 750 h/mes de instancia Free por workspace (las instancias dormidas no consumen);
 filesystem efímero (la API no escribe en disco); no apto para producción.
@@ -268,3 +296,5 @@ filesystem efímero (la API no escribe en disco); no apto para producción.
    publicará en tiendas; primera subida manual a Play Console.
 9. Revisión legal de términos/privacidad antes de publicar en tiendas o abrir producción a usuarios.
 10. (Más adelante) Sentry Free: crear proyectos y pedir la integración en código.
+11. Bucket privado + claves `STORAGE_*` por entorno y respaldo de `STORAGE_ENCRYPTION_KEYS` (§4b); decidir si staging lleva worker de pago.
+12. EAS: credenciales FCM/APNs, `projectId` y build nuevo (módulos nativos) para probar los avisos push en un teléfono real.

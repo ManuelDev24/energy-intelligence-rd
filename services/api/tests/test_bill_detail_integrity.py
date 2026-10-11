@@ -109,12 +109,14 @@ def test_migration_roundtrip_preserves_legacy_bill_and_labels_snapshot_unverifie
     client.put(url+'/items',json={'items':[ITEM]})
     with migrated.connect() as c:
         before = c.execute(text('SELECT to_jsonb(b) FROM bills b WHERE id=:b'),{'b':bill['id']}).scalar_one()
+    # due_date/paid_at (0020) no existen en el esquema legado al que se baja: no forman parte de «lo que debe conservarse».
+    before = {k: v for k, v in before.items() if k not in ('due_date', 'paid_at')}
     command.downgrade(alembic_cfg,'0010')
     assert not ({'bill_items','bill_snapshots'} & set(inspect(migrated).get_table_names()))
     with migrated.connect() as c:
         assert c.execute(text('SELECT to_jsonb(b) FROM bills b WHERE id=:b'),{'b':bill['id']}).scalar_one() == before
         assert c.execute(text("SELECT count(*) FROM audit_events WHERE entity='bill_items'")).scalar_one() == 1
-    command.upgrade(alembic_cfg,'0011')
+    command.upgrade(alembic_cfg,'head')   # el ORM actual exige el esquema completo; la instantánea la creó la migración 0011
     assessment = client.post(url+'/validate').json()
     assert assessment['provenance']['origin'] == 'migration'
     assert assessment['provenance']['original_available'] is False
@@ -122,7 +124,7 @@ def test_migration_roundtrip_preserves_legacy_bill_and_labels_snapshot_unverifie
     assert assessment['detail']['items'] == []
     with migrated.connect() as c:
         assert c.execute(text('SELECT data FROM bill_snapshots WHERE bill_id=:b'),{'b':bill['id']}).scalar_one() == before
-        assert c.execute(text('SELECT to_jsonb(b) FROM bills b WHERE id=:b'),{'b':bill['id']}).scalar_one() == before
+        assert c.execute(text('SELECT to_jsonb(b) FROM bills b WHERE id=:b'),{'b':bill['id']}).scalar_one() == {**before, 'due_date': None, 'paid_at': None}
     assert client.put(url+'/items',json={'items':[ITEM]}).status_code == 200
     assert client.delete('/api/v1/homes/'+home['id']).status_code == 204
     with migrated.connect() as c:
