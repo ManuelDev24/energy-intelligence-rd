@@ -1,6 +1,8 @@
-FROM python:3.12-slim
+# Auditoría C-12: bases fijadas por digest (reproducible; un rebuild no cambia de base sin que se vea en el diff).
+# Resueltas el 2026-10-11 desde las etiquetas indicadas; Dependabot (ecosistema docker) propone las actualizaciones.
+FROM python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
 
-COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.9@sha256:538e0b39736e7feae937a65983e49d2ab75e1559d35041f9878b7b7e51de91e4 /uv /usr/local/bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"

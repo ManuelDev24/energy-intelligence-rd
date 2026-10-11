@@ -10,10 +10,16 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Auditoría C-11: el GITHUB_TOKEN de este workflow solo lee el repositorio (ningún job publica ni escribe nada).
+# Las acciones están fijadas por SHA de commit (el comentario indica la etiqueta); Dependabot las actualiza.
+permissions:
+  contents: read
+
 jobs:
   api:
     name: api (pytest + migrations)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -33,8 +39,8 @@ jobs:
       ENVIRONMENT: development
       AUTH_ENABLED: "false"
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
       - name: Instalar motor OCR e idiomas
         run: |
           sudo apt-get update
@@ -53,9 +59,10 @@ jobs:
   web-mobile:
     name: web + mobile + core (typecheck, lint, test, build)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
@@ -92,9 +99,9 @@ jobs:
       # Base EXCLUSIVA de las pruebas (`_e2e`): la guarda de e2e_prepare rechaza cualquier otro nombre.
       E2E_DATABASE_URL: postgresql+psycopg://energy:change_me_local_only@localhost:5433/energy_rd_e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
@@ -114,7 +121,7 @@ jobs:
         run: python3 scripts/scrub_e2e_artifacts.py apps/web/e2e/.results apps/web/e2e/.report apps/web/e2e/.tmp
       - name: Publicar diagnósticos (solo si falló)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: e2e-web-diagnostics
           path: |
@@ -127,6 +134,7 @@ jobs:
   mobile-e2e:
     name: web + mobile (recorridos vs API real)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -139,9 +147,9 @@ jobs:
           --health-cmd "pg_isready -U energy -d energy_rd"
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm

@@ -1,0 +1,9 @@
+# Auditoría C-11: revisión obligatoria (si «Require review from Code Owners» está activo en la protección de ramas).
+* @ManuelDev24
+/.github/ @ManuelDev24
+/render.yaml @ManuelDev24
+/services/api/Dockerfile @ManuelDev24
+/services/api/app/alembic/ @ManuelDev24
+/services/api/app/config.py @ManuelDev24
+/apps/web/src/lib/auth/ @ManuelDev24
+/apps/web/src/middleware.ts @ManuelDev24

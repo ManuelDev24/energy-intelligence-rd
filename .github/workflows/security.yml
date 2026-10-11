@@ -1,0 +1,83 @@
+name: Security
+
+# Auditoría C-11/C-12: análisis estático (CodeQL), escaneo de secretos (gitleaks), escaneo de la imagen del API (Trivy) y SBOM.
+# Las acciones están fijadas por SHA de commit (el comentario indica la etiqueta); Dependabot las actualiza.
+on:
+  pull_request:
+    branches: [Dev, QA, main]
+  push:
+    branches: [Dev, QA, main]
+  schedule:
+    - cron: '41 9 * * 2'   # martes, 09:41 UTC (avisos nuevos sobre código que no cambió)
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write   # publicar los resultados en la pestaña Security
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@9f759ee644a3e7c15c1390abf49868036c00067b # v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+      - uses: github/codeql-action/analyze@9f759ee644a3e7c15c1390abf49868036c00067b # v3
+        with:
+          category: /language:${{ matrix.language }}
+
+  secrets:
+    name: gitleaks (secretos en el código y su historial)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"   # solo informa en el job; no necesita permiso de escritura en el PR
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"   # el informe puede contener el valor encontrado
+
+  image:
+    name: Imagen del API (Trivy + SBOM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Construir la imagen
+        run: docker build -t energy-rd-api:scan services/api
+      - name: Trivy (bloquea vulnerabilidades CRÍTICAS con parche disponible)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: energy-rd-api:scan
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+      - name: SBOM (CycloneDX)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: energy-rd-api:scan
+          format: cyclonedx
+          output: sbom-api.cdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom-api-cyclonedx
+          path: sbom-api.cdx.json
+          retention-days: 30
