@@ -16,28 +16,41 @@ _MONTHS = {"enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio":
 
 # Fechas dd/mm/aaaa; las facturas de EDESUR a veces imprimen espacios ("16 /05 /2023").
 _DATE_NUM = r"(\d{1,2})\s*[/\-]\s*(\d{1,2})\s*[/\-]\s*(\d{4})"
+# Tesseract lee a veces «07/09/2019» como «07.09/2019»: en las líneas de período (que además exigen «= N días») se tolera el punto.
+_DATE_LOOSE = r"(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})"
 # Tesseract suele pegar ":" o "." a las fechas ("17/04/2023: - 16/05/2023").
 _RANGE_SEP = r"[\s:.,]*(?:al|a|-|–)[\s:.,]*"
 # Formato impreso por EDESUR/EDEESTE/EDENORTE: "17/04/2023 - 16/05/2023 = 29 días". Va en la fila de
 # DATOS DEL CONTRATO, a veces en otra línea que la etiqueta "PERIODO DE FACTURACION".
 # Ruido OCR habitual: "-" leído como "=", y "=" leído como ">" o perdido.
 _RANGE_DAYS_RE = re.compile(
-    rf"{_DATE_NUM}[\s:.,]*(?:al|a|-|–|=|>)[\s:.,]*{_DATE_NUM}[\s:.,]*[=>]?\s*(\d{{1,3}})[.,]?\s*d[ií]as", re.IGNORECASE)
+    rf"{_DATE_LOOSE}[\s:.,]*(?:al|a|-|–|=|>)[\s:.,]*{_DATE_LOOSE}[\s:.,]*[=>]?\s*(\d{{1,3}})[.,]?\s*d[ií]as", re.IGNORECASE)
 _PERIOD_RE = re.compile(
     rf"per[ií1]+[od]+o?(?:\s+de\s+(?:facturaci[oó]n|consumo|lectura))?\s*:?\s*(?:del?)?\s*"
     rf"{_DATE_NUM}{_RANGE_SEP}{_DATE_NUM}", re.IGNORECASE)
 # Escalones de energía: "200 kWh X RD$ 4.44" (uno por escalón; se suman).
-_TIER_RE = re.compile(r"(\d[\d,]*)\s*k\s*w\s*h\s*[xX×*]\s*RD\s*[$S5]", re.IGNORECASE)  # "RD$" suele salir "RDS"
+# "RD$" suele salir "RDS" y las cifras junto a «kWh» salen con letras parecidas: «108» → «1OB» (observado en una factura real).
+_TIER_RE = re.compile(r"([\dOoIlB][\dOoIlB,]*)\s*k\s*w\s*h\s*[xX×*]\s*RD\s*[$S5]", re.IGNORECASE)
+_OCR_DIGITS = str.maketrans("OoIlB", "00118")
 _NUM_TOKEN_RE = re.compile(r"\d[\d,.]*")
 # Columnas numéricas de la tabla de lecturas, en el orden en que aparezcan en el encabezado.
 _TABLE_COLUMNS = {"meter": r"(?:no\.?\s*de\s*)?(?:contador|medidor)", "previous": r"lec\w{0,5}a\s*anterior",
                   "current": r"lec\w{0,5}a\s*actual", "multiplier": r"m[uú]ltiplo", "consumption": r"consumo"}
 _ND = r"[^\d\n]"  # "no dígito" pero sin cruzar de línea (evita que \D arrastre números de otra línea)
-_AMOUNT_RE = re.compile(rf"total[\s/._-]+a[\s/._-]+pagar{_ND}{{0,20}}?(\d[\d,.\s]*\d)", re.IGNORECASE)
-# Etiquetas alternativas del total (SIN verificar con facturas reales; solo se usan si falta «TOTAL A PAGAR» y salen como
-# `inferred`). Nunca «subtotal», «total energía» ni «total impuestos»: no son el monto a pagar.
+_AMOUNT_RE = re.compile(rf"total[\s/._-]+a[\s/._-]+pagar{_ND}{{0,20}}?(\d[\d,. ]*\d)", re.IGNORECASE)
+# Etiquetas observadas en facturas REALES (muestras públicas de 2019, 2020 y 2024):
+#  - EDENORTE: «FACTURADO DE MAY  RD$616.77» es lo facturado del mes; «VALOR TOTAL A PAGAR» puede sumar balance pendiente.
+#  - EDESUR/EDEESTE: «IMPORTE TOTAL [EN $RD]  1,262.23» en el cuadro y «IMPORTE EN RD$ 1,262.23» en el talón de pago.
+_NUM = r"(\d[\d,. ]*\d)"  # solo espacios: un salto de línea nunca une cifras de líneas distintas
+_FACTURADO_RE = re.compile(rf"facturado\s+de\s+[a-záéíóú]{{3,10}}\.?{_ND}{{0,12}}?{_NUM}", re.IGNORECASE)
+_IMPORTE_RES = (
+    re.compile(rf"(?<![a-z])importe\s*total(?:\s*en)?{_ND}{{0,12}}?{_NUM}", re.IGNORECASE),
+    re.compile(rf"(?<![a-z])importe\s*en{_ND}{{0,10}}?{_NUM}", re.IGNORECASE),
+)
+# Etiquetas alternativas del total (SIN verificar con facturas reales; solo si falta lo anterior y siempre `inferred`).
+# Nunca «subtotal», «total energía» ni «total impuestos»: no son el monto a pagar.
 _AMOUNT_ALT_RES = tuple(
-    re.compile(rf"(?<![a-z]){label}{_ND}{{0,20}}?(\d[\d,.\s]*\d)", re.IGNORECASE)
+    re.compile(rf"(?<![a-z]){label}{_ND}{{0,20}}?{_NUM}", re.IGNORECASE)
     for label in (r"monto\s+a\s+pagar", r"valor\s+a\s+pagar", r"importe\s+a\s+pagar", r"total\s+(?:de\s+la\s+)?factura(?:do)?",
                   r"total\s+general", r"importe\s+total", r"monto\s+total", r"total\s+(?:a\s+)?cobrar"))
 _KWH_RE = re.compile(rf"consum\w*{_ND}{{0,30}}?(\d[\d,.\s]*\d)\s*k\s*w\s*h", re.IGNORECASE)
@@ -45,10 +58,45 @@ _PREV_RE = re.compile(rf"lec\w{{0,5}}a\s*(?:anterior|previa){_ND}{{0,20}}?(\d[\d
 _CURR_RE = re.compile(rf"lec\w{{0,5}}a\s*(?:actua\w*){_ND}{{0,20}}?(\d[\d,.\s]*\d)", re.IGNORECASE)
 
 
-# ERD-ALERT-02: fecha límite de pago. Etiquetas habituales en facturas dominicanas (SIN verificar con facturas reales).
-_DUE_RE = re.compile(
-    rf"(?:fecha\s+l[ií]mite(?:\s+de\s+pago)?|fecha\s+de\s+vencimiento|vencimiento|vence(?:\s+el)?|pague\s+antes\s+del?|pagar\s+antes\s+del?)"
+# ERD-ALERT-02: fecha límite de pago. Observadas en facturas reales: «FECHA LIMITE PAGO» (EDESUR), «FECHA LÍMITE DE PAGO»
+# (EDEESTE) y «PAGUE ANTES DE» (EDENORTE). Las demás etiquetas siguen SIN verificar y solo se usan si faltan las anteriores.
+# «FECHA VENCIMIENTO NCF» (EDEESTE) y «Válida hasta» (EDENORTE) son la vigencia del comprobante fiscal, NO la fecha de pago.
+_DUE_PRIMARY_RE = re.compile(
+    rf"(?:fecha\s+l[ií]mite(?:\s+de)?(?:\s+pago)?|pagu?e\s+antes\s+del?|pagar\s+antes\s+del?){_ND}{{0,12}}?{_DATE_NUM}", re.IGNORECASE)
+_DUE_FALLBACK_RE = re.compile(
+    rf"(?:fecha\s+de\s+vencimiento|fecha\s+vencimiento|vencimiento|vence(?:\s+el)?)(?!\s*(?:de\s+)?(?:del\s+)?n\W?c\W?f)"
     rf"{_ND}{{0,12}}?{_DATE_NUM}", re.IGNORECASE)
+
+
+_EMISSION_RE = re.compile(rf"emisi[oó]n{_ND}{{0,12}}?{_DATE_NUM}", re.IGNORECASE)
+
+
+def _repair_year(start: date, end: date, printed_days: int, anchor: date | None = None) -> tuple[date, date] | None:
+    """Si el período no cuadra con los días impresos por un año mal leído (2024 → 2004), prueba cambiar solo el año de UNA
+    fecha. Devuelve el par corregido únicamente si exactamente una opción cuadra; nunca adivina entre varias."""
+    options: set[tuple[date, date]] = set()
+    for year in {end.year, end.year - 1}:
+        try:
+            options.add((start.replace(year=year), end))
+        except ValueError:
+            pass
+    for year in {start.year, start.year + 1}:
+        try:
+            options.add((start, end.replace(year=year)))
+        except ValueError:
+            pass
+    this_year = date.today().year
+    fits = [(s, e) for s, e in options if s < e and printed_days in ((e - s).days, (e - s).days + 1)
+            and 2015 <= s.year <= this_year + 1 and 2015 <= e.year <= this_year + 1]
+    if len(fits) == 1:
+        return fits[0]
+    if len(fits) > 1 and anchor is not None:
+        # Varias opciones cuadran con los días: se queda la que termina más cerca de la fecha de emisión (si es clara).
+        ranked = sorted(fits, key=lambda pair: abs((pair[1] - anchor).days))
+        best, runner = abs((ranked[0][1] - anchor).days), abs((ranked[1][1] - anchor).days)
+        if best <= 45 and runner - best >= 60:
+            return ranked[0]
+    return None
 
 
 def _num(raw: str) -> Decimal | None:
@@ -91,6 +139,74 @@ def _reading_table(text: str) -> dict[str, Decimal] | None:
     return None
 
 
+# Fila de la tabla de lecturas tal como la deja Tesseract: «Activa B.T. 15197994 4.971 5,205 1.00 234kWh». El separador de miles sale
+# como punto o coma, el multiplicador y el consumo salen deformados («Lecco», «4AWRh»).
+_ROW_RE = re.compile(r"ac\w{0,2}va\s*[bB8]\.?\s*[tT]\.?\s+(\d{6,9})\s+(\d{1,3}(?:[.,]\d{3})*|\d+)\s+(\d{1,3}(?:[.,]\d{3})*|\d+)\b", re.IGNORECASE)
+MAX_PLAUSIBLE_DELTA_KWH = 20_000
+
+
+def _reading_row(text: str) -> tuple[Decimal, Decimal] | None:
+    """(lectura anterior, lectura actual) de la fila de lecturas, si ambas son coherentes (actual ≥ anterior y un salto plausible)."""
+    m = _ROW_RE.search(text)
+    if not m:
+        return None
+    prev, curr = (_num(m.group(i).replace(".", "").replace(",", "")) for i in (2, 3))
+    if prev is None or curr is None or curr < prev or curr - prev > MAX_PLAUSIBLE_DELTA_KWH:
+        return None
+    return prev, curr
+
+
+def _all_numbers(regex: re.Pattern[str], text: str) -> list[Decimal]:
+    return [n for m in regex.finditer(text) if (n := _num(m.group(1))) is not None]
+
+
+def _importe_numbers(text: str) -> tuple[list[Decimal], bool]:
+    """Cifras tras «IMPORTE TOTAL / IMPORTE EN». Las facturas siempre imprimen dos decimales; si Tesseract pierde la coma y el
+    punto («1,262.23» → «126223») se reinterpreta como centavos. Devuelve (valores, hubo_reinterpretación)."""
+    values, fixed = [], False
+    for rx in _IMPORTE_RES:
+        for m in rx.finditer(text):
+            raw = m.group(1).strip()
+            n = _num(raw)
+            if n is None:
+                continue
+            if re.fullmatch(r"\d{4,}", raw.replace(" ", "")):
+                n, fixed = n / 100, True
+            values.append(n)
+    return values, fixed
+
+
+def _read_amount(text: str, warnings: list[str]) -> tuple[Decimal | None, Confidence]:
+    """Monto de la factura. «FACTURADO DE <mes>» (EDENORTE) manda sobre «TOTAL A PAGAR», que puede incluir saldos anteriores;
+    luego «TOTAL A PAGAR»; luego «IMPORTE TOTAL / IMPORTE EN» (EDESUR/EDEESTE: alta solo si dos lecturas independientes
+    coinciden, porque Tesseract falla con cifras sueltas); por último etiquetas sin verificar (siempre `inferred`)."""
+    billed = _all_numbers(_FACTURADO_RE, text)
+    to_pay = _all_numbers(_AMOUNT_RE, text)
+    if billed:
+        if to_pay and to_pay[0] != billed[0]:
+            warnings.append(f"El «total a pagar» ({to_pay[0]:.2f}) difiere de lo facturado en el mes ({billed[0]:.2f}); "
+                            "suele incluir saldos anteriores. Se usó lo facturado del mes.")
+        return billed[0], "high"
+    if to_pay:
+        return to_pay[0], "high"
+    importes, reinterpreted = _importe_numbers(text)
+    if importes:
+        top, votes = max(((v, importes.count(v)) for v in set(importes)), key=lambda item: (item[1], -importes.index(item[0])))
+        if reinterpreted:
+            warnings.append("El importe salió sin separadores decimales; se interpretó con dos decimales. Compárelo con la factura.")
+        if votes >= 2 and not reinterpreted:
+            return top, "high"
+        if not reinterpreted:
+            warnings.append("El importe se leyó una sola vez en la imagen; compárelo con la factura.")
+        return importes[0], "inferred"
+    for alt in _AMOUNT_ALT_RES:
+        for n in _all_numbers(alt, text)[:1]:
+            warnings.append("El total se leyó de una etiqueta distinta de «TOTAL A PAGAR»; compárelo con la factura.")
+            return n, "inferred"
+    warnings.append("No se encontró el monto total a pagar.")
+    return None, "high"
+
+
 def parse_bill_text(text: str | None) -> OcrDraft:
     text = text or ""
     warnings: list[str] = []
@@ -117,8 +233,15 @@ def parse_bill_text(text: str | None) -> OcrDraft:
         # Las distribuidoras imprimen días transcurridos (29 del 17/04 al 16/05); se aceptan ambas convenciones.
         if int(explicit_days) not in (elapsed, elapsed + 1):
             period_conf = "inferred"
-            warnings.append(f"Los {int(explicit_days)} días impresos no coinciden con las fechas leídas "
-                            f"({elapsed} días); revise el período contra la foto.")
+            em = _EMISSION_RE.search(text)
+            fixed = _repair_year(period_start, period_end, int(explicit_days), _date_from_match(em.group(1, 2, 3)) if em else None)
+            if fixed:
+                period_start, period_end = fixed
+                warnings.append(f"Se corrigió el año de una fecha para que el período coincida con los {int(explicit_days)} días "
+                                "impresos; revise las fechas contra la foto.")
+            else:
+                warnings.append(f"Los {int(explicit_days)} días impresos no coinciden con las fechas leídas "
+                                f"({elapsed} días); revise el período contra la foto.")
     if period_start and period_end:
         explicit = re.search(r"\((\d{1,3})\s*d[ií]as\)", text, re.IGNORECASE)
         if explicit_days is not None:
@@ -130,7 +253,10 @@ def parse_bill_text(text: str | None) -> OcrDraft:
 
     due = None
     due_conf: Confidence = "high"
-    m = _DUE_RE.search(text)
+    m = _DUE_PRIMARY_RE.search(text)
+    if m is None:
+        m = _DUE_FALLBACK_RE.search(text)
+        due_conf = "inferred"
     if m:
         due = _date_from_match(m.group(1, 2, 3))
         if due is not None and period_start and period_end:
@@ -139,21 +265,10 @@ def parse_bill_text(text: str | None) -> OcrDraft:
                 due = None
         elif due is not None:
             due_conf = "inferred"  # sin período con qué contrastarla
+        if due is not None and due_conf == "high" and not (period_start and period_end):
+            due_conf = "inferred"
 
-    amount = None
-    amount_conf: Confidence = "high"
-    m = _AMOUNT_RE.search(text)
-    if m:
-        amount = _num(m.group(1))
-    if amount is None:
-        for alt in _AMOUNT_ALT_RES:
-            m = alt.search(text)
-            if m and _num(m.group(1)) is not None:
-                amount, amount_conf = _num(m.group(1)), "inferred"
-                warnings.append("El total se leyó de una etiqueta distinta de «TOTAL A PAGAR»; compárelo con la factura.")
-                break
-    if amount is None:
-        warnings.append("No se encontró el monto total a pagar.")
+    amount, amount_conf = _read_amount(text, warnings)
 
     kwh = None
     kwh_conf: Confidence = "high"
@@ -180,8 +295,18 @@ def parse_bill_text(text: str | None) -> OcrDraft:
             if kwh is None and printed is not None:
                 kwh = printed
 
+    reading_conf: Confidence = "high"
+    if prev is None and curr is None:
+        row = _reading_row(text)
+        if row:
+            prev, curr, reading_conf = row[0], row[1], "inferred"
+            if kwh is None:
+                # Sin multiplicador legible se supone 1 (medidores residenciales de baja tensión); por eso solo `inferred`.
+                kwh, kwh_conf = curr - prev, "inferred"
+                warnings.append("El consumo se calculó con las lecturas de la tabla (multiplicador supuesto 1); compárelo con la factura.")
+
     if kwh is None:
-        tiers = [_num(t) for t in _TIER_RE.findall(text)]
+        tiers = [_num(t.translate(_OCR_DIGITS)) for t in _TIER_RE.findall(text)]
         if tiers and all(t is not None for t in tiers):
             kwh, kwh_conf = sum(tiers, Decimal(0)), "inferred"  # type: ignore[arg-type]
     if kwh is None:
@@ -198,6 +323,6 @@ def parse_bill_text(text: str | None) -> OcrDraft:
     return OcrDraft(
         period_start=field(period_start, period_conf), period_end=field(period_end, period_conf), days=days_field,
         kwh=field(kwh, kwh_conf), amount_dop=field(amount, amount_conf),
-        reading_previous=field(prev), reading_current=field(curr), due_date=field(due, due_conf),
+        reading_previous=field(prev, reading_conf), reading_current=field(curr, reading_conf), due_date=field(due, due_conf),
         warnings=warnings, raw_text_excerpt=text.strip()[:500],
     )

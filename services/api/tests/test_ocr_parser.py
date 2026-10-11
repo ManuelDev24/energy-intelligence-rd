@@ -87,9 +87,14 @@ def _with_due(line):
 
 
 def test_due_date_is_read_from_common_labels():
-    for line in ("Fecha límite de pago: 15/09/2026", "FECHA DE VENCIMIENTO 15/09/2026", "Vence el 15/09/2026", "Pague antes del 15 / 09 / 2026"):
+    # Etiquetas observadas en facturas reales (EDESUR/EDEESTE «fecha límite de pago», EDENORTE «pague antes de»): confianza alta.
+    for line in ("Fecha límite de pago: 15/09/2026", "FECHA LIMITE PAGO: 15/09/2026", "PAGUE ANTES DE 15/09/2026", "Pague antes del 15 / 09 / 2026"):
         draft = parse_bill_text(_with_due(line))
         assert draft.due_date.value == "2026-09-15" and draft.due_date.confidence == "high", line
+    # Etiquetas sin verificar: se leen, pero solo como `inferred`.
+    for line in ("FECHA DE VENCIMIENTO 15/09/2026", "Vence el 15/09/2026"):
+        draft = parse_bill_text(_with_due(line))
+        assert draft.due_date.value == "2026-09-15" and draft.due_date.confidence == "inferred", line
     assert parse_bill_text(SAMPLE_EDESUR).due_date.value is None and parse_bill_text(SAMPLE_EDESUR).due_date.confidence == "none"
 
 

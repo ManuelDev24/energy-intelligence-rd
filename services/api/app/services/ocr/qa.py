@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Callable
 
-from app.services.ocr.engine import extract_text
+from app.services.ocr import pipeline
 from app.services.ocr.parser import parse_bill_text
 
 FIELDS = ("period_start", "period_end", "days", "kwh", "amount_dop", "reading_previous", "reading_current", "due_date")
@@ -86,7 +86,13 @@ def load_manifest(path: Path) -> dict[str, dict]:
     return manifest
 
 
-def run_directory(directory: Path, reader: Callable[[bytes], str] = extract_text) -> dict:
+def production_reader(content: bytes) -> str:
+    """Lee un archivo igual que el trabajo de OCR en producción (varias variantes de imagen; PDF con capa de texto o por página)."""
+    kind = "application/pdf" if content[:5] == b"%PDF-" else "image"
+    return pipeline.extract_document(content, kind).text
+
+
+def run_directory(directory: Path, reader: Callable[[bytes], str] = production_reader) -> dict:
     directory = Path(directory)
     manifest = load_manifest(directory / MANIFEST)
     missing = [name for name in manifest if not (directory / name).is_file()]

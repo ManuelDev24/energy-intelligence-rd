@@ -108,3 +108,70 @@ Mínimo 1 factura real por distribuidora —idealmente 3, una de ellas foto de c
 tapados (no tapar fechas, lecturas, consumo, total ni fecha límite), guardadas en `qa-private/` (ignorado por git) con su
 `expected.json`, y correr `cd services/api && uv run python -m scripts.ocr_qa ../../qa-private/<carpeta> --json informe.json`
 (criterio: 0 errores silenciosos). Instrucciones completas en `docs/qa/OCR_REAL_QA.md`.
+
+---
+
+## Evaluación con 3 facturas reales (2026-10-11, ERD-OCR-REAL-QA)
+
+Manuel compartió una imagen real de cada distribuidora (duplicados de EDESUR 2019, EDENORTE 2020 y EDEESTE 2024; vistas previas
+de **768 × 1024 px**, de las que circulan en internet). **Contienen datos de terceros: no están en el repositorio ni en `qa-private/`**
+(se usaron desde una carpeta temporal fuera del repo y se borraron). Aquí solo constan etiquetas, formatos y resultados, sin nombres,
+direcciones, NIC, contratos ni medidores. Esto **sustituye** la sección «sin facturas reales» de arriba en lo que contradiga.
+
+### Etiquetas confirmadas en facturas reales
+| Campo | EDESUR | EDENORTE | EDEESTE |
+|---|---|---|---|
+| Período | `PERIODO DE FACTURACIÓN  12/08/2019 - 07/09/2019 = 26 días` | `No. De Días Facturados : 18/04/2020 - 17/05/2020 29 días` | `PERIODO DE FACTURACIÓN  19/06/2024 - 20/07/2024 = 31 días` |
+| Fecha límite | `FECHA LIMITE PAGO` (2 veces) | **`PAGUE ANTES DE`** | `FECHA LÍMITE DE PAGO` (2 veces) |
+| Monto | `IMPORTE TOTAL EN $RD` y, en el talón, `IMPORTE EN RD$` (igual cifra) | **`FACTURADO DE <MES>`** = lo facturado del mes; `VALOR TOTAL A PAGAR` es **otra cifra** | `IMPORTE TOTAL` y `IMPORTE EN RD$` |
+| Lecturas | tabla `LECTURA ANTERIOR / ACTUAL / MULTIPLO CONSUMO` con el consumo pegado a `kWh` | columna `CONSUMO PROMEDIADO` (sin lecturas; `CONEXION DIRECTA`) | tabla igual a EDESUR (`4 kWh`) |
+| Cálculo | `Cargo fijo 26 días`, `200 kWh x RD$ 4.44`, `34 kWh x RD$ 6.97` | `Cargo Fijo 29 días`, `108 kWh X RD$ 4.44` | `Cargo fijo 31 días`, `4 kWh x RD$ 6.17/kWh` |
+| Otros | `NCF`, `REFERENCIA DE PAGO`, `NIC`, código de barras con el importe | `NCF`, `Válida Hasta: 31/12/2999`, `CONTRATO`, `Ref. Pago` | `NCF`, **`FECHA VENCIMIENTO NCF`** (vigencia del comprobante), `NIC` |
+
+Hallazgos que cambian el código:
+1. **`TOTAL A PAGAR` no aparece en EDESUR ni EDEESTE**: usan `IMPORTE TOTAL`. Las etiquetas «alternativas» que se habían supuesto eran correctas.
+2. **EDENORTE: «valor total a pagar» ≠ lo facturado.** En la muestra, `FACTURADO DE MAY` = cargo fijo + energía (la suma cuadra al centavo) y el total a pagar es
+   una cifra mayor (arrastra saldos). Para el monto de la factura se usa lo facturado del mes y se avisa si difieren.
+3. **`FECHA VENCIMIENTO NCF` (EDEESTE) y `Válida Hasta` (EDENORTE) son la vigencia del comprobante fiscal, no la fecha de pago**: el
+   parser anterior habría tomado 31/12/2024 como fecha límite. Ahora se excluyen.
+4. Ruido real de Tesseract en imágenes pequeñas: `07.09/2019` por `07/09/2019`; `2004` por `2024` o `2026`; `1OB` por `108`; `AcivaBT.`;
+   separador de miles `4.971`; `IMPORTE EN RDS 126223` (se pierden la coma y el punto); multiplicador `1.0000` → `10000`; `4 kWh` → `40`.
+   (Las cifras de estos ejemplos se eligieron del patrón de ruido; los tests usan números inventados.)
+
+### Qué se cambió (parser, motor y arnés)
+- **Motor** (`preprocess.py`, `pipeline.TesseractEngine`): antes una sola lectura con el ajuste por defecto; ahora hasta 4 pasadas (canal
+  de máximo brillo, ampliado a ~2600 px, con segmentación 4/6/3 y una con el fondo aplanado) y se queda la que lee más campos y menos
+  se contradice; se detiene en cuanto una lee ≥ 6 de 7 campos y respeta el 80 % del tiempo máximo por página. Solo Pillow.
+- **Parser**: `FACTURADO DE`, `IMPORTE TOTAL/EN` (alta solo si dos lecturas coinciden; si no, `inferred`), centavos si se perdió la
+  puntuación (siempre `inferred` + aviso), `PAGUE ANTES DE` / `FECHA LIMITE PAGO` como etiquetas principales, vigencia del NCF excluida,
+  punto en las fechas del período, reparación del año mal leído **solo** si exactamente un arreglo cuadra con los días impresos (o el
+  más cercano a la fecha de emisión decide), cifras con letras junto a `kWh x RD$`, fila de lecturas tolerante (consumo calculado
+  de las lecturas con multiplicador supuesto 1, siempre `inferred`).
+- **Arnés**: `scripts.ocr_qa` ahora lee como producción (antes usaba el lector simple).
+
+### Resultado con el arnés (`python -m scripts.ocr_qa`, criterio: 0 errores silenciosos)
+| Factura | Antes (lectura simple) | Ahora |
+|---|---|---|
+| EDESUR 2019 | 1 de 8 campos; fecha límite solo `inferred` | **8 de 8** correctos |
+| EDENORTE 2020 | 3 de 6 (y los días mal: 23 por 29) | **6 de 6** correctos |
+| EDEESTE 2024 | 0 de 8 | **8 de 8** correctos |
+| **Total** | **errores y huecos** | **22 de 22, 0 mal sin aviso → APROBADO** |
+
+Lo que sale con confianza `inferred` (la persona lo ve marcado y lo confirma): consumo calculado de lecturas, importe sin puntuación o
+leído una vez, período con año reparado. Lo que sale `high`: período y fecha límite leídos tal cual, y `FACTURADO DE` (EDENORTE).
+Tiempo por imagen: 2–11 s (CPU local).
+
+### Límites — leer antes de confiar en estos números
+- **3 imágenes, una por distribuidora, y las reglas se afinaron mirando esas mismas imágenes**: 22/22 es una cota optimista, no una tasa de
+  acierto. El riesgo de sobreajuste es real; hacen falta facturas que **no** se hayan usado para afinar.
+- Son vistas previas de baja resolución (768 px) de facturas de 2019, 2020 y 2024; **no** son fotos de celular (ángulo, sombras, arrugas)
+  ni los PDF actuales del portal. Un PDF con capa de texto debería ser más exacto, pero **no se probó**.
+- **EDENORTE sin lecturas** en la muestra (consumo promediado): el parser lee el consumo por las líneas de cálculo (`inferred`).
+- El multiplicador se supone 1 cuando no se lee; un cliente con multiplicador ≠ 1 vería un consumo menor (por eso es `inferred` y avisa).
+- `FACTURADO DE` y `PAGUE ANTES DE` se confirmaron en **una** factura de EDENORTE de 2020; el formato puede haber cambiado.
+- Sigue sin verificarse: la etiqueta del total en una factura **actual** de EDESUR/EDENORTE, e-NCF/QR en facturas nuevas, y el PDF del portal.
+
+### Para cerrar la tarea
+Facturas **nuevas** (idealmente 3 por distribuidora, con al menos una foto de celular y un PDF del portal), tapando nombre, dirección,
+NIC/contrato y medidor, en `qa-private/` con su `expected.json`, y correr `scripts.ocr_qa`. Lo que falle se corrige con una prueba
+sintética nueva (sin datos reales). Criterio: 0 errores silenciosos sobre facturas no usadas para afinar.

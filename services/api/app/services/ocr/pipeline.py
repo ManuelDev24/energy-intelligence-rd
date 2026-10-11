@@ -6,6 +6,7 @@
 - El motor es intercambiable (`OcrEngine`); hoy solo Tesseract local, sin enviar la factura a terceros.
 """
 import io
+import time
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -15,6 +16,7 @@ import pytesseract
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.config import settings
+from app.services.ocr import preprocess
 
 pillow_heif.register_heif_opener()
 MAX_SIDE_PX = 4000
@@ -40,14 +42,41 @@ class OcrEngine(Protocol):
     def read_image(self, image: Image.Image) -> str: ...
 
 
+GOOD_ENOUGH_SCORE = 6   # de 7 campos clave leídos: no hace falta probar más variantes
+BUDGET_FRACTION = 0.8   # del tiempo máximo por página; el resto es margen para no chocar con el límite duro
+
+
 class TesseractEngine:
     name = "tesseract"
 
-    def read_image(self, image: Image.Image) -> str:
+    def _run(self, image: Image.Image, psm: int, timeout: float) -> str:
         try:
-            return pytesseract.image_to_string(image, lang="spa+eng", timeout=settings.OCR_PAGE_TIMEOUT_SECONDS)
+            return pytesseract.image_to_string(image, lang="spa+eng", config=f"--psm {psm}", timeout=max(1, int(timeout)))
         except (pytesseract.TesseractError, pytesseract.TesseractNotFoundError, RuntimeError, OSError) as exc:
             raise EngineError(type(exc).__name__) from exc
+
+    def read_image(self, image: Image.Image) -> str:
+        """Prueba variantes de imagen y modos de segmentación y devuelve la lectura con más campos clave. La primera
+        variante debe terminar (si falla, el error se propaga y se reintenta); las siguientes solo mejoran el resultado."""
+        budget = settings.OCR_PAGE_TIMEOUT_SECONDS * BUDGET_FRACTION
+        started = time.monotonic()
+        best, best_score = "", -1
+        for index, (_name, psm, variant) in enumerate(preprocess.variants(image)):
+            remaining = budget - (time.monotonic() - started)
+            if index and remaining < 3:
+                break
+            try:
+                text = self._run(variant, psm, remaining if index else settings.OCR_PAGE_TIMEOUT_SECONDS)
+            except EngineError:
+                if index == 0:
+                    raise
+                continue
+            score = preprocess.score_text(text)
+            if score > best_score or (score == best_score and len(text) > len(best)):
+                best, best_score = text, score
+            if best_score >= GOOD_ENOUGH_SCORE:
+                break
+        return best
 
 
 @dataclass(frozen=True)

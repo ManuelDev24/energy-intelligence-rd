@@ -20,7 +20,7 @@ def test_primary_label_is_high_confidence_and_wins_over_alternatives():
 
 
 @pytest.mark.parametrize("label", ["MONTO A PAGAR", "VALOR A PAGAR", "IMPORTE A PAGAR", "TOTAL FACTURA", "TOTAL DE LA FACTURA",
-                                   "TOTAL FACTURADO", "TOTAL GENERAL", "IMPORTE TOTAL", "MONTO TOTAL", "TOTAL A COBRAR"])
+                                   "TOTAL FACTURADO", "TOTAL GENERAL", "MONTO TOTAL", "TOTAL A COBRAR"])
 def test_alternative_labels_are_read_but_flagged(label):
     draft = parse(f"{label}: RD$ 4,520.75\n")
     assert (draft.amount_dop.value, draft.amount_dop.confidence) == ("4520.75", "inferred")
