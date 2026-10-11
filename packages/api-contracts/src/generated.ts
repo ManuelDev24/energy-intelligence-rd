@@ -640,6 +640,45 @@ export const AnomalyStatusInSchema = z.object({
 });
 export type AnomalyStatusIn = z.infer<typeof AnomalyStatusInSchema>;
 
+export const RecommendationRecordSchema = z.object({
+  "id": z.string().uuid(),
+  "home_id": z.string().uuid(),
+  "equipment_id": z.union([z.string().uuid(), z.null()]),
+  "anomaly_id": z.union([z.string().uuid(), z.null()]),
+  "rule_id": z.string(),
+  "rule_version": z.number().finite().int(),
+  "ruleset_version": z.number().finite().int(),
+  "category": z.enum(["equipment", "goal", "anomaly", "data"]),
+  "title": z.string(),
+  "summary": z.string(),
+  "action": z.string(),
+  "confidence": z.enum(["low", "medium", "high"]),
+  "status": z.enum(["active", "applied", "dismissed", "resolved"]),
+  "savings_kwh_month": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "savings_dop_month": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "assumptions": z.array(z.string()),
+  "evidence": z.record(z.string(), z.string()),
+  "created_at": z.string().datetime({ offset: true }),
+  "last_seen_at": z.string().datetime({ offset: true }),
+  "status_changed_at": z.string().datetime({ offset: true })
+});
+export type RecommendationRecord = z.infer<typeof RecommendationRecordSchema>;
+
+export const RecommendationStatusInSchema = z.object({
+  "status": z.enum(["active", "applied", "dismissed"])
+});
+export type RecommendationStatusIn = z.infer<typeof RecommendationStatusInSchema>;
+
+export const RecommendationListOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "ruleset_version": z.number().finite().int(),
+  "items": z.array(RecommendationRecordSchema),
+  "total_savings_kwh_month": z.union([MetricSchema, z.null()]),
+  "total_savings_dop_month": z.union([MetricSchema, z.null()]),
+  "note": z.string()
+});
+export type RecommendationListOut = z.infer<typeof RecommendationListOutSchema>;
+
 export const BillPaymentInSchema = z.object({
   "paid": z.boolean()
 });

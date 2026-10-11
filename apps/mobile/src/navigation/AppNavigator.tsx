@@ -27,6 +27,7 @@ import { EquipmentScreen } from '../features/equipment/EquipmentScreen';
 import { GoalFormScreen } from '../features/goals/GoalFormScreen';
 import { HomesScreen } from '../features/homes/HomesScreen';
 import { OnboardingScreen } from '../features/homes/OnboardingScreen';
+import { SavingsScreen } from '../features/savings/SavingsScreen';
 import { ReadingFormScreen } from '../features/readings/ReadingFormScreen';
 import { ReadingsScreen } from '../features/readings/ReadingsScreen';
 import { useSession } from '../store/session';
@@ -53,6 +54,7 @@ export type RootStackParams = {
   ServiceProfile: undefined;
   AccountSettings: undefined;
   ShareHome: undefined;
+  Savings: undefined;
 };
 // 5 pestañas: cambiar de vivienda es poco frecuente y vive en el encabezado (hoja "Homes").
 export type TabParams = { Dashboard: undefined; Consumption: { from?: string; to?: string; granularity?: string } | undefined; Bills: undefined; Equipment: undefined; Alerts: undefined };
@@ -122,6 +124,7 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
           <DashboardScreen
             onAddBill={() => navigation.navigate('BillForm')}
             onOpenAlerts={() => tabs.navigate('Alerts')}
+            onOpenSavings={() => navigation.navigate('Savings')}
             onAddReading={() => navigation.navigate('ReadingForm')}
             onEditGoal={() => navigation.navigate('GoalForm')}
             onInvestigate={(range) => tabs.navigate('Consumption', range)}
@@ -248,6 +251,15 @@ function DomainNavigator() {
         </Stack.Screen>
         <Stack.Screen name="ReadingForm" options={{ title: 'Nueva lectura' }}>
           {({ navigation }) => <ReadingFormScreen onDone={() => navigation.goBack()} />}
+        </Stack.Screen>
+        <Stack.Screen name="Savings" options={{ title: 'Ahorro' }}>
+          {({ navigation }) => (
+            <SavingsScreen
+              onEquipment={() => navigation.navigate('Tabs', { screen: 'Equipment' } as never)}
+              onGoal={() => navigation.navigate('GoalForm')}
+              onAlerts={() => navigation.navigate('Tabs', { screen: 'Alerts' } as never)}
+            />
+          )}
         </Stack.Screen>
         <Stack.Screen name="GoalForm" options={{ title: 'Meta mensual' }}>
           {({ navigation }) => <GoalFormScreen onDone={() => navigation.goBack()} />}

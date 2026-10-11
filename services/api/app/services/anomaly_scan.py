@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Anomaly, Bill, MeterReading
-from app.services import alerts
+from app.services import alerts, recommendations
 from app.services import anomaly_engine as engine
 from app.services import consumption_calc as cc
 from app.services.errors import ApplicationError, InvalidInput, NotFound
@@ -126,6 +126,7 @@ def scan_home(db: Session, home_id, *, now: datetime | None = None, commit: bool
                 result.resolved += 1
         db.flush()
         alerts.sync_anomaly_alerts(db, home_id, now=current)   # alertas por anomalías recientes (y avisos de las nuevas)
+        recommendations.refresh_after_write(db, home_id)       # ERD-SAVE-01: las anomalías abiertas alimentan las recomendaciones
         return result
 
     if not commit:

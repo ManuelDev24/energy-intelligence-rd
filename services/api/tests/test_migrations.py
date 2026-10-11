@@ -245,3 +245,18 @@ def test_0021_existing_equipment_becomes_other_without_guessing_and_downgrade_ro
     with migrated.connect() as c:
         assert c.execute(text("SELECT name FROM equipment")).scalar_one() == "Aire sala"
     command.upgrade(alembic_cfg, "head")
+
+
+def test_0022_recommendations_table_roundtrips_and_cascades_with_the_home(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0021")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT to_regclass('public.recommendations')")).scalar() is None
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'r','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO recommendations(id,home_id,rule_id,rule_version,ruleset_version,category,title,summary,action,confidence,dedupe_key) "
+                       "VALUES(gen_random_uuid(),:h,'ac-one-hour',1,1,'equipment','t','s','a','medium','k')"), {"h": hid})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM homes WHERE id=:h"), {"h": hid})
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM recommendations")).scalar() == 0

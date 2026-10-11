@@ -290,6 +290,11 @@ export function createMockApi(): Api {
       const home = requireHome(homeId);
       return DashboardSchema.parse(homeId === HOME_A ? DASHBOARD_A : dashboardWithoutProjection(home));
     },
+    listRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
+    refreshRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
+    updateRecommendation: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
     listAnomalies: async () => [],
     updateAnomaly: async () => {
       throw new ApiError(404, "No encontrado");

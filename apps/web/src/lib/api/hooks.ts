@@ -22,6 +22,7 @@ export const keys = {
     ? ["homes", homeId, "dashboard", billId] as const
     : ["homes", homeId, "dashboard"] as const,
   anomalies: (homeId: string) => ["homes", homeId, "anomalies"] as const,
+  recommendations: (homeId: string) => ["homes", homeId, "recommendations"] as const,
   equipment: (homeId: string) => ["homes", homeId, "equipment"] as const,
   estimate: (homeId: string) => ["homes", homeId, "estimate"] as const,
   alerts: (homeId: string) => ["homes", homeId, "alerts"] as const,
@@ -80,6 +81,34 @@ export const useUpdateAnomaly = (homeId: string) => {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: "open" | "acknowledged" | "dismissed" }) => getApi().updateAnomaly(homeId, id, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.anomalies(homeId) }),
+  });
+};
+
+/** ERD-SAVE-01: recomendaciones de ahorro vigentes. Entrar a la pantalla recalcula (idempotente) y devuelve las vigentes. */
+export const useRecommendations = (homeId: string) =>
+  useQuery({
+    queryKey: keys.recommendations(homeId),
+    queryFn: async () => {
+      try { return await getApi().refreshRecommendations(homeId); }
+      catch { return getApi().listRecommendations(homeId); }   // el recálculo falló: se muestra lo guardado, nunca una pantalla vacía por eso
+    },
+    enabled: enabled(homeId),
+    staleTime: 0, refetchOnMount: "always",   // entrar a la pantalla recalcula: facturas o equipos pudieron cambiar desde la última vez
+  });
+
+/** Las ya decididas (aplicadas o descartadas), para poder reactivarlas. No recalcula. */
+export const useDecidedRecommendations = (homeId: string) =>
+  useQuery({
+    queryKey: [...keys.recommendations(homeId), "decided"] as const,
+    queryFn: async ({ signal }) => (await getApi().listRecommendations(homeId, { status: "all" }, signal)).items.filter(r => r.status === "applied" || r.status === "dismissed"),
+    enabled: enabled(homeId),
+  });
+
+export const useUpdateRecommendation = (homeId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "active" | "applied" | "dismissed" }) => getApi().updateRecommendation(homeId, id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.recommendations(homeId) }),
   });
 };
 

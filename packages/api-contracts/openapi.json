@@ -4018,6 +4018,248 @@
         "title": "ReadingOut",
         "type": "object"
       },
+      "RecommendationListOut": {
+        "properties": {
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "ruleset_version": {
+            "title": "Ruleset Version",
+            "type": "integer"
+          },
+          "total_savings_dop_month": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_savings_kwh_month": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "home_id",
+          "ruleset_version",
+          "items",
+          "total_savings_kwh_month",
+          "total_savings_dop_month",
+          "note"
+        ],
+        "title": "RecommendationListOut",
+        "type": "object"
+      },
+      "RecommendationRecord": {
+        "description": "Una recomendaci\u00f3n explicable. El ahorro (si existe) es ESTIMADO y sus supuestos viajan con \u00e9l. `rule_id` y\n`rule_version` identifican la regla; `ruleset_version`, el conjunto de reglas con el que se calcul\u00f3.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "anomaly_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly Id"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "category": {
+            "enum": [
+              "equipment",
+              "goal",
+              "anomaly",
+              "data"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "equipment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipment Id"
+          },
+          "evidence": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "object"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "rule_version": {
+            "title": "Rule Version",
+            "type": "integer"
+          },
+          "ruleset_version": {
+            "title": "Ruleset Version",
+            "type": "integer"
+          },
+          "savings_dop_month": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Savings Dop Month"
+          },
+          "savings_kwh_month": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Savings Kwh Month"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "applied",
+              "dismissed",
+              "resolved"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_changed_at": {
+            "format": "date-time",
+            "title": "Status Changed At",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "home_id",
+          "equipment_id",
+          "anomaly_id",
+          "rule_id",
+          "rule_version",
+          "ruleset_version",
+          "category",
+          "title",
+          "summary",
+          "action",
+          "confidence",
+          "status",
+          "savings_kwh_month",
+          "savings_dop_month",
+          "assumptions",
+          "evidence",
+          "created_at",
+          "last_seen_at",
+          "status_changed_at"
+        ],
+        "title": "RecommendationRecord",
+        "type": "object"
+      },
+      "RecommendationStatusIn": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "active",
+              "applied",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "RecommendationStatusIn",
+        "type": "object"
+      },
       "RefreshIn": {
         "additionalProperties": false,
         "properties": {
@@ -8244,6 +8486,202 @@
         "summary": "Delete Reading",
         "tags": [
           "readings"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/recommendations": {
+      "get": {
+        "description": "Recomendaciones guardadas (por defecto las vigentes). Solo lectura: las crea `POST /refresh` o el sistema.",
+        "operationId": "get_recommendations_api_v1_homes__home_id__recommendations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "enum": [
+                "active",
+                "applied",
+                "dismissed",
+                "resolved",
+                "all"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Recommendations",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/recommendations/refresh": {
+      "post": {
+        "description": "Recalcula con los datos actuales (idempotente: repetirlo sin cambios no cambia nada) y devuelve las vigentes.",
+        "operationId": "refresh_api_v1_homes__home_id__recommendations_refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Refresh",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/recommendations/{recommendation_id}": {
+      "patch": {
+        "description": "Marcar como aplicada, descartarla o volver a activarla.",
+        "operationId": "update_recommendation_api_v1_homes__home_id__recommendations__recommendation_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recommendation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recommendation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationStatusIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Recommendation",
+        "tags": [
+          "recommendations"
         ]
       }
     },

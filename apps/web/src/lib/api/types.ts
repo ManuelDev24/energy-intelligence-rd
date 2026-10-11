@@ -1,6 +1,8 @@
 import type { Bill, BillAssessment, BillInput, BillItemsOut, BillItemsReplace, Dashboard, Home, OcrDraft, OcrJob } from "./schemas";
 import type {
   Anomaly,
+  Recommendation,
+  RecommendationList,
   AlertItem,
   AlertStatus,
   Equipment,
@@ -35,6 +37,9 @@ export interface Api {
   getDashboard(homeId: string, signal?: AbortSignal, billId?: string): Promise<Dashboard>;
   listAnomalies(homeId: string, opts?: { status?: "active" | "all" | "dismissed" | "resolved" }, signal?: AbortSignal): Promise<Anomaly[]>;
   updateAnomaly(homeId: string, anomalyId: string, status: "open" | "acknowledged" | "dismissed"): Promise<Anomaly>;
+  listRecommendations(homeId: string, opts?: { status?: "active" | "applied" | "dismissed" | "resolved" | "all"; limit?: number }, signal?: AbortSignal): Promise<RecommendationList>;
+  refreshRecommendations(homeId: string): Promise<RecommendationList>;
+  updateRecommendation(homeId: string, recommendationId: string, status: "active" | "applied" | "dismissed"): Promise<Recommendation>;
   listEquipment(homeId: string, signal?: AbortSignal): Promise<Equipment[]>;
   createEquipment(homeId: string, input: EquipmentInput): Promise<Equipment>;
   updateEquipment(homeId: string, id: string, input: EquipmentInput): Promise<Equipment>;

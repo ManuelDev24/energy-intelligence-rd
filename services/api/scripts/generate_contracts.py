@@ -25,6 +25,7 @@ from app.schemas.tariff import TariffOut
 from app.schemas.bill_detail import BillItemsReplace, BillItemsOut, BillAssessment
 from app.schemas.ocr import OcrDraft, OcrJobOut
 from app.schemas.anomaly import AnomalyRecord, AnomalyStatusIn
+from app.schemas.recommendation import RecommendationListOut, RecommendationRecord, RecommendationStatusIn
 
 ROOT = Path(__file__).resolve().parents[3]
 MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, AlertRecord,
@@ -33,7 +34,7 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
           PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
-          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, BillPaymentIn, DeviceIn, DeviceRemoveIn]
+          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, BillPaymentIn, DeviceIn, DeviceRemoveIn]
 
 
 def generate():

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -173,6 +173,14 @@ function phase2Route(path: string, method: string): Phase2Route | null {
   } } : null;
   if (new RegExp(`^/homes/${UUID}/anomalies/${UUID}$`).test(path)) return method === "PATCH" ? { response: AnomalySchema, body: AnomalyStatusInSchema.strict(), query: {} } : null;
   if (/\/anomalies(\/|$)/.test(path)) return null;
+  // ERD-SAVE-01: recomendaciones de ahorro. Lista con filtros cerrados, recálculo (cuerpo vacío) y cambio de estado.
+  if (new RegExp(`^/homes/${UUID}/recommendations$`).test(path)) return method === "GET" ? { response: RecommendationListSchema, query: {
+    status: { pattern: v => ["active", "applied", "dismissed", "resolved", "all"].includes(v) },
+    limit: { pattern: v => /^\d{1,3}$/.test(v) && Number(v) >= 1 && Number(v) <= 100 },
+  } } : null;
+  if (new RegExp(`^/homes/${UUID}/recommendations/refresh$`).test(path)) return method === "POST" ? { response: RecommendationListSchema, body: z.object({}).strict(), query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/recommendations/${UUID}$`).test(path)) return method === "PATCH" ? { response: RecommendationSchema, body: RecommendationStatusInSchema.strict(), query: {} } : null;
+  if (/\/recommendations(\/|$)/.test(path)) return null;
   // ERD-ALERT-02: marcar una factura como pagada/pendiente.
   if (new RegExp(`^/homes/${UUID}/bills/${UUID}/payment$`).test(path)) return method === "PUT" ? { response: BillSchema, body: BillPaymentInSchema.strict(), query: {} } : null;
   const job = path.match(new RegExp(`^/homes/${UUID}/bills/ocr-jobs/${UUID}(/retry)?$`));
@@ -491,6 +499,11 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       const [, , home, , child] = path.split("/");
       const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id: string }[];
       if (rows.some(row => row.home_id !== home) || (child && rows[0]?.id !== child)) throw new Error("Mismatched anomaly");
+    }
+    if (parsed !== undefined && /\/recommendations(\/refresh|\/[0-9a-f-]{36})?$/.test(path)) {
+      const [, , home, , child] = path.split("/");
+      const row = parsed as { home_id: string; id?: string };
+      if (row.home_id !== home || (child && child !== "refresh" && row.id !== child)) throw new Error("Mismatched recommendation");
     }
     if (parsed !== undefined && /\/bills\/ocr-jobs\/[0-9a-f-]{36}(\/retry)?$/.test(path) && (parsed as { document_id: string }).document_id !== path.split("/")[5]) throw new Error("Mismatched OCR job");
     if (parsed !== undefined && phase2 && /\/contract$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched home");

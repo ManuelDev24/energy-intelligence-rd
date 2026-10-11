@@ -11,7 +11,7 @@ import { ConsumptionChart } from '../../components/charts/ConsumptionChart';
 import { deltaDisplay } from '../../components/charts/chartMath';
 import { MetricCard } from '../../components/MetricCard';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../../components/states';
-import { Button, QualityBadge } from '../../components/ui';
+import { Button, QualityBadge, TextAction } from '../../components/ui';
 import { fmtMetric, fmtPeriod } from '../../lib/format';
 import { GoalCard } from '../goals/GoalCard';
 import { AnomaliesSection } from './AnomaliesSection';
@@ -111,6 +111,7 @@ export function DashboardView({
   bills,
   onAddBill,
   onOpenAlerts,
+  onOpenSavings,
   goalSlot,
   cycleSlot,
   anomalies = [],
@@ -123,6 +124,7 @@ export function DashboardView({
   bills?: Parameters<typeof monthlySeries>[0];
   onAddBill?: () => void;
   onOpenAlerts?: () => void;
+  onOpenSavings?: () => void;
   /** Tarjeta de meta mensual (Fase 2); falla en suave si la API no la ofrece. */
   goalSlot?: ReactNode;
   /** Tarjeta del ciclo actual (ERD-CHARTS-01). */
@@ -237,7 +239,8 @@ export function DashboardView({
         </Card>
       ) : null}
 
-      <RecommendationCard text={recommendation} />
+      <RecommendationCard text={recommendation} onPress={onOpenSavings} />
+      {onOpenSavings ? <TextAction title="Ver recomendaciones de ahorro" testID="open-savings" onPress={onOpenSavings} /> : null}
 
       {ds.insufficient_reasons.length > 0 ? (
         <Card title="Datos insuficientes" testID="card-insufficient">
@@ -278,6 +281,7 @@ export function DashboardView({
 export function DashboardScreen({
   onAddBill,
   onOpenAlerts,
+  onOpenSavings,
   onAddReading,
   onEditGoal,
   onInvestigate,
@@ -285,6 +289,7 @@ export function DashboardScreen({
 }: {
   onAddBill?: () => void;
   onOpenAlerts?: () => void;
+  onOpenSavings?: () => void;
   onAddReading?: () => void;
   onEditGoal?: () => void;
   onInvestigate?: (range: { from: string; to: string; granularity: 'day' }) => void;
@@ -337,6 +342,7 @@ export function DashboardScreen({
         bills={bills.data}
         onAddBill={onAddBill}
         onOpenAlerts={onOpenAlerts}
+        onOpenSavings={onOpenSavings}
         goalSlot={<GoalCard query={goal} onEdit={onEditGoal} onAddReading={onAddReading} onAddBill={onAddBill} />}
         cycleSlot={data.latest_bill ? <CycleCard homeId={homeId} lastBill={data.latest_bill} /> : null}
         anomalies={anomalies.data ?? []}
