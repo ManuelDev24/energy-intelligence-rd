@@ -62,7 +62,8 @@ def build_consumption(db: Session, home_id, granularity: str, first: date, last:
     home = require_home(db, home_id)
     start_at, end_at = local_range(first, last)
     points = load_points(db, home_id, start_at, end_at)
-    results = cc.allocate(intervals(points), cc.calendar_buckets(granularity, first, last, cc.SANTO_DOMINGO))
+    current_intervals = intervals(points)
+    results = cc.allocate(current_intervals, cc.calendar_buckets(granularity, first, last, cc.SANTO_DOMINGO))
     summary = cc.summarize(results)
     reasons = []
     if summary.total_kwh is None:
@@ -78,7 +79,7 @@ def build_consumption(db: Session, home_id, granularity: str, first: date, last:
         else:
             reasons.append(cost_est.reason or "No hay tarifa vigente de la distribuidora para estimar el costo.")
 
-    comparison = _comparison(db, home_id, first, last)
+    comparison = _comparison(db, home_id, first, last, current_intervals)
 
     return ConsumptionOut(
         home_id=home_id, granularity=granularity, from_date=first, to_date=last, timezone=TIMEZONE_NAME,
@@ -95,8 +96,11 @@ def build_consumption(db: Session, home_id, granularity: str, first: date, last:
     )
 
 
-def _comparison(db: Session, home_id, first: date, last: date) -> ConsumptionComparison | None:
-    """Período inmediatamente anterior, de igual longitud que [first, last]. None sin ese historial."""
+def _comparison(db: Session, home_id, first: date, last: date, current_intervals: list[cc.Interval]) -> ConsumptionComparison | None:
+    """Período inmediatamente anterior, de igual longitud que [first, last]. None sin ese historial.
+
+    Reutiliza los intervalos del período actual que `build_consumption` ya calculó (auditoría C-13: antes se volvía a consultar
+    la base y a repartir todo el rango dos veces por petición)."""
     length = (last - first).days + 1
     prev_last = first - timedelta(days=1)
     prev_first = prev_last - timedelta(days=length - 1)
@@ -106,8 +110,7 @@ def _comparison(db: Session, home_id, first: date, last: date) -> ConsumptionCom
     prev_summary = cc.summarize(prev_results)
     if prev_summary.total_kwh is None:
         return None
-    current_points = load_points(db, home_id, *local_range(first, last))
-    current_results = cc.allocate(intervals(current_points), cc.calendar_buckets("day", first, last, cc.SANTO_DOMINGO))
+    current_results = cc.allocate(current_intervals, cc.calendar_buckets("day", first, last, cc.SANTO_DOMINGO))
     current_total = cc.summarize(current_results).total_kwh
     if current_total is None:
         return None
