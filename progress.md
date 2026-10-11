@@ -41,3 +41,11 @@
 - Fundación auth integrada en canónico mediante 23 archivos revisados (sin conflicto contra baseline), 196 pytest pasan en canónico; auth del piloto NO activada. Generador/OpenAPI actualizado: contratos auth4 tests + typecheck completo verde.
 - API autenticada de integración arrancada en http://127.0.0.1:8011, proceso proc_f30b7276ccfc, DB local dedicada energy_rd_auth_integration_test. /health healthy, homes sin token401. Piloto8000 healthy sin cambios. Clientes web/móvil avisados para pruebas reales aisladas.
 - Error contracts test desde services/api: npm no encontró workspaces por ruta relativa; reejecutado raíz correctamente. Error dedup read_file en integración: reutilizado archivo ya leído sin imprimir contenido y completada escritura verificada.
+
+## 2026-10-11 — Módulo 1 (núcleo residencial restante)
+- Se implementaron, en orden y con un commit independiente cada una (local en `Dev`, sin publicar): ERD-E2E-PLAYWRIGHT, ERD-SAVE-01, ERD-SCORE-01 y ERD-INT-01. Detalle y evidencia en `docs/qa/ERD-*.md` y `docs/COMPLETE_PROJECT_GAP_ANALYSIS_2026-10-10.md`.
+- E2E: suite Playwright (61 pruebas) que levanta PostgreSQL exclusivo (`_e2e`), API, worker y web reales y borra la base al terminar; job `e2e web` añadido a CI (no ejecutado aún en GitHub).
+- Migraciones nuevas `0022` (recomendaciones) y `0023` (apagones, con restricción de exclusión contra solapes); ida y vuelta verificadas, sin deriva (`alembic check`).
+- Verificación: API 1082 pasan; web 816 (+5 omitidas); móvil 541 (+11 omitidas); core 85; contratos 17; cliente 66; `next build`, `tsc`, `eslint`, contratos y arquitectura OK.
+- No ejecutado: flujos Maestro (sin emulador), CI remoto del job nuevo. Las 8 tareas externas (OCR real, Maestro, a11y nativa, release, legal, deploy, observabilidad, DR) siguen abiertas.
+

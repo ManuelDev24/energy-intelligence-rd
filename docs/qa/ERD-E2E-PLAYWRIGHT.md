@@ -24,7 +24,7 @@ Requisitos: PostgreSQL local, `uv`, Node 24, Tesseract (para el recorrido OCR).
 - `workers: 1` (una base compartida), `forbidOnly`, sin esperas fijas (solo `expect`/`waitFor` con condición), selectores por rol/etiqueta o `data-testid`.
 - Trazas, capturas y video **solo si falla** una prueba. En CI se ejecuta `scripts/scrub_e2e_artifacts.py` (probado en `tests/test_e2e_scrub.py`): redacta tokens, cookies, contraseñas y correos de las trazas, descarta cuerpos de red/capturas internas y **borra los videos** antes de subir el artefacto (retención 7 días, solo en fallo).
 
-## Cobertura (46 pruebas)
+## Cobertura (61 pruebas)
 
 | Spec | Recorridos |
 |---|---|
@@ -33,14 +33,19 @@ Requisitos: PostgreSQL local, `uv`, Node 24, Tesseract (para el recorrido OCR).
 | `03-bills` | factura manual (vacío, validación, alta, historial, detalle); período solapado rechazado; editar/eliminar con confirmación; **OCR real**: foto → progreso → borrador → confirmar guarda UNA factura con su original; archivo ilegible sin crear nada |
 | `04-insights` | panel piloto (etiquetas de calidad, alerta crítica, proyección, recomendación); consumo por factura y por lecturas, sin inventar datos; metas (guardar, recordar, rechazar inválida); equipos (tipo/marca/modelo/icono, reparto 100 %, editar/eliminar); alertas (crear, leer, descartar, vacío) |
 | `05-profile-share-authz` | perfil y preferencias de aviso; sesiones activas; compartir (invitar → correo → aceptar → expulsar; invitación revocada); autorización entre personas (B no lee ni modifica lo de A), 401 sin sesión y protección CSRF por origen |
+| `07-savings` | recomendaciones de ahorro: estimadas y explicables, aplicar/reactivar, idempotencia, cambios del equipo, decisiones que se respetan, privacidad (SAVE-01) |
+| `08-energy-score` | sin datos no hay gauge; con datos el panel muestra el mismo puntaje que la API y sus 4 componentes; aplicar una recomendación mejora Eficiencia; privacidad (SCORE-01) |
+| `09-outages` | alta con duración y resumen mensual, apagón en curso que se cierra, validación y solapes, editar/eliminar con confirmación, agregados por mes de RD, privacidad (INT-01) |
 | `06-states-keyboard` | estados loading / vacío / error + Reintentar / red caída; teclado: login solo con Tab+Enter, foco al primer campo inválido, «Saltar al contenido», menú principal, diálogo con foco atrapado, Escape y retorno del foco |
 
 ## Evidencia de la corrida
 
-- Dos corridas consecutivas **desde cero** (sin `E2E_REUSE`): `46 passed` (4,7 min) y `46 passed` (4,8 min); 0 reintentos (`flaky` = 0).
+- Corrida inicial del primer commit (46 pruebas): `46 passed` ×2 (4,7 y 4,8 min). Verificación final del módulo, con las 61 pruebas
+  (incluye `07`–`09`), dos corridas consecutivas **desde cero** (sin `E2E_REUSE`, con `CI=1` → 1 reintento permitido): `61 passed`
+  (6,1 min) y `61 passed` (6,0 min); 0 pruebas inestables (`flaky` = 0 en ambos registros).
 - Al terminar: base `_e2e` eliminada, sin procesos residuales.
-- `tsc --noEmit`, `eslint` y `vitest` (772 pruebas) de la web siguen en verde con la suite incluida; `check_architecture` y `git diff --check` limpios; sin `.only`, `skip` ni `fixme`.
-- CI: job `e2e web` en `.github/workflows/ci.yml` (obligatorio: corre en cada push/PR a Dev, QA y main, tras `api`), con servicio PostgreSQL, Chromium instalado con dependencias y publicación de diagnósticos depurados solo en fallo.
+- `tsc --noEmit`, `eslint` y `vitest` (816 pruebas) de la web siguen en verde con la suite incluida; `check_architecture` y `git diff --check` limpios; sin `.only`, `skip` ni `fixme`.
+- CI: job `e2e web` (**declarado pero aún no ejecutado en GitHub Actions**: aquí solo corrió el mismo comando localmente) en `.github/workflows/ci.yml` (obligatorio: corre en cada push/PR a Dev, QA y main, tras `api`), con servicio PostgreSQL, Chromium instalado con dependencias y publicación de diagnósticos depurados solo en fallo.
 
 ## Límites honestos
 
