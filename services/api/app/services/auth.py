@@ -1,6 +1,7 @@
 """Password and session primitives. Refresh history is retained to detect reuse."""
 import hashlib
 import secrets
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -11,11 +12,41 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.models.auth import AuthSession, RefreshToken, User
-from app.services.errors import Unauthorized
+from app.services.errors import ServiceBusy, Unauthorized
 from app.services.legal import LEGAL_TERMS_VERSION
 from app.services.transactions import write_transaction
 
-password_hasher = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
+class BoundedPasswordHasher(PasswordHasher):
+    """Argon2id con tope de cálculos simultáneos (auditoría C-08): cada uno usa 64 MiB y 4 hilos. Si no hay turno en
+    `AUTH_HASH_WAIT_SECONDS`, responde 503 con Retry-After en vez de acumular memoria hasta que el proceso muera."""
+
+    def __init__(self, *args, concurrency: int, wait_seconds: float, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._turns = threading.BoundedSemaphore(concurrency)
+        self._wait_seconds = wait_seconds
+
+    def _turn(self):
+        if not self._turns.acquire(timeout=self._wait_seconds):
+            raise ServiceBusy()
+        return self._turns
+
+    def hash(self, password, *args, **kwargs):
+        turns = self._turn()
+        try:
+            return super().hash(password, *args, **kwargs)
+        finally:
+            turns.release()
+
+    def verify(self, hash, password):
+        turns = self._turn()
+        try:
+            return super().verify(hash, password)
+        finally:
+            turns.release()
+
+
+password_hasher = BoundedPasswordHasher(time_cost=3, memory_cost=65536, parallelism=4,
+                                        concurrency=settings.AUTH_HASH_CONCURRENCY, wait_seconds=settings.AUTH_HASH_WAIT_SECONDS)
 # Equal-cost verify for missing users. This is not a signing key or usable account.
 _dummy_hash = password_hasher.hash(secrets.token_urlsafe(32))
 

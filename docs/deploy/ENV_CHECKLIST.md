@@ -37,6 +37,9 @@ archivos del repo. Cambiar `AUTH_SIGNING_KEY` cierra todas las sesiones (y reini
 | `AUTH_ENABLED` | No (grupo) | `true` | `true` | Valor por defecto `true`; `false` (modo piloto local) solo en development y hay que pedirlo expresamente. |
 | `MIGRATE_ON_START` | No (grupo) | `false` | `false` | `true` está **prohibido** en staging/production: la migración es un paso de release. |
 | `SEED_PILOT` | No (grupo) | `false` | `false` | `true` está **prohibido** en staging/production (datos demo). |
+| `DB_STATEMENT_TIMEOUT_MS` / `DB_LOCK_TIMEOUT_MS` / `DB_IDLE_IN_TRANSACTION_TIMEOUT_MS` | No | `30000` / `5000` / `60000` (por defecto) | igual | Tiempos de espera de la sesión de PostgreSQL (auditoría C-08): una consulta lenta o un bloqueo de vivienda colgado falla en segundos con 503 + `Retry-After` en vez de retener una conexión del pool sin límite. No aplican a las migraciones. Se fijan con `SET` al abrir cada conexión (compatible con poolers). `0` = sin límite. |
+| `MAX_REQUEST_BODY_BYTES` / `UPLOAD_BODY_OVERHEAD_BYTES` | No | `262144` / `262144` (por defecto) | igual | Tope del cuerpo de cada petición (413 sin leerlo). Las rutas de subida de facturas admiten el archivo máximo (`DOCUMENT_MAX_PDF_BYTES`) más el sobre multipart. |
+| `AUTH_HASH_CONCURRENCY` / `AUTH_HASH_WAIT_SECONDS` | No | `4` / `5` (por defecto) | igual | Cálculos Argon2 simultáneos (64 MiB cada uno); si no hay turno en el plazo, 503 + `Retry-After`. Con 512 MB de RAM, no subir de 4–6. |
 | `DB_POOL_SIZE` | No (grupo) | `5` | `5` | Conexiones máximas por proceso = `DB_POOL_SIZE + DB_MAX_OVERFLOW`. |
 | `DB_MAX_OVERFLOW` | No (grupo) | `5` | `5` | |
 | `DB_POOL_TIMEOUT` | No (grupo) | `10` | `10` | Segundos. |

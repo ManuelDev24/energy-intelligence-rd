@@ -34,3 +34,15 @@ class StorageUnavailable(ApplicationError):
 class QuotaExceeded(ApplicationError):
     status_code = 409
     code = "document_quota_exceeded"
+
+
+class ServiceBusy(ApplicationError):
+    """Capacidad agotada o dependencia lenta (pool de conexiones, tiempo de espera de la base, Argon2): se reintenta en unos segundos."""
+    status_code = 503
+    code = "service_busy"
+    no_store = True
+    retry_after = 2
+
+    def __init__(self, message: str = "El servicio está ocupado. Intenta de nuevo en unos segundos.", retry_after: int = 2):
+        super().__init__(message)
+        self.retry_after = retry_after

@@ -504,3 +504,26 @@ def test_maintenance_cli_exit_codes(migrated, monkeypatch, capsys):
     set_store_for_tests(None)
     assert storage_maintenance.main([]) == 2
     assert 'STORAGE_BACKEND' in capsys.readouterr().err
+
+
+# ---------- auditoría C-08: el tope del cuerpo no impide subir archivos legítimos ----------
+def _noisy_jpeg(side=900):
+    out = io.BytesIO()
+    Image.frombytes('RGB', (side, side), os.urandom(side * side * 3)).save(out, 'JPEG', quality=95)
+    return out.getvalue()
+
+
+def test_a_photo_bigger_than_the_json_body_limit_still_uploads(two_users):
+    client, alice, _, home = two_users
+    content = _noisy_jpeg()
+    assert settings.MAX_REQUEST_BODY_BYTES < len(content) < settings.DOCUMENT_MAX_PHOTO_BYTES
+    assert upload(client, alice, home, content).status_code == 201
+
+
+def test_a_body_beyond_the_upload_envelope_is_refused_with_413_before_parsing(two_users, monkeypatch):
+    client, alice, _, home = two_users
+    monkeypatch.setitem(settings.__dict__, 'DOCUMENT_MAX_PHOTO_BYTES', 4096)
+    monkeypatch.setitem(settings.__dict__, 'DOCUMENT_MAX_PDF_BYTES', 8192)
+    monkeypatch.setitem(settings.__dict__, 'UPLOAD_BODY_OVERHEAD_BYTES', 4096)
+    r = upload(client, alice, home, b'\xff\xd8\xff' + b'0' * 20_000)
+    assert r.status_code == 413 and r.json()['code'] == 'http_413'

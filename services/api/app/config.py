@@ -107,6 +107,18 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = Field(default=5, ge=1, le=100)
     DB_MAX_OVERFLOW: int = Field(default=5, ge=0, le=100)
     DB_POOL_TIMEOUT: int = Field(default=10, gt=0, le=120)
+    # Auditoría C-08: tiempos de espera de la base (ms; 0 = sin límite). Sin ellos una consulta lenta o un FOR UPDATE colgado retiene
+    # una de las pocas conexiones del pool sin límite y todas las peticiones se acumulan detrás. No aplican a las migraciones (Alembic).
+    DB_STATEMENT_TIMEOUT_MS: int = Field(default=30_000, ge=0, le=600_000)
+    DB_LOCK_TIMEOUT_MS: int = Field(default=5_000, ge=0, le=120_000)
+    DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: int = Field(default=60_000, ge=0, le=600_000)
+    # Auditoría C-08: tope del cuerpo de cada petición (antes se leía completo sin límite, incluso sin autenticar). Las dos rutas de
+    # subida de facturas admiten el archivo más grande permitido más el sobre multipart; el resto solo JSON pequeño.
+    MAX_REQUEST_BODY_BYTES: int = Field(default=256 * 1024, ge=4096, le=10 * 1024 * 1024)
+    UPLOAD_BODY_OVERHEAD_BYTES: int = Field(default=256 * 1024, ge=4096, le=4 * 1024 * 1024)
+    # Auditoría C-08: Argon2 usa 64 MiB y 4 hilos por cálculo; sin tope, unas pocas decenas de logins simultáneos agotan memoria y CPU.
+    AUTH_HASH_CONCURRENCY: int = Field(default=4, ge=1, le=32)
+    AUTH_HASH_WAIT_SECONDS: float = Field(default=5.0, gt=0, le=60)
     # Orígenes permitidos por CORS, separados por coma. Nunca "*" con credenciales.
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8081,http://localhost:19006"
     # ERD-SEC-PROXY-01: uvicorn corre con --no-proxy-headers a propósito (Render solo
@@ -128,6 +140,10 @@ class Settings(BaseSettings):
     # ERD-OBS-01: Sentry es opcional; sin DSN no se envía nada. El DSN no es secreto fuerte pero no se imprime.
     SENTRY_DSN: str = Field(default="", repr=False)
     SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.05, ge=0.0, le=1.0)
+
+    @property
+    def max_upload_request_bytes(self) -> int:
+        return max(self.DOCUMENT_MAX_PDF_BYTES, self.DOCUMENT_MAX_PHOTO_BYTES) + self.UPLOAD_BODY_OVERHEAD_BYTES
 
     @property
     def cors_origins_list(self) -> list[str]:
