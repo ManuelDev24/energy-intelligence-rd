@@ -24,8 +24,7 @@
   "workspaces": [
     "apps/*",
     "services/*",
-    "packages/*",
-    "mcp/*"
+    "packages/*"
   ],
   "overrides": {
     "react": "19.2.3",
