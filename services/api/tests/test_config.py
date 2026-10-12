@@ -238,3 +238,27 @@ def test_alembic_prefers_the_migration_url_over_the_application_url(monkeypatch)
     monkeypatch.setattr(settings, "DATABASE_URL", "postgresql+psycopg://erd_app:x@db/energy")
     monkeypatch.setattr(settings, "MIGRATION_DATABASE_URL", "postgresql+psycopg://owner:y@db/energy")
     assert (settings.MIGRATION_DATABASE_URL or settings.DATABASE_URL).startswith("postgresql+psycopg://owner")
+
+
+def test_production_refuses_to_start_with_draft_legal_texts_unless_the_risk_is_explicitly_accepted():
+    """Re-auditoría C-04: nada de operar en producción aceptando términos en borrador por descuido."""
+    from app.services import legal
+    assert legal.LEGAL_STATUS == "draft"  # si cambia a «final», esta prueba debe revisarse junto con la guarda
+    with pytest.raises(RuntimeError, match="borrador"):
+        legal.require_final_legal("production", False)
+    legal.require_final_legal("production", True)      # aceptación explícita de la persona responsable
+    legal.require_final_legal("staging", False)        # staging y desarrollo sí pueden usar el borrador
+    legal.require_final_legal("development", False)
+
+
+def test_the_api_lifespan_enforces_the_legal_guard(monkeypatch):
+    import asyncio
+    from app import main
+    monkeypatch.setitem(main.settings.__dict__, "ENVIRONMENT", "production")
+    monkeypatch.setitem(main.settings.__dict__, "ALLOW_DRAFT_LEGAL", False)
+
+    async def start():
+        async with main.lifespan(main.app):
+            pass
+    with pytest.raises(RuntimeError, match="borrador"):
+        asyncio.run(start())

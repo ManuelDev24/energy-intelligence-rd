@@ -123,6 +123,8 @@ def check_render() -> None:
                     errors.append(f"{name}: el worker no debe recibir MIGRATION_DATABASE_URL (rol dueño)")
                 if keys.get("ENVIRONMENT", {}).get("value") != env_name:
                     errors.append(f"{name}: ENVIRONMENT debe ser {env_name}")
+                if keys.get("ALLOW_DRAFT_LEGAL", {}).get("value", "false") != "false":
+                    errors.append(f"{name}: ALLOW_DRAFT_LEGAL no puede fijarse en el blueprint (aceptar textos legales en borrador es una decisión explícita fuera del repo)")
                 for flag in ("MIGRATE_ON_START", "SEED_PILOT"):
                     if keys.get(flag, {}).get("value", "false") != "false":
                         errors.append(f"{name}: {flag} debe ser false")

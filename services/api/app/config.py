@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     PASSWORD_RESET_ACCOUNT_WINDOW_SECONDS: int = Field(default=3600, ge=60, le=86400)
     # Página web que lee el token del FRAGMENTO (#token=...); nunca query string.
     PASSWORD_RESET_URL: str = "http://localhost:3000/restablecer-contrasena"
+    ALLOW_DRAFT_LEGAL: bool = False  # re-auditoría C-04: aceptación explícita del riesgo de operar en producción con textos legales en borrador
     MAX_HOMES_PER_USER: int = Field(default=20, ge=1, le=1000)  # auditoría C-24 (DB-12): tope de viviendas propias por persona
     # ERD-DB-DOCUMENTS: originales de factura. Sin factura asociada caducan (propuesta, pendiente de aprobación legal).
     DOCUMENT_UNCONFIRMED_RETENTION_DAYS: int = Field(default=7, ge=1, le=90)
