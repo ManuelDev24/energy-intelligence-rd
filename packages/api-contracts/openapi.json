@@ -1945,6 +1945,42 @@
         "title": "DownloadUrlOut",
         "type": "object"
       },
+      "EmailVerificationRequestOut": {
+        "description": "202 al pedir (re)env\u00edo del enlace. `already_verified` cuando no hace falta; el resto (incluido el tope por hora) es `accepted`.",
+        "properties": {
+          "status": {
+            "enum": [
+              "accepted",
+              "already_verified"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "EmailVerificationRequestOut",
+        "type": "object"
+      },
+      "EmailVerifyIn": {
+        "additionalProperties": false,
+        "description": "Auditor\u00eda C-10: token opaco del enlace de verificaci\u00f3n (43 caracteres URL-safe), solo en el cuerpo.",
+        "properties": {
+          "token": {
+            "maxLength": 43,
+            "minLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "EmailVerifyIn",
+        "type": "object"
+      },
       "EnergyScoreOut": {
         "description": "Energy Score 0\u2013100 calculado por el backend (la f\u00f3rmula vive solo all\u00ed). Indicador interno INFERIDO: orientativo.",
         "properties": {
@@ -5094,6 +5130,18 @@
             "title": "Email",
             "type": "string"
           },
+          "email_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Verified At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -5287,6 +5335,66 @@
           }
         ],
         "summary": "Remove Device",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/email/verification": {
+      "post": {
+        "operationId": "request_email_verification_api_v1_auth_email_verification_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailVerificationRequestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Email Verification",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/email/verify": {
+      "post": {
+        "operationId": "verify_email_api_v1_auth_email_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerifyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Email",
         "tags": [
           "auth"
         ]

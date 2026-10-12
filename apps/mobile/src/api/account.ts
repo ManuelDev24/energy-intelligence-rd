@@ -1,6 +1,6 @@
 import { ContractError } from '@energyrd/api-client';
 import {
-  HomeSchema, InvitationOutSchema, MemberOutSchema, NotificationPreferencesOutSchema, SessionOutSchema, TokensOutSchema,
+  EmailVerificationRequestOutSchema, HomeSchema, InvitationOutSchema, MemberOutSchema, NotificationPreferencesOutSchema, SessionOutSchema, TokensOutSchema,
 } from '@energyrd/api-contracts';
 import { z } from 'zod';
 import { localApiError, serverError } from './errors';
@@ -78,6 +78,8 @@ export function createAccountApi(baseUrl: string, transport: typeof fetch) {
       if (!PUSH_TOKEN.test(token)) throw localApiError(422, 'El token de notificaciones no es válido.', { token: 'x' });
       return request('/api/v1/auth/devices/remove', 'POST', { token }, none);
     },
+    // Auditoría C-10: (re)envía el enlace de verificación del correo (202); el enlace abre la web.
+    requestEmailVerification: async () => request('/api/v1/auth/email/verification', 'POST', {}, EmailVerificationRequestOutSchema),
     listSessions: async () => request('/api/v1/auth/sessions', 'GET', undefined, SessionOutSchema.array()),
     revokeSession: async (sessionId: string) => request(`/api/v1/auth/sessions/${uuid(sessionId, 'La sesión')}`, 'DELETE', undefined, none),
     revokeOtherSessions: async () => request('/api/v1/auth/sessions/revoke-others', 'POST', undefined, none),

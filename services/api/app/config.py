@@ -144,6 +144,11 @@ class Settings(BaseSettings):
     # navegador, distinta de la IP del propio BFF en la conexión servidor-a-servidor).
     BFF_API_SHARED_SECRET: str = Field(default="", repr=False)
 
+    # Auditoría C-10: verificación de correo. El enlace lleva el token en el fragmento (#token=), como la recuperación.
+    # Vacío = misma web que PASSWORD_RESET_URL, ruta /verificar-correo.
+    EMAIL_VERIFICATION_URL: str = ""
+    EMAIL_VERIFICATION_TTL_HOURS: int = Field(default=48, ge=1, le=168)
+    EMAIL_VERIFICATION_ACCOUNT_LIMIT: int = Field(default=3, ge=1, le=20)  # envíos por cuenta y hora
     # ERD-SHARE-01: invitaciones a una vivienda (el token viaja en el fragmento #token=, como el de recuperación).
     # Vacío = misma web que PASSWORD_RESET_URL, ruta /invitacion (no añade una variable obligatoria al despliegue).
     INVITATION_URL: str = ""
@@ -212,6 +217,14 @@ class Settings(BaseSettings):
         if not self.INVITATION_URL:
             reset = urlsplit(self.PASSWORD_RESET_URL)
             self.INVITATION_URL = f"{reset.scheme}://{reset.netloc}/invitacion"
+        if not self.EMAIL_VERIFICATION_URL:
+            reset = urlsplit(self.PASSWORD_RESET_URL)
+            self.EMAIL_VERIFICATION_URL = f"{reset.scheme}://{reset.netloc}/verificar-correo"
+        verification_url = urlsplit(self.EMAIL_VERIFICATION_URL)
+        if (verification_url.query or verification_url.fragment or "#" in self.EMAIL_VERIFICATION_URL
+                or "?" in self.EMAIL_VERIFICATION_URL or not verification_url.hostname
+                or (self.ENVIRONMENT.lower() != "development" and verification_url.scheme != "https")):
+            raise ValueError("EMAIL_VERIFICATION_URL must be an HTTPS URL (outside development) without query or fragment")
         invitation_url = urlsplit(self.INVITATION_URL)
         if (invitation_url.query or invitation_url.fragment or "#" in self.INVITATION_URL or "?" in self.INVITATION_URL
                 or not invitation_url.hostname):

@@ -240,7 +240,8 @@ export const UserOutSchema = z.object({
   "role": z.enum(["user", "admin", "support"]),
   "created_at": z.string().datetime({ offset: true }),
   "terms_version": z.union([z.string(), z.null()]).default(null),
-  "terms_accepted_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
+  "terms_accepted_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null),
+  "email_verified_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
 });
 export type UserOut = z.infer<typeof UserOutSchema>;
 
@@ -577,6 +578,16 @@ export const SessionOutSchema = z.object({
   "current": z.boolean()
 });
 export type SessionOut = z.infer<typeof SessionOutSchema>;
+
+export const EmailVerifyInSchema = z.object({
+  "token": z.string().regex(new RegExp("^[A-Za-z0-9_-]{43}$")).min(43).max(43)
+});
+export type EmailVerifyIn = z.infer<typeof EmailVerifyInSchema>;
+
+export const EmailVerificationRequestOutSchema = z.object({
+  "status": z.enum(["accepted", "already_verified"])
+});
+export type EmailVerificationRequestOut = z.infer<typeof EmailVerificationRequestOutSchema>;
 
 export const OcrFieldSchema = z.object({
   "value": z.union([z.string(), z.null()]),

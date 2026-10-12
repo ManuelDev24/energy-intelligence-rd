@@ -157,3 +157,29 @@ def invitation_message(to: str, base_url: str, token: str, ttl_days: int, home_n
         "<p>Energy RD</p></body></html>"
     )
     return EmailMessage(to=to, subject=subject, text=text, html=body)
+
+
+def email_verification_message(to: str, base_url: str, token: str, ttl_hours: int) -> EmailMessage:
+    """Auditoría C-10. El token va en el fragmento (#token=): no llega a logs de acceso ni a Referer."""
+    link = build_reset_link(base_url, token)
+    subject = "Confirma tu correo en Energy RD"
+    text = (
+        "Hola:\n\n"
+        "Para terminar de configurar tu cuenta de Energy RD y recibir avisos por correo, confirma que este correo es tuyo.\n"
+        f"Abre este enlace (caduca en {ttl_hours} horas y solo puede usarse una vez):\n\n"
+        f"{link}\n\n"
+        "Si no creaste una cuenta en Energy RD, ignora este correo: no te enviaremos nada más.\n\n"
+        "Energy RD\n"
+    )
+    safe = html.escape(link, quote=True)
+    body = (
+        '<!doctype html><html lang="es"><body style="font-family:Arial,sans-serif;color:#1f2937">'
+        "<p>Hola:</p>"
+        "<p>Para terminar de configurar tu cuenta de Energy RD y recibir avisos por correo, confirma que este correo es tuyo.</p>"
+        f'<p><a href="{safe}">Confirmar mi correo</a></p>'
+        f"<p>El enlace caduca en {ttl_hours} horas y solo puede usarse una vez. "
+        f"Si el botón no funciona, copia esta dirección en tu navegador:<br>{safe}</p>"
+        "<p>Si no creaste una cuenta en Energy RD, ignora este correo: no te enviaremos nada más.</p>"
+        "<p>Energy RD</p></body></html>"
+    )
+    return EmailMessage(to=to, subject=subject, text=text, html=body)

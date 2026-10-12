@@ -21,7 +21,7 @@ from app.schemas.alert import AlertRecord, AlertSettingsOut, AlertSettingsIn, Al
 from app.schemas.auth import (UserOut, TokensOut, RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn,
                               PasswordForgotAccepted, PasswordResetIn, PasswordChangeIn, DeviceIn, DeviceRemoveIn, InvitationCreateIn,
                               InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
-                              NotificationPreferencesIn, NotificationPreferencesOut, SessionOut)
+                              NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut)
 from app.schemas.reading import ReadingCreate, ReadingOut
 from app.schemas.consumption import ConsumptionOut
 from app.schemas.goal import GoalIn, GoalOut, GoalProgressOut
@@ -41,7 +41,7 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
           PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
-          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn]
+          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn]
 
 
 def generate():

@@ -103,6 +103,13 @@ def register(db, credentials):
     return tokens
 
 
+def user_id_of(tokens) -> uuid.UUID:
+    """Persona del access token recién emitido (sin volver a validar: lo acaba de firmar este proceso)."""
+    claims = jwt.decode(tokens["access_token"], settings.AUTH_SIGNING_KEY, algorithms=["HS256"],
+                        audience=settings.AUTH_AUDIENCE, issuer=settings.AUTH_ISSUER)
+    return uuid.UUID(claims["sub"])
+
+
 def login(db, credentials):
     user = db.scalar(select(User).where(User.email == credentials.email))
     verified_hash = user.password_hash if user else None

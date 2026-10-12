@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, EmailVerificationRequestOutSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema } from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -31,6 +31,9 @@ const AccountDeletionSchema = AccountDeletionInSchema.strict();
 // base64url, igual que el contrato.
 const FORGOT = "/auth/password/forgot";
 const RESET = "/auth/password/reset";
+// Auditoría C-10: canje del enlace de verificación de correo. Pública y sin cookies de sesión, igual que la recuperación.
+const VERIFY_EMAIL = "/auth/email/verify";
+const VerifyEmailSchema = EmailVerifyInSchema.strict();
 const ForgotSchema = PasswordForgotInSchema.extend({ email: z.string().email().max(254) }).strict();
 const ResetSchema = PasswordResetInSchema.strict();
 // ERD-PROF-01: cambio con sesión iniciada; la nueva contraseña debe diferir de la actual (la API también lo exige).
@@ -152,6 +155,7 @@ function accountSettingsRoute(path: string, method: string): Phase2Route | null 
     : method === "PUT" ? { response: NotificationPreferencesOutSchema, body: NotificationPreferencesInSchema.strict(), query: {} } : null;
   if (path === "/auth/me/export") return method === "GET" ? { response: ExportSchema, query: {} } : null;
   if (path === "/auth/sessions") return method === "GET" ? { response: SessionOutSchema.array(), query: {} } : null;
+  if (path === "/auth/email/verification") return method === "POST" ? { response: EmailVerificationRequestOutSchema, body: z.object({}).strict(), query: {} } : null;
   if (path === "/auth/sessions/revoke-others") return method === "POST" ? { response: none, body: z.object({}).strict(), query: {} } : null;
   if (new RegExp(`^/auth/sessions/${UUID}$`).test(path)) return method === "DELETE" ? { response: none, body: z.object({}).strict(), query: {} } : null;
   return null;
@@ -297,13 +301,14 @@ const FIELD_MESSAGES: Record<string, string> = {
   token: "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.",
   new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
 };
-const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
+const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|verification_token_invalid|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
   // ERD-AUTH-05: token de recuperación inválido, caducado o ya usado (sin distinguir cuál).
+  if (status === 400 && code === "verification_token_invalid") return "El enlace de verificación no es válido o caducó. Pide uno nuevo desde la aplicación.";
   if (status === 400 && code === "reset_token_invalid") return "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.";
-  if (status === 429 && (path === FORGOT || path === RESET)) return "Demasiadas solicitudes de recuperación. Espera unos minutos e inténtalo de nuevo.";
+  if (status === 429 && (path === FORGOT || path === RESET || path === VERIFY_EMAIL)) return "Demasiadas solicitudes de recuperación. Espera unos minutos e inténtalo de nuevo.";
   if (status === 403 && code === "reauthentication_failed") return "La contraseña no es correcta.";
   // ERD-SHARE-01: la propiedad ya se puede transferir; el mismo código lo usan borrar cuenta y salir de la vivienda.
   if (status === 409 && code === "ownership_transfer_required") return path === "/auth/me" ? "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad o expulsa a los demás miembros antes de continuar." : "Eres el propietario: transfiere la propiedad a otro miembro antes de salir, o borra la vivienda si eres el único miembro.";
@@ -382,7 +387,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   }
   const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
   const legal = path === "/legal" && method === "GET";
-  const recovery = method === "POST" && (path === FORGOT || path === RESET);
+  const recovery = method === "POST" && (path === FORGOT || path === RESET || path === VERIFY_EMAIL);
   const passwordChange = method === "POST" && path === PASSWORD_CHANGE;
   const phase2 = auth || legal || recovery || passwordChange ? null : phase2Route(path, method);
   const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocrJobStart ? OcrJobSchema : phase2 ? phase2.response : domainRoute(path, method);
@@ -418,7 +423,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
         if (!EPOCH.test(cookie(request, epochName(config)) || "")) return setEpoch(reply({ detail: "Activa las cookies de este sitio e inténtalo de nuevo.", code: "auth_epoch_required" }, 428), config);
         body = JSON.stringify(credentials.data);
       } else if (recovery) {
-        const parsed = (path === RESET ? ResetSchema : ForgotSchema).safeParse(value);
+        const parsed = (path === RESET ? ResetSchema : path === VERIFY_EMAIL ? VerifyEmailSchema : ForgotSchema).safeParse(value);
         if (!parsed.success) return invalid(parsed.error.issues);
         body = JSON.stringify(parsed.data);
       } else if (passwordChange) {
@@ -478,7 +483,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       if (upstream.status !== 202) throw new Error("Unexpected status");
       return reply(PasswordForgotAcceptedSchema.strict().parse(data), 202);
     }
-    if (path === RESET) {
+    if (path === RESET || path === VERIFY_EMAIL) {
       if (upstream.status !== 204) throw new Error("Unexpected status");
       // Public reset revokes only the token owner's sessions in the API. A late response
       // must never erase cookies belonging to a newer login (possibly another account).

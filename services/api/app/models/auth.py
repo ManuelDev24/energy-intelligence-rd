@@ -25,6 +25,21 @@ class User(Base):
     # NULL = usuario legado anterior al consentimiento (migración 0012).
     terms_version: Mapped[str | None] = mapped_column(String(32))
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Auditoría C-10 (migración 0027): NULL hasta que la persona abre el enlace enviado a su correo.
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EmailVerificationToken(Base):
+    """Auditoría C-10: un solo uso; solo se guarda el SHA-256 del token, ligado al correo que verifica."""
+    __tablename__ = "email_verification_tokens"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+                                               index=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class HomeMember(Base):

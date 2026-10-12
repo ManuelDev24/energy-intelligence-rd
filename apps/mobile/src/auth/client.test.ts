@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createAuthClient, validateCredentials } from './client';
 
 const pair = { access_token: 'access-test', refresh_token: 'refresh-test', token_type: 'bearer', expires_in: 900 };
-const user = { id: '11111111-1111-4111-8111-111111111111', email: 'account@example.com', role: 'user', created_at: '2026-10-04T00:00:00Z', terms_version: '2026-10-01', terms_accepted_at: '2026-10-04T00:00:00Z' };
+const user = { id: '11111111-1111-4111-8111-111111111111', email: 'account@example.com', role: 'user', created_at: '2026-10-04T00:00:00Z', terms_version: '2026-10-01', terms_accepted_at: '2026-10-04T00:00:00Z', email_verified_at: null };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
 describe('auth HTTP contract', () => {

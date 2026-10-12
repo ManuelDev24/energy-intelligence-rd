@@ -3,7 +3,7 @@ import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
-  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema, EnergyScoreSchema, OutageSchema, OutageSummarySchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, EmailVerificationRequestOutSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema, EnergyScoreSchema, OutageSchema, OutageSummarySchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
   type Distributor, type OutageInput, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
@@ -291,6 +291,13 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       if (!parsed.success) throw localValidation(parsed.error, RESET_MESSAGES);
       return request("/auth/password/reset", z.undefined(), write("POST", parsed.data), 204);
     },
+    // Auditoría C-10: verificación de correo. El canje (público, token solo en el cuerpo) devuelve 204; el (re)envío exige sesión y devuelve 202.
+    verifyEmail: async (token: string) => {
+      const parsed = EmailVerifyInSchema.strict().safeParse({ token });
+      if (!parsed.success) throw localValidation(parsed.error, RESET_MESSAGES);
+      return request("/auth/email/verify", z.undefined(), write("POST", parsed.data), 204);
+    },
+    requestEmailVerification: () => request("/auth/email/verification", EmailVerificationRequestOutSchema, write("POST", {}), 202),
     listTariffs: async (opts?: { distributor?: Distributor; on?: string }, signal?: AbortSignal) =>
       list(`/tariffs${query({ distributor: opts?.distributor, on: opts?.on === undefined ? undefined : isoDate.parse(opts.on) })}`,
         TariffSchema, signal),

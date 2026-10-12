@@ -115,6 +115,8 @@ def deliver(db: Session, notification_id, *, attempt: int, max_attempts: int, no
         return _skip_commit(db, row, "preference")
     if alert.status == "dismissed":
         return _skip_commit(db, row, "dismissed")
+    if row.channel == "email" and user.email_verified_at is None:
+        return _skip_commit(db, row, "unverified_email")  # auditoría C-10: nunca correo a una dirección no confirmada
     sent_today = db.scalar(select(func.count()).select_from(Notification).where(
         Notification.user_id == row.user_id, Notification.channel == row.channel, Notification.status == "sent",
         Notification.sent_at > current - timedelta(hours=24)))

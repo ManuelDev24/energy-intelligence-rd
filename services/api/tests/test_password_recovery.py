@@ -24,6 +24,9 @@ def recovery_client(auth_client, monkeypatch):
     monkeypatch.setitem(settings.__dict__, 'EMAIL_BACKEND', 'console')
     monkeypatch.setitem(settings.__dict__, 'EMAIL_DEV_OUTBOX', '')
     monkeypatch.setitem(settings.__dict__, 'PASSWORD_RESET_URL', 'https://app.energy.example/restablecer')
+    # Estas pruebas cuentan los correos de ESTE flujo; el correo de verificación del registro se prueba en test_email_verification.py.
+    from app.services import email_verification
+    monkeypatch.setattr(email_verification, 'issue', lambda *args, **kwargs: None)
     email.DEV_OUTBOX.clear()
     yield auth_client
     email.DEV_OUTBOX.clear()

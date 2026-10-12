@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
   const redirect = (path: string) => withSecurity(request, () => NextResponse.redirect(new URL(path, request.url)));
   // ERD-AUTH-05 / ERD-SHARE-01: páginas públicas con token en el fragmento. El token es un fragmento (no llega al servidor), pero
   // reforzamos el encabezado para que ni la ruta ni futuras variantes viajen como Referer.
-  if (request.nextUrl.pathname === "/restablecer-contrasena" || request.nextUrl.pathname === "/invitacion") {
+  if (["/restablecer-contrasena", "/invitacion", "/verificar-correo"].includes(request.nextUrl.pathname)) {
     return next(response => {
       response.headers.set("Referrer-Policy", "no-referrer");
       response.headers.set("Cache-Control", "no-store");

@@ -121,9 +121,9 @@ def test_private_route_inventory_remains_covered(auth_client):
 # Rutas de /auth que SÍ exigen access token (se prueban en test_auth*, test_password_change, test_account_settings).
 PRIVATE_AUTH_ROUTES = {'/api/v1/auth/me', '/api/v1/auth/me/export', '/api/v1/auth/me/preferences', '/api/v1/auth/password/change',
                        '/api/v1/auth/sessions', '/api/v1/auth/sessions/revoke-others', '/api/v1/auth/sessions/{session_id}',
-                       '/api/v1/auth/devices', '/api/v1/auth/devices/remove'}
+                       '/api/v1/auth/devices', '/api/v1/auth/devices/remove', '/api/v1/auth/email/verification'}
 PUBLIC_AUTH_ROUTES = {'/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout',
-                      '/api/v1/auth/password/forgot', '/api/v1/auth/password/reset'}
+                      '/api/v1/auth/password/forgot', '/api/v1/auth/password/reset', '/api/v1/auth/email/verify'}
 
 
 def test_public_auth_routes_never_require_bearer(auth_client):
