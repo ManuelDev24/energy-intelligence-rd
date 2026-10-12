@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "../**/*.{ts,tsx}";
 @config "../../tailwind.config.ts";
 
 /* Tokens de marca (fuente: packages/core/src/tokens.ts). Solo modo claro por ahora:
