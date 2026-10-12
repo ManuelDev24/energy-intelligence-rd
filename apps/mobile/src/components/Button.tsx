@@ -1,11 +1,14 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors, radius, spacing, TOUCH } from '../theme';
+
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'danger';
 
 export function Button({
   title,
   onPress,
   disabled,
+  loading,
   variant = 'primary',
   testID,
   accessibilityLabel,
@@ -13,23 +16,35 @@ export function Button({
   title: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary';
+  /** Ocupado: no admite más pulsaciones y se anuncia como «ocupado» al lector de pantalla. El texto lo decide quien llama. */
+  loading?: boolean;
+  variant?: ButtonVariant;
   testID?: string;
   /** Nombre accesible cuando el texto visible no basta (p. ej. «Sacar» en una lista de personas). */
   accessibilityLabel?: string;
 }) {
-  const primary = variant === 'primary';
+  const inactive = !!disabled || !!loading;
+  const solid = variant === 'primary' || variant === 'danger';
+  const labelColor = solid ? colors.primaryText : colors.primary;
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
+      disabled={inactive}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityState={{ disabled: inactive, busy: !!loading }}
       testID={testID}
-      style={({ pressed }) => [s.btn, !primary && s.btnSecondary, disabled && { opacity: 0.5 }, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [
+        s.btn,
+        variant === 'secondary' && s.btnSecondary,
+        variant === 'tertiary' && s.btnTertiary,
+        variant === 'danger' && s.btnDanger,
+        inactive && { opacity: 0.5 },
+        pressed && { opacity: 0.85 },
+      ]}
     >
-      <Text style={[s.btnText, !primary && { color: colors.primary }]}>{title}</Text>
+      {loading ? <ActivityIndicator color={labelColor} accessibilityElementsHidden importantForAccessibility="no" /> : null}
+      <Text style={[s.btnText, { color: labelColor }]}>{title}</Text>
     </Pressable>
   );
 }
@@ -74,9 +89,13 @@ const s = StyleSheet.create({
     marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: colors.primary,
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   btnSecondary: { backgroundColor: 'transparent' },
-  btnText: { color: colors.primaryText, fontWeight: '600', fontSize: 15 },
+  btnTertiary: { backgroundColor: 'transparent', borderColor: 'transparent' },
+  btnDanger: { backgroundColor: colors.danger, borderColor: colors.danger },
+  btnText: { fontWeight: '600', fontSize: 15 },
   textAction: { minHeight: TOUCH, justifyContent: 'center', paddingHorizontal: spacing.xs },
   textActionLabel: { fontWeight: '600', fontSize: 14 },
 });

@@ -42,3 +42,19 @@ it('el rango de Consumo ya no duplica la aritmética de @energyrd/core', () => {
   expect(range).not.toContain('86400_000');
   expect(range).not.toContain('addDays(');
 });
+it('ERD-UI-DENSITY: Button tiene variantes tertiary y danger y un estado ocupado accesible', () => {
+  const button = read('./Button.tsx');
+  expect(button).toContain("'primary' | 'secondary' | 'tertiary' | 'danger'");
+  expect(button).toContain('busy: !!loading');
+  expect(button).toContain('disabled={inactive}');
+  expect(button).toContain('minHeight: TOUCH');
+  expect(read('../features/profile/AccountDeletionSection.tsx')).toContain('variant="danger"');
+});
+it('ERD-UI-DENSITY: Field es único (BillForm no lo duplica), mide ≥ 44 pt y anuncia el error', () => {
+  const field = read('./Field.tsx');
+  expect(field).toContain('minHeight: TOUCH');
+  expect(field).toContain('accessibilityLiveRegion="polite"');
+  const bill = read('../features/bills/BillFormScreen.tsx');
+  expect(bill).toContain("from '../../components/Field'");
+  expect(bill).not.toContain('function Field(');
+});

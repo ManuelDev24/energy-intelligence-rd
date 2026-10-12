@@ -45,7 +45,7 @@ export function AccountDeletionSection() {
         eliminar su cuenta hasta transferir la propiedad o sacar a las demás personas (Perfil → Compartir vivienda).
       </Text>
       {draft.step === 'closed' ? (
-        <Button title="Eliminar cuenta" variant="secondary" testID="profile-delete-account"
+        <Button title="Eliminar cuenta" variant="danger" testID="profile-delete-account"
           onPress={() => setDraft({ step: 'confirm', password: '' })} />
       ) : (
         <View style={{ gap: spacing.md }}>
