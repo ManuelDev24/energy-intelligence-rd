@@ -43,3 +43,8 @@ apps/web/e2e/.results/
 apps/web/e2e/.report/
 apps/web/test-results/
 apps/web/playwright-report/
+
+# Artefactos de cobertura (auditoría C-17)
+.coverage
+.coverage.*
+htmlcov/
