@@ -141,7 +141,7 @@ const FIELD_MESSAGES: Record<string, string> = {
   token: "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.",
   new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
 };
-const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|verification_token_invalid|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
+const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|verification_token_invalid|email_not_verified|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
@@ -152,6 +152,7 @@ function statusMessage(status: number, path: string, code?: unknown) {
   if (status === 403 && code === "reauthentication_failed") return "La contraseña no es correcta.";
   // ERD-SHARE-01: la propiedad ya se puede transferir; el mismo código lo usan borrar cuenta y salir de la vivienda.
   if (status === 409 && code === "ownership_transfer_required") return path === "/auth/me" ? "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad o expulsa a los demás miembros antes de continuar." : "Eres el propietario: transfiere la propiedad a otro miembro antes de salir, o borra la vivienda si eres el único miembro.";
+  if (status === 403 && code === "email_not_verified") return "Confirma tu correo para continuar: abre el enlace que te enviamos o usa «Reenviar el enlace» en el aviso de tu cuenta.";
   if (status === 400 && code === "invitation_invalid") return "La invitación no es válida o ha caducado. Pide al propietario que te envíe una nueva, y ábrela con la cuenta del correo invitado.";
   if (status === 409 && code === "already_member") return "Esa persona ya es miembro de la vivienda.";
   if (status === 409 && code === "invitation_pending") return "Ya hay una invitación pendiente para ese correo. Revócala para enviar otra.";

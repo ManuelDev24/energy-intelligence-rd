@@ -7,15 +7,27 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.services import email
-from tests.test_auth import AUTH, PASSWORD, auth_client, bearer, register  # noqa: F401
+from tests.test_auth import AUTH, PASSWORD, auth_client, bearer, register as _register  # noqa: F401
 from tests.test_authorization import setup_homes  # noqa: F401
 
 ACCEPT = '/api/v1/invitations/accept'
 NEW_PASSWORD = 'brand-new-password-456'
 
 
+_ENGINE = {}
+
+
+def register(client, address='alice@example.com'):
+    """Re-auditoría N-1/N-2: invitar y aceptar exigen correo confirmado; estas pruebas son de compartir, no de verificación."""
+    tokens = _register(client, address)
+    with _ENGINE['engine'].begin() as c:
+        c.execute(text('UPDATE users SET email_verified_at = now() WHERE email = :e'), {'e': address})
+    return tokens
+
+
 @pytest.fixture
-def share(auth_client, monkeypatch):
+def share(auth_client, migrated, monkeypatch):
+    _ENGINE['engine'] = migrated
     monkeypatch.setitem(settings.__dict__, 'EMAIL_BACKEND', 'console')
     monkeypatch.setitem(settings.__dict__, 'EMAIL_DEV_OUTBOX', '')
     monkeypatch.setitem(settings.__dict__, 'INVITATION_URL', 'https://app.energy.example/invitacion')
@@ -290,3 +302,23 @@ def test_0015_roundtrip_and_one_active_invitation_per_email(migrated, alembic_cf
         assert c.execute(text('SELECT count(*) FROM homes')).scalar() == 1
     command.upgrade(alembic_cfg, 'head')
     assert 'home_invitations' in inspect(migrated).get_table_names()
+
+
+def test_unverified_email_can_neither_invite_nor_accept_an_invitation(share, migrated):
+    """Re-auditoría N-1/N-2: una cuenta sin confirmar no usa la plataforma para escribir a terceros ni entra con un token ajeno."""
+    alice, bob, home = setup(share)
+    with migrated.begin() as c:
+        c.execute(text("UPDATE users SET email_verified_at = NULL WHERE email = 'alice@example.com'"))
+    blocked = invite(share, alice, home)
+    assert blocked.status_code == 403 and blocked.json()['code'] == 'email_not_verified' and not email.DEV_OUTBOX
+    with migrated.begin() as c:
+        c.execute(text("UPDATE users SET email_verified_at = now() WHERE email = 'alice@example.com'"))
+        c.execute(text("UPDATE users SET email_verified_at = NULL WHERE email = 'bob@example.com'"))
+    assert invite(share, alice, home).status_code == 201
+    token = last_token()
+    refused = accept(share, bob, token)
+    assert refused.status_code == 403 and refused.json()['code'] == 'email_not_verified'
+    assert [m['email'] for m in members(share, alice, home).json()] == ['alice@example.com']   # no entró
+    with migrated.begin() as c:
+        c.execute(text("UPDATE users SET email_verified_at = now() WHERE email = 'bob@example.com'"))
+    assert accept(share, bob, token).status_code == 200      # el token sigue siendo válido: no se consumió al rechazarlo

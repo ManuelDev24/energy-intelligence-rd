@@ -33,6 +33,12 @@ class InvitationInvalid(ApplicationError):
         super().__init__("La invitación no es válida o ha caducado")
 
 
+class EmailNotVerified(ApplicationError):
+    """Re-auditoría N-1/N-2: invitar (enviar correo desde el dominio) y unirse por invitación exigen un correo confirmado."""
+    status_code = 403
+    code = "email_not_verified"
+
+
 class InvitationLimitReached(ApplicationError):
     status_code = 409
     code = "invitation_limit_reached"
@@ -81,6 +87,8 @@ def list_invitations(db: Session, home_id) -> list[HomeInvitation]:
 
 
 def create_invitation(db: Session, home, inviter, address: str) -> tuple[HomeInvitation, EmailMessage]:
+    if inviter.email_verified_at is None:
+        raise EmailNotVerified("Confirma tu correo antes de invitar a otras personas")
     current = now()
     token = secrets.token_urlsafe(32)
     with write_transaction(db):
@@ -140,6 +148,8 @@ def accept_invitation(db: Session, user, token: str):
         if (invitation is None or invitation.accepted_at is not None or invitation.revoked_at is not None
                 or invitation.expires_at <= current or invitation.email != user.email):
             raise InvitationInvalid()
+        if user.email_verified_at is None:  # quien registra un correo ajeno sin confirmarlo no entra aunque obtenga el token
+            raise EmailNotVerified("Confirma tu correo para aceptar la invitación")
         membership = db.scalar(select(HomeMember).where(HomeMember.home_id == home_id, HomeMember.user_id == user.id))
         if membership is None:
             db.add(HomeMember(home_id=home_id, user_id=user.id, role="member"))
