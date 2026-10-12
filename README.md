@@ -77,5 +77,6 @@ Los dumps se guardan fuera de Git y el restore drill solo usa una base desechabl
 - [Roles de base de datos y RLS](docs/ops/DB_ROLES.md)
 - [Política de retención de datos](docs/security/DATA_RETENTION.md)
 - [Política de seguridad](SECURITY.md)
+- [Auditoría y estado de la remediación](docs/audit/REMEDIACION-ESTADO.md)
 
 Las proyecciones son orientación calculada sobre facturas introducidas; no son garantía de consumo o importe futuro.

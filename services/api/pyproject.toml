@@ -85,3 +85,5 @@ omit = ["app/alembic/*"]
 
 [tool.coverage.report]
 skip_empty = true
+# Auditoría C-17: medido 97 % (líneas+ramas) el 2026-10-12; el umbral deja margen y solo debe subir.
+fail_under = 92
