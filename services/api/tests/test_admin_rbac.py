@@ -161,7 +161,7 @@ def test_assign_revoke_and_immediate_effect(auth_client, migrated):
 
 def test_assign_requires_reason(auth_client, migrated):
     admin_t = _setup_admin(auth_client, migrated)
-    target_t = register(auth_client, 'bob@example.com')
+    register(auth_client, 'bob@example.com')
     with migrated.connect() as c:
         bob_id = c.execute(text("SELECT id FROM users WHERE email='bob@example.com'")).scalar_one()
     r = auth_client.post(f'{ADMIN}/role-assignments', headers=bearer(admin_t),
@@ -314,7 +314,7 @@ def test_bootstrap_refuses_to_add_another_super_admin_after_first(auth_client, m
         assert bootstrap_super_admin(db, 'first@example.com')['assignment_id'] == first['assignment_id']
         try:
             bootstrap_super_admin(db, 'second@example.com')
-            assert False, 'bootstrap must not become a second promotion path'
+            raise AssertionError('bootstrap must not become a second promotion path')
         except Forbidden:
             pass
     with migrated.connect() as c:
@@ -353,19 +353,19 @@ def test_audit_table_is_immutable(migrated):
     with migrated.connect() as c, c.begin():
         try:
             c.execute(text("UPDATE admin_audit_events SET action='changed' WHERE id=:i"), {'i': row_id})
-            assert False, 'update should have raised'
+            raise AssertionError('update should have raised')
         except IntegrityError:
             pass
     with migrated.connect() as c, c.begin():
         try:
             c.execute(text("DELETE FROM admin_audit_events WHERE id=:i"), {'i': row_id})
-            assert False, 'delete should have raised'
+            raise AssertionError('delete should have raised')
         except IntegrityError:
             pass
     with migrated.connect() as c, c.begin():
         try:
             c.execute(text("TRUNCATE admin_audit_events"))
-            assert False, 'truncate should have raised'
+            raise AssertionError('truncate should have raised')
         except IntegrityError:
             pass
     with migrated.connect() as c:
