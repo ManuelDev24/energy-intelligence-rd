@@ -104,7 +104,7 @@ export function EquipmentScreen({ onAdd, onEdit }: { onAdd: () => void; onEdit: 
               <EstimateSummary e={estimate.data} />
               {estimate.data.items.length > 0 ? <EquipmentBreakdown estimate={estimate.data} /> : null}
             </View>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <EmptyState

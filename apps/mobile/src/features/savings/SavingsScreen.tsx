@@ -98,7 +98,7 @@ export function SavingsScreen(nav: SavingsNav = {}) {
               <Text style={s.section} accessibilityRole="header">Aplicadas y descartadas ({decided.data.length})</Text>
               {decided.data.map((r) => <Item key={r.id} item={r} nav={nav} pending={update.isPending} onRestore={() => set(r, 'active')} />)}
             </View>
-          ) : null
+          ) : undefined
         }
       />
     </View>

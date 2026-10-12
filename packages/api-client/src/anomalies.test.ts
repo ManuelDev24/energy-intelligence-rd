@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "./index";
 
-const HOME = "00000000-0000-0000-0000-000000000001";
-const ID = "00000000-0000-0000-0000-0000000000a1";
+const HOME = "00000000-0000-4000-8000-000000000001";
+const ID = "00000000-0000-4000-8000-0000000000a1";
 const anomaly = {
   id: ID, home_id: HOME, bill_id: null, kind: "increase", source: "readings", granularity: "month", severity: "warning", confidence: "medium",
   status: "open", observed_kwh: "510.25", baseline_kwh: "400.00", delta_pct: "27.56", days: "30.00", period_start: "2026-09-01",
@@ -34,7 +34,7 @@ describe("anomalies API (ERD-ANOM-01-COMPLETE)", () => {
   it("rejects unknown kinds, a foreign home and malformed rows", async () => {
     const api = (body: unknown) => createApiClient("http://api.test", vi.fn().mockResolvedValue(json(body))).listAnomalies(HOME);
     await expect(api([{ ...anomaly, kind: "mystery" }])).rejects.toMatchObject({ code: "invalid_response" });
-    await expect(api([{ ...anomaly, home_id: "00000000-0000-0000-0000-000000000002" }])).rejects.toMatchObject({ code: "invalid_response" });
+    await expect(api([{ ...anomaly, home_id: "00000000-0000-4000-8000-000000000002" }])).rejects.toMatchObject({ code: "invalid_response" });
     await expect(api([{ ...anomaly, id: undefined }])).rejects.toMatchObject({ code: "invalid_response" });
   });
 
@@ -46,7 +46,7 @@ describe("anomalies API (ERD-ANOM-01-COMPLETE)", () => {
     expect(init.method).toBe("PATCH");
     expect(JSON.parse(init.body)).toEqual({ status: "dismissed" });
     expect(updated.status).toBe("dismissed");
-    const other = createApiClient("http://api.test", vi.fn().mockResolvedValue(json({ ...anomaly, id: "00000000-0000-0000-0000-0000000000a2" })));
+    const other = createApiClient("http://api.test", vi.fn().mockResolvedValue(json({ ...anomaly, id: "00000000-0000-4000-8000-0000000000a2" })));
     await expect(other.updateAnomaly(HOME, ID, "open")).rejects.toMatchObject({ code: "invalid_response" });
   });
 });

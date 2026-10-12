@@ -27,8 +27,8 @@
     "packages/*"
   ],
   "overrides": {
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "vite": "7.3.6",
     "postcss": "8.5.28",
     "xcode@3.0.1": {

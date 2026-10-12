@@ -1,4 +1,4 @@
-import { useMemo, useReducer, useRef, useState } from 'react';
+import { useMemo, useReducer, useRef, useState, type ComponentRef } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { authClient } from '../../auth/runtime';
 import { Field, formStyles } from '../../components/Field';
@@ -9,7 +9,7 @@ import { FORGOT_CONFIRMATION, createForgotSubmitter, forgotReducer, initialForgo
 /** ERD-AUTH-05: solicitud de enlace de restablecimiento. El restablecimiento ocurre en la web
  *  (enlace del correo); el móvil no implementa todavía el enlace profundo nativo. */
 export function ForgotPasswordView({ initialEmail, onBack }: { initialEmail: string; onBack: () => void }) {
-  const emailRef = useRef<TextInput>(null);
+  const emailRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [email, setEmail] = useState(initialEmail);
   const [state, dispatch] = useReducer(forgotReducer, initialForgotState);
   const submit = useMemo(() => createForgotSubmitter((value) => authClient.forgotPassword(value), dispatch), []);

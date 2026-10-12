@@ -56,7 +56,7 @@ export function BillsScreen({ onAdd, onOpen }: { onAdd: () => void; onOpen?: (ho
         keyExtractor={(b) => b.id}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
-        ListHeaderComponent={data && data.length > 1 ? <BillsChart bills={data} /> : null}
+        ListHeaderComponent={data && data.length > 1 ? <BillsChart bills={data} /> : undefined}
         ListEmptyComponent={
           <EmptyState icon="receipt-outline" title="Sin facturas todavía" hint="Registre la primera factura de esta vivienda." />
         }

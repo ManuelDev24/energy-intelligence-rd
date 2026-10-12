@@ -34,6 +34,9 @@ export default function NewBillPage() {
 
   // Si la lectura tarda más de lo normal (p. ej. no hay un worker activo) se avisa, sin cortar la espera.
   useEffect(() => {
+    // Regla nueva (eslint-plugin-react-hooks@7, experimental "set-state-in-effect"): resetea el
+    // aviso de lectura lenta en cada cambio de `active`/`ocr.startedAt`; comportamiento existente.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSlow(false);
     if (!active || !ocr.startedAt) return;
     const timer = setTimeout(() => setSlow(true), Math.max(0, OCR_SLOW_AFTER_MS - (Date.now() - ocr.startedAt)));

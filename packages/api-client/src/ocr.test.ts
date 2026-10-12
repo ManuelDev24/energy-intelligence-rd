@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createApiClient } from './index';
 
-const HOME = '00000000-0000-0000-0000-000000000001';
+const HOME = '00000000-0000-4000-8000-000000000001';
 const draft = {
   period_start: { value: '2026-09-01', confidence: 'high' },
   period_end: { value: '2026-09-30', confidence: 'high' },
@@ -15,7 +15,7 @@ const draft = {
   raw_text_excerpt: 'EDE ...',
 };
 
-const DOC = '00000000-0000-0000-0000-0000000000d1';
+const DOC = '00000000-0000-4000-8000-0000000000d1';
 const job = (over: Record<string, unknown> = {}) => ({
   document_id: DOC, status: 'pending', attempts: 0, method: null, pages_read: null, pages_total: null, draft: null,
   error_code: null, error_message: null, created_at: '2026-10-10T12:00:00Z', finished_at: null, ...over,
@@ -39,7 +39,7 @@ describe('OCR asíncrono (ERD-OCR-PROD)', () => {
     await expect(api(json({ status: 'weird' })).getOcrJob(HOME, DOC)).rejects.toMatchObject({ code: 'invalid_response' });
   });
   it('getOcrJob valida que el estado pertenezca al documento pedido', async () => {
-    const other = job({ document_id: '00000000-0000-0000-0000-0000000000d2' });
+    const other = job({ document_id: '00000000-0000-4000-8000-0000000000d2' });
     const api = createApiClient('http://api.test', vi.fn().mockResolvedValue(json(other)));
     await expect(api.getOcrJob(HOME, DOC)).rejects.toMatchObject({ code: 'invalid_response' });
   });
