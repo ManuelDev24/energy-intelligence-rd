@@ -9,8 +9,8 @@
       "accepted_on": "2026-10-05",
       "confirmed_on": "2026-10-10",
       "review_by": "2026-11-04",
-      "scope": "Solo compilación/lint/Metro en desarrollo (tailwindcss@3, eslint-config-next, metro-file-map); no llega al bundle web, a la app ni a la API.",
-      "exit": "Migrar a Tailwind 4 (elimina micromatch→braces) o publicación de braces corregido."
+      "scope": "Solo Metro en desarrollo: expo@57.0.27 → @expo/metro@56.0.2 → metro-file-map@0.84.5 → micromatch@4.0.8 → braces@3.0.3. Tailwind 4 ya no lo incorpora; no llega al bundle web, a la app ni a la API.",
+      "exit": "Actualizar la cadena Metro/Expo a una versión compatible sin micromatch→braces, o esperar un parche publicado para braces. No eliminar esta aceptación hasta que npm audit deje de mostrar el aviso."
     },
     {
       "ghsa": "GHSA-86w9-cpqp-85rv",
