@@ -309,7 +309,7 @@ filesystem efímero (la API no escribe en disco); no apto para producción.
 - Toda migración debe ser **aditiva** (*expand*): columnas nuevas nulas o con valor por defecto, tablas e índices nuevos. El código
   desplegado inmediatamente antes (N-1) tiene que seguir funcionando con el esquema nuevo.
 - Quitar o renombrar (*contract*) va en un release posterior, cuando ninguna versión desplegada lo usa, y exige copia de seguridad
-  verificada previa (`scripts/backup_pilot.sh`) y aprobación expresa en la revisión.
+  verificada previa **de la base real** (`scripts/db_backup.sh` con el `DATABASE_URL` de esa base, y una rama Neon `pre-deploy-*`; ver `docs/ops/DISASTER_RECOVERY.md`). `scripts/backup_pilot.sh` NO sirve: respalda solo el Postgres local de docker-compose, sin cifrar y aprobación expresa en la revisión.
 - Los accesos directos a la base (scripts de soporte/importación) deben pasar por los servicios de la API: las reglas de negocio
   (monotonía de lecturas, `days` vs. período, «siempre hay un propietario») viven en la aplicación (DB-09, decisión aceptada).
 

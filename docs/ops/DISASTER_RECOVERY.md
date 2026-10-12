@@ -23,6 +23,12 @@ DATABASE_URL=… BACKUP_AGE_RECIPIENT=age1… BACKUP_LABEL=production scripts/db
 - Destino: por ahora `BACKUP_DIR` local. Falta subirlo a un bucket **distinto** del de los originales y de otra cuenta/región
   (R2/S3 con retención de 35 días, propuesta del borrador legal; el borrado de un usuario puede tardar hasta que su
   respaldo caduque, y eso debe decirlo la política de privacidad).
+- **Rotación y borrado (re-auditoría N-5):** el script no borra respaldos viejos. Hasta tener bucket con regla de ciclo de vida
+  (35 días), quien opere debe borrar a mano los respaldos de más de 35 días; sin eso se incumple lo que promete la política de
+  privacidad. **Tras restaurar** un respaldo, las cuentas borradas desde su fecha reaparecen: hay que volver a ejecutar sus
+  borrados (`app.services.account.delete_account`, o `DELETE /auth/me` en nombre de la persona) a partir del registro de
+  borrados de `audit_events` del propio sistema vivo antes de reabrir el servicio. Este paso aún no tiene script: queda anotado
+  como requisito pendiente de ERD-OPS-DR.
 - Programación: un job diario (Render cron o GitHub Actions con la clave pública como secreto) — pendiente.
 
 ## Restauración verificada (simulacro)
