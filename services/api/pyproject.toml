@@ -31,7 +31,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "moto[s3]>=5.0,<6",
-    "mypy>=1.13,<2",
+    "mypy>=1.13,<3",
     "pytest>=9.0.3,<10",
     "pytest-cov>=6,<8",
     "ruff>=0.8,<1",
