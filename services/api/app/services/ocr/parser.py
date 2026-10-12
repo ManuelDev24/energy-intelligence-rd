@@ -263,75 +263,82 @@ _FIELD_GROUPS = (("period_start", "period_end", "days"), ("reading_previous", "r
 
 def parse_bill_text(text: str | None) -> OcrDraft:
     if isinstance(text, OcrText):
-        # Nunca se concatenan filas de variantes diferentes: cada alternativa se parsea aislada.
-        # Page-local reads must also be parsed independently: an earlier match
-        # in a concatenated document must not conceal a later-page conflict.
-        alternatives = list(text.alternatives) + list(text.page_evidence)
-        if str(text) in alternatives:
-            alternatives.remove(str(text))  # la elegida cuenta una vez, no un voto adicional
-        alternatives.insert(0, str(text))  # también es evidencia si el adaptador omitió listarla
-        candidates = [parse_bill_text(raw) for raw in alternatives]
-        draft = parse_bill_text(str(text))
-        sources: dict[tuple[str, ...], OcrDraft] = {}
-        for names in _FIELD_GROUPS:
-            available = [other for other in candidates if all(
-                getattr(other, name).value is not None for name in names)]
-            if names == ("amount_dop",):
-                # Invoice charges and an outstanding balance are different
-                # concepts; preserve _read_amount's monthly-billed priority.
-                monthly = [other for raw, other in zip(alternatives, candidates)
-                           if _all_numbers(_FACTURADO_RE, raw) and other.amount_dop.value is not None]
-                if monthly:
-                    available = monthly
-            if not available:
-                continue
-            signatures = [tuple(getattr(other, name).value for name in names) for other in available]
-            ranks = [(
-                all(getattr(other, name).confidence == "high" for name in names),
-                signatures.count(signature) if text.rank_repetition else 1) for other, signature in zip(available, signatures)]
-            top_rank = max(ranks)
-            tied = {signature for signature, rank in zip(signatures, ranks) if rank == top_rank}
-            if names == ("amount_dop",) and len(tied) > 1:
-                draft.amount_dop = OcrField(value=None, confidence="none")
-                draft.warnings.append("Las variantes OCR discrepan en amount_dop sin una lectura ganadora; introduzca el monto de la factura manualmente.")
-                continue
-            chosen = available[ranks.index(top_rank)]
-            sources[names] = chosen
-            draft.warnings.extend(chosen.warnings)
-            for name in names:
-                item = getattr(chosen, name).model_copy(deep=True)
-                if len(set(signatures)) > 1:
-                    item.confidence = "inferred"
-                setattr(draft, name, item)
-            if len(set(signatures)) > 1:
-                draft.warnings.append(f"Las variantes OCR discrepan en {', '.join(names)}; compárelo con la factura.")
-        if (sources.get(("kwh",)) is not sources.get(("reading_previous", "reading_current"))
-                and draft.kwh.value and draft.reading_previous.value and draft.reading_current.value):
-            previous, current = Decimal(draft.reading_previous.value), Decimal(draft.reading_current.value)
-            reading_source = sources.get(("reading_previous", "reading_current"))
-            reading_text = next((raw for raw, other in zip(alternatives, candidates) if other is reading_source), "")
-            table = _reading_table(reading_text)
-            multiplier = (table.get("multiplier", Decimal(1)) if table
-                          and table.get("previous") == previous and table.get("current") == current else Decimal(1))
-            delta = (current - previous) * multiplier
-            if delta != Decimal(draft.kwh.value):
-                for name in ("kwh", "reading_previous", "reading_current"):
-                    getattr(draft, name).confidence = "inferred"
-                draft.warnings.append("Las lecturas de otra variante no coinciden con el consumo; revise los campos y el multiplicador.")
-        if draft.due_date.value and draft.period_start.value and draft.period_end.value:
-            due = date.fromisoformat(draft.due_date.value)
-            if not date.fromisoformat(draft.period_start.value) <= due <= date.fromisoformat(draft.period_end.value) + timedelta(days=120):
-                draft.due_date = OcrField(value=None, confidence="none")
-                draft.warnings.append("La fecha límite de pago leída no es coherente con el período; revísela.")
-        missing = {"period_start": "No se encontró el período", "amount_dop": "No se encontró el monto",
-                   "kwh": "No se encontró el consumo"}
-        draft.warnings = list(dict.fromkeys(warning for warning in draft.warnings if not any(
-            getattr(draft, name).value is not None and warning.startswith(prefix)
-            for name, prefix in missing.items())))
-        return draft
-    text = text or ""
-    warnings: list[str] = []
+        return _consolidate_variants(text)
+    return _parse_plain_text(text or "")
 
+
+def _consolidate_variants(text: OcrText) -> OcrDraft:
+    """Auditoría C-20: elige por consenso entre las variantes OCR (cada una se parsea aislada) y cruza lecturas, consumo y fecha."""
+    # Nunca se concatenan filas de variantes diferentes: cada alternativa se parsea aislada.
+    # Page-local reads must also be parsed independently: an earlier match
+    # in a concatenated document must not conceal a later-page conflict.
+    alternatives = list(text.alternatives) + list(text.page_evidence)
+    if str(text) in alternatives:
+        alternatives.remove(str(text))  # la elegida cuenta una vez, no un voto adicional
+    alternatives.insert(0, str(text))  # también es evidencia si el adaptador omitió listarla
+    candidates = [parse_bill_text(raw) for raw in alternatives]
+    draft = parse_bill_text(str(text))
+    sources: dict[tuple[str, ...], OcrDraft] = {}
+    for names in _FIELD_GROUPS:
+        available = [other for other in candidates if all(
+            getattr(other, name).value is not None for name in names)]
+        if names == ("amount_dop",):
+            # Invoice charges and an outstanding balance are different
+            # concepts; preserve _read_amount's monthly-billed priority.
+            monthly = [other for raw, other in zip(alternatives, candidates)
+                       if _all_numbers(_FACTURADO_RE, raw) and other.amount_dop.value is not None]
+            if monthly:
+                available = monthly
+        if not available:
+            continue
+        signatures = [tuple(getattr(other, name).value for name in names) for other in available]
+        ranks = [(
+            all(getattr(other, name).confidence == "high" for name in names),
+            signatures.count(signature) if text.rank_repetition else 1) for other, signature in zip(available, signatures)]
+        top_rank = max(ranks)
+        tied = {signature for signature, rank in zip(signatures, ranks) if rank == top_rank}
+        if names == ("amount_dop",) and len(tied) > 1:
+            draft.amount_dop = OcrField(value=None, confidence="none")
+            draft.warnings.append("Las variantes OCR discrepan en amount_dop sin una lectura ganadora; introduzca el monto de la factura manualmente.")
+            continue
+        chosen = available[ranks.index(top_rank)]
+        sources[names] = chosen
+        draft.warnings.extend(chosen.warnings)
+        for name in names:
+            item = getattr(chosen, name).model_copy(deep=True)
+            if len(set(signatures)) > 1:
+                item.confidence = "inferred"
+            setattr(draft, name, item)
+        if len(set(signatures)) > 1:
+            draft.warnings.append(f"Las variantes OCR discrepan en {', '.join(names)}; compárelo con la factura.")
+    if (sources.get(("kwh",)) is not sources.get(("reading_previous", "reading_current"))
+            and draft.kwh.value and draft.reading_previous.value and draft.reading_current.value):
+        previous, current = Decimal(draft.reading_previous.value), Decimal(draft.reading_current.value)
+        reading_source = sources.get(("reading_previous", "reading_current"))
+        reading_text = next((raw for raw, other in zip(alternatives, candidates) if other is reading_source), "")
+        table = _reading_table(reading_text)
+        multiplier = (table.get("multiplier", Decimal(1)) if table
+                      and table.get("previous") == previous and table.get("current") == current else Decimal(1))
+        delta = (current - previous) * multiplier
+        if delta != Decimal(draft.kwh.value):
+            for name in ("kwh", "reading_previous", "reading_current"):
+                getattr(draft, name).confidence = "inferred"
+            draft.warnings.append("Las lecturas de otra variante no coinciden con el consumo; revise los campos y el multiplicador.")
+    if draft.due_date.value and draft.period_start.value and draft.period_end.value:
+        due = date.fromisoformat(draft.due_date.value)
+        if not date.fromisoformat(draft.period_start.value) <= due <= date.fromisoformat(draft.period_end.value) + timedelta(days=120):
+            draft.due_date = OcrField(value=None, confidence="none")
+            draft.warnings.append("La fecha límite de pago leída no es coherente con el período; revísela.")
+    missing = {"period_start": "No se encontró el período", "amount_dop": "No se encontró el monto",
+               "kwh": "No se encontró el consumo"}
+    draft.warnings = list(dict.fromkeys(warning for warning in draft.warnings if not any(
+        getattr(draft, name).value is not None and warning.startswith(prefix)
+        for name, prefix in missing.items())))
+    return draft
+
+
+def _read_period(text: str, warnings: list[str]):
+    """Período, días impresos y su confianza. Devuelve (inicio, fin, confianza del período, campo `days`)."""
     period_start = period_end = None
     explicit_days = None
     m = _RANGE_DAYS_RE.search(text) or _PERIOD_RE.search(text)
@@ -372,6 +379,11 @@ def parse_bill_text(text: str | None) -> OcrDraft:
         else:
             days_field = OcrField(value=str((period_end - period_start).days + 1), confidence="inferred")
 
+    return period_start, period_end, period_conf, days_field
+
+
+def _read_due_date(text: str, period_start, period_end, warnings: list[str]):
+    """Fecha límite de pago, contrastada con el período. Devuelve (fecha, confianza)."""
     due = None
     due_conf: Confidence = "high"
     m = _DUE_PRIMARY_RE.search(text)
@@ -389,11 +401,11 @@ def parse_bill_text(text: str | None) -> OcrDraft:
         if due is not None and due_conf == "high" and not (period_start and period_end):
             due_conf = "inferred"
 
-    amount, amount_conf = _read_amount(text, warnings)
-    amount, amount_conf = _cross_check_amount(text, amount, amount_conf, warnings)
-    if amount is not None and amount_conf == "inferred" and _FACTURADO_RE.search(text):
-        warnings.append("El importe facturado del mes no se confirmó con los conceptos; compárelo con la factura.")
+    return due, due_conf
 
+
+def _read_consumption(text: str, warnings: list[str]):
+    """kWh y lecturas (con su confianza), cruzados entre sí. Devuelve (kwh, kwh_conf, prev, curr, reading_conf)."""
     kwh = None
     kwh_conf: Confidence = "high"
     m = _KWH_RE.search(text)
@@ -447,6 +459,20 @@ def parse_bill_text(text: str | None) -> OcrDraft:
     if prev is not None and curr is not None and curr < prev:
         warnings.append("La lectura actual es menor que la anterior (probable error de OCR); revise ambas.")
         prev = curr = None
+
+    return kwh, kwh_conf, prev, curr, reading_conf
+
+
+def _parse_plain_text(text: str) -> OcrDraft:
+    warnings: list[str] = []
+    period_start, period_end, period_conf, days_field = _read_period(text, warnings)
+    due, due_conf = _read_due_date(text, period_start, period_end, warnings)
+    amount, amount_conf = _read_amount(text, warnings)
+    amount, amount_conf = _cross_check_amount(text, amount, amount_conf, warnings)
+    if amount is not None and amount_conf == "inferred" and _FACTURADO_RE.search(text):
+        warnings.append("El importe facturado del mes no se confirmó con los conceptos; compárelo con la factura.")
+
+    kwh, kwh_conf, prev, curr, reading_conf = _read_consumption(text, warnings)
 
     def field(value: Decimal | date | None, conf: Confidence = "high") -> OcrField:
         if value is None:
