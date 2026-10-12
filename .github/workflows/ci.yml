@@ -54,6 +54,8 @@ jobs:
       - run: uv run python -m scripts.generate_contracts --check
       - run: python scripts/check_architecture.py
         working-directory: .
+      - run: python scripts/check_workflow_pins.py
+        working-directory: .
       - run: uv run alembic upgrade head
       - run: uv run alembic downgrade -1 && uv run alembic upgrade head
       - run: uv run python -m app.seed && uv run python -m app.seed

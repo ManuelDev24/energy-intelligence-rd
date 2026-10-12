@@ -6,6 +6,11 @@ updates:
     directory: /
     schedule: { interval: weekly, day: monday }
     open-pull-requests-limit: 5
+    # init, analyze y upload-sarif de CodeQL DEBEN estar en la misma versión: si una sola sube, CodeQL falla con «configuration error».
+    # Un solo PR las actualiza juntas (y scripts/check_workflow_pins.py lo vigila en CI).
+    groups:
+      codeql:
+        patterns: ["github/codeql-action", "github/codeql-action/*"]
     commit-message: { prefix: "ci" }
   - package-ecosystem: npm
     directory: /
