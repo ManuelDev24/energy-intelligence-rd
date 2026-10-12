@@ -11,6 +11,7 @@ from app.database import engine, require_restricted_role
 from app.observability import RequestContextMiddleware, configure_logging
 from app.telemetry import init_telemetry
 from app.services.errors import ApplicationError, ServiceBusy
+from app.services.legal import require_final_legal
 from app.services.auth_abuse import RateLimited
 from app.request_limits import BodyLimitMiddleware
 from sqlalchemy.exc import OperationalError, TimeoutError as PoolTimeoutError
@@ -32,6 +33,7 @@ def documentation_urls(environment: str) -> dict[str, str | None]:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    require_final_legal(settings.ENVIRONMENT, settings.ALLOW_DRAFT_LEGAL)  # re-auditoría C-04
     require_restricted_role()  # auditoría C-01: nunca atender peticiones con un rol que ignora la RLS (si la configuración lo exige)
     yield
 

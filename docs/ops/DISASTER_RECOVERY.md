@@ -23,6 +23,11 @@ DATABASE_URL=… BACKUP_AGE_RECIPIENT=age1… BACKUP_LABEL=production scripts/db
 - Destino: por ahora `BACKUP_DIR` local. Falta subirlo a un bucket **distinto** del de los originales y de otra cuenta/región
   (R2/S3 con retención de 35 días, propuesta del borrador legal; el borrado de un usuario puede tardar hasta que su
   respaldo caduque, y eso debe decirlo la política de privacidad).
+- **Rotación y borrado (re-auditoría N-5):** el script no borra respaldos viejos. Hasta tener bucket con regla de ciclo de vida
+  (35 días), quien opere debe borrar a mano los respaldos de más de 35 días; sin eso se incumple lo que promete la política de
+  privacidad. **Tras restaurar** un respaldo, las cuentas borradas desde su fecha reaparecen. **No existe hoy un registro fiable de cuentas borradas** (la auditoría de borrado de cuenta está seudonimizada y no
+  identifica a la persona): hace falta una lista de borrados (huella del correo + fecha) guardada fuera de los respaldos y un script
+  que la reaplique tras cada restauración antes de reabrir el servicio. Requisito pendiente de ERD-OPS-DR, aún sin implementar.
 - Programación: un job diario (Render cron o GitHub Actions con la clave pública como secreto) — pendiente.
 
 ## Restauración verificada (simulacro)

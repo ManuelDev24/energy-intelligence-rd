@@ -66,7 +66,7 @@ const KNOWN_CODES = new Set([
   // ERD-AUTH-03: eliminación de cuenta.
   'reauthentication_failed', 'ownership_transfer_required',
   // ERD-SHARE-01: compartir vivienda.
-  'invitation_invalid', 'invitation_pending', 'invitation_limit_reached', 'invitation_rate_limited', 'already_member',
+  'email_not_verified', 'invitation_invalid', 'invitation_pending', 'invitation_limit_reached', 'invitation_rate_limited', 'already_member',
   // ERD-OCR-PROD: lectura de facturas.
   'document_quota_exceeded', 'storage_unavailable',
 ]);
@@ -78,6 +78,7 @@ const CODE_MESSAGES: Record<string, string> = {
   // Mismo código para borrar la cuenta y para salir de una vivienda (ERD-SHARE-01: la transferencia ya existe).
   ownership_transfer_required:
     'No se puede continuar: usted es la única propietaria de la vivienda. Transfiera la propiedad a otra persona integrante o saque a las demás antes de continuar.',
+  email_not_verified: 'Confirme su correo para continuar: abra el enlace que le enviamos o use «Reenviar el enlace» en su cuenta.',
   invitation_invalid: 'La invitación no es válida o ha caducado. Pida a la persona propietaria que le envíe otra y ábrala con la cuenta del correo invitado.',
   invitation_pending: 'Ya hay una invitación pendiente para ese correo. Revóquela para enviar otra.',
   invitation_limit_reached: 'Hay demasiadas invitaciones pendientes en esta vivienda. Revoque alguna o espere a que caduquen.',

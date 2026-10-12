@@ -1,5 +1,5 @@
 // Perfil y preferencias, compartir vivienda y autorización entre personas (aislamiento por vivienda).
-import { addBill, bff, createHomeViaApi, expect, freshHome, loaded, loginViaUi, newPassword, openSection, pickHome, registerViaApi, registerViaUi, test, uniqueEmail, waitForMail } from "../support/test";
+import { addBill, bff, createHomeViaApi, expect, freshHome, loaded, loginViaUi, newPassword, openSection, pickHome, registerViaApi, registerViaUi, test, uniqueEmail, verifyEmail, waitForMail } from "../support/test";
 import { WEB_URL } from "../support/env";
 
 test.describe("perfil y preferencias", () => {
@@ -55,13 +55,15 @@ test.describe("perfil y preferencias", () => {
 
 test.describe("compartir vivienda", () => {
   test("invitar → correo → aceptar con la cuenta invitada → miembro → expulsar", async ({ page, context, browser }) => {
-    const { homeId } = await freshHome(page, context, "Casa Compartida");
+    const { homeId, account } = await freshHome(page, context, "Casa Compartida");
+    await verifyEmail(page, account.email);
     await page.goto("/homes");
     const guestEmail = uniqueEmail("invitada");
     const guestContext = await browser.newContext();
     const guest = await guestContext.newPage();
     const guestPassword = newPassword();
     await registerViaApi(guestContext, { email: guestEmail, password: guestPassword });
+    await verifyEmail(guest, guestEmail);
 
     // El propietario invita.
     await page.getByRole("button", { name: /Compartir/ }).first().click();
@@ -101,12 +103,14 @@ test.describe("compartir vivienda", () => {
   });
 
   test("una invitación revocada ya no se puede aceptar", async ({ page, context, browser }) => {
-    await freshHome(page, context, "Casa Revocada");
+    const { account } = await freshHome(page, context, "Casa Revocada");
+    await verifyEmail(page, account.email);
     await page.goto("/homes");
     const guestEmail = uniqueEmail("revocada");
     const guestContext = await browser.newContext();
     const guest = await guestContext.newPage();
     await registerViaApi(guestContext, { email: guestEmail, password: newPassword() });
+    await verifyEmail(guest, guestEmail);
     await page.getByRole("button", { name: /Compartir/ }).first().click();
     await page.getByLabel("Correo de la persona invitada").fill(guestEmail);
     await page.getByRole("button", { name: "Enviar invitación" }).click();

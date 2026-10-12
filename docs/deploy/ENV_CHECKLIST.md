@@ -114,3 +114,8 @@ Plan Free. Un proyecto por entorno y por plataforma. `docs/ops/OBSERVABILITY.md`
 | `NEXT_PUBLIC_SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_RELEASE` | web | No | opcionales |
 | `EXPO_PUBLIC_SENTRY_DSN` | móvil | No | **aún no existe** en el código (módulo nativo; requiere nuevo build) |
 | `SENTRY_AUTH_TOKEN` | solo el build (sourcemaps) | **Sí** | no se usa todavía |
+
+## Textos legales (re-auditoría C-04)
+En `production` el API **no arranca** mientras `services/legal.py` tenga `LEGAL_STATUS = "draft"`. Se resuelve aprobando los textos
+(revisión legal → `LEGAL_STATUS = "final"` y nuevas versiones) o, bajo la responsabilidad expresa de quien decide, con la variable
+`ALLOW_DRAFT_LEGAL=true` en el panel del proveedor. `check_deploy_config.py` rechaza que esa variable se fije en `render.yaml`.

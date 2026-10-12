@@ -85,6 +85,15 @@ export async function waitForMail(to: string, match: (subject: string) => boolea
   return found!;
 }
 
+/** Confirma el correo de una cuenta con el enlace REAL del correo de verificación (re-auditoría N-1/N-2: invitar y aceptar lo exigen). */
+export async function verifyEmail(page: Page | { request: APIRequestContext }, email: string) {
+  const mail = await waitForMail(email, (s) => /confirma tu correo/i.test(s));
+  const token = /#token=([A-Za-z0-9_-]{43})/.exec(mail.text)?.[1];
+  expect(token, mail.text).toBeTruthy();
+  const result = await bff(page, "auth/email/verify", "POST", { token });
+  expect(result.status, JSON.stringify(result.body)).toBe(204);
+}
+
 /** Elige la vivienda en «Mis viviendas» (la selección vive en memoria: se navega por enlaces, no con goto). */
 export async function pickHome(page: Page, name: string | RegExp) {
   await page.getByRole("button", { name }).first().click();

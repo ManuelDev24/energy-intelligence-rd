@@ -309,6 +309,18 @@ filesystem efímero (la API no escribe en disco); no apto para producción.
 - Toda migración debe ser **aditiva** (*expand*): columnas nuevas nulas o con valor por defecto, tablas e índices nuevos. El código
   desplegado inmediatamente antes (N-1) tiene que seguir funcionando con el esquema nuevo.
 - Quitar o renombrar (*contract*) va en un release posterior, cuando ninguna versión desplegada lo usa, y exige copia de seguridad
-  verificada previa (`scripts/backup_pilot.sh`) y aprobación expresa en la revisión.
+  verificada previa **de la base real** (`scripts/db_backup.sh` con el `DATABASE_URL` de esa base, y una rama Neon `pre-deploy-*`; ver `docs/ops/DISASTER_RECOVERY.md`). `scripts/backup_pilot.sh` NO sirve: respalda solo el Postgres local de docker-compose, sin cifrar y aprobación expresa en la revisión.
 - Los accesos directos a la base (scripts de soporte/importación) deben pasar por los servicios de la API: las reglas de negocio
   (monotonía de lecturas, `days` vs. período, «siempre hay un propietario») viven en la aplicación (DB-09, decisión aceptada).
+
+## Consola de administración (`apps/admin`): NO está en `render.yaml`
+
+Decisión pendiente de Manuel (re-auditoría N-1/N-2): hoy la consola no se despliega con el blueprint. Hasta decidirlo, **no se publica
+por otra vía**. Para añadirla como servicio web de Node (mismo patrón que `energyrd-web-*`) se exige:
+- `ADMIN_API_BASE_URL` (origen HTTPS del API, sin ruta ni credenciales) y `ADMIN_ORIGIN` (su propio origen HTTPS): `next.config.mjs` aborta
+  el arranque de producción sin ellos. El BFF solo atiende peticiones cuyo `Host` y `Origin` coincidan con `ADMIN_ORIGIN`.
+- Build `npm ci --include=dev && npm run build --workspace apps/admin`, arranque `npm run start --workspace apps/admin`, `NODE_VERSION` 24.
+- Cabeceras de seguridad y CSP con nonce ya implementadas (`src/middleware.ts`, `next.config.mjs`) y probadas; comprobar con `curl -I`
+  en el entorno real.
+- El API debe tener asignado el primer `super_admin` mediante el CLI de arranque (`app.cli_bootstrap_admin`), nunca por HTTP, y el acceso
+  al panel debe limitarse (VPN/IP allowlist o acceso de Cloudflare) además de los scopes.

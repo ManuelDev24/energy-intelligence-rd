@@ -57,9 +57,12 @@ no sustituye la interacción nativa con Maestro.
 
 ```bash
 npm run db:migrate
-scripts/backup_pilot.sh
+scripts/backup_pilot.sh        # SOLO el Postgres local de docker-compose (piloto en desarrollo), sin cifrar
 scripts/restore_drill.sh .local-backups/<archivo>.dump
 ```
+
+Staging/producción (Neon): respaldo **cifrado** con `scripts/db_backup.sh` y restauración verificada con
+`scripts/db_restore_verify.sh`; ver [docs/ops/DISASTER_RECOVERY.md](docs/ops/DISASTER_RECOVERY.md).
 
 Para un release con varias réplicas, ejecutar una sola vez `docker compose run --rm migrate`
 y arrancar con `MIGRATE_ON_START=false`. El seed demo es opt-in y se rechaza en staging/production.
