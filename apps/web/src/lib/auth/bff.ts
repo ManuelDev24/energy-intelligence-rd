@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, EmailVerificationRequestOutSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema } from "@energyrd/api-contracts";
+import { UUID, ExportSchema, domainRoute, ownsBill, phase2QueryOk, phase2Route, writeSchema } from "./bff-routes";
+import { DashboardSchema, UserOutSchema, TokensOutSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, OcrJobSchema, PasswordChangeInSchema} from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -40,9 +41,7 @@ const ResetSchema = PasswordResetInSchema.strict();
 const PasswordChangeSchema = PasswordChangeInSchema.strict().refine(body => body.current_password !== body.new_password, { path: ["new_password"] });
 const PASSWORD_CHANGE = "/auth/password/change";
 // Exportación de datos del titular: se reenvía tal cual, solo se comprueba que lo sea.
-const ExportSchema = z.object({ format_version: z.literal(1) }).passthrough();
 const EXPORT_DISPOSITION = /^attachment; filename="energyrd-datos-\d{4}-\d{2}-\d{2}\.json"$/;
-const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const accessName = (config: BffConfig) => config.secure ? "__Host-erd-access" : "erd-access";
 const logoutName = (config: BffConfig) => config.secure ? "__Host-erd-logout" : "erd-logout";
 // Per-browser auth epoch: rotated by every logout. Session cookies are bound to the epoch that was
@@ -92,165 +91,6 @@ function clear(response: NextResponse, config: BffConfig) {
   return response;
 }
 // ---------- Fase 2 (ERD-CONS-01 / ERD-GOAL-01): lecturas, consumo, meta, progreso, tarifas ----------
-// Cada ruta declara método, patrón, respuesta, cuerpo y consulta EXACTOS: un parámetro no declarado,
-// repetido o mal formado es 400 y un cuerpo no estricto es 422, siempre antes de contactar la API.
-type QueryRule = { pattern: (value: string) => boolean; required?: boolean };
-interface Phase2Route { response: z.ZodTypeAny; body?: z.ZodTypeAny; query: Record<string, QueryRule> }
-const isoDate = (value: string) => z.string().date().safeParse(value).success;
-const PAGE: Record<string, QueryRule> = { limit: { pattern: v => /^\d{1,3}$/.test(v) }, offset: { pattern: v => /^\d{1,6}$/.test(v) } };
-// Decimal canónico como texto (≤ 10 enteros, ≤ 2 decimales), sin signo: igual que la API (Numeric(12,2)).
-const DECIMAL = /^\d{1,10}(?:\.\d{1,2})?$/;
-const decimalText = z.string().regex(DECIMAL);
-const positiveText = decimalText.refine(value => Number(value) > 0);
-const ReadingWrite = z.object({ read_at: z.string().max(40).datetime({ offset: true }), reading_kwh: decimalText, note: z.string().max(255).nullable().optional() }).strict();
-const GoalWrite = z.object({ monthly_amount_rd: positiveText.nullable().optional(), monthly_kwh: positiveText.nullable().optional() }).strict()
-  .refine(goal => (goal.monthly_amount_rd ?? null) !== null || (goal.monthly_kwh ?? null) !== null, { message: "goal_required" });
-// ERD-BILL-02: detalle de cargos y revisión de consistencia (solo lectura). Igual que la API:
-// etiqueta 1..200 no en blanco, cargo ≥ 0, descuento ≤ 0, texto decimal con ≤ 10 enteros y ≤ 2
-// decimales, máx. 100 ítems; sin `position`/`source`/`bill_id` del cliente. Validate: cuerpo `{}`.
-const CHARGE = /^\d{1,10}(?:\.\d{1,2})?$/;
-const DISCOUNT = /^(?:-\d{1,10}(?:\.\d{1,2})?|0{1,10}(?:\.0{1,2})?)$/;
-const BillItemWrite = z.object({
-  label: z.string().min(1).max(200).refine(value => value.trim().length > 0),
-  kind: z.enum(["charge", "discount"]),
-  amount_dop: z.string(),
-}).strict().refine(item => (item.kind === "charge" ? CHARGE : DISCOUNT).test(item.amount_dop), { path: ["amount_dop"] });
-const BillItemsWrite = z.object({ items: z.array(BillItemWrite).max(100) }).strict();
-function billDetailRoute(path: string, method: string): Phase2Route | null {
-  const match = path.match(new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`));
-  if (!match) return null;
-  if (match[1] === "validate") return method === "POST" ? { response: BillAssessmentSchema, body: z.object({}).strict(), query: {} } : null;
-  return method === "GET" ? { response: BillItemsOutSchema, query: {} } : method === "PUT" ? { response: BillItemsOutSchema, body: BillItemsWrite, query: {} } : null;
-}
-/** La respuesta debe pertenecer a la vivienda y la factura de la ruta (también el detalle anidado). */
-function ownsBill(path: string, value: unknown) {
-  const [, , home, , bill] = path.split("/");
-  const owns = (v: unknown) => !!v && typeof v === "object" && (v as { home_id?: unknown }).home_id === home && (v as { bill_id?: unknown }).bill_id === bill;
-  const nested = (value as { detail?: unknown }).detail;
-  return owns(value) && (nested === undefined || owns(nested));
-}
-/** ERD-SHARE-01: compartir vivienda. Cuerpos estrictos; el texto de error de la API nunca se reenvía. */
-function sharingRoute(path: string, method: string): Phase2Route | null {
-  if (path === "/invitations/accept") return method === "POST" ? { response: HomeSchema, body: InvitationAcceptInSchema.strict(), query: {} } : null;
-  const match = path.match(new RegExp(`^/homes/${UUID}/(members|invitations|transfer-ownership)(?:/(${UUID}|me))?$`));
-  if (!match) return null;
-  const [, kind, child] = match;
-  const none = z.undefined();
-  const empty = z.object({}).strict();
-  if (kind === "members") {
-    if (!child) return method === "GET" ? { response: MemberOutSchema.array(), query: {} } : null;
-    return method === "DELETE" ? { response: none, body: empty, query: {} } : null;
-  }
-  if (kind === "invitations") {
-    if (!child) return method === "GET" ? { response: InvitationOutSchema.array(), query: {} }
-      : method === "POST" ? { response: InvitationOutSchema, body: InvitationCreateInSchema.strict(), query: {} } : null;
-    return child !== "me" && method === "DELETE" ? { response: none, body: empty, query: {} } : null;
-  }
-  return !child && method === "POST" ? { response: none, body: OwnershipTransferInSchema.strict(), query: {} } : null;
-}
-/** ERD-PROF-01: preferencias, sesiones activas y exportación de datos de la cuenta. */
-function accountSettingsRoute(path: string, method: string): Phase2Route | null {
-  const none = z.undefined();
-  if (path === "/auth/me/preferences") return method === "GET" ? { response: NotificationPreferencesOutSchema, query: {} }
-    : method === "PUT" ? { response: NotificationPreferencesOutSchema, body: NotificationPreferencesInSchema.strict(), query: {} } : null;
-  if (path === "/auth/me/export") return method === "GET" ? { response: ExportSchema, query: {} } : null;
-  if (path === "/auth/sessions") return method === "GET" ? { response: SessionOutSchema.array(), query: {} } : null;
-  if (path === "/auth/email/verification") return method === "POST" ? { response: EmailVerificationRequestOutSchema, body: z.object({}).strict(), query: {} } : null;
-  if (path === "/auth/sessions/revoke-others") return method === "POST" ? { response: none, body: z.object({}).strict(), query: {} } : null;
-  if (new RegExp(`^/auth/sessions/${UUID}$`).test(path)) return method === "DELETE" ? { response: none, body: z.object({}).strict(), query: {} } : null;
-  return null;
-}
-function phase2Route(path: string, method: string): Phase2Route | null {
-  const account = accountSettingsRoute(path, method);
-  if (account || /^\/auth\/(sessions|me\/preferences|me\/export)(\/|$)/.test(path)) return account;
-  const sharing = sharingRoute(path, method);
-  if (sharing || /\/(members|invitations|transfer-ownership)(\/|$)/.test(path)) return sharing;
-  if (new RegExp(`^/homes/${UUID}/dashboard$`).test(path)) return method === "GET"
-    ? { response: DashboardSchema, query: { bill_id: { pattern: v => z.string().uuid().safeParse(v).success } } }
-    : null;
-  // ERD-ANOM-01-COMPLETE: lista con filtros cerrados y cambio de estado (el escaneo lo piden las escrituras y el trabajo diario).
-  if (new RegExp(`^/homes/${UUID}/anomalies$`).test(path)) return method === "GET" ? { response: AnomaliesSchema, query: {
-    status: { pattern: v => ["active", "open", "acknowledged", "dismissed", "resolved", "all"].includes(v) },
-    granularity: { pattern: v => ["day", "month", "billing"].includes(v) },
-    kind: { pattern: v => ["increase", "drop", "peak", "night"].includes(v) },
-    limit: { pattern: v => /^\d{1,3}$/.test(v) && Number(v) >= 1 && Number(v) <= 100 },
-  } } : null;
-  if (new RegExp(`^/homes/${UUID}/anomalies/${UUID}$`).test(path)) return method === "PATCH" ? { response: AnomalySchema, body: AnomalyStatusInSchema.strict(), query: {} } : null;
-  if (/\/anomalies(\/|$)/.test(path)) return null;
-  // ERD-INT-01: interrupciones del servicio eléctrico (alta, historial, edición, baja y resumen mensual).
-  if (new RegExp(`^/homes/${UUID}/outages$`).test(path)) return method === "GET" ? { response: OutagesSchema, query: PAGE }
-    : method === "POST" ? { response: OutageSchema, body: OutageInSchema.strict(), query: {} } : null;
-  if (new RegExp(`^/homes/${UUID}/outages/summary$`).test(path)) return method === "GET" ? { response: OutageSummarySchema, query: {
-    months: { pattern: v => /^\d{1,2}$/.test(v) && Number(v) >= 1 && Number(v) <= 24 },
-  } } : null;
-  if (new RegExp(`^/homes/${UUID}/outages/${UUID}$`).test(path)) return method === "GET" ? { response: OutageSchema, query: {} }
-    : method === "PUT" ? { response: OutageSchema, body: OutageInSchema.strict(), query: {} }
-    : method === "DELETE" ? { response: z.undefined(), body: z.object({}).strict(), query: {} } : null;
-  if (/\/outages(\/|$)/.test(path)) return null;
-  // ERD-SCORE-01: Energy Score (solo lectura, sin parámetros).
-  if (new RegExp(`^/homes/${UUID}/energy-score$`).test(path)) return method === "GET" ? { response: EnergyScoreSchema, query: {} } : null;
-  if (/\/energy-score(\/|$)/.test(path)) return null;
-  // ERD-SAVE-01: recomendaciones de ahorro. Lista con filtros cerrados, recálculo (cuerpo vacío) y cambio de estado.
-  if (new RegExp(`^/homes/${UUID}/recommendations$`).test(path)) return method === "GET" ? { response: RecommendationListSchema, query: {
-    status: { pattern: v => ["active", "applied", "dismissed", "resolved", "all"].includes(v) },
-    limit: { pattern: v => /^\d{1,3}$/.test(v) && Number(v) >= 1 && Number(v) <= 100 },
-  } } : null;
-  if (new RegExp(`^/homes/${UUID}/recommendations/refresh$`).test(path)) return method === "POST" ? { response: RecommendationListSchema, body: z.object({}).strict(), query: {} } : null;
-  if (new RegExp(`^/homes/${UUID}/recommendations/${UUID}$`).test(path)) return method === "PATCH" ? { response: RecommendationSchema, body: RecommendationStatusInSchema.strict(), query: {} } : null;
-  if (/\/recommendations(\/|$)/.test(path)) return null;
-  // ERD-ALERT-02: marcar una factura como pagada/pendiente.
-  if (new RegExp(`^/homes/${UUID}/bills/${UUID}/payment$`).test(path)) return method === "PUT" ? { response: BillSchema, body: BillPaymentInSchema.strict(), query: {} } : null;
-  const job = path.match(new RegExp(`^/homes/${UUID}/bills/ocr-jobs/${UUID}(/retry)?$`));
-  if (job) return job[1] ? (method === "POST" ? { response: OcrJobSchema, body: z.object({}).strict(), query: {} } : null)
-    : method === "GET" ? { response: OcrJobSchema, query: {} } : null;
-  const bill = billDetailRoute(path, method);
-  if (bill || new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path)) return bill;
-  if (new RegExp(`^/homes/${UUID}/contract$`).test(path)) return method === "GET" ? { response: ContractOutSchema, query: {} } : method === "PUT" ? { response: ContractOutSchema, body: ContractInSchema.strict(), query: {} } : null;
-  if (path === "/tariffs") return method === "GET" ? { response: TariffSchema.array(), query: { distributor: { pattern: v => ["EDESUR", "EDENORTE", "EDEESTE"].includes(v) }, on: { pattern: isoDate }, ...PAGE } } : null;
-  const match = path.match(new RegExp(`^/homes/${UUID}/(readings|consumption|goal)(?:/(${UUID}|progress))?$`));
-  if (!match) return null;
-  const [, kind, child] = match;
-  if (kind === "readings") {
-    if (!child) return method === "GET" ? { response: ReadingSchema.array(), query: PAGE } : method === "POST" ? { response: ReadingSchema, body: ReadingWrite, query: {} } : null;
-    return child !== "progress" && method === "DELETE" ? { response: z.undefined(), body: z.object({}).strict(), query: {} } : null;
-  }
-  if (kind === "consumption") return !child && method === "GET" ? { response: ConsumptionSchema, query: { granularity: { pattern: v => ["day", "week", "month"].includes(v), required: true }, from: { pattern: isoDate, required: true }, to: { pattern: isoDate, required: true } } } : null;
-  if (child === "progress") return method === "GET" ? { response: GoalProgressSchema, query: { on: { pattern: isoDate } } } : null;
-  if (child) return null;
-  return method === "GET" ? { response: GoalOrNullSchema, query: {} } : method === "PUT" ? { response: GoalSchema, body: GoalWrite, query: {} } : null;
-}
-function phase2QueryOk(route: Phase2Route, params: URLSearchParams) {
-  for (const key of new Set(params.keys())) {
-    const rule = Object.hasOwn(route.query, key) ? route.query[key] : undefined;
-    const values = params.getAll(key);
-    if (!rule || values.length !== 1 || !rule.pattern(values[0])) return false;
-  }
-  return Object.entries(route.query).every(([key, rule]) => !rule.required || params.has(key));
-}
-function domainRoute(path: string, method: string): z.ZodTypeAny | null {
-  const list = method === "GET";
-  if (path === "/homes" && ["GET", "POST"].includes(method)) return list ? HomeSchema.array() : HomeSchema;
-  if (new RegExp(`^/homes/${UUID}$`).test(path) && ["GET", "PATCH", "DELETE"].includes(method)) return method === "DELETE" ? z.undefined() : HomeSchema;
-  const match = path.match(new RegExp(`^/homes/${UUID}/(bills|equipment|alerts|dashboard)(?:/(${UUID}|estimate))?$`));
-  if (!match) return null;
-  const [, kind, child] = match;
-  if (kind === "dashboard") return !child && list ? DashboardSchema : null;
-  if (kind === "equipment" && child === "estimate") return list ? EquipmentEstimateSchema : null;
-  if (child === "estimate") return null;
-  if (kind === "alerts") return !child && list ? AlertItemSchema.array() : child && method === "PATCH" ? AlertItemSchema : null;
-  const schema = kind === "bills" ? BillSchema : EquipmentSchema;
-  if (!child) return list ? schema.array() : method === "POST" ? schema : null;
-  return ["GET", "PUT", "DELETE"].includes(method) ? method === "DELETE" ? z.undefined() : schema : null;
-}
-const HomeInput = z.object({ name: z.string().min(1).max(120), distributor: HomeSchema.shape.distributor, code: z.string().min(1).max(32).regex(/^[A-Za-z0-9_-]+$/).nullable().optional(), address: z.string().max(255).nullable().optional(), city: z.string().max(120).nullable().optional(), province: z.string().min(1).max(120).nullable().optional(), municipality: z.string().min(1).max(120).nullable().optional(), sector: z.string().min(1).max(120).nullable().optional(), user_type: z.string().min(1).max(120).nullable().optional(), occupants: z.number().int().min(1).max(999).nullable().optional(), has_ac: z.boolean().nullable().optional(), has_water_heater: z.boolean().nullable().optional(), has_pool: z.boolean().nullable().optional(), has_solar: z.boolean().nullable().optional(), has_inverter: z.boolean().nullable().optional() }).strict();
-function writeSchema(path: string, method: string) {
-  if (method === "DELETE") return z.object({}).strict();
-  if (path === "/homes") return HomeInput;
-  if (new RegExp(`^/homes/${UUID}$`).test(path)) return HomeInput.omit({ code: true }).partial().strict();
-  if (path.includes("/bills")) return method === "POST" ? BillCreateSchema.strict() : BillUpdateSchema.strict();
-  if (path.includes("/equipment")) return EquipmentInSchema.strict();
-  return AlertStatusUpdateSchema.strict();
-}
 // Upstream error text (detail/msg) is never forwarded: only local Spanish messages chosen by
 // status, path and an allowlisted field table. Unknown fields are dropped, not echoed.
 const FIELD_MESSAGES: Record<string, string> = {
