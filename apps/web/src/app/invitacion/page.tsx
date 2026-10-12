@@ -72,7 +72,7 @@ export default function InvitationPage() {
     body = (
       <>
         <p>Te invitaron a ver una vivienda en Energy RD. Aceptarás con la cuenta <strong>{user.email}</strong>.</p>
-        {error ? <p role="alert" className="mt-3 text-sm text-red-600">{error}</p> : null}
+        {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <Button type="button" onClick={() => void accept()} disabled={pending}>{pending ? "Aceptando…" : "Aceptar invitación"}</Button>
           <Link className={linkClass} href="/homes">Ir a mis viviendas</Link>

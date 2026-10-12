@@ -36,7 +36,7 @@ export function EmailVerificationNotice({ className = "" }: { className?: string
         <Button type="button" variant="outline" onClick={() => void resend()} disabled={state === "sending"}>
           {state === "sending" ? "Enviando…" : "Reenviar el enlace"}
         </Button>
-        {message ? <span role={state === "error" ? "alert" : undefined} className={state === "error" ? "text-red-700" : ""}>{message}</span> : null}
+        {message ? <span role={state === "error" ? "alert" : undefined} className={state === "error" ? "text-danger" : ""}>{message}</span> : null}
       </div>
     </div>
   );

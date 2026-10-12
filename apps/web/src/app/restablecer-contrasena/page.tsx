@@ -86,8 +86,8 @@ export default function ResetPasswordPage() {
   else content = <>
     <CardDescription>Elige una contraseña nueva. Al guardarla se cerrarán todas tus sesiones abiertas.</CardDescription>
     <form ref={form} className="mt-5 flex flex-col gap-4" onSubmit={submit} aria-busy={pending} noValidate>
-      <Field error={fieldError?.name === "new_password" ? fieldError.message : undefined} name="new_password" label="Nueva contraseña" className="text-base sm:text-sm" type="password" autoComplete="new-password" minLength={12} maxLength={128} hint="Entre 12 y 128 caracteres. No se recorta ni modifica." value={password} onChange={event => setPassword(event.target.value)} required disabled={pending} />
-      <Field error={fieldError?.name === "confirm_password" ? fieldError.message : undefined} name="confirm_password" label="Confirmar contraseña" className="text-base sm:text-sm" type="password" autoComplete="new-password" minLength={12} maxLength={128} value={confirmation} onChange={event => setConfirmation(event.target.value)} required disabled={pending} />
+      <Field width="full" error={fieldError?.name === "new_password" ? fieldError.message : undefined} name="new_password" label="Nueva contraseña" className="text-base sm:text-sm" type="password" autoComplete="new-password" minLength={12} maxLength={128} hint="Entre 12 y 128 caracteres. No se recorta ni modifica." value={password} onChange={event => setPassword(event.target.value)} required disabled={pending} />
+      <Field width="full" error={fieldError?.name === "confirm_password" ? fieldError.message : undefined} name="confirm_password" label="Confirmar contraseña" className="text-base sm:text-sm" type="password" autoComplete="new-password" minLength={12} maxLength={128} value={confirmation} onChange={event => setConfirmation(event.target.value)} required disabled={pending} />
       {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
       <Button type="submit" disabled={pending}>{pending ? "Restableciendo contraseña…" : "Restablecer contraseña"}</Button>
     </form>

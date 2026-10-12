@@ -24,6 +24,7 @@ import { QueryState } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/modal";
 import { useDeleteEquipment, useEquipment, useEstimate, useSaveEquipment } from "@/lib/api/hooks";
 import type { Equipment } from "@/lib/api/schemas";
@@ -81,23 +82,13 @@ function EquipmentForm({
       <CardTitle>{editing ? "Editar equipo" : "Nuevo equipo"}</CardTitle>
       <form ref={formRef} onSubmit={submit} noValidate className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field label="Nombre" placeholder="Nevera" {...bind("name")} />
-        <div className="flex flex-col gap-1">
-          <label htmlFor={kindId} className="text-sm font-medium">Tipo de equipo</label>
-          <select
-            id={kindId}
-            name={kindId}
+        <Select id={kindId} name={kindId} label="Tipo de equipo" error={errors.kind}
             value={v.kind}
-            aria-invalid={errors.kind ? true : undefined}
-            aria-describedby={errors.kind ? `${kindId}-error` : undefined}
-            onChange={(e) => setV((p) => ({ ...p, kind: e.target.value }))}
-            className="h-10 rounded-lg border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
+            onChange={(e) => setV((p) => ({ ...p, kind: e.target.value }))}>
             {EQUIPMENT_KINDS.map((k) => (
               <option key={k} value={k}>{EQUIPMENT_KIND_LABELS[k]}</option>
             ))}
-          </select>
-          {errors.kind ? <p id={`${kindId}-error`} role="alert" className="text-xs text-red-600">{errors.kind}</p> : null}
-        </div>
+          </Select>
         <Field label="Habitación (opcional)" placeholder="Cocina" {...bind("room")} />
         <Field label="Marca (opcional)" placeholder="Samsung" {...bind("brand")} />
         <Field label="Modelo (opcional)" placeholder="AR12" {...bind("model")} />
@@ -123,10 +114,10 @@ function EquipmentForm({
               );
             })}
           </div>
-          {errors.icon ? <p role="alert" className="text-xs text-red-600">{errors.icon}</p> : null}
+          {errors.icon ? <p role="alert" className="text-xs text-danger">{errors.icon}</p> : null}
         </div>
-        <Field label="Potencia (W)" inputMode="decimal" placeholder="150" {...bind("powerW")} />
-        <Field label="Horas de uso por día" inputMode="decimal" placeholder="24" {...bind("hoursPerDay")} />
+        <Field label="Potencia (W)" width="sm" inputMode="decimal" placeholder="150" {...bind("powerW")} />
+        <Field label="Horas de uso por día" width="sm" inputMode="decimal" placeholder="24" {...bind("hoursPerDay")} />
         {preview !== null ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">
             Vista previa: ≈ {fmtNumber(preview)} kWh/día <DataStatusBadge quality="ESTIMATED" />

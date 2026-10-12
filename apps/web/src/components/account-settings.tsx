@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth/settings";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import { Checkbox } from "./ui/checkbox";
 import { Field } from "./ui/field";
 
 const dateTime = (iso: string) => new Date(iso).toLocaleString("es-DO", { dateStyle: "medium", timeStyle: "short" });
@@ -45,8 +46,8 @@ export function PasswordSection() {
         <Field name="current-password" label="Contraseña actual" type="password" autoComplete="current-password" maxLength={128} value={current} onChange={(e) => setCurrent(e.target.value)} disabled={pending} />
         <Field name="new-password" label="Nueva contraseña" type="password" autoComplete="new-password" maxLength={128} hint="Entre 12 y 128 caracteres." value={next} onChange={(e) => setNext(e.target.value)} disabled={pending} />
         <Field name="confirm-new-password" label="Confirmar nueva contraseña" type="password" autoComplete="new-password" maxLength={128} value={confirmation} onChange={(e) => setConfirmation(e.target.value)} disabled={pending} />
-        {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-        {done ? <p role="status" className="text-sm text-green-700">Contraseña cambiada. Se cerraron las demás sesiones.</p> : null}
+        {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+        {done ? <p role="status" className="text-sm text-success">Contraseña cambiada. Se cerraron las demás sesiones.</p> : null}
         <Button type="submit" disabled={pending}>{pending ? "Guardando…" : "Cambiar contraseña"}</Button>
       </form>
     </Card>
@@ -74,15 +75,15 @@ export function NotificationsSection() {
       </p>
       {prefs.isLoading ? <p role="status" className="mt-3 text-sm">Cargando…</p> : null}
       {prefs.isError ? (
-        <div className="mt-3"><p role="alert" className="text-sm text-red-600">{apiMessage(prefs.error)}</p>
+        <div className="mt-3"><p role="alert" className="text-sm text-danger">{apiMessage(prefs.error)}</p>
           <Button type="button" variant="outline" className="mt-2" onClick={() => void prefs.refetch()}>Reintentar</Button></div>
       ) : null}
       {value ? (
         <form className="mt-4 flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); setNotice(null); save.mutate(value); }}>
-          <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={value.email} onChange={(e) => setDraft({ ...value, email: e.target.checked })} disabled={save.isPending} /> Avisos de consumo por correo</label>
-          <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={value.push} onChange={(e) => setDraft({ ...value, push: e.target.checked })} disabled={save.isPending} /> Avisos en el teléfono (app móvil)</label>
-          {save.isError ? <p role="alert" className="text-sm text-red-600">{apiMessage(save.error)}</p> : null}
-          {notice ? <p role="status" className="text-sm text-green-700">{notice}</p> : null}
+          <Checkbox checked={value.email} onChange={(e) => setDraft({ ...value, email: e.target.checked })} disabled={save.isPending}>Avisos de consumo por correo</Checkbox>
+          <Checkbox checked={value.push} onChange={(e) => setDraft({ ...value, push: e.target.checked })} disabled={save.isPending}>Avisos en el teléfono (app móvil)</Checkbox>
+          {save.isError ? <p role="alert" className="text-sm text-danger">{apiMessage(save.error)}</p> : null}
+          {notice ? <p role="status" className="text-sm text-success">{notice}</p> : null}
           <Button type="submit" disabled={save.isPending || draft === null}>{save.isPending ? "Guardando…" : "Guardar preferencias"}</Button>
         </form>
       ) : null}
@@ -107,7 +108,7 @@ export function SessionsSection() {
       <p className="mt-2 text-sm text-muted-foreground">Dispositivos donde tu cuenta tiene la sesión abierta. Si no reconoces alguna, ciérrala y cambia tu contraseña.</p>
       {sessions.isLoading ? <p role="status" className="mt-3 text-sm">Cargando…</p> : null}
       {sessions.isError ? (
-        <div className="mt-3"><p role="alert" className="text-sm text-red-600">{apiMessage(sessions.error)}</p>
+        <div className="mt-3"><p role="alert" className="text-sm text-danger">{apiMessage(sessions.error)}</p>
           <Button type="button" variant="outline" className="mt-2" onClick={() => void sessions.refetch()}>Reintentar</Button></div>
       ) : null}
       <ul className="mt-3 flex flex-col gap-2">
@@ -121,8 +122,8 @@ export function SessionsSection() {
           </li>
         ))}
       </ul>
-      {run.isError ? <p role="alert" className="mt-3 text-sm text-red-600">{apiMessage(run.error)}</p> : null}
-      {notice ? <p role="status" className="mt-3 text-sm text-green-700">{notice}</p> : null}
+      {run.isError ? <p role="alert" className="mt-3 text-sm text-danger">{apiMessage(run.error)}</p> : null}
+      {notice ? <p role="status" className="mt-3 text-sm text-success">{notice}</p> : null}
       {others.length > 0 ? (
         <Button type="button" variant="outline" className="mt-3" disabled={run.isPending}
           onClick={() => run.mutate(() => revokeOtherSessions(), { onSuccess: async () => { setNotice("Se cerraron las demás sesiones."); await refresh(); } })}>
@@ -161,8 +162,8 @@ export function DataExportSection() {
         Un archivo JSON con tu cuenta, tus viviendas, facturas, lecturas, equipos, alertas y metas. No incluye contraseñas, claves
         ni datos de otras personas. Guárdalo en un lugar seguro: contiene tus datos personales.
       </p>
-      {error ? <p role="alert" className="mt-3 text-sm text-red-600">{error}</p> : null}
-      {done ? <p role="status" className="mt-3 text-sm text-green-700">Descarga lista.</p> : null}
+      {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
+      {done ? <p role="status" className="mt-3 text-sm text-success">Descarga lista.</p> : null}
       <Button type="button" variant="outline" className="mt-4" onClick={() => void download()} disabled={pending}>{pending ? "Preparando…" : "Descargar mis datos"}</Button>
     </Card>
   );

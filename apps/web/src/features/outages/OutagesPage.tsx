@@ -11,6 +11,8 @@ import { QueryState } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateOutage, useDeleteOutage, useOutages, useOutageSummary, useUpdateOutage } from "@/lib/api/hooks";
 import { userMessage } from "@/lib/api/errors";
 import type { Outage } from "@/lib/api/schemas";
@@ -18,7 +20,6 @@ import { formatReadAt, nowTimeRD, todayRD } from "@/lib/rd-time";
 import { useSession } from "@/lib/session";
 import { useFocusFirstInvalid } from "@/lib/use-focus-first-invalid";
 
-const selectClass = "h-10 rounded-lg border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 const emptyForm = (): OutageFormValues => ({ startDate: todayRD(), startTime: nowTimeRD(), ongoing: false, endDate: todayRD(), endTime: nowTimeRD(), cause: "unknown", note: "" });
 
 /** Alta y edición de un apagón. `editing` precarga los valores y el envío reemplaza el registro. */
@@ -58,33 +59,29 @@ function OutageForm({ homeId, editing, onDone }: { homeId: string; editing?: Out
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-4" aria-label={editing ? "Editar apagón" : "Registrar apagón"}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Día en que se fue la luz" type="date" max={todayRD()} {...bind("startDate")} />
-        <Field label="Hora en que se fue" type="time" hint="Hora de República Dominicana." {...bind("startTime")} />
+        <Field label="Día en que se fue la luz" width="sm" type="date" max={todayRD()} {...bind("startDate")} />
+        <Field label="Hora en que se fue" width="xs" type="time" hint="Hora de República Dominicana." {...bind("startTime")} />
       </div>
-      <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
-        <input type="checkbox" checked={values.ongoing} onChange={(e) => set("ongoing", e.target.checked)} className="h-5 w-5" />
+      <Checkbox checked={values.ongoing} onChange={(e) => set("ongoing", e.target.checked)} className="font-medium">
         Todavía sin luz
-      </label>
+      </Checkbox>
       {!values.ongoing ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Día en que volvió" type="date" max={todayRD()} {...bind("endDate")} />
-          <Field label="Hora en que volvió" type="time" {...bind("endTime")} />
+          <Field label="Día en que volvió" width="sm" type="date" max={todayRD()} {...bind("endDate")} />
+          <Field label="Hora en que volvió" width="xs" type="time" {...bind("endTime")} />
         </div>
       ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label htmlFor={`${prefix}-cause`} className="text-sm font-medium">Causa</label>
-          <select id={`${prefix}-cause`} value={values.cause} onChange={(e) => set("cause", e.target.value as OutageCause)} className={selectClass}>
+        <Select id={`${prefix}-cause`} label="Causa" width="md" value={values.cause} onChange={(e) => set("cause", e.target.value as OutageCause)}>
             {OUTAGE_CAUSE_ORDER.map((c) => <option key={c} value={c}>{OUTAGE_CAUSES[c]}</option>)}
-          </select>
-        </div>
-        <Field label="Nota (opcional)" maxLength={255} autoComplete="off" {...bind("note")} />
+          </Select>
+        <Field label="Nota (opcional)" width="lg" maxLength={255} autoComplete="off" {...bind("note")} />
       </div>
       {mutation.error ? <p role="alert" className="text-sm text-danger">{userMessage(mutation.error, "outage-save")}</p> : null}
       <p role="status" className="text-sm text-success">{saved ?? ""}</p>
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" className="h-11" disabled={mutation.isPending}>{mutation.isPending ? "Guardando…" : editing ? "Guardar cambios" : "Guardar apagón"}</Button>
-        {editing ? <Button type="button" variant="outline" className="h-11" onClick={onDone}>Cancelar</Button> : null}
+        <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "Guardando…" : editing ? "Guardar cambios" : "Guardar apagón"}</Button>
+        {editing ? <Button type="button" variant="outline" onClick={onDone}>Cancelar</Button> : null}
       </div>
     </form>
   );
@@ -115,19 +112,19 @@ function OutageItem({ outage, homeId }: { outage: Outage; homeId: string }) {
           {mode === "confirm" ? (
             <div role="group" aria-label={`Confirmar eliminación del apagón del ${when}`} className="flex flex-wrap items-center gap-2">
               <span className="text-sm">¿Eliminar este apagón?</span>
-              <Button autoFocus type="button" variant="outline" className="h-11 border-danger-border text-danger" disabled={remove.isPending}
+              <Button autoFocus type="button" variant="outline" className="border-danger-border text-danger" disabled={remove.isPending}
                 onClick={() => remove.mutate(outage.id, { onSettled: () => setMode("view") })}>
                 {remove.isPending ? "Eliminando…" : "Sí, eliminar"}
               </Button>
-              <Button type="button" variant="outline" className="h-11" onClick={() => setMode("view")}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setMode("view")}>Cancelar</Button>
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
               {outage.ongoing ? (
-                <Button type="button" className="h-11" disabled={update.isPending} onClick={restore} aria-label={`Ya volvió la luz (apagón del ${when})`}>Ya volvió la luz</Button>
+                <Button type="button" disabled={update.isPending} onClick={restore} aria-label={`Ya volvió la luz (apagón del ${when})`}>Ya volvió la luz</Button>
               ) : null}
-              <Button type="button" variant="outline" className="h-11" onClick={() => setMode("edit")} aria-label={`Editar el apagón del ${when}`}><Pencil className="mr-1 h-4 w-4" aria-hidden /> Editar</Button>
-              <Button type="button" variant="outline" className="h-11" onClick={() => setMode("confirm")} aria-label={`Eliminar el apagón del ${when}`}><Trash2 className="mr-1 h-4 w-4" aria-hidden /> Eliminar</Button>
+              <Button type="button" variant="outline" onClick={() => setMode("edit")} aria-label={`Editar el apagón del ${when}`}><Pencil className="mr-1 h-4 w-4" aria-hidden /> Editar</Button>
+              <Button type="button" variant="outline" onClick={() => setMode("confirm")} aria-label={`Eliminar el apagón del ${when}`}><Trash2 className="mr-1 h-4 w-4" aria-hidden /> Eliminar</Button>
             </div>
           )}
           {(remove.error || update.error) ? <p role="alert" className="text-sm text-danger">{userMessage(remove.error ?? update.error, "outage-save")}</p> : null}

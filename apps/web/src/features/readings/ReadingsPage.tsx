@@ -68,10 +68,10 @@ function ReadingForm({ homeId, readings }: { homeId: string; readings: readonly 
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Fecha" type="date" max={todayRD()} {...bind("date")} />
-        <Field label="Hora" type="time" hint="Hora de República Dominicana." {...bind("time")} />
-        <Field label="Lectura del medidor (kWh)" inputMode="decimal" autoComplete="off" placeholder="Ej. 1250.5" {...bind("reading_kwh")} />
-        <Field label="Nota (opcional)" maxLength={255} autoComplete="off" {...bind("note")} />
+        <Field label="Fecha" width="sm" type="date" max={todayRD()} {...bind("date")} />
+        <Field label="Hora" width="xs" type="time" hint="Hora de República Dominicana." {...bind("time")} />
+        <Field label="Lectura del medidor (kWh)" width="sm" inputMode="decimal" autoComplete="off" placeholder="Ej. 1250.5" {...bind("reading_kwh")} />
+        <Field label="Nota (opcional)" width="lg" maxLength={255} autoComplete="off" {...bind("note")} />
       </div>
       <MonotonicHint readings={readings} values={values} />
       {create.error ? (
@@ -82,7 +82,7 @@ function ReadingForm({ homeId, readings }: { homeId: string; readings: readonly 
       <p role="status" className="text-sm text-success">
         {saved ?? ""}
       </p>
-      <Button type="submit" className="h-11 self-start" disabled={create.isPending}>
+      <Button type="submit" className="self-start" disabled={create.isPending}>
         {create.isPending ? "Guardando…" : "Guardar lectura"}
       </Button>
     </form>
@@ -113,18 +113,18 @@ function ReadingRow({ reading, homeId }: { reading: Reading; homeId: string }) {
             <Button
               type="button"
               variant="outline"
-              className="h-11 border-danger-border text-danger"
+              className="border-danger-border text-danger"
               disabled={remove.isPending}
               onClick={() => remove.mutate(reading.id, { onSettled: () => setConfirming(false) })}
             >
               {remove.isPending ? "Eliminando…" : "Sí, eliminar"}
             </Button>
-            <Button type="button" variant="outline" className="h-11" onClick={() => setConfirming(false)}>
+            <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
               Cancelar
             </Button>
           </div>
         ) : (
-          <Button type="button" variant="outline" className="h-11" aria-label={`Eliminar lectura del ${when}`} onClick={() => setConfirming(true)}>
+          <Button type="button" variant="outline" aria-label={`Eliminar lectura del ${when}`} onClick={() => setConfirming(true)}>
             <Trash2 className="mr-1 h-4 w-4" aria-hidden /> Eliminar
           </Button>
         )}

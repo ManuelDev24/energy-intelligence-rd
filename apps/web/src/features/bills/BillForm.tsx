@@ -55,27 +55,27 @@ export function BillForm({
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate className="flex max-w-xl flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Inicio del período" type="date" {...bind("period_start")} />
-        <Field label="Fin del período" type="date" {...bind("period_end")} />
-        <Field label="Consumo facturado (kWh)" inputMode="decimal" {...bind("kwh")} />
-        <Field label="Monto (RD$)" inputMode="decimal" {...bind("amount_dop")} />
+        <Field label="Inicio del período" width="sm" type="date" {...bind("period_start")} />
+        <Field label="Fin del período" width="sm" type="date" {...bind("period_end")} />
+        <Field label="Consumo facturado (kWh)" width="sm" inputMode="decimal" {...bind("kwh")} />
+        <Field label="Monto (RD$)" width="sm" inputMode="decimal" {...bind("amount_dop")} />
         <Field
-          label="Días facturados"
+          label="Días facturados" width="xs"
           inputMode="numeric"
           hint="Tal como aparece en la factura"
           {...bind("days")}
         />
         <Field
-          label="Fecha límite de pago (opcional)"
+          label="Fecha límite de pago (opcional)" width="sm"
           type="date"
           hint="Si la indica, le avisamos antes de que venza"
           {...bind("due_date")}
         />
-        <Field label="Lectura anterior (opcional)" inputMode="decimal" {...bind("reading_previous")} />
-        <Field label="Lectura actual (opcional)" inputMode="decimal" {...bind("reading_current")} />
+        <Field label="Lectura anterior (opcional)" width="sm" inputMode="decimal" {...bind("reading_previous")} />
+        <Field label="Lectura actual (opcional)" width="sm" inputMode="decimal" {...bind("reading_current")} />
       </div>
       {serverError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-danger">
           {serverError}
         </p>
       ) : null}

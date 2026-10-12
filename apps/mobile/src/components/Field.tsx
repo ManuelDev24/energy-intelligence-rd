@@ -1,15 +1,16 @@
 import type { ComponentProps, ComponentRef, Ref } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { colors, spacing } from '../theme';
+import { colors, spacing, TOUCH } from '../theme';
 
 export function Field({
   label,
   error,
+  hint,
   testID,
   inputRef,
   ...props
-}: { label: string; error?: string; testID: string; inputRef?: Ref<ComponentRef<typeof TextInput>> } & ComponentProps<typeof TextInput>) {
+}: { label: string; error?: string; hint?: string; testID: string; inputRef?: Ref<ComponentRef<typeof TextInput>> } & ComponentProps<typeof TextInput>) {
   return (
     <View style={{ gap: 4 }}>
       <Text style={s.label}>{label}</Text>
@@ -22,6 +23,7 @@ export function Field({
         style={[s.input, error ? s.inputErr : null]}
         placeholderTextColor={colors.muted}
       />
+      {!error && hint ? <Text style={s.hint} testID={`${testID}-hint`}>{hint}</Text> : null}
       {error ? (
         <Text style={s.err} accessibilityLiveRegion="polite" testID={`${testID}-error`}>
           {error}
@@ -44,10 +46,13 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 10,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minHeight: TOUCH,
     fontSize: 16,
     color: colors.text,
   },
   inputErr: { borderColor: colors.danger },
   err: { color: colors.danger, fontSize: 12 },
+  hint: { color: colors.muted, fontSize: 12 },
 });

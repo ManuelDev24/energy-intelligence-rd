@@ -94,11 +94,11 @@ export default function BillDetailPage() {
                   onClick={() => payment.mutate(!data.paid_at)}>
                   {data.paid_at ? "Marcar como pendiente" : "Marcar como pagada"}
                 </Button>
-                {payment.error ? <p role="alert" className="text-sm text-red-600">{userMessage(payment.error, "bill-save")}</p> : null}
+                {payment.error ? <p role="alert" className="text-sm text-danger">{userMessage(payment.error, "bill-save")}</p> : null}
               </div>
             ) : null}
             {remove.error ? (
-              <p role="alert" className="text-sm text-red-600">
+              <p role="alert" className="text-sm text-danger">
                 {userMessage(remove.error, "bill-delete")}
               </p>
             ) : null}

@@ -33,8 +33,8 @@ export function AccountForm({ mode, suppressSessionError = false }: { mode: "log
     <Logo size={48} />
     <Card><h1 className="text-2xl font-bold">{label}</h1><CardDescription>Tu cuenta y tus viviendas, sin compartir datos del piloto.</CardDescription>
       <form className="mt-5 flex flex-col gap-4" onSubmit={submit} aria-busy={pending}>
-        <Field name="email" label="Correo electrónico" className="text-base sm:text-sm" type="email" autoComplete="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} required disabled={pending} />
-        <Field name="password" label="Contraseña" className="text-base sm:text-sm" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={12} maxLength={128} hint="Entre 12 y 128 caracteres. No se recorta ni modifica." value={password} onChange={event => setPassword(event.target.value)} required disabled={pending} />
+        <Field width="full" name="email" label="Correo electrónico" className="text-base sm:text-sm" type="email" autoComplete="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} required disabled={pending} />
+        <Field width="full" name="password" label="Contraseña" className="text-base sm:text-sm" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={12} maxLength={128} hint="Entre 12 y 128 caracteres. No se recorta ni modifica." value={password} onChange={event => setPassword(event.target.value)} required disabled={pending} />
         {mode === "register" ? (
           <div className="flex items-start gap-2 text-sm">
             <input id="accept-terms" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={acceptTerms} onChange={event => setAcceptTerms(event.target.checked)} disabled={pending} required />

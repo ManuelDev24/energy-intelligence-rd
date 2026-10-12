@@ -52,7 +52,7 @@ export default function VerifyEmailPage() {
             <p className="mt-3"><Link href="/login" className={linkClass}>Iniciar sesión</Link></p>
           </div>
         ) : null}
-        {state === "error" ? <p role="alert" className="mt-3 text-sm text-red-700">{message}</p> : null}
+        {state === "error" ? <p role="alert" className="mt-3 text-sm text-danger">{message}</p> : null}
       </Card>
     </main>
   );

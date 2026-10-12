@@ -10,11 +10,11 @@ import { keys, invalidateHome } from "@/lib/api/hooks";
 import { userMessage } from "@/lib/api/errors";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
 const texts = [["name", "Nombre de la vivienda"], ["address", "Dirección"], ["city", "Ciudad"], ["province", "Provincia"], ["municipality", "Municipio"], ["sector", "Sector"], ["user_type", "Tipo de usuario"]] as const;
 const flags = [["has_ac", "Aire acondicionado"], ["has_water_heater", "Calentador de agua"], ["has_pool", "Piscina"], ["has_solar", "Paneles solares"], ["has_inverter", "Inversor"]] as const;
-const selectClass = "h-11 rounded-lg border border-border bg-background px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 function HomeForm({ home, reload }: { home: Home; reload: () => Promise<unknown> }) {
   const qc = useQueryClient();
   const [draft, setDraft] = useState<HomeDraft>({});
@@ -55,9 +55,9 @@ function HomeForm({ home, reload }: { home: Home; reload: () => Promise<unknown>
   return <Card><h2 className="text-xl font-semibold">Mi vivienda</h2><p className="my-3 text-sm text-muted-foreground">Solo se guardan los campos que modificas. «Sin indicar» significa desconocido, no «No». El tipo de usuario es texto libre y no define una tarifa.</p>
     <form onSubmit={event => void save(event)} aria-busy={pending} className="grid gap-4 sm:grid-cols-2">
       {texts.map(([key, label]) => <Field key={key} name={`profile-${key}`} label={label} error={invalidField === key ? error ?? undefined : undefined} value={Object.hasOwn(draft, key) ? draft[key] ?? "" : home[key] ?? ""} onChange={event => setDraft(old => ({ ...old, [key]: event.target.value || null }))} required={key === "name"} maxLength={key === "address" ? 255 : 120} />)}
-      <label htmlFor="profile-distributor" className="flex flex-col gap-1 text-sm">Distribuidora<select id="profile-distributor" className={selectClass} value={draft.distributor ?? home.distributor} onChange={event => setDraft(old => ({ ...old, distributor: DistributorSchema.parse(event.target.value) }))}>{DistributorSchema.options.map(value => <option key={value}>{value}</option>)}</select></label>
-      <Field name="profile-occupants" label="Ocupantes" error={invalidField === "occupants" ? error ?? undefined : undefined} type="number" min={1} max={999} step={1} value={Object.hasOwn(draft, "occupants") ? draft.occupants ?? "" : home.occupants ?? ""} onChange={event => setDraft(old => ({ ...old, occupants: event.target.value ? Number(event.target.value) : null }))} />
-      {flags.map(([key, label]) => { const value = Object.hasOwn(draft, key) ? draft[key] : home[key]; return <label key={key} htmlFor={`profile-${key}`} className="flex flex-col gap-1 text-sm">{label}<select id={`profile-${key}`} className={selectClass} value={value == null ? "" : value ? "yes" : "no"} onChange={event => setDraft(old => ({ ...old, [key]: event.target.value === "" ? null : event.target.value === "yes" }))}><option value="">Sin indicar</option><option value="yes">Sí</option><option value="no">No</option></select></label>; })}
+      <Select id="profile-distributor" label="Distribuidora" value={draft.distributor ?? home.distributor} onChange={event => setDraft(old => ({ ...old, distributor: DistributorSchema.parse(event.target.value) }))}>{DistributorSchema.options.map(value => <option key={value}>{value}</option>)}</Select>
+      <Field name="profile-occupants" label="Ocupantes" width="xs" error={invalidField === "occupants" ? error ?? undefined : undefined} type="number" min={1} max={999} step={1} value={Object.hasOwn(draft, "occupants") ? draft.occupants ?? "" : home.occupants ?? ""} onChange={event => setDraft(old => ({ ...old, occupants: event.target.value ? Number(event.target.value) : null }))} />
+      {flags.map(([key, label]) => { const value = Object.hasOwn(draft, key) ? draft[key] : home[key]; return <Select key={key} id={`profile-${key}`} label={label} width="sm" value={value == null ? "" : value ? "yes" : "no"} onChange={event => setDraft(old => ({ ...old, [key]: event.target.value === "" ? null : event.target.value === "yes" }))}><option value="">Sin indicar</option><option value="yes">Sí</option><option value="no">No</option></Select>; })}
       {error && !invalidField ? <p role="alert" className="text-sm text-danger sm:col-span-2">{error}</p> : null}
       {message ? <p role="status" className="text-sm sm:col-span-2">{message}</p> : null}
       <Button type="submit" disabled={pending || !Object.keys(draft).length}>{pending ? "Guardando…" : "Guardar vivienda"}</Button>

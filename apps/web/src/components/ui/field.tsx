@@ -1,40 +1,30 @@
-import type { InputHTMLAttributes } from "react";
-import { cn } from "@/lib/cn";
+"use client";
 
-interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
+import { useId, type InputHTMLAttributes } from "react";
+import { cn } from "@/lib/cn";
+import { controlClass, controlErrorClass, type ControlWidth } from "./control";
+import { describedBy, FormField } from "./form-field";
+
+interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "width"> {
   label: string;
   error?: string;
   hint?: string;
+  /** Ancho semántico: xs · sm · md (defecto) · lg · full. */
+  width?: ControlWidth;
 }
 
-export function Field({ label, error, hint, id, className, ...props }: FieldProps) {
-  const inputId = id ?? props.name;
-  const describedBy = error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined;
+export function Field({ label, error, hint, id, className, width, ...props }: FieldProps) {
+  const autoId = useId();
+  const inputId = id ?? props.name ?? autoId;
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={inputId} className="text-sm font-medium">
-        {label}
-      </label>
+    <FormField id={inputId} label={label} error={error} hint={hint} width={width}>
       <input
         id={inputId}
         aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-        className={cn(
-          "h-10 rounded-lg border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-          error && "border-red-500",
-          className,
-        )}
+        aria-describedby={describedBy(inputId, error, hint)}
+        className={cn(controlClass, error && controlErrorClass, className)}
         {...props}
       />
-      {error ? (
-        <p id={`${inputId}-error`} role="alert" className="text-xs text-red-600">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${inputId}-hint`} className="text-xs text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
-    </div>
+    </FormField>
   );
 }

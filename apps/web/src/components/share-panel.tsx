@@ -77,11 +77,11 @@ export function SharePanel({ home, onClose }: { home: Home; onClose: () => void 
       </div>
       {members.isLoading ? <p role="status" className="mt-3 text-sm">Cargando…</p> : null}
       {members.isError && !isMember ? (
-        <div className="mt-3"><p role="alert" className="text-sm text-red-600">{sharingMessage(members.error)}</p>
+        <div className="mt-3"><p role="alert" className="text-sm text-danger">{sharingMessage(members.error)}</p>
           <Button type="button" variant="outline" className="mt-2" onClick={() => void members.refetch()}>Reintentar</Button></div>
       ) : null}
-      {error ? <p role="alert" className="mt-3 text-sm text-red-600">{error}</p> : null}
-      {notice ? <p role="status" className="mt-3 text-sm text-green-700">{notice}</p> : null}
+      {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
+      {notice ? <p role="status" className="mt-3 text-sm text-success">{notice}</p> : null}
 
       {isOwner ? (
         <>
@@ -102,7 +102,7 @@ export function SharePanel({ home, onClose }: { home: Home; onClose: () => void 
 
           <h3 className="mt-5 text-base font-semibold">Invitar</h3>
           <form onSubmit={invite} className="mt-2 flex flex-col gap-3" noValidate>
-            <Field name="invite-email" label="Correo de la persona invitada" type="email" autoComplete="off" maxLength={254} value={email}
+            <Field name="invite-email" label="Correo de la persona invitada" width="lg" type="email" autoComplete="off" maxLength={254} value={email}
               onChange={(e) => setEmail(e.target.value)} hint="Recibirá un enlace de un solo uso. Debe abrirlo con una cuenta de ese mismo correo." />
             <Button type="submit" disabled={pending}>{pending ? "Enviando…" : "Enviar invitación"}</Button>
           </form>

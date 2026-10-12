@@ -29,3 +29,5 @@ Los componentes pendientes se hicieron extrayéndolos de código que ya los usab
   de Android. **`BottomSheet` y `DateRangePicker` no se han visto en un simulador ni dispositivo** (ERD-E2E-MAESTRO-AUTH y
   ERD-A11Y-NATIVE).
 - No se hizo una pasada de axe/Lighthouse sobre el diálogo nuevo en navegador real: la cubren sus pruebas de foco y ARIA.
+
+Tamaños, anchos y densidad de los controles: ver [UI_DENSITY.md](UI_DENSITY.md).

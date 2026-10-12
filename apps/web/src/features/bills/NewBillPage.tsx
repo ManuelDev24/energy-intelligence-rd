@@ -83,9 +83,9 @@ export default function NewBillPage() {
             ) : null}
           </div>
         ) : null}
-        {startError ? <p role="alert" className="mt-3 text-sm text-red-600">{userMessage(startError, "ocr")}</p> : null}
+        {startError ? <p role="alert" className="mt-3 text-sm text-danger">{userMessage(startError, "ocr")}</p> : null}
         {failed ? (
-          <div role="alert" className="mt-3 text-sm text-red-600">
+          <div role="alert" className="mt-3 text-sm text-danger">
             <p>{ocrErrorText(job?.error_code)}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {job?.error_code === "engine_error" ? (

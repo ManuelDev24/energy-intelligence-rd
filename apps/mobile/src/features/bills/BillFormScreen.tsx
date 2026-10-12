@@ -1,10 +1,11 @@
 import { suggestNextPeriod } from '@energyrd/core';
 import { useEffect, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '../../api/client';
 import { describeError } from '../../api/errors';
 import { useBills, useCreateBill } from '../../api/hooks';
+import { Field } from '../../components/Field';
 import { Button, EmptyView } from '../../components/ui';
 import { inclusiveDays, validateBill, type BillFormErrors, type BillFormValues } from '../../lib/billForm';
 import { useSession } from '../../store/session';
@@ -20,27 +21,6 @@ const EMPTY: BillFormValues = {
   readingCurrent: '',
   dueDate: '',
 };
-
-function Field({
-  label,
-  error,
-  testID,
-  ...props
-}: { label: string; error?: string; testID: string } & React.ComponentProps<typeof TextInput>) {
-  return (
-    <View style={{ gap: 4 }}>
-      <Text style={s.label}>{label}</Text>
-      <TextInput
-        {...props}
-        testID={testID}
-        accessibilityLabel={label}
-        style={[s.input, error ? s.inputErr : null]}
-        placeholderTextColor={colors.muted}
-      />
-      {error ? <Text style={s.err} testID={`${testID}-error`}>{error}</Text> : null}
-    </View>
-  );
-}
 
 export function BillFormScreen({ onDone, onOcr }: { onDone: () => void; onOcr?: () => void }) {
   const homeId = useSession((st) => st.selectedHomeId);
@@ -146,9 +126,5 @@ const s = StyleSheet.create({
   keyboardToolbar: { position: 'absolute', left: 0, right: 0, backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border, alignItems: 'flex-end', paddingHorizontal: spacing.lg },
   keyboardDone: { minHeight: 44, minWidth: 64, justifyContent: 'center', alignItems: 'center' },
   keyboardDoneText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
-  label: { fontSize: 13, color: colors.muted, fontWeight: '600' },
-  input: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: spacing.md, fontSize: 16, color: colors.text },
-  inputErr: { borderColor: colors.danger },
-  err: { color: colors.danger, fontSize: 12 },
   serverErr: { color: colors.danger, backgroundColor: colors.dangerBg, padding: spacing.md, borderRadius: 10 },
 });

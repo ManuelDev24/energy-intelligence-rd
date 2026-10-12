@@ -81,7 +81,6 @@ export default function AlertsPage() {
                       {unread ? (
                         <Button
                           variant="outline"
-                          className="h-11"
                           onClick={() => setStatus.mutate({ id: a.id, status: "read" })}
                         >
                           <Check className="mr-1 h-4 w-4" aria-hidden /> Marcar leída
@@ -89,7 +88,6 @@ export default function AlertsPage() {
                       ) : null}
                       <Button
                         variant="outline"
-                        className="h-11"
                         onClick={() => setStatus.mutate({ id: a.id, status: "dismissed" })}
                       >
                         <X className="mr-1 h-4 w-4" aria-hidden /> Descartar

@@ -79,7 +79,7 @@ export function BillItemsSection({ homeId, billId, query, unavailable }: Props) 
                       onChange={ev => update(d.key, { label: ev.target.value })}
                       className="h-10 rounded-lg border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     />
-                  {e.label ? <p id={`${d.key}-label-error`} role="alert" className="text-xs text-red-600">{e.label}</p> : null}
+                  {e.label ? <p id={`${d.key}-label-error`} role="alert" className="text-xs text-danger">{e.label}</p> : null}
                   <div className="flex flex-wrap gap-2">
                     <span className="flex flex-col gap-1 text-xs text-muted-foreground"><span aria-hidden>Tipo</span><select
                       aria-label={`Tipo del concepto ${n}`}
@@ -106,13 +106,13 @@ export function BillItemsSection({ homeId, billId, query, unavailable }: Props) 
                       <Button type="button" variant="outline" className="h-10 w-10 px-0" aria-label={`Quitar concepto ${n}`} onClick={() => setDrafts(list => list && list.filter(x => x.key !== d.key))}><Trash2 className="h-4 w-4" aria-hidden /></Button>
                     </div>
                   </div>
-                  {e.amount ? <p id={`${d.key}-amount-error`} role="alert" className="text-xs text-red-600">{e.amount}</p> : null}
+                  {e.amount ? <p id={`${d.key}-amount-error`} role="alert" className="text-xs text-danger">{e.amount}</p> : null}
                 </fieldset>
               );
             })}
             <p className="text-xs text-muted-foreground">Cargos en positivo; descuentos en negativo (ej. -150.00). Máximo {MAX_ITEMS} conceptos por factura.</p>
-            {formError ? <p role="alert" className="text-sm text-red-600">{formError}</p> : null}
-            {put.error ? <p role="alert" className="text-sm text-red-600">{userMessage(put.error, "bill-items-save")}</p> : null}
+            {formError ? <p role="alert" className="text-sm text-danger">{formError}</p> : null}
+            {put.error ? <p role="alert" className="text-sm text-danger">{userMessage(put.error, "bill-items-save")}</p> : null}
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" disabled={drafts.length >= MAX_ITEMS} onClick={() => setDrafts(list => list && [...list, newDraft()])}>
                 <Plus className="mr-1 h-4 w-4" aria-hidden /> Añadir concepto
