@@ -1,7 +1,7 @@
 # Roles de base de datos y aislamiento por vivienda (RLS)
 
 Auditoría C-01. Hasta ahora un único rol —dueño de todas las tablas— migraba y servía la aplicación, y el aislamiento entre viviendas dependía
-solo del código (`authorize_home` + filtrar por `home_id`). La migración `0025` añade una **segunda barrera en la base**.
+solo del código (`authorize_home` + filtrar por `home_id`). Las migraciones `0027` (RLS por vivienda) y `0031` (acceso acotado de la operación administrativa del OCR, función `app_admin_ocr()`) añaden una **segunda barrera en la base**.
 
 ## Qué hay
 
@@ -53,7 +53,7 @@ La migración crea `erd_app` y `erd_worker` **sin LOGIN ni contraseña**. Las co
 ## Restaurar un respaldo
 
 `scripts/db_backup.sh` usa `--no-owner --no-acl`: los **permisos no viajan** en el respaldo (las políticas RLS sí, son parte del esquema). Tras restaurar, ejecuta con el
-rol dueño `psql "$MIGRATION_DATABASE_URL" -f services/api/scripts/db_grants.sql` (idempotente; una prueba comprueba que coincide con la migración `0025`) y repite los pasos 2–4.
+rol dueño `psql "$MIGRATION_DATABASE_URL" -f services/api/scripts/db_grants.sql` (idempotente; una prueba comprueba que coincide con la migración `0027`) y repite los pasos 2–4.
 Los roles `erd_app` y `erd_worker` son del servidor, no de la base: si restauras en un servidor nuevo, créalos antes (`CREATE ROLE erd_app NOLOGIN; CREATE ROLE erd_worker NOLOGIN;`).
 
 ## Pruebas
