@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "next": "^15.1.0",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
