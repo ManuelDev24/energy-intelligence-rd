@@ -167,7 +167,7 @@ export function ConsumptionChart({ series, height = 220 }: ConsumptionChartProps
         <Button
           type="button"
           variant="outline"
-          className="h-11 self-start"
+          className="self-start"
           aria-expanded={showTable}
           aria-controls={tableId}
           onClick={() => setShowTable((v) => !v)}

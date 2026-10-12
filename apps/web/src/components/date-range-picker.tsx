@@ -3,6 +3,7 @@ import { MAX_RANGE_DAYS } from "@energyrd/core";
 import { CalendarRange } from "lucide-react";
 import { useId } from "react";
 import { cn } from "@/lib/cn";
+import { controlClass } from "@/components/ui/control";
 
 export const segmentClass = (active: boolean) =>
   cn(
@@ -34,7 +35,7 @@ export function DateRangePicker<K extends string>({ presets, selected, from, to,
       {label}
       <input id={`${id}-${name}`} type="date" value={value} max={today} aria-invalid={error ? true : undefined} aria-describedby={`${id}-range`}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 rounded-lg border border-border bg-background px-3 text-base font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-sm" />
+        className={cn(controlClass, "w-auto text-base font-normal sm:text-sm")} />
     </label>
   );
   return (

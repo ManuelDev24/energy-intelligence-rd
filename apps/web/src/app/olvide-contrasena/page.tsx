@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
         <>
           <CardDescription>Escribe el correo de tu cuenta y te enviaremos un enlace para crear una contraseña nueva.</CardDescription>
           <form ref={form} className="mt-5 flex flex-col gap-4" onSubmit={submit} aria-busy={pending} noValidate>
-            <Field error={emailError} name="email" label="Correo electrónico" className="text-base sm:text-sm" type="email" autoComplete="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} required disabled={pending} />
+            <Field width="full" error={emailError} name="email" label="Correo electrónico" className="text-base sm:text-sm" type="email" autoComplete="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} required disabled={pending} />
             {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
             <Button type="submit" disabled={pending}>{pending ? "Enviando…" : "Enviar enlace"}</Button>
           </form>

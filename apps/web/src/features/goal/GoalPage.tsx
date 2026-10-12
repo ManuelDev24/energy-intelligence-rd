@@ -49,8 +49,8 @@ function GoalForm({ homeId, initial }: { homeId: string; initial: Goal | null })
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Meta de gasto mensual (RD$)" placeholder="Ej. 3000" hint="Déjalo vacío si no quieres meta en pesos." {...bind("monthly_amount_rd")} />
-        <Field label="Meta de consumo mensual (kWh)" placeholder="Ej. 400" hint="Déjalo vacío si no quieres meta en kWh." {...bind("monthly_kwh")} />
+        <Field label="Meta de gasto mensual (RD$)" width="sm" placeholder="Ej. 3000" hint="Déjalo vacío si no quieres meta en pesos." {...bind("monthly_amount_rd")} />
+        <Field label="Meta de consumo mensual (kWh)" width="sm" placeholder="Ej. 400" hint="Déjalo vacío si no quieres meta en kWh." {...bind("monthly_kwh")} />
       </div>
       {errors.form ? (
         <p role="alert" className="text-sm text-danger">
@@ -65,7 +65,7 @@ function GoalForm({ homeId, initial }: { homeId: string; initial: Goal | null })
       <p role="status" className="text-sm text-success">
         {saved ? "Meta guardada. El progreso se actualizó." : ""}
       </p>
-      <Button type="submit" className="h-11 self-start" disabled={save.isPending}>
+      <Button type="submit" className="self-start" disabled={save.isPending}>
         {save.isPending ? "Guardando…" : initial ? "Guardar cambios" : "Guardar meta"}
       </Button>
     </form>

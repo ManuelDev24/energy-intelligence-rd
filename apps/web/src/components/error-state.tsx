@@ -47,7 +47,7 @@ export function ErrorState({ message, title = "No se pudo cargar", onRetry }: Er
         <p className="text-sm">Revisa tu conexión a internet. Los datos se cargarán al reintentar.</p>
       )}
       {onRetry ? (
-        <Button variant="outline" className="h-11" onClick={onRetry}>
+        <Button variant="outline" onClick={onRetry}>
           <RotateCw className="mr-1 h-4 w-4" aria-hidden /> Reintentar
         </Button>
       ) : null}

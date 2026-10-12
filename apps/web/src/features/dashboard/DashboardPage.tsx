@@ -13,6 +13,7 @@ import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { MetricCard } from "@/components/metric-card";
 import { QueryState } from "@/components/query-state";
 import { Card, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { GoalProgressSection } from "@/features/goal/GoalProgressCard";
 import { CycleCard } from "@/features/dashboard/CycleCard";
 import { EnergyScoreCard } from "@/features/dashboard/EnergyScoreCard";
@@ -151,21 +152,17 @@ function HomeDashboard({ homeId }: { homeId: string }) {
       </header>
 
       <QueryState isLoading={bills.isLoading} error={bills.error} onRetry={() => void bills.refetch()}>
-        <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
-          Período de facturación
-          <select
+        <Select label="Período de facturación" width="lg"
             value={billId}
             onChange={(event) => setBillId(event.target.value)}
             disabled={!periods.length}
-            className="h-11 rounded-lg border border-border bg-background px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
+            >
             <option value="">Último período disponible</option>
             {billId && selectedIndex < 0 ? <option value={billId}>Período no disponible</option> : null}
             {periods.map((bill) => (
               <option key={bill.id} value={bill.id}>{formatPeriod(bill.period_start, bill.period_end)}</option>
             ))}
-          </select>
-        </label>
+          </Select>
       </QueryState>
 
       <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()} skeleton={DashboardSkeleton}>

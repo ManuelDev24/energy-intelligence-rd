@@ -6,6 +6,7 @@ import Image from "next/image";
 import { QueryState } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { useHomes } from "@/lib/api/hooks";
 import { useSession } from "@/lib/session";
 
@@ -37,24 +38,17 @@ export function PilotLogin() {
           </CardDescription>
           <div className="mt-4 flex flex-col gap-4">
             <QueryState isLoading={homes.isLoading} error={homes.error} onRetry={() => void homes.refetch()}>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="home" className="text-sm font-medium">
-                  Vivienda
-                </label>
-                <select
-                  id="home"
+              <Select id="home" label="Vivienda" width="full"
                   value={selected}
                   onChange={(e) => setSelected(e.target.value)}
-                  className="h-10 rounded-lg border border-border bg-background px-3 text-sm"
-                >
+                  >
                   <option value="">Selecciona…</option>
                   {homes.data?.map((h) => (
                     <option key={h.id} value={h.id}>
                       {h.name} · {h.distributor}
                     </option>
                   ))}
-                </select>
-              </div>
+                </Select>
               <Button onClick={enter} disabled={!selected}>
                 Entrar
               </Button>

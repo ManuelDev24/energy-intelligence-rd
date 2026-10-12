@@ -11,6 +11,7 @@ import { MetricCard } from "@/components/metric-card";
 import { QueryState } from "@/components/query-state";
 import { ReadingsConsumptionChart, bucketValueText, coveragePct } from "@/components/readings-consumption-chart";
 import { Card, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/cn";
 import {
   GRANULARITIES,
@@ -70,10 +71,9 @@ function Controls({
           ))}
         </div>
       </fieldset>
-      <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
-        <input type="checkbox" checked={compare} onChange={(event) => onCompare(event.target.checked)} className="h-4 w-4" />
+      <Checkbox checked={compare} onChange={(event) => onCompare(event.target.checked)} className="font-medium">
         Comparar con el período anterior
-      </label>
+      </Checkbox>
     </div>
   );
 }
