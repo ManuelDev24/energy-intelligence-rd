@@ -32,8 +32,10 @@ def upload_document(home_id: uuid.UUID, response: Response, file: UploadFile = F
 
 
 @router.get("", response_model=list[DocumentOut])
-def list_documents(home_id: uuid.UUID, bill_id: uuid.UUID | None = Query(None), db: Session = Depends(get_db)):
-    return documents.list_documents(db, home_id, bill_id)
+def list_documents(home_id: uuid.UUID, bill_id: uuid.UUID | None = Query(None),
+                   limit: int = Query(documents.MAX_LIST_DOCUMENTS, ge=1, le=documents.MAX_LIST_DOCUMENTS),
+                   offset: int = Query(0, ge=0, le=100_000), db: Session = Depends(get_db)):
+    return documents.list_documents(db, home_id, bill_id, limit=limit, offset=offset)
 
 
 @router.get("/{document_id}", response_model=DocumentOut)

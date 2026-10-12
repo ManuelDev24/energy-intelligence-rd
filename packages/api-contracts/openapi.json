@@ -176,6 +176,7 @@
         "type": "object"
       },
       "AlertSettingsIn": {
+        "additionalProperties": false,
         "properties": {
           "critical_pct": {
             "anyOf": [
@@ -240,6 +241,7 @@
         "type": "object"
       },
       "AlertStatusUpdate": {
+        "additionalProperties": false,
         "properties": {
           "status": {
             "enum": [
@@ -1533,6 +1535,7 @@
         "type": "object"
       },
       "ContractIn": {
+        "additionalProperties": false,
         "properties": {
           "account_number": {
             "maxLength": 120,
@@ -2272,6 +2275,7 @@
         "type": "object"
       },
       "EquipmentIn": {
+        "additionalProperties": false,
         "properties": {
           "brand": {
             "anyOf": [
@@ -2517,6 +2521,7 @@
         "type": "object"
       },
       "GoalIn": {
+        "additionalProperties": false,
         "description": "Reemplazo completo (PUT): al menos una meta; un campo null elimina esa meta.",
         "properties": {
           "monthly_amount_rd": {
@@ -2853,6 +2858,7 @@
         "type": "object"
       },
       "HomeCreate": {
+        "additionalProperties": false,
         "properties": {
           "address": {
             "anyOf": [
@@ -3037,6 +3043,7 @@
         "type": "object"
       },
       "HomeOut": {
+        "additionalProperties": false,
         "properties": {
           "address": {
             "anyOf": [
@@ -3229,6 +3236,7 @@
         "type": "object"
       },
       "HomeUpdate": {
+        "additionalProperties": false,
         "description": "Actualizaci\u00f3n parcial: solo se modifican los campos enviados.",
         "properties": {
           "address": {
@@ -4337,6 +4345,7 @@
         "type": "object"
       },
       "ReadingCreate": {
+        "additionalProperties": false,
         "properties": {
           "note": {
             "anyOf": [
@@ -7721,6 +7730,30 @@
                 }
               ],
               "title": "Bill Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
             }
           }
         ],

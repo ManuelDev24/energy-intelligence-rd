@@ -259,3 +259,22 @@ def test_done_rows_are_purged_after_the_grace_period(ctx):
     documents.complete_storage_deletions(db, [row.id], now=NOW)
     assert documents.purge_completed_deletions(db, now=NOW + timedelta(days=1), keep_days=7) == 0
     assert documents.purge_completed_deletions(db, now=NOW + timedelta(days=8), keep_days=7) == 1
+
+
+def test_document_list_is_bounded_and_paginates(ctx):
+    """Auditoría C-21 (F06-04): la lista no crece sin tope; limit/offset ordenados y validados."""
+    engine, db, home, user = ctx
+    docs = [register(db, home, user, now=NOW + timedelta(seconds=i)) for i in range(4)]
+    assert [d.id for d in documents.list_documents(db, home, limit=2)] == [d.id for d in docs[:2]]
+    assert [d.id for d in documents.list_documents(db, home, limit=2, offset=2)] == [d.id for d in docs[2:]]
+    assert documents.MAX_LIST_DOCUMENTS == 200
+
+
+def test_document_list_route_rejects_out_of_range_paging(auth_ctx):
+    from tests.test_auth import bearer
+    _, client, tokens, home = auth_ctx
+    url = f'/api/v1/homes/{home}/documents'
+    assert client.get(url, headers=bearer(tokens)).status_code == 200
+    for params in ({'limit': 0}, {'limit': 201}, {'offset': -1}):
+        assert client.get(url, headers=bearer(tokens), params=params).status_code == 422, params
+    assert client.get(url, headers=bearer(tokens), params={'limit': 1, 'offset': 5}).json() == []

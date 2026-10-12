@@ -13,6 +13,7 @@ EquipmentIcon = Literal[*EQUIPMENT_ICONS]
 
 
 class EquipmentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=1, max_length=120)
     room: str | None = Field(default=None, max_length=80)
     kind: EquipmentKind = "other"

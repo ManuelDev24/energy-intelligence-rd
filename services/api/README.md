@@ -65,6 +65,21 @@ Datos inválidos → 422 (validación), vivienda/factura inexistente → 404, pe
   `read`/`dismissed`, salvo que cambie el contenido de la alerta (vuelve a `unread`).
 - Validación: potencia 0–100 000 W, horas 0–24, umbrales > 0 y `critical_pct ≥ warning_pct` (422 si no).
 
+## Modelo de roles (propietario / miembro)
+
+Auditoría C-21 (F06-09): decisión de producto — una vivienda es un hogar compartido.
+
+| Operación | Miembro | Propietario |
+| --- | --- | --- |
+| Leer y escribir datos de la vivienda (facturas, lecturas, equipos, metas, contrato, ajustes de alertas, `PATCH /homes/{id}`, documentos) | sí | sí |
+| Listar/quitar miembros, crear/revocar invitaciones, transferir la propiedad, borrar la vivienda | **no (403)** | sí |
+| Salir de la vivienda | sí | solo si queda otro propietario |
+
+Quien no es miembro recibe 404 (no se revela que la vivienda existe). La base lo refuerza con RLS
+(`docs/ops/DB_ROLES.md`); las operaciones solo de propietario se aplican en `require_home_owner`.
+Las listas sin paginación (`/auth/sessions`, `/members`, `/invitations`) están acotadas por reglas de negocio;
+`/documents` admite `limit` (máx. 200) y `offset`.
+
 ## CORS
 
 `CORS_ORIGINS` (lista separada por comas) define los orígenes permitidos; por defecto solo localhost de web/Expo.

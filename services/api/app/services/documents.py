@@ -67,11 +67,15 @@ def get_document(db: Session, home_id, document_id) -> Document:
     return document
 
 
-def list_documents(db: Session, home_id, bill_id=None) -> list[Document]:
+MAX_LIST_DOCUMENTS = 200  # auditoría C-21 (F06-04): la lista nunca crece sin tope con el uso
+
+
+def list_documents(db: Session, home_id, bill_id=None, *, limit: int = MAX_LIST_DOCUMENTS, offset: int = 0) -> list[Document]:
     query = select(Document).where(Document.home_id == home_id)
     if bill_id is not None:
         query = query.where(Document.bill_id == bill_id)
-    return list(db.scalars(query.order_by(Document.created_at, Document.id).execution_options(populate_existing=True)))
+    return list(db.scalars(query.order_by(Document.created_at, Document.id)
+                          .limit(limit).offset(offset).execution_options(populate_existing=True)))
 
 
 def attach_to_bill(db: Session, home_id, document_id, bill_id) -> Document:

@@ -10,6 +10,7 @@ FUTURE_TOLERANCE = timedelta(minutes=5)
 
 
 class ReadingCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     read_at: AwareDatetime
     # Valor acumulado del medidor (no el consumo del período).
     reading_kwh: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
