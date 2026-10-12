@@ -13,6 +13,7 @@ GoalStatus = Literal["on_track", "at_risk", "exceeded", "insufficient_data"]
 
 class GoalIn(BaseModel):
     """Reemplazo completo (PUT): al menos una meta; un campo null elimina esa meta."""
+    model_config = ConfigDict(extra="forbid")
     monthly_amount_rd: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
     monthly_kwh: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
 

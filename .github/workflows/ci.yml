@@ -10,10 +10,16 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Auditoría C-11: el GITHUB_TOKEN de este workflow solo lee el repositorio (ningún job publica ni escribe nada).
+# Las acciones están fijadas por SHA de commit (el comentario indica la etiqueta); Dependabot las actualiza.
+permissions:
+  contents: read
+
 jobs:
   api:
     name: api (pytest + migrations)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -28,9 +34,13 @@ jobs:
     defaults:
       run:
         working-directory: services/api
+    env:
+      # Auditoría C-03: la API arranca con autenticación encendida; la suite y las migraciones usan el modo piloto explícito.
+      ENVIRONMENT: development
+      AUTH_ENABLED: "false"
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
       - name: Instalar motor OCR e idiomas
         run: |
           sudo apt-get update
@@ -38,20 +48,29 @@ jobs:
           tesseract --version
           tesseract --list-langs
       - run: uv sync --frozen
+      # Auditoría C-17: lint (errores reales) y tipado gradual de los módulos listados en pyproject.toml.
+      - run: uv run ruff check .
+      - run: uv run mypy
       - run: uv run python -m scripts.generate_contracts --check
       - run: python scripts/check_architecture.py
         working-directory: .
       - run: uv run alembic upgrade head
       - run: uv run alembic downgrade -1 && uv run alembic upgrade head
       - run: uv run python -m app.seed && uv run python -m app.seed
+      # Cobertura de líneas y ramas (informe en el log; el umbral mínimo se fija en pyproject.toml cuando haya medición estable).
+      - run: uv run pytest -q --cov=app --cov-report=term:skip-covered
+      # Auditoría C-01: la misma suite (las pruebas con autenticación) con el API conectado como `erd_app`, un rol sin privilegios sujeto a la RLS.
       - run: uv run pytest -q
+        env:
+          TEST_RLS_ROLE: "1"
 
   web-mobile:
     name: web + mobile + core (typecheck, lint, test, build)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
@@ -59,6 +78,12 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint --workspace apps/web
       - run: npm test
+      - run: npm run test --workspace apps/admin
+      - run: npm run e2e:safety --workspace apps/admin
+      - run: npm run build --workspace apps/admin
+        env:
+          ADMIN_API_BASE_URL: https://api.example.invalid
+          ADMIN_ORIGIN: https://admin.example.invalid
       # Producción exige auth activa y orígenes HTTPS (next.config.mjs falla cerrado sin ellos).
       # Valores de marcador solo para compilar; no apuntan a ningún servicio real.
       - run: npm run build --workspace apps/web
@@ -67,9 +92,63 @@ jobs:
           API_BASE_URL: https://api.example.invalid
           WEB_ORIGIN: https://app.example.invalid
 
+  e2e-web:
+    name: e2e web (Playwright vs PostgreSQL + API + worker reales)
+    runs-on: ubuntu-latest
+    needs: [api]
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: energy_rd
+          POSTGRES_USER: energy
+          POSTGRES_PASSWORD: change_me_local_only
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U energy -d energy_rd"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CI: "true"
+      # Base EXCLUSIVA de las pruebas (`_e2e`): la guarda de e2e_prepare rechaza cualquier otro nombre.
+      E2E_DATABASE_URL: postgresql+psycopg://energy:change_me_local_only@localhost:5433/energy_rd_e2e
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar motor OCR e idiomas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng
+      - run: uv sync --frozen
+        working-directory: services/api
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Playwright (base, API, worker y web se levantan y se apagan solos)
+        run: npm run e2e --workspace apps/web
+      - name: Depurar evidencias (sin tokens, cookies, contraseñas ni correos; sin videos)
+        if: failure()
+        run: python3 scripts/scrub_e2e_artifacts.py apps/web/e2e/.results apps/web/e2e/.report apps/web/e2e/.tmp
+      - name: Publicar diagnósticos (solo si falló)
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-web-diagnostics
+          path: |
+            apps/web/e2e/.results
+            apps/web/e2e/.report
+            apps/web/e2e/.tmp/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
   mobile-e2e:
     name: web + mobile (recorridos vs API real)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -82,9 +161,9 @@ jobs:
           --health-cmd "pg_isready -U energy -d energy_rd"
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
@@ -92,6 +171,9 @@ jobs:
       # retiene el lock de caché y `uv cache prune` del post-job agota su timeout (exit 2).
       - name: API piloto (:8000, sin auth) migrada y sembrada
         working-directory: services/api
+        env:
+          ENVIRONMENT: development
+          AUTH_ENABLED: "false"
         run: |
           uv sync --frozen
           .venv/bin/alembic upgrade head

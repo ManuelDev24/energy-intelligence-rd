@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { api } from '../../api/client';
 import { describeError } from '../../api/errors';
-import { authSession } from '../../auth/runtime';
+import { authSession, useAuth } from '../../auth/runtime';
 import { nativeDeps, PUSH_MESSAGES, registerForPush } from '../../notifications/push';
 import { Field, formStyles } from '../../components/Field';
 import { Button, ErrorView, Loading } from '../../components/ui';
@@ -22,10 +22,28 @@ import {
 export function AccountSettingsScreen() {
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <EmailVerificationSection />
       <PasswordSection />
       <NotificationsSection />
       <SessionsSection />
     </ScrollView>
+  );
+}
+
+/** Auditoría C-10: mientras el correo no esté confirmado no se envían avisos por correo. El enlace del correo se abre en el navegador. */
+function EmailVerificationSection() {
+  const { user } = useAuth();
+  const send = useMutation({ retry: false, mutationFn: () => api.requestEmailVerification() });
+  if (!user || user.email_verified_at) return null;
+  return (
+    <View style={s.card} testID="account-email-verification-section">
+      <Text style={s.title} accessibilityRole="header">Confirma tu correo</Text>
+      <Text style={s.hint}>Abre el enlace que enviamos a {user.email} para recibir avisos por correo. Mientras tanto la app funciona igual, pero no te escribiremos.</Text>
+      {send.isError ? <Text accessibilityRole="alert" style={formStyles.serverErr}>{describeError(send.error).message}</Text> : null}
+      {send.data ? <Text accessibilityLiveRegion="polite" style={s.ok}>{send.data.status === 'already_verified' ? 'Tu correo ya está confirmado.' : 'Te enviamos un enlace nuevo. Revisa también el spam.'}</Text> : null}
+      <Button title={send.isPending ? 'Enviando…' : 'Reenviar el enlace'} testID="account-email-verification-resend" variant="secondary"
+        disabled={send.isPending} onPress={() => send.mutate()} />
+    </View>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { fmtMonth, fmtNumber } from "@energyrd/core";
+import { fmtMonth, fmtNumber, safeHttpUrl } from "@energyrd/core";
 import { ExternalLink, NotebookPen, Pencil, Receipt, Target } from "lucide-react";
 import Link from "next/link";
 import { useId } from "react";
@@ -33,9 +33,9 @@ function BasisNote({ metric }: { metric: GoalMetric }) {
         <span>Estimado con tarifa {metric.tariff.source_resolution}</span>
         <DataStatusBadge quality="ESTIMATED" />
         <span>({metric.tariff.tariff_code}, sin impuestos ni otros cargos)</span>
-        {metric.tariff.source_url ? (
+        {safeHttpUrl(metric.tariff.source_url) ? (
           <a
-            href={metric.tariff.source_url}
+            href={safeHttpUrl(metric.tariff.source_url) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-primary underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

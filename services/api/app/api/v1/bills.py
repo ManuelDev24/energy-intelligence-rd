@@ -6,15 +6,13 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas import BillCreate, BillOut, BillUpdate
 from app.schemas.bill import BillPaymentIn
-from app.schemas.ocr import OcrDraft, OcrJobOut
+from app.schemas.ocr import OcrJobOut
 from app.api.auth_deps import current_user
 from app.config import settings
 from app.services import bills, bill_detail
 from app.services.ocr import jobs as ocr_jobs
 from app.services.storage import get_store
 from typing import Literal
-from app.services.ocr.engine import MAX_UPLOAD_BYTES, UnreadableImage, extract_text
-from app.services.ocr.parser import parse_bill_text
 from app.schemas.bill_detail import BillItemsOut, BillItemsReplace, BillAssessment, BillValidationRequest
 from app.services.errors import InvalidInput
 from app.services.transactions import require_home
@@ -23,36 +21,20 @@ from fastapi import UploadFile, File
 router = APIRouter(prefix="/homes/{home_id}/bills", tags=["bills"])
 
 
-@router.post("/ocr", response_model=OcrDraft)
-async def ocr_bill_photo(home_id: uuid.UUID, db: Session = Depends(get_db), file: UploadFile = File(...)):
-    """ERD-OCR-01/02: lee una foto de factura y devuelve un BORRADOR para que la persona lo confirme
-    o corrija. Nunca crea ni modifica una factura: el único camino real a la base de datos sigue
-    siendo POST /homes/{home_id}/bills (ya validado), llamado después de que alguien confirme."""
-    require_home(db, home_id)
-    content = await file.read()
-    if len(content) > MAX_UPLOAD_BYTES:
-        raise InvalidInput("La imagen supera el máximo de 10MB")
-    try:
-        text = extract_text(content)
-    except UnreadableImage as exc:
-        raise InvalidInput(str(exc)) from exc
-    return parse_bill_text(text)
-
-
 def _ocr_out(db, home_id, document_id):
     state, effective, code = ocr_jobs.get_state(db, home_id, document_id)
     return ocr_jobs.to_out(state, effective, code)
 
 
 @router.post("/ocr-jobs", response_model=OcrJobOut, status_code=status.HTTP_202_ACCEPTED)
-async def start_ocr_job(home_id: uuid.UUID, response: Response, file: UploadFile = File(...),
-                        source: Literal["web", "mobile", "api"] = Form("api"), db: Session = Depends(get_db),
-                        user=Depends(current_user)):
+def start_ocr_job(home_id: uuid.UUID, response: Response, file: UploadFile = File(...),
+                  source: Literal["web", "mobile", "api"] = Form("api"), db: Session = Depends(get_db),
+                  user=Depends(current_user)):
     """ERD-OCR-PROD: guarda el original (foto o PDF, cifrado) y lo lee en segundo plano. Responde 202 de inmediato;
-    consulte `GET /bills/ocr-jobs/{document_id}`. Como `/ocr`, nunca crea una factura: solo deja un BORRADOR."""
+    consulte `GET /bills/ocr-jobs/{document_id}`. Nunca crea una factura: solo deja un BORRADOR."""
     get_store()
     limit = max(settings.DOCUMENT_MAX_PDF_BYTES, settings.DOCUMENT_MAX_PHOTO_BYTES)
-    content = await file.read(limit + 1)
+    content = file.file.read(limit + 1)
     if len(content) > limit:
         raise InvalidInput("El archivo supera el tamaño máximo permitido")
     state = ocr_jobs.submit(db, home_id, user.id if user else None, content, uploaded_via=source)

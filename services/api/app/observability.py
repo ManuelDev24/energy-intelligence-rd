@@ -15,10 +15,31 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from app.config import settings
 from app.telemetry import capture_unhandled
 
 logger = logging.getLogger("energyrd.api")
 _VALID_ID = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
+
+
+# Auditoría C-07: la API solo habla JSON (y descargas con sus propias cabeceras): nada debe renderizarse ni incrustarse.
+_API_DOC_PATHS = {"/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"}
+_STATIC_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
+
+
+def security_headers(environment: str, path: str) -> dict[str, str]:
+    """Cabeceras de seguridad por defecto de toda respuesta. Una ruta que ya fije una (p. ej. la descarga de documentos) conserva la suya."""
+    headers = dict(_STATIC_SECURITY_HEADERS)
+    if not (environment.lower() == "development" and path in _API_DOC_PATHS):  # Swagger UI (solo en development) necesita scripts
+        headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    if environment.lower() != "development":  # HSTS solo tiene sentido tras TLS; en local por http://localhost sería ruido
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return headers
 
 
 class JsonFormatter(logging.Formatter):
@@ -59,6 +80,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             )
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
         response.headers["X-Request-ID"] = request_id
+        for name, value in security_headers(settings.ENVIRONMENT, request.url.path).items():
+            response.headers.setdefault(name, value)
         if request.url.path != "/health":  # el healthcheck de Docker generaría ruido cada 5 s
             logger.info(
                 "request",

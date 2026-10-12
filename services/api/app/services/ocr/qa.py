@@ -3,7 +3,8 @@
 Las fotos y su `expected.json` viven FUERA del repositorio (contienen datos personales aunque estén tapados).
 Un campo puede salir bien (`ok`), no salir (`missing`), salir mal pero avisado (`wrong_flagged`: confianza
 distinta de `high`) o salir mal con confianza `high` (`wrong_silent`): este último es el único que hace
-fallar la evaluación, porque la persona no tendría motivo para corregirlo.
+fallar el gate de seguridad (`passed`). La reproducción exacta de TODOS los campos esperados se reporta
+por separado como `exact`, `fields_ok` y `fields_total`; ausencia de errores silenciosos no significa exactitud.
 """
 import json
 from dataclasses import dataclass, field
@@ -11,7 +12,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Callable
 
-from app.services.ocr.engine import extract_text
+from app.services.ocr import pipeline
 from app.services.ocr.parser import parse_bill_text
 
 FIELDS = ("period_start", "period_end", "days", "kwh", "amount_dop", "reading_previous", "reading_current", "due_date")
@@ -72,7 +73,11 @@ def summarize(results: dict[str, tuple[str, FileResult]]) -> dict:
             row[item.status] += 1
             if item.status == "wrong_silent":
                 silent.append({"file": filename, "field": item.name, "expected": item.expected, "got": item.got})
-    return {"by_distributor": by_distributor, "silent_errors": silent, "passed": not silent}
+    fields_total = sum(len(result.fields) for _, result in results.values())
+    fields_ok = sum(row["ok"] for row in by_distributor.values())
+    return {"by_distributor": by_distributor, "silent_errors": silent, "passed": not silent,
+            "fields_total": fields_total, "fields_ok": fields_ok,
+            "exact": fields_total > 0 and fields_ok == fields_total}
 
 
 def load_manifest(path: Path) -> dict[str, dict]:
@@ -86,7 +91,13 @@ def load_manifest(path: Path) -> dict[str, dict]:
     return manifest
 
 
-def run_directory(directory: Path, reader: Callable[[bytes], str] = extract_text) -> dict:
+def production_reader(content: bytes) -> str:
+    """Lee un archivo igual que el trabajo de OCR en producción (varias variantes de imagen; PDF con capa de texto o por página)."""
+    kind = "application/pdf" if content[:5] == b"%PDF-" else "image"
+    return pipeline.extract_document(content, kind).text
+
+
+def run_directory(directory: Path, reader: Callable[[bytes], str] = production_reader) -> dict:
     directory = Path(directory)
     manifest = load_manifest(directory / MANIFEST)
     missing = [name for name in manifest if not (directory / name).is_file()]

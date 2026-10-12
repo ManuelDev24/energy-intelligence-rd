@@ -11,6 +11,8 @@ export interface TokenPair {
 export interface Account {
   id: string; email: string; role: string; created_at: string;
   terms_version: string | null; terms_accepted_at: string | null;
+  // Auditoría C-10: null = correo sin confirmar (no recibe avisos por correo). Una API anterior sin el campo se lee como null.
+  email_verified_at: string | null;
 }
 export type CredentialErrors = Partial<Record<'email' | 'password', string>>;
 export type RegisterErrors = CredentialErrors & { acceptTerms?: string };
@@ -47,6 +49,7 @@ function parseAccount(value: unknown): Account {
   return {
     id: u.id, email: u.email, role: u.role, created_at: u.created_at,
     terms_version: u.terms_version ?? null, terms_accepted_at: u.terms_accepted_at ?? null,
+    email_verified_at: typeof u.email_verified_at === 'string' && Number.isFinite(Date.parse(u.email_verified_at)) ? u.email_verified_at : null,
   };
 }
 export function createAuthClient(baseUrl: string, fetchImpl: typeof fetch = fetch, timeoutMs = 10_000) {

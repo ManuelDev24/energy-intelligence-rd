@@ -5,9 +5,10 @@ import DashboardPage from "@/app/(app)/dashboard/page";
 import GoalPage from "@/app/(app)/goal/page";
 import ReadingsPage from "@/app/(app)/readings/page";
 import { getApi } from "@/lib/api";
+import { GoalProgressCard } from "@/features/goal/GoalProgressCard";
 import { ConsumptionSchema } from "@/lib/api/schemas";
 import { ApiError } from "@/lib/api/types";
-import { CONSUMPTION_A, CONSUMPTION_WITH_COMPARISON, HOME_A, HOME_B, NO_COVERAGE_REASON } from "./mock-api";
+import { CONSUMPTION_A, CONSUMPTION_WITH_COMPARISON, HOME_A, HOME_B, NO_COVERAGE_REASON, PROGRESS_A } from "./mock-api";
 import { renderWithApp } from "./render";
 
 vi.mock("@/lib/api", async () => {
@@ -283,6 +284,13 @@ describe("Meta mensual", () => {
     expectValueWithBadge("Estimado con tarifa SIE-121-2026-TF", "ESTIMADO");
     expect(within(card).getByRole("link", { name: /Ver resolución/ })).toHaveAttribute("href", "https://sie.gob.do/document/sie-121-2026-tf/");
     expect(within(card).getByRole("link", { name: /Editar meta/ })).toHaveAttribute("href", "/goal");
+  });
+
+  it("C-22: una source_url que no es http(s) no se enlaza (nunca javascript:)", async () => {
+    const progress = structuredClone(PROGRESS_A);
+    progress.amount.tariff.source_url = "javascript:alert(1)";
+    renderWithApp(<GoalProgressCard progress={progress} />, HOME_A);
+    expect(screen.queryByRole("link", { name: /Ver resolución/ })).toBeNull();
   });
 
   it("datos insuficientes: motivo y llamadas a la acción", async () => {

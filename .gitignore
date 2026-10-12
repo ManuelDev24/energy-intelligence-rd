@@ -36,3 +36,15 @@ apps/mobile/maestro/evidence/**/console.log
 # Facturas reales para QA de OCR (datos personales): nunca versionar.
 qa-private/
 .local-storage/
+
+# ERD-E2E-PLAYWRIGHT: estado y evidencia de cada corrida (se regenera)
+apps/web/e2e/.tmp/
+apps/web/e2e/.results/
+apps/web/e2e/.report/
+apps/web/test-results/
+apps/web/playwright-report/
+
+# Artefactos de cobertura (auditoría C-17)
+.coverage
+.coverage.*
+htmlcov/

@@ -32,11 +32,16 @@ archivos del repo. Cambiar `AUTH_SIGNING_KEY` cierra todas las sesiones (y reini
 |---|---|---|---|---|
 | `DATABASE_URL` | **Sí** | Neon rama `staging`, rol `erd_staging` | Neon rama `production` (principal), rol `erd_prod` | Formato `postgresql+psycopg://ROL:CLAVE@ep-….us-east-1.aws.neon.tech/energyrd?sslmode=require&channel_binding=require`. **Cambiar el prefijo `postgresql://` que da Neon por `postgresql+psycopg://`.** Usar la conexión *directa* (sin `-pooler`). Fuera de development se rechaza host local o sin contraseña. |
 | `AUTH_SIGNING_KEY` | **Sí** | generar | generar (otra) | ≥43 caracteres, ≥16 caracteres distintos, sin `secret/password/change_me`. También es la clave HMAC de los contadores anti-abuso. |
+| `MIGRATION_DATABASE_URL` | **Sí** | rol **dueño** de la rama `staging` | rol **dueño** de producción | Solo servicio de **API** (no worker): lo usa `alembic upgrade head` (pre-deploy). El API sirve con `DATABASE_URL` = `erd_app`; el worker con `erd_worker`. Ver `docs/ops/DB_ROLES.md`. |
+| `DB_REQUIRE_RESTRICTED_ROLE` | No (grupo) | `true` | `true` | Obligatorio en staging/production: el servicio no arranca si su rol de BD ignora la RLS (superusuario, BYPASSRLS o dueño de tablas). |
 | `CORS_ORIGINS` | No | `https://<web-staging>` | `https://<web-prod>` (o dominio propio) | Lista separada por comas; **solo `https://`**, nunca `*`. La app móvil nativa no necesita CORS. |
-| `ENVIRONMENT` | No (grupo) | `staging` | `production` | Activa los validadores de producción. |
-| `AUTH_ENABLED` | No (grupo) | `true` | `true` | Obligatorio fuera de development. |
+| `ENVIRONMENT` | No (grupo) | `staging` | `production` | Activa los validadores de producción. **Obligatoria** en una plataforma o con base no local: si falta, el arranque falla (nunca se asume `development`). Solo `development`, `staging`, `production`. |
+| `AUTH_ENABLED` | No (grupo) | `true` | `true` | Valor por defecto `true`; `false` (modo piloto local) solo en development y hay que pedirlo expresamente. |
 | `MIGRATE_ON_START` | No (grupo) | `false` | `false` | `true` está **prohibido** en staging/production: la migración es un paso de release. |
 | `SEED_PILOT` | No (grupo) | `false` | `false` | `true` está **prohibido** en staging/production (datos demo). |
+| `DB_STATEMENT_TIMEOUT_MS` / `DB_LOCK_TIMEOUT_MS` / `DB_IDLE_IN_TRANSACTION_TIMEOUT_MS` | No | `30000` / `5000` / `60000` (por defecto) | igual | Tiempos de espera de la sesión de PostgreSQL (auditoría C-08): una consulta lenta o un bloqueo de vivienda colgado falla en segundos con 503 + `Retry-After` en vez de retener una conexión del pool sin límite. No aplican a las migraciones. Se fijan con `SET` al abrir cada conexión (compatible con poolers). `0` = sin límite. |
+| `MAX_REQUEST_BODY_BYTES` / `UPLOAD_BODY_OVERHEAD_BYTES` | No | `262144` / `262144` (por defecto) | igual | Tope del cuerpo de cada petición (413 sin leerlo). Las rutas de subida de facturas admiten el archivo máximo (`DOCUMENT_MAX_PDF_BYTES`) más el sobre multipart. |
+| `AUTH_HASH_CONCURRENCY` / `AUTH_HASH_WAIT_SECONDS` | No | `4` / `5` (por defecto) | igual | Cálculos Argon2 simultáneos (64 MiB cada uno); si no hay turno en el plazo, 503 + `Retry-After`. Con 512 MB de RAM, no subir de 4–6. |
 | `DB_POOL_SIZE` | No (grupo) | `5` | `5` | Conexiones máximas por proceso = `DB_POOL_SIZE + DB_MAX_OVERFLOW`. |
 | `DB_MAX_OVERFLOW` | No (grupo) | `5` | `5` | |
 | `DB_POOL_TIMEOUT` | No (grupo) | `10` | `10` | Segundos. |
@@ -98,8 +103,14 @@ habla con la API únicamente a través del BFF (`API_BASE_URL`). No definirla.
 Nada secreto debe ir en `EXPO_PUBLIC_*`: queda embebido en el binario. Si cambia la URL real de Render (sufijo)
 o se usa dominio propio, editar `eas.json` antes de compilar.
 
-## Sentry (más adelante, solo documentado)
+## Sentry
 
-Plan Free. Cuando se integre: `SENTRY_DSN` (API), `NEXT_PUBLIC_SENTRY_DSN` (web), `EXPO_PUBLIC_SENTRY_DSN`
-(móvil), `SENTRY_AUTH_TOKEN` (**secreto**, solo build para subir sourcemaps), `SENTRY_ENVIRONMENT`
-(`staging`/`production`). Hoy **ninguna** existe en el código: no definirlas todavía.
+Plan Free. Un proyecto por entorno y por plataforma. `docs/ops/OBSERVABILITY.md` explica qué se envía y qué no.
+
+| Variable | Dónde | Secreto | Estado |
+|---|---|---|---|
+| `SENTRY_DSN` | API y worker | No fuerte (no se imprime) | **ya en el código** (inactivo sin valor); HTTPS obligatorio |
+| `NEXT_PUBLIC_SENTRY_DSN` | web (se incrusta al compilar) | No (va dentro del JS público) | **ya en el código** (inactivo sin valor); redeploy tras cambiarla |
+| `NEXT_PUBLIC_SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_RELEASE` | web | No | opcionales |
+| `EXPO_PUBLIC_SENTRY_DSN` | móvil | No | **aún no existe** en el código (módulo nativo; requiere nuevo build) |
+| `SENTRY_AUTH_TOKEN` | solo el build (sourcemaps) | **Sí** | no se usa todavía |

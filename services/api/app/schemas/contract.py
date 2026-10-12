@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ContractIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     account_number: str = Field(min_length=1, max_length=120)
 
     @field_validator('account_number')

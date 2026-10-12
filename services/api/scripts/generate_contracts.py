@@ -5,7 +5,12 @@ Cross-field business validators remain authoritative in Python/API tests.
 """
 import argparse
 import json
+import os
 from pathlib import Path
+
+# Herramienta de compilación: no abre conexiones ni atiende peticiones; los modos de autenticación no cambian el esquema.
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("AUTH_ENABLED", "false")
 
 from app.main import app
 from app.schemas.home import HomeOut
@@ -16,7 +21,7 @@ from app.schemas.alert import AlertRecord, AlertSettingsOut, AlertSettingsIn, Al
 from app.schemas.auth import (UserOut, TokensOut, RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn,
                               PasswordForgotAccepted, PasswordResetIn, PasswordChangeIn, DeviceIn, DeviceRemoveIn, InvitationCreateIn,
                               InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
-                              NotificationPreferencesIn, NotificationPreferencesOut, SessionOut)
+                              NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut)
 from app.schemas.reading import ReadingCreate, ReadingOut
 from app.schemas.consumption import ConsumptionOut
 from app.schemas.goal import GoalIn, GoalOut, GoalProgressOut
@@ -25,6 +30,12 @@ from app.schemas.tariff import TariffOut
 from app.schemas.bill_detail import BillItemsReplace, BillItemsOut, BillAssessment
 from app.schemas.ocr import OcrDraft, OcrJobOut
 from app.schemas.anomaly import AnomalyRecord, AnomalyStatusIn
+from app.schemas.outage import OutageIn, OutageOut, OutageSummaryOut
+from app.schemas.energy_score import EnergyScoreOut
+from app.schemas.recommendation import RecommendationListOut, RecommendationRecord, RecommendationStatusIn
+from app.schemas.admin import (AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
+                               AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate,
+                               RoleAssignmentOut, RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut)
 
 ROOT = Path(__file__).resolve().parents[3]
 MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, AlertRecord,
@@ -33,7 +44,10 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
           PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
-          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, BillPaymentIn, DeviceIn, DeviceRemoveIn]
+          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn,
+          AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
+          AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate, RoleAssignmentOut,
+          RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut]
 
 
 def generate():

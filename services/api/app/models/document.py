@@ -29,7 +29,7 @@ class Document(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     home_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("homes.id", ondelete="CASCADE"), nullable=False)
-    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True)
     bill_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("bills.id", ondelete="CASCADE"))
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     content_type: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -61,7 +61,7 @@ class DocumentOcr(Base):
     factura (se borra) o el documento caduca (cae en cascada). No se guarda el texto completo del OCR."""
     __tablename__ = "document_ocr"
     __table_args__ = (
-        CheckConstraint("status IN ('pending', 'processing', 'done', 'failed')", name="ck_document_ocr_status"),
+        CheckConstraint("status IN ('pending', 'processing', 'done', 'failed', 'cancelled')", name="ck_document_ocr_status"),
         CheckConstraint("status <> 'failed' OR error_code IS NOT NULL", name="ck_document_ocr_failed_code"),
         CheckConstraint("method IS NULL OR method IN ('text_layer', 'ocr', 'mixed')", name="ck_document_ocr_method"),
         CheckConstraint("pages_read IS NULL OR (pages_read >= 0 AND pages_total >= pages_read)", name="ck_document_ocr_pages"),
@@ -70,6 +70,7 @@ class DocumentOcr(Base):
 
     document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
     status: Mapped[str] = mapped_column(String(12), nullable=False, default="pending", server_default="pending")
+    generation: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     engine: Mapped[str | None] = mapped_column(String(24))
     method: Mapped[str | None] = mapped_column(String(16))

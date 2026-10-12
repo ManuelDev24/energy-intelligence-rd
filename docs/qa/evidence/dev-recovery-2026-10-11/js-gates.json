@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-11",
+  "integration_base": "fef74c83eeabeef2479bf92267200b132b317fa5",
+  "node": "24.21.0",
+  "isolated_checkout": true,
+  "tests": {
+    "core": {
+      "passed": 73,
+      "skipped": 0
+    },
+    "api_contracts": {
+      "passed": 17,
+      "skipped": 0
+    },
+    "api_client": {
+      "passed": 52,
+      "skipped": 0
+    },
+    "web": {
+      "passed": 772,
+      "skipped": 5
+    },
+    "mobile": {
+      "passed": 525,
+      "skipped": 11
+    }
+  },
+  "total_passed": 1439,
+  "total_skipped": 16,
+  "live_runs_separate_from_unit_totals": {
+    "web_against_isolated_api": {
+      "passed": 777,
+      "skipped": 0
+    },
+    "mobile_transport_e2e": {
+      "passed": 10,
+      "skipped": 1
+    }
+  },
+  "typecheck_all_workspaces": "passed",
+  "web_lint": "passed",
+  "web_production_build": "passed before mobile-only corrections",
+  "expo_export_ios_after_correction": "passed",
+  "expo_export_android_after_correction": "passed",
+  "native_ios_auth_full_runs": 2,
+  "native_android": "not executed",
+  "remote_ci": "separate gate: consult CI check attached to the published Dev commit; not part of this local snapshot",
+  "pilot_touched": false
+}

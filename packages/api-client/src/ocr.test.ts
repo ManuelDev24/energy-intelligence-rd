@@ -15,22 +15,6 @@ const draft = {
   raw_text_excerpt: 'EDE ...',
 };
 
-describe('OCR bill client', () => {
-  it('posts the selected image as multipart and returns a draft without creating a bill', async () => {
-    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(draft), { status: 200, headers: { 'content-type': 'application/json' } }));
-    const result = await createApiClient('http://api.test', fetcher).ocrBill(HOME, {
-      uri: 'file:///bill.jpg', name: 'bill.jpg', type: 'image/jpeg',
-    });
-    expect(result).toEqual(draft);
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    const [url, init] = fetcher.mock.calls[0];
-    expect(url).toBe(`http://api.test/api/v1/homes/${HOME}/bills/ocr`);
-    expect(init.method).toBe('POST');
-    expect(init.headers['Content-Type']).toBeUndefined();
-    expect(init.body).toBeInstanceOf(FormData);
-  });
-});
-
 const DOC = '00000000-0000-0000-0000-0000000000d1';
 const job = (over: Record<string, unknown> = {}) => ({
   document_id: DOC, status: 'pending', attempts: 0, method: null, pages_read: null, pages_total: null, draft: null,

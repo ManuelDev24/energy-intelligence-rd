@@ -2,7 +2,9 @@
 
 Monorepo con web, móvil y una API compartida para registrar facturas mensuales,
 comparar consumo, proyectar la siguiente factura, declarar equipos y gestionar alertas.
-El piloto es privado y no tiene autenticación. La selección de vivienda es una preferencia demo.
+Las cuentas usan correo y contraseña (sesiones con refresh rotatorio, verificación de correo, recuperación,
+invitaciones a viviendas) y la base aísla los datos por vivienda con RLS. El modo piloto sin autenticación
+(`AUTH_ENABLED=false`) solo existe en desarrollo y debe pedirse de forma explícita; en staging/producción la API no arranca sin autenticación.
 
 ## Implementado
 
@@ -10,12 +12,14 @@ El piloto es privado y no tiene autenticación. La selección de vivienda es una
 - Móvil: Expo 57, React Native, TypeScript, React Navigation, React Query y Zustand.
 - API: Python 3.12, FastAPI/Pydantic, SQLAlchemy, psycopg y Alembic.
 - Datos: PostgreSQL 16; períodos sin solapamientos, escrituras coordinadas por vivienda,
-  precisión Decimal y auditoría de mutaciones.
+  precisión Decimal, auditoría de mutaciones con retención, y RLS (roles `erd_app`/`erd_worker`,
+  ver [docs/ops/DB_ROLES.md](docs/ops/DB_ROLES.md)).
+- OCR de facturas asíncrono (worker + cola de trabajos, archivos cifrados), lecturas, metas, alertas,
+  anomalías, notificaciones y exportación/borrado de datos personales.
 - Paquetes: `core` para presentación, `api-contracts` generado desde Pydantic y
   `api-client` con validación runtime, paginación y cancelación.
 
-No hay telemetría horaria, OCR, IA, integración IoT, solar ni almacenamiento de archivos.
-Redis es opcional; no se utiliza en el flujo del piloto.
+No hay telemetría horaria, IA, integración IoT ni solar. Redis es opcional; no se utiliza en el flujo del piloto.
 
 ## Inicio local
 
@@ -70,5 +74,9 @@ Los dumps se guardan fuera de Git y el restore drill solo usa una base desechabl
 - [API y reglas de datos](services/api/README.md)
 - [Visión del producto](docs/SPECIFICATION.md)
 - [Plan de cierre antes de módulos nuevos](docs/CLOSURE_PLAN_2026-10-10.md)
+- [Roles de base de datos y RLS](docs/ops/DB_ROLES.md)
+- [Política de retención de datos](docs/security/DATA_RETENTION.md)
+- [Política de seguridad](SECURITY.md)
+- [Auditoría y estado de la remediación](docs/audit/REMEDIACION-ESTADO.md)
 
 Las proyecciones son orientación calculada sobre facturas introducidas; no son garantía de consumo o importe futuro.

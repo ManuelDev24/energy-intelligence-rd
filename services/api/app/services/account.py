@@ -11,9 +11,11 @@ Audit rows of erased homes are kept but pseudonymized: actor='deleted-user', pay
 """
 from sqlalchemy import delete, func, select, update
 
+from app import rls
 from app.models import Home
 from app.models.audit import AuditEvent
 from app.models.auth import AuthSession, HomeMember, PasswordResetToken, User
+from app.services import admin
 from app.services.auth import new_session, now, password_hasher, unauthorized, verify_password
 from app.services.errors import ApplicationError, Forbidden
 from app.services.transactions import require_home, write_transaction
@@ -55,11 +57,13 @@ def delete_account(db, user, password):
         # Reset may have committed after the dependency loaded this user or after verification.
         if not locked.active or locked.password_hash != verified_hash:
             raise ReauthenticationFailed(str(unauthorized()))
+        admin.guard_admin_account_deletion(db, user.id)
         home_ids = sorted(db.scalars(select(HomeMember.home_id).where(HomeMember.user_id == user.id)))
         erase, leave = [], []
         # Same home row lock as authorize_home() for writes, in a fixed order to avoid deadlocks.
         for home_id in home_ids:
             require_home(db, home_id, lock=True)
+            rls.set_context(db, home_id=home_id)  # auditoría C-01: ver TODAS las membresías de cada vivienda exige su contexto
             members = list(db.scalars(select(HomeMember).where(HomeMember.home_id == home_id).with_for_update()
                                       .execution_options(populate_existing=True)))
             mine = next(m for m in members if m.user_id == user.id)

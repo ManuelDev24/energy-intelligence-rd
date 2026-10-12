@@ -55,8 +55,10 @@ Proyecto Neon existente (región AWS `us-east-1`, la más cercana a Render *Virg
    `postgresql+psycopg://`. Resultado:
    `postgresql+psycopg://erd_prod:CLAVE@ep-xxxx.us-east-1.aws.neon.tech/energyrd?sslmode=require&channel_binding=require`
 5. (Recomendado para producción) Plan **Launch**: historial de restauración de hasta 7 días (Free: 6 h).
-6. (Endurecimiento futuro, opcional) separar un rol de migraciones (propietario) de un rol de runtime con
-   solo `SELECT/INSERT/UPDATE/DELETE`. Hoy las migraciones crean triggers y tablas con el mismo rol.
+6. **Roles de runtime (obligatorio, auditoría C-01).** El rol `erd_staging`/`erd_prod` es el **dueño**: solo migra (`MIGRATION_DATABASE_URL`).
+   El API usa `erd_app` y el worker `erd_worker` (sujetos a la RLS), que **crea la migración `0027`** sin contraseña. Tras la primera migración
+   (sección 2) sigue **`docs/ops/DB_ROLES.md`** (asignar LOGIN y contraseña, construir las dos URL, `DB_REQUIRE_RESTRICTED_ROLE=true` ya está en
+   `render.yaml`). Si el rol de `DATABASE_URL` ignora la RLS el servicio **no arranca**: es intencional.
 
 ## 2. Primera migración de **staging** (desde tu Mac)
 
@@ -65,16 +67,17 @@ migración nueva (archivo nuevo en `services/api/app/alembic/versions/`), **ante
 
 ```bash
 cd services/api
-read -rs DATABASE_URL   # pega la URL de staging (no queda en el historial) y Enter
-export DATABASE_URL
+read -rs MIGRATION_DATABASE_URL   # URL del rol DUEÑO de staging (no queda en el historial) y Enter
+export MIGRATION_DATABASE_URL
+export DATABASE_URL="$MIGRATION_DATABASE_URL"   # la configuración exige DATABASE_URL; las migraciones usan MIGRATION_DATABASE_URL
 uv run alembic upgrade head
 uv run alembic current        # debe mostrar la última revisión con "(head)"
-unset DATABASE_URL
+unset MIGRATION_DATABASE_URL DATABASE_URL
 ```
 
 Alternativa con la imagen Docker (sin entorno Python local):
-`docker build -t erd-api services/api && docker run --rm -e DATABASE_URL erd-api alembic upgrade head`
-(con `DATABASE_URL` exportada como arriba). **No** uses `MIGRATE_ON_START` ni `SEED_PILOT`: la API los
+`docker build -t erd-api services/api && docker run --rm -e DATABASE_URL -e MIGRATION_DATABASE_URL erd-api alembic upgrade head`
+(con las dos variables exportadas como arriba). **No** uses `MIGRATE_ON_START` ni `SEED_PILOT`: la API los
 rechaza en staging/production.
 
 Producción **no** necesita este paso: su primer deploy ejecuta `alembic upgrade head` como *pre-deploy*.
@@ -298,3 +301,14 @@ filesystem efímero (la API no escribe en disco); no apto para producción.
 10. (Más adelante) Sentry Free: crear proyectos y pedir la integración en código.
 11. Bucket privado + claves `STORAGE_*` por entorno y respaldo de `STORAGE_ENCRYPTION_KEYS` (§4b); decidir si staging lleva worker de pago.
 12. EAS: credenciales FCM/APNs, `projectId` y build nuevo (módulos nativos) para probar los avisos push en un teléfono real.
+
+## Migraciones: política expand/contract y rollback (auditoría C-24, DB-10)
+
+- En producción el **rollback de datos es restaurar (PITR/dump), no `alembic downgrade`**: los `downgrade` borran tablas/columnas
+  y no se ejecutan contra datos reales.
+- Toda migración debe ser **aditiva** (*expand*): columnas nuevas nulas o con valor por defecto, tablas e índices nuevos. El código
+  desplegado inmediatamente antes (N-1) tiene que seguir funcionando con el esquema nuevo.
+- Quitar o renombrar (*contract*) va en un release posterior, cuando ninguna versión desplegada lo usa, y exige copia de seguridad
+  verificada previa (`scripts/backup_pilot.sh`) y aprobación expresa en la revisión.
+- Los accesos directos a la base (scripts de soporte/importación) deben pasar por los servicios de la API: las reglas de negocio
+  (monotonía de lecturas, `days` vs. período, «siempre hay un propietario») viven en la aplicación (DB-09, decisión aceptada).

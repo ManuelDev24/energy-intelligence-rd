@@ -1,7 +1,7 @@
 """ERD-AUTH-03: borrado de cuenta con reautenticación, regla 409 y ruta de borrado acotada."""
 import pytest
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from tests.test_api_homes_bills import BILL
 from tests.test_api_insights import EQ, add_bill
@@ -12,7 +12,7 @@ from tests.test_bill_detail import ITEM
 ME = AUTH + '/me'
 GOAL = {'monthly_kwh': '300', 'monthly_amount_rd': '3000'}
 # Tablas con datos de vivienda; deben quedar vacías para una vivienda borrada.
-HOME_TABLES = ['bills', 'alerts', 'equipment', 'alert_settings', 'meter_readings', 'home_goals', 'contracts',
+HOME_TABLES = ['bills', 'alerts', 'equipment', 'alert_settings', 'meter_readings', 'home_goals', 'contracts', 'power_outages', 'recommendations',
                'home_members']
 
 
@@ -111,7 +111,7 @@ def test_wrong_password_is_generic_counted_and_changes_nothing(auth_client, migr
 def test_unauthenticated_deletion_never_spends_the_login_budget(auth_client, migrated, monkeypatch):
     """Sin token válido, DELETE /auth/me no debe agotar el presupuesto de /login de esa IP (revisión R1)."""
     from app.config import settings
-    alice = register(auth_client)
+    register(auth_client)
     monkeypatch.setitem(settings.__dict__, 'AUTH_LOGIN_LIMIT', 2)
     with migrated.begin() as c:
         c.execute(text('DELETE FROM auth_abuse_buckets'))
@@ -253,7 +253,7 @@ def test_snapshot_immutability_survives_erasure_path(auth_client, migrated):
             with migrated.begin() as c:
                 c.execute(text(sql))
     # A session-level setting must not open a bypass either.
-    with pytest.raises(Exception):
+    with pytest.raises(DBAPIError):
         with migrated.begin() as c:
             c.execute(text("SET LOCAL energyrd.erasure = 'on'"))
             c.execute(text('DELETE FROM bill_snapshots'))

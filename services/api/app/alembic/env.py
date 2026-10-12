@@ -16,7 +16,8 @@ target_metadata = Base.metadata
 
 
 def _url() -> str:
-    return config.get_main_option("sqlalchemy.url") or settings.DATABASE_URL
+    # Auditoría C-01: las migraciones usan el rol dueño (MIGRATION_DATABASE_URL); el API y el worker, roles restringidos (DATABASE_URL).
+    return config.get_main_option("sqlalchemy.url") or settings.MIGRATION_DATABASE_URL or settings.DATABASE_URL
 
 
 def run_migrations_offline() -> None:

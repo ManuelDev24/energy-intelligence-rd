@@ -13,6 +13,8 @@ const pages: Record<string, () => Promise<{ metadata?: Metadata }>> = {
   "Meta mensual": () => import("./(app)/goal/page"),
   "Equipos": () => import("./(app)/equipment/page"),
   "Alertas": () => import("./(app)/alerts/page"),
+  "Ahorro": () => import("./(app)/savings/page"),
+  "Apagones": () => import("./(app)/outages/page"),
   "Perfil": () => import("./(app)/profile/layout"),
   "Mi cuenta": () => import("./(account)/account/layout"),
   "Mis viviendas": () => import("./(account)/homes/layout"),

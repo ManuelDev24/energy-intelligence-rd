@@ -27,7 +27,7 @@ PLATFORM_VARS = {"NODE_VERSION", "NEXT_TELEMETRY_DISABLED"}
 # Variables de recuperación de contraseña: las añade el trabajo de recuperación en curso.
 # Si aún no están en config.py se informan como PENDIENTE (aviso), no como error.
 PENDING_API_VARS = {"EMAIL_BACKEND", "RESEND_API_KEY", "EMAIL_FROM", "PASSWORD_RESET_URL"}
-SECRET_VARS = {"DATABASE_URL", "AUTH_SIGNING_KEY", "RESEND_API_KEY", "STORAGE_S3_ACCESS_KEY_ID",
+SECRET_VARS = {"DATABASE_URL", "MIGRATION_DATABASE_URL", "AUTH_SIGNING_KEY", "RESEND_API_KEY", "STORAGE_S3_ACCESS_KEY_ID",
                "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_ENCRYPTION_KEYS", "STORAGE_URL_SIGNING_KEY", "EXPO_ACCESS_TOKEN"}
 # Variables que API y worker deben compartir con el MISMO nombre (la config se valida igual en ambos).
 SHARED_API_WORKER = {"DATABASE_URL", "AUTH_SIGNING_KEY", "CORS_ORIGINS", "RESEND_API_KEY", "EMAIL_FROM",
@@ -112,9 +112,15 @@ def check_render() -> None:
                         warnings.append(f"{name}: {key} aún no existe en config.py (recuperación de contraseña en curso)")
                     else:
                         errors.append(f"{name}: {key} no es un campo de Settings (services/api/app/config.py)")
-                for required in ("DATABASE_URL", "AUTH_SIGNING_KEY", "CORS_ORIGINS", "ENVIRONMENT", "AUTH_ENABLED"):
+                for required in ("DATABASE_URL", "AUTH_SIGNING_KEY", "CORS_ORIGINS", "ENVIRONMENT", "AUTH_ENABLED", "DB_REQUIRE_RESTRICTED_ROLE"):
                     if required not in keys:
                         errors.append(f"{name}: falta {required}")
+                if keys.get("DB_REQUIRE_RESTRICTED_ROLE", {}).get("value") != "true":
+                    errors.append(f"{name}: DB_REQUIRE_RESTRICTED_ROLE debe ser \"true\" (auditoría C-01)")
+                if svc.get("type") != "worker" and "MIGRATION_DATABASE_URL" not in keys:
+                    errors.append(f"{name}: falta MIGRATION_DATABASE_URL (las migraciones usan el rol dueño; el API, erd_app)")
+                if svc.get("type") == "worker" and "MIGRATION_DATABASE_URL" in keys:
+                    errors.append(f"{name}: el worker no debe recibir MIGRATION_DATABASE_URL (rol dueño)")
                 if keys.get("ENVIRONMENT", {}).get("value") != env_name:
                     errors.append(f"{name}: ENVIRONMENT debe ser {env_name}")
                 for flag in ("MIGRATE_ON_START", "SEED_PILOT"):

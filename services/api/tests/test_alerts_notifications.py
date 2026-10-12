@@ -42,12 +42,20 @@ class FakePush:
         return push.PushResult(self.delivered, self.invalid)
 
 
+def verify_all(engine):
+    """Auditoría C-10: solo se notifica a correos verificados; estas pruebas son de alertas, no de verificación."""
+    with engine.begin() as c:
+        c.execute(text("UPDATE users SET email_verified_at = now() WHERE email_verified_at IS NULL"))
+
+
 @pytest.fixture
 def world(auth_client, migrated, monkeypatch):
     """Alicia (propietaria) con una vivienda; correo falso; ayudantes para facturas, alertas y envíos."""
     sender = FakeEmail()
     monkeypatch.setattr(email, "get_email_sender", lambda: sender)
     alice = register(auth_client)
+    verify_all(migrated)
+    sender.sent.clear()                              # los correos de verificación del registro no son de este tema
     home = auth_client.post("/api/v1/homes", headers=bearer(alice), json={"name": "Casa <Playa>", "distributor": "EDESUR"}).json()["id"]
 
     class W:
@@ -77,6 +85,8 @@ def world(auth_client, migrated, monkeypatch):
 
         def member(self, address="bob@example.com"):
             bob = register(auth_client, address)
+            verify_all(migrated)
+            sender.sent.clear()
             with migrated.begin() as c:
                 c.execute(text("INSERT INTO home_members(home_id,user_id,role) SELECT :h,id,'member' FROM users WHERE email=:e"), {"h": home, "e": address})
             return bob

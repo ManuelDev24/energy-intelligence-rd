@@ -21,7 +21,7 @@ it("sends Referrer-Policy: no-referrer and no-store on the reset page", async ()
   const response = await middleware(new NextRequest("http://localhost:3000/restablecer-contrasena?x=1"));
   expect(response.headers.get("referrer-policy")).toBe("no-referrer");
   expect(response.headers.get("cache-control")).toContain("no-store");
-  expect(config.matcher).toContain("/restablecer-contrasena");
+  expect(config.matcher.some(pattern => new RegExp(`^${pattern}$`).test("/restablecer-contrasena"))).toBe(true);
 });
 
 it("does not treat lookalike paths as the reset page nor as public protected routes", async () => {

@@ -13,6 +13,7 @@ from tests.test_api_readings import READING
 GOAL = {"monthly_kwh": "300", "monthly_amount_rd": "3000"}
 OTHER_ID = '00000000-0000-4000-8000-000000000001'
 CONSUMPTION_QUERY = "?granularity=day&from=2026-09-01&to=2026-09-30"
+OUTAGE = {"started_at": "2026-09-01T10:00:00-04:00", "ended_at": "2026-09-01T12:00:00-04:00", "cause": "utility_fault"}
 
 
 def setup_homes(client):
@@ -32,7 +33,7 @@ def setup_homes(client):
     return a, b, homes, bill, eq, alert, reading
 
 
-def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID, anomaly=OTHER_ID):
+def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID, anomaly=OTHER_ID, recommendation=OTHER_ID, outage=OTHER_ID):
     u = f'/api/v1/homes/{h}'
     return [('GET',u,None),('PATCH',u,{'name':'changed'}),('DELETE',u,None),
             ('GET',u+'/contract',None),('PUT',u+'/contract',{'account_number':'123'}),
@@ -40,11 +41,18 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('GET',u+'/bills/'+bill,None),('PUT',u+'/bills/'+bill,BILL),('DELETE',u+'/bills/'+bill,None),
             ('GET',u+'/bills/'+bill+'/items',None),('PUT',u+'/bills/'+bill+'/items',{'items': []}),
             ('POST',u+'/bills/'+bill+'/validate',{}),('PUT',u+'/bills/'+bill+'/payment',{'paid':True}),
-            ('POST',u+'/bills/ocr',MULTIPART),
             ('GET',u+'/equipment',None),('POST',u+'/equipment',EQ),('GET',u+'/equipment/estimate',None),
             ('GET',u+'/equipment/'+eq,None),('PUT',u+'/equipment/'+eq,EQ),('DELETE',u+'/equipment/'+eq,None),
             ('GET',u+'/alerts',None),('GET',u+'/anomalies',None),('POST',u+'/anomalies/scan',None),
-            ('PATCH',u+'/anomalies/'+anomaly,{'status':'dismissed'}),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
+            ('PATCH',u+'/anomalies/'+anomaly,{'status':'dismissed'}),
+            # ERD-INT-01
+            ('GET',u+'/outages',None),('GET',u+'/outages/summary',None),('POST',u+'/outages',OUTAGE),
+            ('GET',u+'/outages/'+outage,None),('PUT',u+'/outages/'+outage,OUTAGE),('DELETE',u+'/outages/'+outage,None),
+            # ERD-SCORE-01
+            ('GET',u+'/energy-score',None),
+            # ERD-SAVE-01
+            ('GET',u+'/recommendations',None),('POST',u+'/recommendations/refresh',None),
+            ('PATCH',u+'/recommendations/'+recommendation,{'status':'applied'}),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
             ('GET',u+'/alert-settings',None),('PUT',u+'/alert-settings',{'warning_pct':'10','critical_pct':'40'}),
             ('GET',u+'/dashboard',None),
             ('GET',u+'/readings',None),('POST',u+'/readings',READING),('DELETE',u+'/readings/'+reading,None),
@@ -95,13 +103,15 @@ def test_all_private_routes_require_membership_and_token(auth_client, migrated, 
 
 def test_private_route_inventory_remains_covered(auth_client):
     paths = auth_client.get('/openapi.json').json()['paths']
-    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}', '{anomaly_id}')
+    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}', '{anomaly_id}', '{recommendation_id}', '{outage_id}')
     actual = {(method.upper(), path) for path, operations in paths.items()
               if path.startswith('/api/v1/homes/') for method in operations if method != 'parameters'}
     assert actual == {(method, path.split('?')[0]) for method, path, _ in tested}
     # Únicas rutas fuera de /homes y /auth: tarifas y versiones legales (públicas) y aceptar invitación (exige sesión; su
     # comportamiento sin token se prueba en test_home_sharing).
-    public = {path for path in paths if path.startswith('/api/v1/') and not path.startswith('/api/v1/homes')}
+    # /admin/* exige bearer real y scopes; se verifica por separado en test_admin_rbac.py.
+    public = {path for path in paths if path.startswith('/api/v1/') and not path.startswith('/api/v1/homes')
+              and not path.startswith('/api/v1/admin')}
     assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal', '/api/v1/invitations/accept'}
     # Rutas /auth sin access token (las credenciales o el token opaco van en el cuerpo) más las que lo exigen
     # (/me y el cambio de contraseña, que además reautentica).
@@ -113,9 +123,9 @@ def test_private_route_inventory_remains_covered(auth_client):
 # Rutas de /auth que SÍ exigen access token (se prueban en test_auth*, test_password_change, test_account_settings).
 PRIVATE_AUTH_ROUTES = {'/api/v1/auth/me', '/api/v1/auth/me/export', '/api/v1/auth/me/preferences', '/api/v1/auth/password/change',
                        '/api/v1/auth/sessions', '/api/v1/auth/sessions/revoke-others', '/api/v1/auth/sessions/{session_id}',
-                       '/api/v1/auth/devices', '/api/v1/auth/devices/remove'}
+                       '/api/v1/auth/devices', '/api/v1/auth/devices/remove', '/api/v1/auth/email/verification'}
 PUBLIC_AUTH_ROUTES = {'/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout',
-                      '/api/v1/auth/password/forgot', '/api/v1/auth/password/reset'}
+                      '/api/v1/auth/password/forgot', '/api/v1/auth/password/reset', '/api/v1/auth/email/verify'}
 
 
 def test_public_auth_routes_never_require_bearer(auth_client):

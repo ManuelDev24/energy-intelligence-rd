@@ -4,7 +4,7 @@ import { ApiError } from "@energyrd/api-client";
 // el texto que venga de la API (`message`, `detail`, `msg`) nunca se muestra. Funciona igual con
 // el BFF (auth activada) y en el piloto local (API directa, que sí enviaría su propio texto).
 export type ErrorContext = "load" | "consumption" | "reading-create" | "reading-delete" | "goal-save" | "bill-items-load" | "bill-items-save" | "bill-assess"
-  | "bill-save" | "bill-delete" | "ocr" | "equipment-save" | "alert-update";
+  | "bill-save" | "bill-delete" | "ocr" | "equipment-save" | "alert-update" | "outage-save";
 
 /** ERD-BILL-02: en el piloto (sin auth) la API local puede no tener /items ni /validate todavía. */
 export function billDetailUnavailable(error: unknown, authEnabled: boolean): boolean {
@@ -23,11 +23,13 @@ export function userMessage(error: unknown, context: ErrorContext): string {
     if (context === "reading-delete") return "La lectura ya no existe. Actualiza la lista.";
     if (context === "bill-delete") return "La factura ya no existe. Actualiza la lista.";
     if (context === "alert-update") return "La alerta ya no existe. Actualiza la lista.";
+    if (context === "outage-save") return "El apagón ya no existe. Actualiza la lista.";
     return "No encontrado o sin acceso.";
   }
   if (status === 409) {
     if (context === "reading-create") return "Ya existe una lectura con esa fecha y hora.";
     if (context === "bill-save") return "Ya existe una factura que se solapa con ese período.";
+    if (context === "outage-save") return "Ya hay un apagón registrado que se solapa con ese período. Edita ese o ajusta las horas.";
     if (context === "ocr") return "Ya hay varias facturas en proceso o sin confirmar en esta vivienda. Espera a que terminen o confirma o elimina alguna.";
     return "La operación entra en conflicto con datos existentes.";
   }
@@ -49,6 +51,7 @@ export function userMessage(error: unknown, context: ErrorContext): string {
     if (context === "bill-save") return "Revisa los datos de la factura.";
     if (context === "ocr") return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC de hasta 10 MB) o un PDF de hasta 20 MB. Puedes registrar la factura manualmente.";
     if (context === "equipment-save") return "Revisa los datos del equipo.";
+    if (context === "outage-save") return "Revisa las fechas: el apagón no puede estar en el futuro, debe terminar después de empezar y durar como máximo 30 días.";
     return "Datos inválidos. Revisa los campos marcados.";
   }
   if (status === 429) return "Demasiados intentos. Espera un momento e inténtalo de nuevo.";

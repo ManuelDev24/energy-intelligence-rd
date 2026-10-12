@@ -8,18 +8,23 @@ from app.api.auth_deps import auth_required, current_session, current_user
 from app.api.auth_abuse import forgot_budget, login_budget, register_budget, refresh_budget, reset_budget
 from app.database import get_db
 from app.config import settings
-from app.schemas.auth import (AccountDeletionIn, Credentials, DeviceIn, DeviceRemoveIn, NotificationPreferencesIn, NotificationPreferencesOut,
+from app.schemas.auth import (AccountDeletionIn, Credentials, DeviceIn, EmailVerificationRequestOut, EmailVerifyIn, DeviceRemoveIn, NotificationPreferencesIn, NotificationPreferencesOut,
                               PasswordChangeIn, PasswordForgotAccepted, PasswordForgotIn, PasswordResetIn, RefreshIn,
                               RegisterIn, SessionOut, TokensOut, UserOut)
-from app.services import account, account_settings, auth, data_export, email, password_recovery
+from app.services import account, account_settings, auth, data_export, email, email_verification, password_recovery
 
 router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(auth_required)])
 
 
 @router.post("/register", response_model=TokensOut, status_code=201, dependencies=[Depends(register_budget)])
-def register(payload: RegisterIn, response: Response, db: Session = Depends(get_db)):
+def register(payload: RegisterIn, response: Response, background: BackgroundTasks, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
-    return auth.register(db, payload)
+    tokens = auth.register(db, payload)
+    # Auditoría C-10: el enlace de verificación sale en segundo plano, después de responder (su latencia o fallo no afecta al registro).
+    message = email_verification.issue(db, auth.user_id_of(tokens))
+    if message is not None:
+        background.add_task(email.deliver, message)
+    return tokens
 
 
 @router.post("/login", response_model=TokensOut, dependencies=[Depends(login_budget)])
@@ -141,4 +146,24 @@ def change_password(payload: PasswordChangeIn, response: Response, user=Depends(
 @router.post("/password/reset", status_code=204, dependencies=[Depends(reset_budget)])
 def reset_password(payload: PasswordResetIn, db: Session = Depends(get_db)):
     password_recovery.reset_password(db, payload.token, payload.new_password.get_secret_value())
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+# Auditoría C-10: verificación de correo. Pedir (re)envío exige sesión; canjear el enlace no (se abre desde el correo).
+@router.post("/email/verification", status_code=202, response_model=EmailVerificationRequestOut,
+             dependencies=[Depends(forgot_budget)])
+def request_email_verification(response: Response, background: BackgroundTasks, user=Depends(current_user),
+                               db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    if email_verification.is_verified(db, user.id):
+        return EmailVerificationRequestOut(status="already_verified")
+    message = email_verification.issue(db, user.id)
+    if message is not None:
+        background.add_task(email.deliver, message)
+    return EmailVerificationRequestOut(status="accepted")
+
+
+@router.post("/email/verify", status_code=204, dependencies=[Depends(reset_budget)])
+def verify_email(payload: EmailVerifyIn, db: Session = Depends(get_db)):
+    email_verification.verify(db, payload.token)
     return Response(status_code=204, headers={"Cache-Control": "no-store"})

@@ -13,4 +13,6 @@ python -c 'from app.config import settings; from alembic import command; from al
 python -c 'from app.config import settings; from app.seed import main; main() if settings.SEED_PILOT else None'
 # Render inyecta PORT; en local (docker compose) se mantiene 8000.
 # --no-proxy-headers es deliberado: ver services/api/AUTH_ABUSE_PROTECTION.md («Proxy y despliegue»).
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" --no-proxy-headers
+# --no-access-log: el registro de acceso de uvicorn incluye la query completa (p. ej. el token firmado de /documents/download);
+# el middleware propio (app/observability.py) registra método, ruta SIN query, estado y duración. --no-server-header oculta «Server: uvicorn».
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" --no-proxy-headers --no-access-log --no-server-header

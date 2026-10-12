@@ -1,0 +1,7 @@
+[
+  {
+    "check": "sin NEXT_PUBLIC_SENTRY_DSN no sale ninguna petición hacia Sentry",
+    "ok": true,
+    "detail": "0 petición(es)"
+  }
+]

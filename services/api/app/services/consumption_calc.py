@@ -119,33 +119,56 @@ class BucketResult:
     reason: str | None
 
 
+def _bucket_result(b: Bucket, candidates: Iterable[Interval]) -> BucketResult:
+    """Energía y cobertura de un bucket a partir de los intervalos que podrían tocarlo (los que no lo tocan se ignoran)."""
+    kwh = Decimal(0)
+    covered = Decimal(0)
+    touched = split = False
+    for i in candidates:
+        lo, hi = max(i.start, b.start_at), min(i.end, b.end_at)
+        if hi <= lo:
+            continue
+        total = _micros(i.end - i.start)
+        kwh += i.kwh * _micros(hi - i.start) / total - i.kwh * _micros(lo - i.start) / total
+        covered += _micros(hi - lo)
+        touched = True
+        split = split or i.start < b.start_at or i.end > b.end_at
+    span = _micros(b.end_at - b.start_at)
+    ratio = covered / span
+    if not touched:
+        return BucketResult(b, None, None, Decimal(0), Decimal(0), "no_coverage", NO_COVERAGE)
+    partial = ratio < 1
+    return BucketResult(b, kwh, "ESTIMATED" if split else "REAL", ratio, covered / 1_000_000,
+                        "partial_coverage" if partial else None, PARTIAL_COVERAGE if partial else None)
+
+
+def _disjoint_ascending(intervals: Sequence[Interval]) -> bool:
+    return all(a.end <= b.start for a, b in zip(intervals, intervals[1:]))
+
+
 def allocate(intervals: Sequence[Interval], buckets: Sequence[Bucket]) -> list[BucketResult]:
     """Reparte la energía de cada intervalo entre los buckets en proporción al tiempo solapado.
 
     Usa posiciones acumuladas (telescópicas) para que la suma de las partes sea exactamente el delta.
+
+    Costo O(intervalos + buckets + solapes): los intervalos que salen de lecturas consecutivas son disjuntos y los buckets de
+    calendario van en orden, así que cada bucket solo mira los intervalos que lo cruzan (auditoría C-13: antes era
+    O(intervalos × buckets) y un año de lecturas diarias tardaba ≈0,6–0,9 s por petición). Si la entrada no cumple esas dos
+    condiciones (intervalos solapados o buckets desordenados) se recorre todo, con el mismo resultado que antes.
     """
+    ordered = sorted(intervals, key=lambda i: i.start)
+    starts = [b.start_at for b in buckets]
+    if not _disjoint_ascending(ordered) or starts != sorted(starts):
+        return [_bucket_result(b, intervals) for b in buckets]
     out = []
+    first, count = 0, len(ordered)
     for b in buckets:
-        kwh = Decimal(0)
-        covered = Decimal(0)
-        touched = split = False
-        for i in intervals:
-            lo, hi = max(i.start, b.start_at), min(i.end, b.end_at)
-            if hi <= lo:
-                continue
-            total = _micros(i.end - i.start)
-            kwh += i.kwh * _micros(hi - i.start) / total - i.kwh * _micros(lo - i.start) / total
-            covered += _micros(hi - lo)
-            touched = True
-            split = split or i.start < b.start_at or i.end > b.end_at
-        span = _micros(b.end_at - b.start_at)
-        ratio = covered / span
-        if not touched:
-            out.append(BucketResult(b, None, None, Decimal(0), Decimal(0), "no_coverage", NO_COVERAGE))
-            continue
-        partial = ratio < 1
-        out.append(BucketResult(b, kwh, "ESTIMATED" if split else "REAL", ratio, covered / 1_000_000,
-                                "partial_coverage" if partial else None, PARTIAL_COVERAGE if partial else None))
+        while first < count and ordered[first].end <= b.start_at:
+            first += 1
+        last = first
+        while last < count and ordered[last].start < b.end_at:
+            last += 1
+        out.append(_bucket_result(b, ordered[first:last]))
     return out
 
 
@@ -168,7 +191,7 @@ def summarize(results: Sequence[BucketResult]) -> Summary:
         return Summary(None, None, Decimal(0), Decimal(0), None, None)
     values = [(r, r.kwh) for r in valued if r.kwh is not None]
     total = sum((kwh for _, kwh in values), Decimal(0))
-    quality = "REAL" if all(r.quality == "REAL" for r in valued) else "ESTIMATED"
+    quality: Literal["REAL", "ESTIMATED"] = "REAL" if all(r.quality == "REAL" for r in valued) else "ESTIMATED"
     peak, peak_kwh = values[0]
     for r, kwh in values[1:]:
         if kwh > peak_kwh:  # empate: se conserva el bucket más antiguo

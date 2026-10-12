@@ -26,10 +26,12 @@ class AlertRecord(BaseModel):
 
 
 class AlertStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     status: AlertStatus
 
 
 class AlertSettingsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     warning_pct: Decimal = Field(gt=0, le=1000, max_digits=6, decimal_places=2)
     critical_pct: Decimal = Field(gt=0, le=1000, max_digits=6, decimal_places=2)
 

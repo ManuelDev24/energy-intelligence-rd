@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronsUpDown, Gauge, Home as HomeIcon, NotebookPen, Plug, Receipt, BarChart3, Target, UserRound } from "lucide-react";
+import { Bell, ChevronsUpDown, Gauge, Home as HomeIcon, NotebookPen, PiggyBank, Plug, Zap, Receipt, BarChart3, Target, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -8,6 +8,7 @@ import { useEffect, type ReactNode } from "react";
 import { useAlerts, useHomes } from "@/lib/api/hooks";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session";
+import { EmailVerificationNotice } from "./email-verification-notice";
 
 const NAV = [
   { href: "/dashboard", label: "Inicio", icon: Gauge },
@@ -17,6 +18,8 @@ const NAV = [
   { href: "/goal", label: "Meta", icon: Target, sideOnly: true },
   { href: "/equipment", label: "Equipos", icon: Plug },
   { href: "/alerts", label: "Alertas", icon: Bell },
+  { href: "/savings", label: "Ahorro", icon: PiggyBank, sideOnly: true },
+  { href: "/outages", label: "Apagones", icon: Zap, sideOnly: true },
   { href: "/profile", label: "Perfil", icon: UserRound, sideOnly: true },
 ] as const;
 
@@ -139,7 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <main id="contenido" tabIndex={-1} className="flex-1 p-4 pb-24 focus:outline-none md:p-8 md:pb-8">
-        <div className="mx-auto max-w-5xl">{children}</div>
+        <div className="mx-auto max-w-5xl"><EmailVerificationNotice className="mb-4" />{children}</div>
       </main>
 
       <nav

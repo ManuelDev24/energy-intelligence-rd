@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, UserOutSchema, TokensOutSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, PasswordChangeInSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema } from "@energyrd/api-contracts";
+import { UUID, domainRoute, ownsBill, phase2QueryOk, phase2Route, writeSchema } from "./bff-routes";
+import { DashboardSchema, UserOutSchema, TokensOutSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, OcrJobSchema, PasswordChangeInSchema} from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
 export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
@@ -31,15 +32,16 @@ const AccountDeletionSchema = AccountDeletionInSchema.strict();
 // base64url, igual que el contrato.
 const FORGOT = "/auth/password/forgot";
 const RESET = "/auth/password/reset";
+// Auditoría C-10: canje del enlace de verificación de correo. Pública y sin cookies de sesión, igual que la recuperación.
+const VERIFY_EMAIL = "/auth/email/verify";
+const VerifyEmailSchema = EmailVerifyInSchema.strict();
 const ForgotSchema = PasswordForgotInSchema.extend({ email: z.string().email().max(254) }).strict();
 const ResetSchema = PasswordResetInSchema.strict();
 // ERD-PROF-01: cambio con sesión iniciada; la nueva contraseña debe diferir de la actual (la API también lo exige).
 const PasswordChangeSchema = PasswordChangeInSchema.strict().refine(body => body.current_password !== body.new_password, { path: ["new_password"] });
 const PASSWORD_CHANGE = "/auth/password/change";
 // Exportación de datos del titular: se reenvía tal cual, solo se comprueba que lo sea.
-const ExportSchema = z.object({ format_version: z.literal(1) }).passthrough();
 const EXPORT_DISPOSITION = /^attachment; filename="energyrd-datos-\d{4}-\d{2}-\d{2}\.json"$/;
-const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const accessName = (config: BffConfig) => config.secure ? "__Host-erd-access" : "erd-access";
 const logoutName = (config: BffConfig) => config.secure ? "__Host-erd-logout" : "erd-logout";
 // Per-browser auth epoch: rotated by every logout. Session cookies are bound to the epoch that was
@@ -89,143 +91,6 @@ function clear(response: NextResponse, config: BffConfig) {
   return response;
 }
 // ---------- Fase 2 (ERD-CONS-01 / ERD-GOAL-01): lecturas, consumo, meta, progreso, tarifas ----------
-// Cada ruta declara método, patrón, respuesta, cuerpo y consulta EXACTOS: un parámetro no declarado,
-// repetido o mal formado es 400 y un cuerpo no estricto es 422, siempre antes de contactar la API.
-type QueryRule = { pattern: (value: string) => boolean; required?: boolean };
-interface Phase2Route { response: z.ZodTypeAny; body?: z.ZodTypeAny; query: Record<string, QueryRule> }
-const isoDate = (value: string) => z.string().date().safeParse(value).success;
-const PAGE: Record<string, QueryRule> = { limit: { pattern: v => /^\d{1,3}$/.test(v) }, offset: { pattern: v => /^\d{1,6}$/.test(v) } };
-// Decimal canónico como texto (≤ 10 enteros, ≤ 2 decimales), sin signo: igual que la API (Numeric(12,2)).
-const DECIMAL = /^\d{1,10}(?:\.\d{1,2})?$/;
-const decimalText = z.string().regex(DECIMAL);
-const positiveText = decimalText.refine(value => Number(value) > 0);
-const ReadingWrite = z.object({ read_at: z.string().max(40).datetime({ offset: true }), reading_kwh: decimalText, note: z.string().max(255).nullable().optional() }).strict();
-const GoalWrite = z.object({ monthly_amount_rd: positiveText.nullable().optional(), monthly_kwh: positiveText.nullable().optional() }).strict()
-  .refine(goal => (goal.monthly_amount_rd ?? null) !== null || (goal.monthly_kwh ?? null) !== null, { message: "goal_required" });
-// ERD-BILL-02: detalle de cargos y revisión de consistencia (solo lectura). Igual que la API:
-// etiqueta 1..200 no en blanco, cargo ≥ 0, descuento ≤ 0, texto decimal con ≤ 10 enteros y ≤ 2
-// decimales, máx. 100 ítems; sin `position`/`source`/`bill_id` del cliente. Validate: cuerpo `{}`.
-const CHARGE = /^\d{1,10}(?:\.\d{1,2})?$/;
-const DISCOUNT = /^(?:-\d{1,10}(?:\.\d{1,2})?|0{1,10}(?:\.0{1,2})?)$/;
-const BillItemWrite = z.object({
-  label: z.string().min(1).max(200).refine(value => value.trim().length > 0),
-  kind: z.enum(["charge", "discount"]),
-  amount_dop: z.string(),
-}).strict().refine(item => (item.kind === "charge" ? CHARGE : DISCOUNT).test(item.amount_dop), { path: ["amount_dop"] });
-const BillItemsWrite = z.object({ items: z.array(BillItemWrite).max(100) }).strict();
-function billDetailRoute(path: string, method: string): Phase2Route | null {
-  const match = path.match(new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`));
-  if (!match) return null;
-  if (match[1] === "validate") return method === "POST" ? { response: BillAssessmentSchema, body: z.object({}).strict(), query: {} } : null;
-  return method === "GET" ? { response: BillItemsOutSchema, query: {} } : method === "PUT" ? { response: BillItemsOutSchema, body: BillItemsWrite, query: {} } : null;
-}
-/** La respuesta debe pertenecer a la vivienda y la factura de la ruta (también el detalle anidado). */
-function ownsBill(path: string, value: unknown) {
-  const [, , home, , bill] = path.split("/");
-  const owns = (v: unknown) => !!v && typeof v === "object" && (v as { home_id?: unknown }).home_id === home && (v as { bill_id?: unknown }).bill_id === bill;
-  const nested = (value as { detail?: unknown }).detail;
-  return owns(value) && (nested === undefined || owns(nested));
-}
-/** ERD-SHARE-01: compartir vivienda. Cuerpos estrictos; el texto de error de la API nunca se reenvía. */
-function sharingRoute(path: string, method: string): Phase2Route | null {
-  if (path === "/invitations/accept") return method === "POST" ? { response: HomeSchema, body: InvitationAcceptInSchema.strict(), query: {} } : null;
-  const match = path.match(new RegExp(`^/homes/${UUID}/(members|invitations|transfer-ownership)(?:/(${UUID}|me))?$`));
-  if (!match) return null;
-  const [, kind, child] = match;
-  const none = z.undefined();
-  const empty = z.object({}).strict();
-  if (kind === "members") {
-    if (!child) return method === "GET" ? { response: MemberOutSchema.array(), query: {} } : null;
-    return method === "DELETE" ? { response: none, body: empty, query: {} } : null;
-  }
-  if (kind === "invitations") {
-    if (!child) return method === "GET" ? { response: InvitationOutSchema.array(), query: {} }
-      : method === "POST" ? { response: InvitationOutSchema, body: InvitationCreateInSchema.strict(), query: {} } : null;
-    return child !== "me" && method === "DELETE" ? { response: none, body: empty, query: {} } : null;
-  }
-  return !child && method === "POST" ? { response: none, body: OwnershipTransferInSchema.strict(), query: {} } : null;
-}
-/** ERD-PROF-01: preferencias, sesiones activas y exportación de datos de la cuenta. */
-function accountSettingsRoute(path: string, method: string): Phase2Route | null {
-  const none = z.undefined();
-  if (path === "/auth/me/preferences") return method === "GET" ? { response: NotificationPreferencesOutSchema, query: {} }
-    : method === "PUT" ? { response: NotificationPreferencesOutSchema, body: NotificationPreferencesInSchema.strict(), query: {} } : null;
-  if (path === "/auth/me/export") return method === "GET" ? { response: ExportSchema, query: {} } : null;
-  if (path === "/auth/sessions") return method === "GET" ? { response: SessionOutSchema.array(), query: {} } : null;
-  if (path === "/auth/sessions/revoke-others") return method === "POST" ? { response: none, body: z.object({}).strict(), query: {} } : null;
-  if (new RegExp(`^/auth/sessions/${UUID}$`).test(path)) return method === "DELETE" ? { response: none, body: z.object({}).strict(), query: {} } : null;
-  return null;
-}
-function phase2Route(path: string, method: string): Phase2Route | null {
-  const account = accountSettingsRoute(path, method);
-  if (account || /^\/auth\/(sessions|me\/preferences|me\/export)(\/|$)/.test(path)) return account;
-  const sharing = sharingRoute(path, method);
-  if (sharing || /\/(members|invitations|transfer-ownership)(\/|$)/.test(path)) return sharing;
-  if (new RegExp(`^/homes/${UUID}/dashboard$`).test(path)) return method === "GET"
-    ? { response: DashboardSchema, query: { bill_id: { pattern: v => z.string().uuid().safeParse(v).success } } }
-    : null;
-  // ERD-ANOM-01-COMPLETE: lista con filtros cerrados y cambio de estado (el escaneo lo piden las escrituras y el trabajo diario).
-  if (new RegExp(`^/homes/${UUID}/anomalies$`).test(path)) return method === "GET" ? { response: AnomaliesSchema, query: {
-    status: { pattern: v => ["active", "open", "acknowledged", "dismissed", "resolved", "all"].includes(v) },
-    granularity: { pattern: v => ["day", "month", "billing"].includes(v) },
-    kind: { pattern: v => ["increase", "drop", "peak", "night"].includes(v) },
-    limit: { pattern: v => /^\d{1,3}$/.test(v) && Number(v) >= 1 && Number(v) <= 100 },
-  } } : null;
-  if (new RegExp(`^/homes/${UUID}/anomalies/${UUID}$`).test(path)) return method === "PATCH" ? { response: AnomalySchema, body: AnomalyStatusInSchema.strict(), query: {} } : null;
-  if (/\/anomalies(\/|$)/.test(path)) return null;
-  // ERD-ALERT-02: marcar una factura como pagada/pendiente.
-  if (new RegExp(`^/homes/${UUID}/bills/${UUID}/payment$`).test(path)) return method === "PUT" ? { response: BillSchema, body: BillPaymentInSchema.strict(), query: {} } : null;
-  const job = path.match(new RegExp(`^/homes/${UUID}/bills/ocr-jobs/${UUID}(/retry)?$`));
-  if (job) return job[1] ? (method === "POST" ? { response: OcrJobSchema, body: z.object({}).strict(), query: {} } : null)
-    : method === "GET" ? { response: OcrJobSchema, query: {} } : null;
-  const bill = billDetailRoute(path, method);
-  if (bill || new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path)) return bill;
-  if (new RegExp(`^/homes/${UUID}/contract$`).test(path)) return method === "GET" ? { response: ContractOutSchema, query: {} } : method === "PUT" ? { response: ContractOutSchema, body: ContractInSchema.strict(), query: {} } : null;
-  if (path === "/tariffs") return method === "GET" ? { response: TariffSchema.array(), query: { distributor: { pattern: v => ["EDESUR", "EDENORTE", "EDEESTE"].includes(v) }, on: { pattern: isoDate }, ...PAGE } } : null;
-  const match = path.match(new RegExp(`^/homes/${UUID}/(readings|consumption|goal)(?:/(${UUID}|progress))?$`));
-  if (!match) return null;
-  const [, kind, child] = match;
-  if (kind === "readings") {
-    if (!child) return method === "GET" ? { response: ReadingSchema.array(), query: PAGE } : method === "POST" ? { response: ReadingSchema, body: ReadingWrite, query: {} } : null;
-    return child !== "progress" && method === "DELETE" ? { response: z.undefined(), body: z.object({}).strict(), query: {} } : null;
-  }
-  if (kind === "consumption") return !child && method === "GET" ? { response: ConsumptionSchema, query: { granularity: { pattern: v => ["day", "week", "month"].includes(v), required: true }, from: { pattern: isoDate, required: true }, to: { pattern: isoDate, required: true } } } : null;
-  if (child === "progress") return method === "GET" ? { response: GoalProgressSchema, query: { on: { pattern: isoDate } } } : null;
-  if (child) return null;
-  return method === "GET" ? { response: GoalOrNullSchema, query: {} } : method === "PUT" ? { response: GoalSchema, body: GoalWrite, query: {} } : null;
-}
-function phase2QueryOk(route: Phase2Route, params: URLSearchParams) {
-  for (const key of new Set(params.keys())) {
-    const rule = Object.hasOwn(route.query, key) ? route.query[key] : undefined;
-    const values = params.getAll(key);
-    if (!rule || values.length !== 1 || !rule.pattern(values[0])) return false;
-  }
-  return Object.entries(route.query).every(([key, rule]) => !rule.required || params.has(key));
-}
-function domainRoute(path: string, method: string): z.ZodTypeAny | null {
-  const list = method === "GET";
-  if (path === "/homes" && ["GET", "POST"].includes(method)) return list ? HomeSchema.array() : HomeSchema;
-  if (new RegExp(`^/homes/${UUID}$`).test(path) && ["GET", "PATCH", "DELETE"].includes(method)) return method === "DELETE" ? z.undefined() : HomeSchema;
-  const match = path.match(new RegExp(`^/homes/${UUID}/(bills|equipment|alerts|dashboard)(?:/(${UUID}|estimate))?$`));
-  if (!match) return null;
-  const [, kind, child] = match;
-  if (kind === "dashboard") return !child && list ? DashboardSchema : null;
-  if (kind === "equipment" && child === "estimate") return list ? EquipmentEstimateSchema : null;
-  if (child === "estimate") return null;
-  if (kind === "alerts") return !child && list ? AlertItemSchema.array() : child && method === "PATCH" ? AlertItemSchema : null;
-  const schema = kind === "bills" ? BillSchema : EquipmentSchema;
-  if (!child) return list ? schema.array() : method === "POST" ? schema : null;
-  return ["GET", "PUT", "DELETE"].includes(method) ? method === "DELETE" ? z.undefined() : schema : null;
-}
-const HomeInput = z.object({ name: z.string().min(1).max(120), distributor: HomeSchema.shape.distributor, code: z.string().min(1).max(32).regex(/^[A-Za-z0-9_-]+$/).nullable().optional(), address: z.string().max(255).nullable().optional(), city: z.string().max(120).nullable().optional(), province: z.string().min(1).max(120).nullable().optional(), municipality: z.string().min(1).max(120).nullable().optional(), sector: z.string().min(1).max(120).nullable().optional(), user_type: z.string().min(1).max(120).nullable().optional(), occupants: z.number().int().min(1).max(999).nullable().optional(), has_ac: z.boolean().nullable().optional(), has_water_heater: z.boolean().nullable().optional(), has_pool: z.boolean().nullable().optional(), has_solar: z.boolean().nullable().optional(), has_inverter: z.boolean().nullable().optional() }).strict();
-function writeSchema(path: string, method: string) {
-  if (method === "DELETE") return z.object({}).strict();
-  if (path === "/homes") return HomeInput;
-  if (new RegExp(`^/homes/${UUID}$`).test(path)) return HomeInput.omit({ code: true }).partial().strict();
-  if (path.includes("/bills")) return method === "POST" ? BillCreateSchema.strict() : BillUpdateSchema.strict();
-  if (path.includes("/equipment")) return EquipmentInSchema.strict();
-  return AlertStatusUpdateSchema.strict();
-}
 // Upstream error text (detail/msg) is never forwarded: only local Spanish messages chosen by
 // status, path and an allowlisted field table. Unknown fields are dropped, not echoed.
 const FIELD_MESSAGES: Record<string, string> = {
@@ -276,13 +141,14 @@ const FIELD_MESSAGES: Record<string, string> = {
   token: "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.",
   new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
 };
-const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
+const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|verification_token_invalid|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
   // ERD-AUTH-05: token de recuperación inválido, caducado o ya usado (sin distinguir cuál).
+  if (status === 400 && code === "verification_token_invalid") return "El enlace de verificación no es válido o caducó. Pide uno nuevo desde la aplicación.";
   if (status === 400 && code === "reset_token_invalid") return "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.";
-  if (status === 429 && (path === FORGOT || path === RESET)) return "Demasiadas solicitudes de recuperación. Espera unos minutos e inténtalo de nuevo.";
+  if (status === 429 && (path === FORGOT || path === RESET || path === VERIFY_EMAIL)) return "Demasiadas solicitudes de recuperación. Espera unos minutos e inténtalo de nuevo.";
   if (status === 403 && code === "reauthentication_failed") return "La contraseña no es correcta.";
   // ERD-SHARE-01: la propiedad ya se puede transferir; el mismo código lo usan borrar cuenta y salir de la vivienda.
   if (status === 409 && code === "ownership_transfer_required") return path === "/auth/me" ? "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad o expulsa a los demás miembros antes de continuar." : "Eres el propietario: transfiere la propiedad a otro miembro antes de salir, o borra la vivienda si eres el único miembro.";
@@ -296,9 +162,11 @@ function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-OCR-PROD
   if (status === 409 && code === "document_quota_exceeded") return "Ya hay varias facturas en proceso o sin confirmar en esta vivienda. Espera a que terminen o confirma o elimina alguna.";
   if (status === 503 && code === "storage_unavailable") return "La lectura de facturas no está disponible en este momento. Puedes registrar la factura manualmente.";
-  if (status === 422 && /\/bills\/ocr(-jobs)?$/.test(path)) return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC) o un PDF.";
+  if (status === 422 && /\/bills\/ocr-jobs$/.test(path)) return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC) o un PDF.";
   // Fase 2: mensajes propios por ruta (el texto de la API nunca se reenvía).
   if (status === 409 && /\/readings$/.test(path)) return "Ya existe una lectura con esa fecha y hora.";
+  if (status === 409 && /\/outages(\/[0-9a-f-]{36})?$/.test(path)) return "Ya hay una interrupción registrada que se solapa con ese período. Edita esa o ajusta las horas.";
+  if (status === 422 && /\/outages(\/[0-9a-f-]{36})?$/.test(path)) return "Revisa las fechas: el apagón no puede estar en el futuro, debe terminar después de empezar y durar como máximo 30 días.";
   if (status === 422 && code === "invalid_input" && /\/readings$/.test(path)) return "La lectura debe ser mayor o igual que la anterior y menor o igual que la siguiente.";
   if (status === 422 && code === "invalid_input" && /\/consumption$/.test(path)) return "Rango de fechas inválido: máximo 366 días.";
   if (status === 401) return path === "/auth/login" ? "Credenciales inválidas." : "La sesión venció. Inicia sesión de nuevo.";
@@ -336,10 +204,8 @@ function safeError(body: unknown, status: number, path: string) {
     ...(typeof value.request_id === "string" && SAFE_REQUEST_ID.test(value.request_id) ? { request_id: value.request_id } : {}),
   };
 }
-// ERD-BILL-LIVE-QA: única ruta multipart. La foto va tal cual a la API (que valida tipo y tamaño de imagen);
-// aquí solo se acota el total (10 MiB de imagen + sobre multipart) para no leer cuerpos arbitrarios en memoria.
-const OCR_MAX_BYTES = 10 * 1024 * 1024 + 4096;
-// ERD-OCR-PROD: la lectura asíncrona también acepta PDF (hasta 20 MiB); la API valida el tipo real por los bytes.
+// ERD-OCR-PROD: única ruta multipart (`bills/ocr-jobs`; la antigua `bills/ocr` síncrona se retiró, auditoría C-02). Acepta foto o PDF
+// (hasta 20 MiB + sobre multipart); la API valida el tipo real por los bytes. Aquí solo se acota el total para no leer cuerpos arbitrarios.
 const OCR_JOB_MAX_BYTES = 20 * 1024 * 1024 + 4096;
 const OCR_TIMEOUT_MS = 45_000; // Tesseract tarda más que una consulta normal
 const MULTIPART = /^multipart\/form-data;\s*boundary=[^\s;]+$/i;
@@ -351,20 +217,20 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const method = request.method;
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) return reply({ detail: "Método no permitido." }, 405);
   const ocrJobStart = method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr-jobs$`).test(path);
-  const ocr = ocrJobStart || (method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr$`).test(path));
-  const ocrLimit = ocrJobStart ? OCR_JOB_MAX_BYTES : OCR_MAX_BYTES;
+  const ocr = ocrJobStart;
+  const ocrLimit = OCR_JOB_MAX_BYTES;
   if (method !== "GET") {
     if (request.headers.get("origin") !== config.origin || (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) return reply({ detail: "Origen no permitido." }, 403);
     if (ocr) {
-      if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: ocrJobStart ? "Se requiere una foto o un PDF." : "Se requiere una imagen." }, 415);
+      if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: "Se requiere una foto o un PDF." }, 415);
     } else if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
   }
   const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
   const legal = path === "/legal" && method === "GET";
-  const recovery = method === "POST" && (path === FORGOT || path === RESET);
+  const recovery = method === "POST" && (path === FORGOT || path === RESET || path === VERIFY_EMAIL);
   const passwordChange = method === "POST" && path === PASSWORD_CHANGE;
   const phase2 = auth || legal || recovery || passwordChange ? null : phase2Route(path, method);
-  const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocrJobStart ? OcrJobSchema : ocr ? OcrDraftSchema : phase2 ? phase2.response : domainRoute(path, method);
+  const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocrJobStart ? OcrJobSchema : phase2 ? phase2.response : domainRoute(path, method);
   if (!auth && !legal && !recovery && !schema) return reply({ detail: "Ruta no permitida." }, 404);
   if (new RegExp(`^/homes/${UUID}$`).test(path) && url.search) return reply({ detail: "Consulta no permitida." }, 400);
   if (phase2 && !phase2QueryOk(phase2, url.searchParams)) return reply({ detail: "Consulta no permitida." }, 400);
@@ -397,7 +263,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
         if (!EPOCH.test(cookie(request, epochName(config)) || "")) return setEpoch(reply({ detail: "Activa las cookies de este sitio e inténtalo de nuevo.", code: "auth_epoch_required" }, 428), config);
         body = JSON.stringify(credentials.data);
       } else if (recovery) {
-        const parsed = (path === RESET ? ResetSchema : ForgotSchema).safeParse(value);
+        const parsed = (path === RESET ? ResetSchema : path === VERIFY_EMAIL ? VerifyEmailSchema : ForgotSchema).safeParse(value);
         if (!parsed.success) return invalid(parsed.error.issues);
         body = JSON.stringify(parsed.data);
       } else if (passwordChange) {
@@ -457,7 +323,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       if (upstream.status !== 202) throw new Error("Unexpected status");
       return reply(PasswordForgotAcceptedSchema.strict().parse(data), 202);
     }
-    if (path === RESET) {
+    if (path === RESET || path === VERIFY_EMAIL) {
       if (upstream.status !== 204) throw new Error("Unexpected status");
       // Public reset revokes only the token owner's sessions in the API. A late response
       // must never erase cookies belonging to a newer login (possibly another account).
@@ -491,6 +357,17 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       const [, , home, , child] = path.split("/");
       const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id: string }[];
       if (rows.some(row => row.home_id !== home) || (child && rows[0]?.id !== child)) throw new Error("Mismatched anomaly");
+    }
+    if (parsed !== undefined && /\/outages(\/summary|\/[0-9a-f-]{36})?$/.test(path)) {
+      const [, , home, , child] = path.split("/");
+      const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id?: string }[];
+      if (rows.some(row => row.home_id !== home) || (child && child !== "summary" && rows[0]?.id !== child)) throw new Error("Mismatched outage");
+    }
+    if (parsed !== undefined && /\/energy-score$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched energy score");
+    if (parsed !== undefined && /\/recommendations(\/refresh|\/[0-9a-f-]{36})?$/.test(path)) {
+      const [, , home, , child] = path.split("/");
+      const row = parsed as { home_id: string; id?: string };
+      if (row.home_id !== home || (child && child !== "refresh" && row.id !== child)) throw new Error("Mismatched recommendation");
     }
     if (parsed !== undefined && /\/bills\/ocr-jobs\/[0-9a-f-]{36}(\/retry)?$/.test(path) && (parsed as { document_id: string }).document_id !== path.split("/")[5]) throw new Error("Mismatched OCR job");
     if (parsed !== undefined && phase2 && /\/contract$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched home");

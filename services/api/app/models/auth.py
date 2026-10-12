@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,6 +11,9 @@ from app.database import Base
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (CheckConstraint("role IN ('user', 'admin', 'support')", name="ck_users_role"),
+                      # Auditoría C-16 (migración 0026): el correo se guarda en minúsculas y es único sin distinguir mayúsculas.
+                      CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
+                      Index("uq_users_email_lower", text("lower(email)"), unique=True),
                       CheckConstraint("(terms_version IS NULL) = (terms_accepted_at IS NULL)",
                                       name="ck_users_terms_consent"))
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -22,6 +25,21 @@ class User(Base):
     # NULL = usuario legado anterior al consentimiento (migración 0012).
     terms_version: Mapped[str | None] = mapped_column(String(32))
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Auditoría C-10 (migración 0029): NULL hasta que la persona abre el enlace enviado a su correo.
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EmailVerificationToken(Base):
+    """Auditoría C-10: un solo uso; solo se guarda el SHA-256 del token, ligado al correo que verifica."""
+    __tablename__ = "email_verification_tokens"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+                                               index=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class HomeMember(Base):
@@ -82,7 +100,7 @@ class HomeInvitation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    accepted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    accepted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

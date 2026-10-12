@@ -1,5 +1,5 @@
 import { ApiError } from "@energyrd/api-client";
-import { NotificationPreferencesOutSchema, SessionOutSchema } from "@energyrd/api-contracts";
+import { EmailVerificationRequestOutSchema, NotificationPreferencesOutSchema, SessionOutSchema } from "@energyrd/api-contracts";
 import { z } from "zod";
 import { bffFetch } from "./client";
 import { UUID, request } from "./request";
@@ -11,6 +11,9 @@ const none = z.undefined();
 /** Cambia la contraseña. El BFF renueva las cookies de esta sesión; las demás se cierran en la API. */
 export const changePassword = (currentPassword: string, newPassword: string) =>
   request("/api/v1/auth/password/change", "POST", { current_password: currentPassword, new_password: newPassword }, OkSchema);
+
+/** Auditoría C-10: (re)envía el enlace de verificación al correo de la cuenta. */
+export const requestEmailVerification = () => request("/api/v1/auth/email/verification", "POST", {}, EmailVerificationRequestOutSchema);
 
 export const getPreferences = () => request("/api/v1/auth/me/preferences", "GET", undefined, NotificationPreferencesOutSchema);
 export const savePreferences = (alertsEmail: boolean, alertsPush: boolean) =>

@@ -4,7 +4,7 @@ import { ApiError, createApiClient } from "@energyrd/api-client";
 // ERD-AUTH-05: recuperación de contraseña. Usa los métodos compartidos forgotPassword/resetPassword
 // del api-client sobre un fetch que SOLO alcanza estas dos rutas del BFF: sin cookies de sesión
 // explícitas, sin Authorization, sin seguir redirecciones y sin enviar Referer.
-const ROUTES = new Set(["/api/v1/auth/password/forgot", "/api/v1/auth/password/reset"]);
+const ROUTES = new Set(["/api/v1/auth/password/forgot", "/api/v1/auth/password/reset", "/api/v1/auth/email/verify"]);
 const recoveryFetch: typeof fetch = async (input, init) => {
   if (typeof input !== "string" || !ROUTES.has(input)) throw new Error("Only password recovery paths are allowed");
   const headers = new Headers(init?.headers);
@@ -33,11 +33,16 @@ export async function resetPassword(token: string, newPassword: string): Promise
   await client.resetPassword(token, newPassword);
 }
 
+/** Auditoría C-10: canjea el enlace de verificación de correo (mismo transporte aislado que la recuperación). */
+export async function verifyEmail(token: string): Promise<void> {
+  await client.verifyEmail(token);
+}
+
 export type RecoveryErrorKind = "invalid_link" | "password" | "email" | "rate_limited" | "network" | "generic";
 /** Mensaje local elegido solo por estado/código/NOMBRE de campo: el texto de la API nunca se muestra. */
 export function recoveryError(error: unknown): { kind: RecoveryErrorKind; message: string } {
   if (error instanceof ApiError) {
-    if (error.status === 400 && error.code === "reset_token_invalid") return { kind: "invalid_link", message: "Enlace inválido o caducado. Solicita uno nuevo." };
+    if (error.status === 400 && (error.code === "reset_token_invalid" || error.code === "verification_token_invalid")) return { kind: "invalid_link", message: "Enlace inválido o caducado. Solicita uno nuevo." };
     if (error.status === 422 && "token" in error.fieldErrors) return { kind: "invalid_link", message: "Enlace inválido o caducado. Solicita uno nuevo." };
     if (error.status === 422 && "new_password" in error.fieldErrors) return { kind: "password", message: "La contraseña debe tener entre 12 y 128 caracteres." };
     if (error.status === 422 && "email" in error.fieldErrors) return { kind: "email", message: "Introduce un correo electrónico válido." };

@@ -3,9 +3,9 @@ import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
-  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, OcrDraftSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, EmailVerificationRequestOutSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema, EnergyScoreSchema, OutageSchema, OutageSummarySchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
-  type Distributor, type BillItemsReplace, type RegisterIn, type Anomaly,
+  type Distributor, type OutageInput, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
 
 export class ApiError extends Error {
@@ -25,6 +25,7 @@ export class ContractError extends ApiError {
 export const retryPolicy = (count: number, error: unknown) =>
   !(error instanceof ContractError || (error instanceof ApiError && error.status >= 400 && error.status < 500)) && count < 1;
 
+export type RecommendationListStatus = "active" | "applied" | "dismissed" | "resolved" | "all";
 export type AnomalyListStatus = "active" | "open" | "acknowledged" | "dismissed" | "resolved" | "all";
 export type BillImage = { uri: string; name?: string; type?: string };
 
@@ -175,16 +176,6 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     listBills: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/bills`, BillSchema, signal),
     getBill: (id: string, bill: string, signal?: AbortSignal) => request(`${homePath(id)}/bills/${idPath(bill)}`, BillSchema, { signal }),
     createBill: (id: string, input: BillInput) => request(`${homePath(id)}/bills`, BillSchema, write("POST", { ...input, source: "manual" })),
-    ocrBill: (id: string, image: BillImage | File) => {
-      const body = new FormData();
-      if (typeof File !== "undefined" && image instanceof File) {
-        body.append("file", image);
-      } else {
-        // React Native FormData accepts the `{uri,name,type}` upload object.
-        body.append("file", image as unknown as Blob);
-      }
-      return request(`${homePath(id)}/bills/ocr`, OcrDraftSchema, { method: "POST", body });
-    },
     // ERD-OCR-PROD: lectura asíncrona. startOcrJob responde 202 con el estado `pending`; se consulta con getOcrJob.
     // Acepta fotos y PDF; el servidor decide el tipo por los bytes. Nunca crea una factura: deja un borrador.
     startOcrJob: (id: string, file: BillImage | File, source: "web" | "mobile") => {
@@ -237,6 +228,27 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
         if (updated.id !== anomaly) throw new ContractError();
         return updated;
       }),
+    // ERD-INT-01: interrupciones del servicio eléctrico (registro manual, historial y resumen mensual).
+    listOutages: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/outages`, OutageSchema, signal),
+    getOutageSummary: (id: string, months = 12, signal?: AbortSignal) => request(`${homePath(id)}/outages/summary?months=${months}`, OutageSummarySchema, { signal }),
+    createOutage: (id: string, input: OutageInput) => request(`${homePath(id)}/outages`, OutageSchema, write("POST", input)),
+    updateOutage: (id: string, outage: string, input: OutageInput) => request(`${homePath(id)}/outages/${idPath(outage)}`, OutageSchema, write("PUT", input)),
+    deleteOutage: (id: string, outage: string) => request(`${homePath(id)}/outages/${idPath(outage)}`, z.undefined(), write("DELETE")),
+    // ERD-SCORE-01: Energy Score de la vivienda (solo lectura; la fórmula vive en el backend).
+    getEnergyScore: (id: string, signal?: AbortSignal) => request(`${homePath(id)}/energy-score`, EnergyScoreSchema, { signal }),
+    // ERD-SAVE-01: recomendaciones de ahorro. `refreshRecommendations` recalcula (idempotente) y devuelve las vigentes.
+    listRecommendations: (id: string, opts: { status?: RecommendationListStatus; limit?: number } = {}, signal?: AbortSignal) => {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(opts)) if (value !== undefined) query.set(key, String(value));
+      const qs = query.toString();
+      return request(`${homePath(id)}/recommendations${qs ? `?${qs}` : ""}`, RecommendationListSchema, { signal });
+    },
+    refreshRecommendations: (id: string) => request(`${homePath(id)}/recommendations/refresh`, RecommendationListSchema, write("POST", {})),
+    updateRecommendation: (id: string, recommendation: string, status: "active" | "applied" | "dismissed") =>
+      request(`${homePath(id)}/recommendations/${idPath(recommendation)}`, RecommendationSchema, write("PATCH", { status })).then(updated => {
+        if (updated.id !== recommendation) throw new ContractError();
+        return updated;
+      }),
     listEquipment: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/equipment`, EquipmentSchema, signal),
     getEquipment: (id: string, item: string, signal?: AbortSignal) => request(`${homePath(id)}/equipment/${idPath(item)}`, EquipmentSchema, { signal }),
     createEquipment: (id: string, input: EquipmentInput) => request(`${homePath(id)}/equipment`, EquipmentSchema, write("POST", input)),
@@ -279,6 +291,13 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       if (!parsed.success) throw localValidation(parsed.error, RESET_MESSAGES);
       return request("/auth/password/reset", z.undefined(), write("POST", parsed.data), 204);
     },
+    // Auditoría C-10: verificación de correo. El canje (público, token solo en el cuerpo) devuelve 204; el (re)envío exige sesión y devuelve 202.
+    verifyEmail: async (token: string) => {
+      const parsed = EmailVerifyInSchema.strict().safeParse({ token });
+      if (!parsed.success) throw localValidation(parsed.error, RESET_MESSAGES);
+      return request("/auth/email/verify", z.undefined(), write("POST", parsed.data), 204);
+    },
+    requestEmailVerification: () => request("/auth/email/verification", EmailVerificationRequestOutSchema, write("POST", {}), 202),
     listTariffs: async (opts?: { distributor?: Distributor; on?: string }, signal?: AbortSignal) =>
       list(`/tariffs${query({ distributor: opts?.distributor, on: opts?.on === undefined ? undefined : isoDate.parse(opts.on) })}`,
         TariffSchema, signal),

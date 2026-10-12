@@ -13,8 +13,18 @@ appId: ${APP_ID || 'host.exp.Exponent'}
 # Expo Go muestra su menú de desarrollo la primera vez tras borrar datos y tapa la app:
 # esperar a la app o al menú, y cerrar el menú si aparece.
 - extendedWaitUntil:
-    visible: "(Bienvenido a Energy RD|This is the developer menu.*)"
+    visible: "(Bienvenido a Energy RD|This is the developer menu.*|Development servers)"
     timeout: 120000
+# openLink puede resolver de forma intermitente en la propia pantalla Home de Expo Go
+# en vez de abrir el proyecto: si ocurre, reintentar el deep link.
+- runFlow:
+    when:
+      visible: "Development servers"
+    commands:
+      - openLink: ${EXPO_URL || 'exp://127.0.0.1:8081'}
+      - extendedWaitUntil:
+          visible: "(Bienvenido a Energy RD|This is the developer menu.*)"
+          timeout: 60000
 - runFlow:
     when:
       visible: "This is the developer menu.*"
@@ -112,7 +122,8 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     when:
       platform: Android
     commands:
-      - tapOn: "Días"
+      - back
+      - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: "save-bill"
@@ -140,7 +151,8 @@ appId: ${APP_ID || 'host.exp.Exponent'}
     when:
       platform: Android
     commands:
-      - tapOn: "Días"
+      - back
+      - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: "save-bill"

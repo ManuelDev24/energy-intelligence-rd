@@ -103,7 +103,8 @@ def claim(db: Session, worker_id: str, *, lease_of: Callable[[str], int], kinds=
 
 
 def _fenced(job: Job, worker_id: str):
-    return (Job.id == job.id, Job.status == "running", Job.locked_by == worker_id, Job.attempts == job.attempts)
+    return (Job.id == job.id, Job.status == "running", Job.locked_by == worker_id,
+            Job.attempts == job.attempts, Job.generation == job.generation)
 
 
 def complete(db: Session, job: Job, worker_id: str, *, now=None) -> bool:
@@ -156,6 +157,7 @@ def purge(db: Session, *, now=None) -> dict:
     with write_transaction(db):
         succeeded = db.execute(delete(Job).where(Job.status == "succeeded", Job.finished_at <= current - timedelta(
             days=settings.JOB_SUCCEEDED_RETENTION_DAYS))).rowcount
-        dead = db.execute(delete(Job).where(Job.status == "dead", Job.finished_at <= current - timedelta(
+        dead = db.execute(delete(Job).where(Job.status.in_(("dead", "cancelled")),
+                                               Job.finished_at <= current - timedelta(
             days=settings.JOB_DEAD_RETENTION_DAYS))).rowcount
     return {"succeeded": succeeded, "dead": dead}

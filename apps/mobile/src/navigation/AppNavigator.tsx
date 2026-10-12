@@ -27,6 +27,9 @@ import { EquipmentScreen } from '../features/equipment/EquipmentScreen';
 import { GoalFormScreen } from '../features/goals/GoalFormScreen';
 import { HomesScreen } from '../features/homes/HomesScreen';
 import { OnboardingScreen } from '../features/homes/OnboardingScreen';
+import { OutageFormScreen } from '../features/outages/OutageFormScreen';
+import { OutagesScreen } from '../features/outages/OutagesScreen';
+import { SavingsScreen } from '../features/savings/SavingsScreen';
 import { ReadingFormScreen } from '../features/readings/ReadingFormScreen';
 import { ReadingsScreen } from '../features/readings/ReadingsScreen';
 import { useSession } from '../store/session';
@@ -53,6 +56,9 @@ export type RootStackParams = {
   ServiceProfile: undefined;
   AccountSettings: undefined;
   ShareHome: undefined;
+  Savings: undefined;
+  Outages: undefined;
+  OutageForm: { outageId?: string } | undefined;
 };
 // 5 pestañas: cambiar de vivienda es poco frecuente y vive en el encabezado (hoja "Homes").
 export type TabParams = { Dashboard: undefined; Consumption: { from?: string; to?: string; granularity?: string } | undefined; Bills: undefined; Equipment: undefined; Alerts: undefined };
@@ -122,6 +128,7 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
           <DashboardScreen
             onAddBill={() => navigation.navigate('BillForm')}
             onOpenAlerts={() => tabs.navigate('Alerts')}
+            onOpenSavings={() => navigation.navigate('Savings')}
             onAddReading={() => navigation.navigate('ReadingForm')}
             onEditGoal={() => navigation.navigate('GoalForm')}
             onInvestigate={(range) => tabs.navigate('Consumption', range)}
@@ -249,11 +256,26 @@ function DomainNavigator() {
         <Stack.Screen name="ReadingForm" options={{ title: 'Nueva lectura' }}>
           {({ navigation }) => <ReadingFormScreen onDone={() => navigation.goBack()} />}
         </Stack.Screen>
+        <Stack.Screen name="Savings" options={{ title: 'Ahorro' }}>
+          {({ navigation }) => (
+            <SavingsScreen
+              onEquipment={() => navigation.navigate('Tabs', { screen: 'Equipment' } as never)}
+              onGoal={() => navigation.navigate('GoalForm')}
+              onAlerts={() => navigation.navigate('Tabs', { screen: 'Alerts' } as never)}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="Outages" options={{ title: 'Apagones' }}>
+          {({ navigation }) => <OutagesScreen onAdd={() => navigation.navigate('OutageForm')} onEdit={(outageId) => navigation.navigate('OutageForm', { outageId })} />}
+        </Stack.Screen>
+        <Stack.Screen name="OutageForm" options={({ route }) => ({ title: route.params?.outageId ? 'Editar apagón' : 'Nuevo apagón' })}>
+          {({ navigation, route }) => <OutageFormScreen outageId={route.params?.outageId} onDone={() => navigation.goBack()} />}
+        </Stack.Screen>
         <Stack.Screen name="GoalForm" options={{ title: 'Meta mensual' }}>
           {({ navigation }) => <GoalFormScreen onDone={() => navigation.goBack()} />}
         </Stack.Screen>
         <Stack.Screen name="Profile" options={{ title: 'Perfil' }}>
-          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} onAccountSettings={() => navigation.navigate('AccountSettings')} onShare={() => navigation.navigate('ShareHome')} />}
+          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} onAccountSettings={() => navigation.navigate('AccountSettings')} onShare={() => navigation.navigate('ShareHome')} onOutages={() => navigation.navigate('Outages')} />}
         </Stack.Screen>
         <Stack.Screen name="HomeProfile" component={HomeProfileScreen} options={{ title: 'Mi vivienda' }} />
         <Stack.Screen name="ServiceProfile" component={ServiceProfileScreen} options={{ title: 'Mi servicio' }} />

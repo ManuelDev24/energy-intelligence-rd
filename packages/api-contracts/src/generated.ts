@@ -240,7 +240,8 @@ export const UserOutSchema = z.object({
   "role": z.enum(["user", "admin", "support"]),
   "created_at": z.string().datetime({ offset: true }),
   "terms_version": z.union([z.string(), z.null()]).default(null),
-  "terms_accepted_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
+  "terms_accepted_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null),
+  "email_verified_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
 });
 export type UserOut = z.infer<typeof UserOutSchema>;
 
@@ -578,6 +579,16 @@ export const SessionOutSchema = z.object({
 });
 export type SessionOut = z.infer<typeof SessionOutSchema>;
 
+export const EmailVerifyInSchema = z.object({
+  "token": z.string().regex(new RegExp("^[A-Za-z0-9_-]{43}$")).min(43).max(43)
+});
+export type EmailVerifyIn = z.infer<typeof EmailVerifyInSchema>;
+
+export const EmailVerificationRequestOutSchema = z.object({
+  "status": z.enum(["accepted", "already_verified"])
+});
+export type EmailVerificationRequestOut = z.infer<typeof EmailVerificationRequestOutSchema>;
+
 export const OcrFieldSchema = z.object({
   "value": z.union([z.string(), z.null()]),
   "confidence": z.enum(["high", "inferred", "none"])
@@ -640,6 +651,129 @@ export const AnomalyStatusInSchema = z.object({
 });
 export type AnomalyStatusIn = z.infer<typeof AnomalyStatusInSchema>;
 
+export const RecommendationRecordSchema = z.object({
+  "id": z.string().uuid(),
+  "home_id": z.string().uuid(),
+  "equipment_id": z.union([z.string().uuid(), z.null()]),
+  "anomaly_id": z.union([z.string().uuid(), z.null()]),
+  "rule_id": z.string(),
+  "rule_version": z.number().finite().int(),
+  "ruleset_version": z.number().finite().int(),
+  "category": z.enum(["equipment", "goal", "anomaly", "data"]),
+  "title": z.string(),
+  "summary": z.string(),
+  "action": z.string(),
+  "confidence": z.enum(["low", "medium", "high"]),
+  "status": z.enum(["active", "applied", "dismissed", "resolved"]),
+  "savings_kwh_month": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "savings_dop_month": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "assumptions": z.array(z.string()),
+  "evidence": z.record(z.string(), z.string()),
+  "created_at": z.string().datetime({ offset: true }),
+  "last_seen_at": z.string().datetime({ offset: true }),
+  "status_changed_at": z.string().datetime({ offset: true })
+});
+export type RecommendationRecord = z.infer<typeof RecommendationRecordSchema>;
+
+export const RecommendationStatusInSchema = z.object({
+  "status": z.enum(["active", "applied", "dismissed"])
+});
+export type RecommendationStatusIn = z.infer<typeof RecommendationStatusInSchema>;
+
+export const RecommendationListOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "ruleset_version": z.number().finite().int(),
+  "items": z.array(RecommendationRecordSchema),
+  "total_savings_kwh_month": z.union([MetricSchema, z.null()]),
+  "total_savings_dop_month": z.union([MetricSchema, z.null()]),
+  "note": z.string()
+});
+export type RecommendationListOut = z.infer<typeof RecommendationListOutSchema>;
+
+export const ScoreComponentOutSchema = z.object({
+  "key": z.enum(["consumption", "efficiency", "habits", "consistency"]),
+  "label": z.string(),
+  "weight": z.number().finite().int(),
+  "score": z.union([z.number().finite().int(), z.null()]),
+  "available": z.boolean(),
+  "summary": z.string(),
+  "detail": z.string(),
+  "inputs": z.record(z.string(), z.string()),
+  "reasons": z.array(z.string()),
+  "next_step": z.string()
+});
+export type ScoreComponentOut = z.infer<typeof ScoreComponentOutSchema>;
+
+export const EnergyScoreOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "score_version": z.number().finite().int(),
+  "as_of": z.string().date(),
+  "status": z.enum(["ok", "insufficient_data"]),
+  "score": z.union([z.number().finite().int(), z.null()]),
+  "band": z.union([z.enum(["good", "fair", "poor"]), z.null()]),
+  "band_label": z.union([z.string(), z.null()]),
+  "quality": z.literal("INFERRED"),
+  "coverage_pct": z.number().finite().int(),
+  "components": z.array(ScoreComponentOutSchema),
+  "reasons": z.array(z.string()),
+  "method": z.string(),
+  "note": z.string()
+});
+export type EnergyScoreOut = z.infer<typeof EnergyScoreOutSchema>;
+
+export const OutageInSchema = z.object({
+  "started_at": z.string().datetime({ offset: true }),
+  "ended_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null),
+  "cause": z.enum(["unknown", "utility_fault", "scheduled", "weather", "home_fault"]).default("unknown"),
+  "note": z.union([z.string().max(255), z.null()]).default(null)
+});
+export type OutageIn = z.infer<typeof OutageInSchema>;
+
+export const OutageOutSchema = z.object({
+  "id": z.string().uuid(),
+  "home_id": z.string().uuid(),
+  "started_at": z.string().datetime({ offset: true }),
+  "ended_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "cause": z.enum(["unknown", "utility_fault", "scheduled", "weather", "home_fault"]),
+  "note": z.union([z.string(), z.null()]),
+  "source": z.literal("manual"),
+  "created_at": z.string().datetime({ offset: true }),
+  "updated_at": z.string().datetime({ offset: true }),
+  "ongoing": z.boolean(),
+  "duration_minutes": z.union([z.number().finite().int(), z.null()])
+});
+export type OutageOut = z.infer<typeof OutageOutSchema>;
+
+export const OutageMonthSchema = z.object({
+  "month": z.string(),
+  "count": z.number().finite().int(),
+  "total_minutes": z.number().finite().int(),
+  "longest_minutes": z.number().finite().int(),
+  "average_minutes": z.union([z.number().finite().int(), z.null()]),
+  "ongoing": z.number().finite().int()
+});
+export type OutageMonth = z.infer<typeof OutageMonthSchema>;
+
+export const OutageTotalsSchema = z.object({
+  "count": z.number().finite().int(),
+  "total_minutes": z.number().finite().int(),
+  "longest_minutes": z.number().finite().int(),
+  "average_minutes": z.union([z.number().finite().int(), z.null()]),
+  "ongoing": z.number().finite().int()
+});
+export type OutageTotals = z.infer<typeof OutageTotalsSchema>;
+
+export const OutageSummaryOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "timezone": z.string(),
+  "from_month": z.string(),
+  "to_month": z.string(),
+  "months": z.array(OutageMonthSchema),
+  "totals": OutageTotalsSchema,
+  "note": z.string()
+});
+export type OutageSummaryOut = z.infer<typeof OutageSummaryOutSchema>;
+
 export const BillPaymentInSchema = z.object({
   "paid": z.boolean()
 });
@@ -655,3 +789,108 @@ export const DeviceRemoveInSchema = z.object({
   "token": z.string().min(20).max(200)
 });
 export type DeviceRemoveIn = z.infer<typeof DeviceRemoveInSchema>;
+
+export const AdminOcrJobOutSchema = z.object({
+  "id": z.number().finite().int(),
+  "document_id": z.string().uuid(),
+  "status": z.string(),
+  "attempts": z.number().finite().int(),
+  "max_attempts": z.number().finite().int(),
+  "run_at": z.string().datetime({ offset: true }),
+  "created_at": z.string().datetime({ offset: true }),
+  "finished_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "error_code": z.union([z.string(), z.null()])
+});
+export type AdminOcrJobOut = z.infer<typeof AdminOcrJobOutSchema>;
+
+export const AdminOcrJobsPageSchema = z.object({
+  "items": z.array(AdminOcrJobOutSchema),
+  "total": z.number().finite().int(),
+  "limit": z.number().finite().int(),
+  "offset": z.number().finite().int()
+});
+export type AdminOcrJobsPage = z.infer<typeof AdminOcrJobsPageSchema>;
+
+export const OcrOperationReasonSchema = z.object({
+  "reason": z.string().min(1).max(500)
+});
+export type OcrOperationReason = z.infer<typeof OcrOperationReasonSchema>;
+
+export const AuditEventOutSchema = z.object({
+  "id": z.string().uuid(),
+  "actor_user_id": z.union([z.string().uuid(), z.null()]),
+  "action": z.string(),
+  "resource": z.string(),
+  "scope_used": z.union([z.string(), z.null()]),
+  "reason": z.union([z.string(), z.null()]),
+  "result": z.string(),
+  "request_id": z.union([z.string(), z.null()]),
+  "created_at": z.string().datetime({ offset: true })
+});
+export type AuditEventOut = z.infer<typeof AuditEventOutSchema>;
+
+export const AuditEventsPageSchema = z.object({
+  "items": z.array(AuditEventOutSchema),
+  "total": z.number().finite().int(),
+  "limit": z.number().finite().int(),
+  "offset": z.number().finite().int()
+});
+export type AuditEventsPage = z.infer<typeof AuditEventsPageSchema>;
+
+export const MyAccessOutSchema = z.object({
+  "user_id": z.string().uuid(),
+  "email": z.string(),
+  "roles": z.array(z.string()),
+  "scopes": z.array(z.string())
+});
+export type MyAccessOut = z.infer<typeof MyAccessOutSchema>;
+
+export const RoleAssignmentCreateSchema = z.object({
+  "user_id": z.string().uuid(),
+  "role_name": z.string().min(1).max(32),
+  "reason": z.string().min(1).max(500),
+  "expires_at": z.union([z.string().datetime({ offset: true }), z.null()]).default(null)
+});
+export type RoleAssignmentCreate = z.infer<typeof RoleAssignmentCreateSchema>;
+
+export const RoleAssignmentOutSchema = z.object({
+  "id": z.string().uuid(),
+  "user_id": z.string().uuid(),
+  "role_name": z.string(),
+  "assigned_by_user_id": z.union([z.string().uuid(), z.null()]),
+  "reason": z.string(),
+  "granted_at": z.string().datetime({ offset: true }),
+  "expires_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "revoked_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "revoked_by_user_id": z.union([z.string().uuid(), z.null()]),
+  "revoke_reason": z.union([z.string(), z.null()]),
+  "status": z.string()
+});
+export type RoleAssignmentOut = z.infer<typeof RoleAssignmentOutSchema>;
+
+export const RoleAssignmentRevokeSchema = z.object({
+  "reason": z.string().min(1).max(500)
+});
+export type RoleAssignmentRevoke = z.infer<typeof RoleAssignmentRevokeSchema>;
+
+export const RoleAssignmentsPageSchema = z.object({
+  "items": z.array(RoleAssignmentOutSchema),
+  "total": z.number().finite().int(),
+  "limit": z.number().finite().int(),
+  "offset": z.number().finite().int()
+});
+export type RoleAssignmentsPage = z.infer<typeof RoleAssignmentsPageSchema>;
+
+export const RoleOutSchema = z.object({
+  "id": z.string().uuid(),
+  "name": z.string(),
+  "description": z.string(),
+  "scopes": z.array(z.string())
+});
+export type RoleOut = z.infer<typeof RoleOutSchema>;
+
+export const ScopeOutSchema = z.object({
+  "name": z.string(),
+  "description": z.string()
+});
+export type ScopeOut = z.infer<typeof ScopeOutSchema>;

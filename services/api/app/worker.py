@@ -16,7 +16,7 @@ import socket
 import threading
 
 from app.config import settings
-from app.database import SessionLocal
+from app.database import SessionLocal, require_restricted_role
 from app.services.jobs import claim, execute, tick
 from app.services.jobs.handlers import schedules
 from app.services.jobs.runner import lease_of
@@ -57,6 +57,7 @@ def main(argv=None) -> int:
     parser.add_argument("--once", action="store_true", help="procesa lo vencido y sale")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format='{"level": "%(levelname)s", "logger": "%(name)s", "msg": "%(message)s"}')
+    require_restricted_role()  # auditoría C-01: el worker usa erd_worker, no el rol dueño
     stop = threading.Event()
     for name in (signal.SIGTERM, signal.SIGINT):
         signal.signal(name, lambda *_: stop.set())

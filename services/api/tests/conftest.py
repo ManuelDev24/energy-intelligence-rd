@@ -1,5 +1,10 @@
 import os
 
+# Auditoría C-03: la API arranca con autenticación ENCENDIDA por defecto. La suite usa el modo piloto local (sin cuentas) salvo
+# que cada prueba active la autenticación; se declara explícito aquí, antes de importar la configuración.
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("AUTH_ENABLED", "false")
+
 import pytest
 from alembic import command
 from alembic.config import Config
@@ -55,6 +60,21 @@ def alembic_cfg(engine, monkeypatch):
     return cfg
 
 
+# Auditoría C-01: con TEST_RLS_ROLE=1 la API de las pruebas se conecta como `erd_app` (sin privilegios, sujeto a RLS) en vez de como el
+# superusuario de la base de pruebas, para ejercitar las políticas de la migración 0027 con toda la suite. Las contraseñas son solo de
+# pruebas y los roles se crean con NOLOGIN en la migración: aquí se les da LOGIN en el servidor de pruebas.
+RLS_MODE = os.getenv("TEST_RLS_ROLE") == "1"
+RLS_TEST_PASSWORD = "erd-rls-tests-only"
+
+
+def rls_engine(superuser_engine, role: str = "erd_app"):
+    """Motor que se conecta como `role` a la misma base de pruebas."""
+    with superuser_engine.begin() as c:
+        c.execute(text(f"ALTER ROLE {role} LOGIN PASSWORD '{RLS_TEST_PASSWORD}'"))
+    url = superuser_engine.url.set(username=role, password=RLS_TEST_PASSWORD)
+    return create_engine(url, pool_pre_ping=True)
+
+
 @pytest.fixture()
 def migrated(engine, alembic_cfg):
     with engine.begin() as c:
@@ -83,7 +103,8 @@ def client(migrated, monkeypatch):
     # Health uses a module-level engine, not get_db; isolate it explicitly too.
     monkeypatch.setattr(main_module, "engine", migrated)
 
-    factory = sessionmaker(bind=migrated, autoflush=False, expire_on_commit=False)
+    app_engine = rls_engine(migrated) if RLS_MODE else migrated
+    factory = sessionmaker(bind=app_engine, autoflush=False, expire_on_commit=False)
 
     def _get_db():
         db = factory()
@@ -96,6 +117,8 @@ def client(migrated, monkeypatch):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+    if app_engine is not migrated:
+        app_engine.dispose()
 
 
 @pytest.fixture()
@@ -107,3 +130,14 @@ def seeded_client(client, migrated):
     with Session(migrated) as s:
         seed_pilot(s)
     return client
+
+
+def pytest_collection_modifyitems(config, items):
+    """En modo RLS solo tiene sentido ejercitar las pruebas con autenticación: el modo piloto (sin cuentas) no establece persona ni vivienda
+    de contexto y no es compatible con el rol restringido (la configuración lo prohíbe fuera de development)."""
+    if not RLS_MODE:
+        return
+    skipped = pytest.mark.skip(reason="TEST_RLS_ROLE=1: solo se ejecutan las pruebas con autenticación (fixture auth_client)")
+    for item in items:
+        if "auth_client" not in getattr(item, "fixturenames", ()):
+            item.add_marker(skipped)

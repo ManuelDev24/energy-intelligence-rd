@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import Literal, Self
 from urllib.parse import urlsplit
@@ -8,6 +9,12 @@ from sqlalchemy.engine import make_url
 
 # Solo para desarrollo local; coincide con los defaults de docker-compose.yml.
 DEFAULT_DATABASE_URL = "postgresql+psycopg://energy:change_me_local_only@localhost:5433/energy_rd"
+ENVIRONMENTS = {"development", "staging", "production"}
+LOCAL_DATABASE_HOSTS = {"localhost", "127.0.0.1", "::1"}
+# Variables que fijan las plataformas de despliegue habituales (Render, Heroku, Cloud Run, Fly, Vercel, Railway, ECS/Lambda, Kubernetes).
+# Si alguna existe y ENVIRONMENT no se declaró, el arranque falla: nunca se asume «desarrollo» en una plataforma.
+PLATFORM_ENV_VARS = ("RENDER", "RENDER_SERVICE_ID", "DYNO", "K_SERVICE", "FLY_APP_NAME", "VERCEL", "RAILWAY_ENVIRONMENT",
+                     "AWS_EXECUTION_ENV", "ECS_CONTAINER_METADATA_URI", "KUBERNETES_SERVICE_HOST")
 
 
 class Settings(BaseSettings):
@@ -19,7 +26,9 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     DATABASE_URL: str = DEFAULT_DATABASE_URL
     ENVIRONMENT: str = "development"
-    AUTH_ENABLED: bool = False
+    # Auditoría C-03: la autenticación está ENCENDIDA por defecto (falla cerrado). El modo piloto local sin cuentas exige
+    # `AUTH_ENABLED=false` de forma explícita y solo se admite con ENVIRONMENT=development.
+    AUTH_ENABLED: bool = True
     AUTH_SIGNING_KEY: str = Field(default="", repr=False)
     AUTH_ACCESS_TTL_SECONDS: int = Field(default=900, ge=60, le=900)
     AUTH_REFRESH_TTL_DAYS: int = Field(default=30, ge=1, le=90)
@@ -35,6 +44,7 @@ class Settings(BaseSettings):
     PASSWORD_RESET_ACCOUNT_WINDOW_SECONDS: int = Field(default=3600, ge=60, le=86400)
     # Página web que lee el token del FRAGMENTO (#token=...); nunca query string.
     PASSWORD_RESET_URL: str = "http://localhost:3000/restablecer-contrasena"
+    MAX_HOMES_PER_USER: int = Field(default=20, ge=1, le=1000)  # auditoría C-24 (DB-12): tope de viviendas propias por persona
     # ERD-DB-DOCUMENTS: originales de factura. Sin factura asociada caducan (propuesta, pendiente de aprobación legal).
     DOCUMENT_UNCONFIRMED_RETENTION_DAYS: int = Field(default=7, ge=1, le=90)
     DOCUMENT_MAX_PHOTO_BYTES: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
@@ -60,6 +70,14 @@ class Settings(BaseSettings):
     JOB_BACKOFF_CAP_SECONDS: int = Field(default=3600, ge=1, le=86400)
     JOB_SUCCEEDED_RETENTION_DAYS: int = Field(default=7, ge=1, le=365)
     JOB_DEAD_RETENTION_DAYS: int = Field(default=90, ge=1, le=730)
+    # Auditoría C-15 (DB-05): plazos de retención (propuestos; deben coincidir con el aviso de privacidad aprobado). Los aplica el trabajo
+    # diario `maintenance.retention` (app/services/retention.py).
+    RETENTION_SESSION_DAYS: int = Field(default=30, ge=1, le=365)          # sesiones vencidas o revocadas (y sus refresh tokens)
+    RETENTION_ABUSE_BUCKET_DAYS: int = Field(default=7, ge=1, le=90)       # contadores anti-abuso (HMAC de IP/correo)
+    RETENTION_INVITATION_DAYS: int = Field(default=90, ge=1, le=730)       # invitaciones aceptadas, revocadas o vencidas (correo de un tercero)
+    RETENTION_NOTIFICATION_DAYS: int = Field(default=365, ge=30, le=1825)  # registro de avisos enviados
+    RETENTION_DISMISSED_ALERT_DAYS: int = Field(default=365, ge=30, le=1825)
+    RETENTION_AUDIT_DAYS: int = Field(default=730, ge=90, le=3650)         # historial de cambios
     # ERD-OCR-PROD: OCR asíncrono de originales (imágenes y PDF).
     OCR_MAX_PDF_PAGES: int = Field(default=6, ge=1, le=20)
     OCR_PAGE_TIMEOUT_SECONDS: int = Field(default=40, ge=5, le=120)
@@ -95,9 +113,26 @@ class Settings(BaseSettings):
     AUTH_AUDIENCE: str = "energy-rd-clients"
     SEED_PILOT: bool = False
     MIGRATE_ON_START: bool = False
+    # Auditoría C-01: con la RLS (migración 0027) el API debe conectarse como `erd_app` y el worker como `erd_worker` (roles sin privilegios
+    # especiales). Si esta bandera está activa, el arranque falla cuando el rol de la conexión es superusuario, ignora la RLS o es dueño de las
+    # tablas. Obligatoria en staging/production. `MIGRATION_DATABASE_URL` (rol dueño) solo la usan las migraciones (Alembic).
+    DB_REQUIRE_RESTRICTED_ROLE: bool = False
+    MIGRATION_DATABASE_URL: str = Field(default="", repr=False)
     DB_POOL_SIZE: int = Field(default=5, ge=1, le=100)
     DB_MAX_OVERFLOW: int = Field(default=5, ge=0, le=100)
     DB_POOL_TIMEOUT: int = Field(default=10, gt=0, le=120)
+    # Auditoría C-08: tiempos de espera de la base (ms; 0 = sin límite). Sin ellos una consulta lenta o un FOR UPDATE colgado retiene
+    # una de las pocas conexiones del pool sin límite y todas las peticiones se acumulan detrás. No aplican a las migraciones (Alembic).
+    DB_STATEMENT_TIMEOUT_MS: int = Field(default=30_000, ge=0, le=600_000)
+    DB_LOCK_TIMEOUT_MS: int = Field(default=5_000, ge=0, le=120_000)
+    DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: int = Field(default=60_000, ge=0, le=600_000)
+    # Auditoría C-08: tope del cuerpo de cada petición (antes se leía completo sin límite, incluso sin autenticar). Las dos rutas de
+    # subida de facturas admiten el archivo más grande permitido más el sobre multipart; el resto solo JSON pequeño.
+    MAX_REQUEST_BODY_BYTES: int = Field(default=256 * 1024, ge=4096, le=10 * 1024 * 1024)
+    UPLOAD_BODY_OVERHEAD_BYTES: int = Field(default=256 * 1024, ge=4096, le=4 * 1024 * 1024)
+    # Auditoría C-08: Argon2 usa 64 MiB y 4 hilos por cálculo; sin tope, unas pocas decenas de logins simultáneos agotan memoria y CPU.
+    AUTH_HASH_CONCURRENCY: int = Field(default=4, ge=1, le=32)
+    AUTH_HASH_WAIT_SECONDS: float = Field(default=5.0, gt=0, le=60)
     # Orígenes permitidos por CORS, separados por coma. Nunca "*" con credenciales.
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8081,http://localhost:19006"
     # ERD-SEC-PROXY-01: uvicorn corre con --no-proxy-headers a propósito (Render solo
@@ -110,6 +145,11 @@ class Settings(BaseSettings):
     # navegador, distinta de la IP del propio BFF en la conexión servidor-a-servidor).
     BFF_API_SHARED_SECRET: str = Field(default="", repr=False)
 
+    # Auditoría C-10: verificación de correo. El enlace lleva el token en el fragmento (#token=), como la recuperación.
+    # Vacío = misma web que PASSWORD_RESET_URL, ruta /verificar-correo.
+    EMAIL_VERIFICATION_URL: str = ""
+    EMAIL_VERIFICATION_TTL_HOURS: int = Field(default=48, ge=1, le=168)
+    EMAIL_VERIFICATION_ACCOUNT_LIMIT: int = Field(default=3, ge=1, le=20)  # envíos por cuenta y hora
     # ERD-SHARE-01: invitaciones a una vivienda (el token viaja en el fragmento #token=, como el de recuperación).
     # Vacío = misma web que PASSWORD_RESET_URL, ruta /invitacion (no añade una variable obligatoria al despliegue).
     INVITATION_URL: str = ""
@@ -121,11 +161,22 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.05, ge=0.0, le=1.0)
 
     @property
+    def max_upload_request_bytes(self) -> int:
+        return max(self.DOCUMENT_MAX_PDF_BYTES, self.DOCUMENT_MAX_PHOTO_BYTES) + self.UPLOAD_BODY_OVERHEAD_BYTES
+
+    @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     @model_validator(mode="after")
     def validate_environment(self) -> Self:
+        if self.ENVIRONMENT.lower() not in ENVIRONMENTS:
+            raise ValueError("ENVIRONMENT must be one of: development, staging, production")
+        if "ENVIRONMENT" not in self.model_fields_set:
+            database_host = make_url(self.DATABASE_URL).host
+            if any(os.environ.get(name) for name in PLATFORM_ENV_VARS) or (database_host and database_host not in LOCAL_DATABASE_HOSTS):
+                raise ValueError("ENVIRONMENT must be set explicitly (development, staging or production) on a deployment platform "
+                                 "or with a non-local database; it is never assumed to be development")
         if "*" in self.cors_origins_list:
             raise ValueError("CORS must list explicit origins")
         if self.ENVIRONMENT.lower() in {"production", "staging"}:
@@ -136,6 +187,12 @@ class Settings(BaseSettings):
                 raise ValueError("Production/staging requires explicit non-local database credentials")
             if self.SEED_PILOT:
                 raise ValueError("Demo seed is disabled in production/staging")
+            if not self.DB_REQUIRE_RESTRICTED_ROLE:
+                raise ValueError("Production/staging requires DB_REQUIRE_RESTRICTED_ROLE=true (API as erd_app, worker as erd_worker; see docs/ops/DB_ROLES.md)")
+            if self.MIGRATION_DATABASE_URL:
+                migration = make_url(self.MIGRATION_DATABASE_URL)
+                if not migration.host or migration.host in LOCAL_DATABASE_HOSTS or not migration.password or migration.password == "change_me_local_only":
+                    raise ValueError("MIGRATION_DATABASE_URL must be an explicit non-local URL with a password")
             if self.MIGRATE_ON_START:
                 raise ValueError("Production/staging migrations must run as a single release step")
             if not self.cors_origins_list or any(
@@ -161,6 +218,14 @@ class Settings(BaseSettings):
         if not self.INVITATION_URL:
             reset = urlsplit(self.PASSWORD_RESET_URL)
             self.INVITATION_URL = f"{reset.scheme}://{reset.netloc}/invitacion"
+        if not self.EMAIL_VERIFICATION_URL:
+            reset = urlsplit(self.PASSWORD_RESET_URL)
+            self.EMAIL_VERIFICATION_URL = f"{reset.scheme}://{reset.netloc}/verificar-correo"
+        verification_url = urlsplit(self.EMAIL_VERIFICATION_URL)
+        if (verification_url.query or verification_url.fragment or "#" in self.EMAIL_VERIFICATION_URL
+                or "?" in self.EMAIL_VERIFICATION_URL or not verification_url.hostname
+                or (self.ENVIRONMENT.lower() != "development" and verification_url.scheme != "https")):
+            raise ValueError("EMAIL_VERIFICATION_URL must be an HTTPS URL (outside development) without query or fragment")
         invitation_url = urlsplit(self.INVITATION_URL)
         if (invitation_url.query or invitation_url.fragment or "#" in self.INVITATION_URL or "?" in self.INVITATION_URL
                 or not invitation_url.hostname):
@@ -179,7 +244,8 @@ class Settings(BaseSettings):
         if self.AUTH_ENABLED and (len(self.AUTH_SIGNING_KEY) < 43
                 or len(set(self.AUTH_SIGNING_KEY)) < 16
                 or any(s in self.AUTH_SIGNING_KEY.lower() for s in ("change_me", "changeme", "secret", "password"))):
-            raise ValueError("AUTH_SIGNING_KEY requires a securely generated random key (at least 32 bytes)")
+            raise ValueError("AUTH_SIGNING_KEY requires a securely generated random key (at least 32 bytes); "
+                             "AUTH_ENABLED=false (local pilot mode, development only) is the only way to run without one")
         return self
 
 

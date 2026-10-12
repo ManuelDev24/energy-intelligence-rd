@@ -69,6 +69,8 @@ class UserOut(BaseModel):
     # Default None: clients parsing an older API (sin 0012) materialize null instead of failing.
     terms_version: str | None = None
     terms_accepted_at: datetime | None = None
+    # Auditoría C-10: None = correo sin verificar (no recibe avisos por correo).
+    email_verified_at: datetime | None = None
 
 
 class TokensOut(BaseModel):
@@ -92,6 +94,17 @@ class PasswordForgotIn(BaseModel):
 class PasswordForgotAccepted(BaseModel):
     """Cuerpo fijo del 202: nunca dice si la cuenta existe ni si se envió correo."""
     status: Literal["accepted"]
+
+
+class EmailVerifyIn(BaseModel):
+    """Auditoría C-10: token opaco del enlace de verificación (43 caracteres URL-safe), solo en el cuerpo."""
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+
+
+class EmailVerificationRequestOut(BaseModel):
+    """202 al pedir (re)envío del enlace. `already_verified` cuando no hace falta; el resto (incluido el tope por hora) es `accepted`."""
+    status: Literal["accepted", "already_verified"]
 
 
 class PasswordResetIn(BaseModel):

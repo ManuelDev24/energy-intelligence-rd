@@ -172,7 +172,7 @@ def test_expired_lease_is_retaken_and_the_late_result_is_discarded(db, migrated)
 def test_a_job_that_keeps_dying_ends_in_the_dead_letter_queue(db, migrated):
     job = queue.enqueue(db, 'demo.task', max_attempts=2, now=NOW)[0]
     t = NOW
-    for n in range(2):
+    for _ in range(2):
         assert take(db, now=t)
         t += timedelta(seconds=61)
     assert take(db, now=t) == []
@@ -380,9 +380,9 @@ def test_schedule_rejects_too_frequent_tasks():
 def test_default_schedules_follow_the_storage_configuration(monkeypatch):
     from app.services.jobs import handlers
     monkeypatch.setitem(settings.__dict__, 'STORAGE_BACKEND', 'disabled')
-    assert [s.kind for s in handlers.schedules()] == ['jobs.purge', 'anomalies.scan_all', 'alerts.evaluate_all']
+    assert [s.kind for s in handlers.schedules()] == ['jobs.purge', 'anomalies.scan_all', 'alerts.evaluate_all', 'maintenance.retention']
     monkeypatch.setitem(settings.__dict__, 'STORAGE_BACKEND', 's3')
-    assert [s.kind for s in handlers.schedules()] == ['jobs.purge', 'anomalies.scan_all', 'alerts.evaluate_all', 'storage.maintenance']
+    assert [s.kind for s in handlers.schedules()] == ['jobs.purge', 'anomalies.scan_all', 'alerts.evaluate_all', 'maintenance.retention', 'storage.maintenance']
 
 
 def test_duplicate_kind_registration_is_rejected():

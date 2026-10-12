@@ -15,7 +15,7 @@ Fecha: 2026-10-10 · Rama `claude/elegant-ptolemy-sdr69r`.
 | Sin facturas, dashboard y progreso no inventan datos | ✅ API | progreso `insufficient_data` |
 | Aislamiento entre cuentas (404 idéntico al de una vivienda inexistente) | ✅ web y API | `test_second_account_is_isolated_from_the_first_onboarding` |
 | Llega al panel de la vivienda creada | ✅ web | capturas `onb-7-resumen.jpg`, `onb-8-panel.jpg` |
-| Onboarding móvil (iOS/Android) en dispositivo | ⛔ no ejecutado | requiere simulador/emulador; lo cubre ERD-E2E-MAESTRO-AUTH. Las pruebas unitarias móviles (`onboardingModel`, `saveOnboarding`, `onboardingUI`) ya existen y pasan |
+| Onboarding móvil (iOS/Android) en dispositivo | ✅ iOS; ⛔ Android pendiente | Verificación independiente 2026-10-11: dos recorridos Maestro completos (132.5 s / 135.0 s), seis pasos, perfil, consumo vacío y meta persistida tras reingreso. `ERD-E2E-MAESTRO-AUTH.md` y `evidence/dev-recovery-2026-10-11/native-ios-auth.json`. No certifica errores/reintentos de onboarding nativos ni Android |
 
 Entorno: PostgreSQL 16 local, API con `AUTH_ENABLED=true` (`:18011`, migraciones hasta 0013), web `next dev` con
 `NEXT_PUBLIC_AUTH_ENABLED=true` (`:3011`), Chromium headless. Solo cuentas `erd-onb-<uuid>@example.com`.

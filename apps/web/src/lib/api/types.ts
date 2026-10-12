@@ -1,6 +1,12 @@
-import type { Bill, BillAssessment, BillInput, BillItemsOut, BillItemsReplace, Dashboard, Home, OcrDraft, OcrJob } from "./schemas";
+import type { Bill, BillAssessment, BillInput, BillItemsOut, BillItemsReplace, Dashboard, Home, OcrJob } from "./schemas";
 import type {
   Anomaly,
+  Outage,
+  OutageInput,
+  OutageSummary,
+  Recommendation,
+  EnergyScore,
+  RecommendationList,
   AlertItem,
   AlertStatus,
   Equipment,
@@ -24,7 +30,6 @@ export interface Api {
   listBills(homeId: string, signal?: AbortSignal): Promise<Bill[]>;
   getBill(homeId: string, billId: string, signal?: AbortSignal): Promise<Bill>;
   createBill(homeId: string, input: BillInput): Promise<Bill>;
-  ocrBill(homeId: string, file: File): Promise<OcrDraft>;
   // ERD-OCR-PROD: lectura asíncrona de fotos y PDF (borrador; nunca crea la factura).
   startOcrJob(homeId: string, file: File, source: "web" | "mobile"): Promise<OcrJob>;
   getOcrJob(homeId: string, documentId: string, signal?: AbortSignal): Promise<OcrJob>;
@@ -35,6 +40,15 @@ export interface Api {
   getDashboard(homeId: string, signal?: AbortSignal, billId?: string): Promise<Dashboard>;
   listAnomalies(homeId: string, opts?: { status?: "active" | "all" | "dismissed" | "resolved" }, signal?: AbortSignal): Promise<Anomaly[]>;
   updateAnomaly(homeId: string, anomalyId: string, status: "open" | "acknowledged" | "dismissed"): Promise<Anomaly>;
+  listOutages(homeId: string, signal?: AbortSignal): Promise<Outage[]>;
+  getOutageSummary(homeId: string, months?: number, signal?: AbortSignal): Promise<OutageSummary>;
+  createOutage(homeId: string, input: OutageInput): Promise<Outage>;
+  updateOutage(homeId: string, outageId: string, input: OutageInput): Promise<Outage>;
+  deleteOutage(homeId: string, outageId: string): Promise<void>;
+  getEnergyScore(homeId: string, signal?: AbortSignal): Promise<EnergyScore>;
+  listRecommendations(homeId: string, opts?: { status?: "active" | "applied" | "dismissed" | "resolved" | "all"; limit?: number }, signal?: AbortSignal): Promise<RecommendationList>;
+  refreshRecommendations(homeId: string): Promise<RecommendationList>;
+  updateRecommendation(homeId: string, recommendationId: string, status: "active" | "applied" | "dismissed"): Promise<Recommendation>;
   listEquipment(homeId: string, signal?: AbortSignal): Promise<Equipment[]>;
   createEquipment(homeId: string, input: EquipmentInput): Promise<Equipment>;
   updateEquipment(homeId: string, id: string, input: EquipmentInput): Promise<Equipment>;

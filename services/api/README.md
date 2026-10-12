@@ -9,7 +9,7 @@ Autenticación y límites persistentes: `AUTH_IMPLEMENTATION.md` y
 cp .env.example .env            # opcional: los defaults de compose ya funcionan
 SEED_PILOT=true docker compose up -d --build postgres api
 curl localhost:8000/health      # {"status":"healthy","database":"ok"}
-open http://localhost:8000/docs # OpenAPI
+open http://localhost:8000/docs # OpenAPI (solo con ENVIRONMENT=development; staging/production no publican /docs, /redoc ni /openapi.json)
 ```
 
 El contenedor `api` valida la configuración y arranca uvicorn. Solo ejecuta migraciones
@@ -65,14 +65,32 @@ Datos inválidos → 422 (validación), vivienda/factura inexistente → 404, pe
   `read`/`dismissed`, salvo que cambie el contenido de la alerta (vuelve a `unread`).
 - Validación: potencia 0–100 000 W, horas 0–24, umbrales > 0 y `critical_pct ≥ warning_pct` (422 si no).
 
+## Modelo de roles (propietario / miembro)
+
+Auditoría C-21 (F06-09): decisión de producto — una vivienda es un hogar compartido.
+
+| Operación | Miembro | Propietario |
+| --- | --- | --- |
+| Leer y escribir datos de la vivienda (facturas, lecturas, equipos, metas, contrato, ajustes de alertas, `PATCH /homes/{id}`, documentos) | sí | sí |
+| Listar/quitar miembros, crear/revocar invitaciones, transferir la propiedad, borrar la vivienda | **no (403)** | sí |
+| Salir de la vivienda | sí | solo si queda otro propietario |
+
+Quien no es miembro recibe 404 (no se revela que la vivienda existe). La base lo refuerza con RLS
+(`docs/ops/DB_ROLES.md`); las operaciones solo de propietario se aplican en `require_home_owner`.
+Las listas sin paginación (`/auth/sessions`, `/members`, `/invitations`) están acotadas por reglas de negocio;
+`/documents` admite `limit` (máx. 200) y `offset`.
+
 ## CORS
 
 `CORS_ORIGINS` (lista separada por comas) define los orígenes permitidos; por defecto solo localhost de web/Expo.
 
 ## Estabilización del piloto
 
-El piloto sigue sin autenticación: mantener API y datos en un entorno privado. CORS no controla
-el acceso de clientes externos. La selección de vivienda no es una credencial.
+La API arranca con la autenticación **encendida** (`AUTH_ENABLED=true`, necesita `AUTH_SIGNING_KEY`). El modo piloto local sin
+cuentas es solo de desarrollo y se pide con `AUTH_ENABLED=false` (ver `.env.example`): mantener API y datos en un entorno
+privado, porque CORS no controla el acceso de clientes externos y la selección de vivienda no es una credencial.
+`ENVIRONMENT` debe ser `development`, `staging` o `production`; en una plataforma de despliegue o con una base no local no
+se asume `development` (el arranque falla si falta).
 
 `ENVIRONMENT=production` o `staging` exige credenciales de DB no locales, orígenes CORS HTTPS
 explícitos y `SEED_PILOT=false`. Estas validaciones no sustituyen autenticación ni autorización.

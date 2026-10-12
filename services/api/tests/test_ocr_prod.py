@@ -453,7 +453,7 @@ def test_dead_job_is_reported_as_failed_even_if_the_state_row_was_not_closed(ocr
 def test_document_expiry_removes_the_draft(ocr_env, monkeypatch):
     client, alice, _, home, _, engine = ocr_env
     use_engine(monkeypatch, FakeEngine('\n'.join(BILL_TEXT)))
-    doc = start(client, alice, home, encode(bill_image())).json()['document_id']
+    start(client, alice, home, encode(bill_image()))
     run_worker_once(engine, None)
     with engine.begin() as c:
         c.execute(text("UPDATE documents SET retention_until = now() - interval '1 minute'"))

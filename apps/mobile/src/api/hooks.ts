@@ -9,7 +9,7 @@ import { AUTH_ENABLED } from '../config';
 import { retryPolicy } from '@energyrd/api-client';
 export { retryPolicy } from '@energyrd/api-client';
 import type { AlertStatus, BillInput, EquipmentInput } from './types';
-import type { GoalInput, Granularity, ReadingInput } from '@energyrd/api-contracts';
+import type { GoalInput, Granularity, OutageInput, ReadingInput } from '@energyrd/api-contracts';
 import { billInvalidations, goalInvalidations, phase2Keys, readingInvalidations } from './phase2Keys';
 
 const scope = () => AUTH_ENABLED ? ['account', authSession.getSnapshot().epoch] : ['pilot'];
@@ -19,6 +19,9 @@ export const keys = {
   bills: (homeId: string) => [...scope(), 'bills', homeId] as const,
   dashboard: (homeId: string) => [...scope(), 'dashboard', homeId] as const,
   anomalies: (homeId: string) => [...scope(), 'anomalies', homeId] as const,
+  outages: (homeId: string) => [...scope(), 'outages', homeId] as const,
+  energyScore: (homeId: string) => [...scope(), 'energy-score', homeId] as const,
+  recommendations: (homeId: string) => [...scope(), 'recommendations', homeId] as const,
   equipment: (homeId: string) => [...scope(), 'equipment', homeId] as const,
   equipmentItem: (homeId: string, id: string) => [...scope(), 'equipment', homeId, id] as const,
   estimate: (homeId: string) => [...scope(), 'estimate', homeId] as const,
@@ -50,6 +53,41 @@ export function useUpdateAnomaly(homeId: string | null) {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: 'open' | 'acknowledged' | 'dismissed' }) => api.updateAnomaly(homeId as string, id, status),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.anomalies(homeId ?? 'none') }),
+  });
+}
+/** ERD-INT-01: historial de apagones y resumen mensual (comparten prefijo: una escritura refresca ambos). */
+export const useOutages = (homeId: string | null) =>
+  useQuery(perHome([...keys.outages(homeId ?? 'none'), 'list'], homeId, api.listOutages));
+export const useOutageSummary = (homeId: string | null, months = 12) =>
+  useQuery(perHome([...keys.outages(homeId ?? 'none'), 'summary', months], homeId, (id, signal) => api.getOutageSummary(id, months, signal)));
+function useOutageMutation<V, R>(homeId: string, fn: (v: V) => Promise<R>) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: fn, onSuccess: () => void qc.invalidateQueries({ queryKey: keys.outages(homeId) }) });
+}
+export const useCreateOutage = (homeId: string) => useOutageMutation(homeId, (input: OutageInput) => api.createOutage(homeId, input));
+export const useUpdateOutage = (homeId: string) => useOutageMutation(homeId, ({ id, input }: { id: string; input: OutageInput }) => api.updateOutage(homeId, id, input));
+export const useDeleteOutage = (homeId: string) => useOutageMutation(homeId, (id: string) => api.deleteOutage(homeId, id));
+
+/** ERD-SCORE-01: Energy Score del backend (solo lectura). Se vuelve a pedir al entrar: los datos de origen pudieron cambiar. */
+export const useEnergyScore = (homeId: string | null) =>
+  useQuery({ ...perHome(keys.energyScore(homeId ?? 'none'), homeId, api.getEnergyScore), staleTime: 0, refetchOnMount: 'always' as const });
+
+/** ERD-SAVE-01: recomendaciones vigentes. Entrar a la pantalla recalcula (idempotente); si falla, se muestra lo guardado. */
+export const useRecommendations = (homeId: string | null) =>
+  useQuery(perHome(keys.recommendations(homeId ?? 'none'), homeId, async (id, signal) => {
+    try { return await api.refreshRecommendations(id); } catch { return api.listRecommendations(id, undefined, signal); }
+  }));
+
+/** Aplicadas o descartadas (para poder reactivarlas). No recalcula. */
+export const useDecidedRecommendations = (homeId: string | null) =>
+  useQuery(perHome([...keys.recommendations(homeId ?? 'none'), 'decided'], homeId, async (id, signal) =>
+    (await api.listRecommendations(id, { status: 'all' }, signal)).items.filter((r) => r.status === 'applied' || r.status === 'dismissed')));
+
+export function useUpdateRecommendation(homeId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'active' | 'applied' | 'dismissed' }) => api.updateRecommendation(homeId as string, id, status),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.recommendations(homeId ?? 'none') }),
   });
 }
 export const useEquipment = (homeId: string | null) =>

@@ -120,6 +120,16 @@ def test_percentage_downgrade_refuses_loss_of_extreme_values(migrated, alembic_c
             ScriptDirectory.from_config(alembic_cfg).get_current_head()
 
 
+# Admin RBAC de Módulo 4: migración 0024 sigue a 0023; no alterar el head de Módulo 1.
+ADMIN_TABLES = {"admin_roles", "admin_scopes", "admin_role_scopes", "admin_role_assignments", "admin_audit_events"}
+
+def test_0024_admin_rbac_roundtrip(migrated, alembic_cfg):
+    assert ADMIN_TABLES <= _tables(migrated)
+    command.downgrade(alembic_cfg, "0023")
+    assert not (ADMIN_TABLES & _tables(migrated))
+    command.upgrade(alembic_cfg, "head")
+    assert ADMIN_TABLES <= _tables(migrated)
+
 PHASE2_TABLES = {"meter_readings", "home_goals", "tariffs", "tariff_fixed_charges", "tariff_blocks"}
 OFFICIAL = ("SIE-121-2026-TF",)
 
@@ -245,3 +255,70 @@ def test_0021_existing_equipment_becomes_other_without_guessing_and_downgrade_ro
     with migrated.connect() as c:
         assert c.execute(text("SELECT name FROM equipment")).scalar_one() == "Aire sala"
     command.upgrade(alembic_cfg, "head")
+
+
+def test_0022_recommendations_table_roundtrips_and_cascades_with_the_home(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0021")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT to_regclass('public.recommendations')")).scalar() is None
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'r','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO recommendations(id,home_id,rule_id,rule_version,ruleset_version,category,title,summary,action,confidence,dedupe_key) "
+                       "VALUES(gen_random_uuid(),:h,'ac-one-hour',1,1,'equipment','t','s','a','medium','k')"), {"h": hid})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM homes WHERE id=:h"), {"h": hid})
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM recommendations")).scalar() == 0
+
+
+def test_0023_power_outages_roundtrips_and_the_database_blocks_overlaps(migrated, alembic_cfg):
+    from sqlalchemy.exc import IntegrityError
+    command.downgrade(alembic_cfg, "0022")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT to_regclass('public.power_outages')")).scalar() is None
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'o','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO power_outages(id,home_id,started_at,ended_at) VALUES(gen_random_uuid(),:h,'2026-09-01T10:00Z','2026-09-01T12:00Z')"), {"h": hid})
+    with pytest.raises(IntegrityError):
+        with migrated.begin() as c:
+            c.execute(text("INSERT INTO power_outages(id,home_id,started_at) VALUES(gen_random_uuid(),:h,'2026-09-01T11:00Z')"), {"h": hid})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM homes WHERE id=:h"), {"h": hid})
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM power_outages")).scalar() == 0
+
+
+# ---------- auditoría C-16: correo único sin distinguir mayúsculas, garantizado por la base ----------
+def test_0026_the_database_refuses_mixed_case_and_case_only_duplicate_emails(migrated):
+    from sqlalchemy.exc import IntegrityError
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'ana@example.com','x')"))
+    for email in ("Ana@Example.com", "ANA@EXAMPLE.COM", "otra@Example.com"):
+        with pytest.raises(IntegrityError):
+            with migrated.begin() as c:
+                c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),:e,'x')"), {"e": email})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM users WHERE email='ana@example.com'"))
+
+
+def test_0026_upgrade_lowercases_existing_emails_and_stops_on_case_only_duplicates(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0025")
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'Mixto@Example.com','x')"))
+    command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT email FROM users WHERE lower(email)='mixto@example.com'")).scalar() == "mixto@example.com"
+    command.downgrade(alembic_cfg, "0025")
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'MIXTO@example.com','x')"))
+    with pytest.raises(Exception, match="mayúsculas"):
+        command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:  # no modificó nada: ambas cuentas siguen como estaban
+        assert sorted(r[0] for r in c.execute(text("SELECT email FROM users"))) == ["MIXTO@example.com", "mixto@example.com"]
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM users WHERE email='MIXTO@example.com'"))
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM users"))

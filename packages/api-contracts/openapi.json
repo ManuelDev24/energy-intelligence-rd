@@ -20,6 +20,108 @@
         "title": "AccountDeletionIn",
         "type": "object"
       },
+      "AdminOcrJobOut": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "run_at": {
+            "format": "date-time",
+            "title": "Run At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "document_id",
+          "status",
+          "attempts",
+          "max_attempts",
+          "run_at",
+          "created_at",
+          "finished_at",
+          "error_code"
+        ],
+        "title": "AdminOcrJobOut",
+        "type": "object"
+      },
+      "AdminOcrJobsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminOcrJobOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminOcrJobsPage",
+        "type": "object"
+      },
       "AlertRecord": {
         "properties": {
           "anomaly_id": {
@@ -176,6 +278,7 @@
         "type": "object"
       },
       "AlertSettingsIn": {
+        "additionalProperties": false,
         "properties": {
           "critical_pct": {
             "anyOf": [
@@ -240,6 +343,7 @@
         "type": "object"
       },
       "AlertStatusUpdate": {
+        "additionalProperties": false,
         "properties": {
           "status": {
             "enum": [
@@ -429,6 +533,121 @@
           "status"
         ],
         "title": "AnomalyStatusIn",
+        "type": "object"
+      },
+      "AuditEventOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor User Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "resource": {
+            "title": "Resource",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          },
+          "scope_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Used"
+          }
+        },
+        "required": [
+          "id",
+          "actor_user_id",
+          "action",
+          "resource",
+          "scope_used",
+          "reason",
+          "result",
+          "request_id",
+          "created_at"
+        ],
+        "title": "AuditEventOut",
+        "type": "object"
+      },
+      "AuditEventsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEventOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AuditEventsPage",
         "type": "object"
       },
       "BillAssessment": {
@@ -1147,20 +1366,6 @@
         "title": "BillValidationRequest",
         "type": "object"
       },
-      "Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post": {
-        "properties": {
-          "file": {
-            "contentMediaType": "application/octet-stream",
-            "title": "File",
-            "type": "string"
-          }
-        },
-        "required": [
-          "file"
-        ],
-        "title": "Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post",
-        "type": "object"
-      },
       "Body_start_ocr_job_api_v1_homes__home_id__bills_ocr_jobs_post": {
         "properties": {
           "file": {
@@ -1547,6 +1752,7 @@
         "type": "object"
       },
       "ContractIn": {
+        "additionalProperties": false,
         "properties": {
           "account_number": {
             "maxLength": 120,
@@ -1959,6 +2165,155 @@
         "title": "DownloadUrlOut",
         "type": "object"
       },
+      "EmailVerificationRequestOut": {
+        "description": "202 al pedir (re)env\u00edo del enlace. `already_verified` cuando no hace falta; el resto (incluido el tope por hora) es `accepted`.",
+        "properties": {
+          "status": {
+            "enum": [
+              "accepted",
+              "already_verified"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "EmailVerificationRequestOut",
+        "type": "object"
+      },
+      "EmailVerifyIn": {
+        "additionalProperties": false,
+        "description": "Auditor\u00eda C-10: token opaco del enlace de verificaci\u00f3n (43 caracteres URL-safe), solo en el cuerpo.",
+        "properties": {
+          "token": {
+            "maxLength": 43,
+            "minLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "EmailVerifyIn",
+        "type": "object"
+      },
+      "EnergyScoreOut": {
+        "description": "Energy Score 0\u2013100 calculado por el backend (la f\u00f3rmula vive solo all\u00ed). Indicador interno INFERIDO: orientativo.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "band": {
+            "anyOf": [
+              {
+                "enum": [
+                  "good",
+                  "fair",
+                  "poor"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
+          "band_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band Label"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreComponentOut"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "coverage_pct": {
+            "title": "Coverage Pct",
+            "type": "integer"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "quality": {
+            "const": "INFERRED",
+            "title": "Quality",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "score_version": {
+            "title": "Score Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "home_id",
+          "score_version",
+          "as_of",
+          "status",
+          "score",
+          "band",
+          "band_label",
+          "quality",
+          "coverage_pct",
+          "components",
+          "reasons",
+          "method",
+          "note"
+        ],
+        "title": "EnergyScoreOut",
+        "type": "object"
+      },
       "EquipmentEstimateItem": {
         "properties": {
           "brand": {
@@ -2137,6 +2492,7 @@
         "type": "object"
       },
       "EquipmentIn": {
+        "additionalProperties": false,
         "properties": {
           "brand": {
             "anyOf": [
@@ -2382,6 +2738,7 @@
         "type": "object"
       },
       "GoalIn": {
+        "additionalProperties": false,
         "description": "Reemplazo completo (PUT): al menos una meta; un campo null elimina esa meta.",
         "properties": {
           "monthly_amount_rd": {
@@ -2718,6 +3075,7 @@
         "type": "object"
       },
       "HomeCreate": {
+        "additionalProperties": false,
         "properties": {
           "address": {
             "anyOf": [
@@ -2902,6 +3260,7 @@
         "type": "object"
       },
       "HomeOut": {
+        "additionalProperties": false,
         "properties": {
           "address": {
             "anyOf": [
@@ -3094,6 +3453,7 @@
         "type": "object"
       },
       "HomeUpdate": {
+        "additionalProperties": false,
         "description": "Actualizaci\u00f3n parcial: solo se modifican los campos enviados.",
         "properties": {
           "address": {
@@ -3496,6 +3856,42 @@
         "title": "Metric",
         "type": "object"
       },
+      "MyAccessOut": {
+        "description": "What the caller, specifically, can do right now. Never trust a token's embedded claims\nfor this \u2014 it is always recomputed from the DB (see app.services.admin.effective_scopes).",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "roles",
+          "scopes"
+        ],
+        "title": "MyAccessOut",
+        "type": "object"
+      },
       "NotificationPreferencesIn": {
         "additionalProperties": false,
         "description": "Reemplazo completo: exactamente dos booleanos reales (nada de 0/1 ni \"yes\").",
@@ -3763,6 +4159,307 @@
         "title": "OcrJobOut",
         "type": "object"
       },
+      "OcrOperationReason": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "OcrOperationReason",
+        "type": "object"
+      },
+      "OutageIn": {
+        "additionalProperties": false,
+        "description": "Reemplazo completo (PUT/POST). `ended_at` nulo = todav\u00eda sin luz.",
+        "properties": {
+          "cause": {
+            "default": "unknown",
+            "enum": [
+              "unknown",
+              "utility_fault",
+              "scheduled",
+              "weather",
+              "home_fault"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "started_at"
+        ],
+        "title": "OutageIn",
+        "type": "object"
+      },
+      "OutageMonth": {
+        "description": "Totales de un mes calendario (America/Santo_Domingo). Cada interrupci\u00f3n se cuenta entera en el mes en que EMPEZ\u00d3.",
+        "properties": {
+          "average_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Minutes"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "longest_minutes": {
+            "title": "Longest Minutes",
+            "type": "integer"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "ongoing": {
+            "title": "Ongoing",
+            "type": "integer"
+          },
+          "total_minutes": {
+            "title": "Total Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "count",
+          "total_minutes",
+          "longest_minutes",
+          "average_minutes",
+          "ongoing"
+        ],
+        "title": "OutageMonth",
+        "type": "object"
+      },
+      "OutageOut": {
+        "properties": {
+          "cause": {
+            "enum": [
+              "unknown",
+              "utility_fault",
+              "scheduled",
+              "weather",
+              "home_fault"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Minutos de la interrupci\u00f3n terminada; null mientras siga abierta (la duraci\u00f3n a\u00fan no existe).",
+            "readOnly": true,
+            "title": "Duration Minutes"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "ongoing": {
+            "readOnly": true,
+            "title": "Ongoing",
+            "type": "boolean"
+          },
+          "source": {
+            "const": "manual",
+            "title": "Source",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "home_id",
+          "started_at",
+          "ended_at",
+          "cause",
+          "note",
+          "source",
+          "created_at",
+          "updated_at",
+          "ongoing",
+          "duration_minutes"
+        ],
+        "title": "OutageOut",
+        "type": "object"
+      },
+      "OutageSummaryOut": {
+        "properties": {
+          "from_month": {
+            "title": "From Month",
+            "type": "string"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/OutageMonth"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "to_month": {
+            "title": "To Month",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/OutageTotals"
+          }
+        },
+        "required": [
+          "home_id",
+          "timezone",
+          "from_month",
+          "to_month",
+          "months",
+          "totals",
+          "note"
+        ],
+        "title": "OutageSummaryOut",
+        "type": "object"
+      },
+      "OutageTotals": {
+        "properties": {
+          "average_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Minutes"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "longest_minutes": {
+            "title": "Longest Minutes",
+            "type": "integer"
+          },
+          "ongoing": {
+            "title": "Ongoing",
+            "type": "integer"
+          },
+          "total_minutes": {
+            "title": "Total Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "total_minutes",
+          "longest_minutes",
+          "average_minutes",
+          "ongoing"
+        ],
+        "title": "OutageTotals",
+        "type": "object"
+      },
       "OwnershipTransferIn": {
         "additionalProperties": false,
         "description": "Reautentica con la contrase\u00f1a actual: ceder la propiedad es una acci\u00f3n de alto impacto.",
@@ -3917,6 +4614,7 @@
         "type": "object"
       },
       "ReadingCreate": {
+        "additionalProperties": false,
         "properties": {
           "note": {
             "anyOf": [
@@ -4018,6 +4716,248 @@
         "title": "ReadingOut",
         "type": "object"
       },
+      "RecommendationListOut": {
+        "properties": {
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "ruleset_version": {
+            "title": "Ruleset Version",
+            "type": "integer"
+          },
+          "total_savings_dop_month": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_savings_kwh_month": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "home_id",
+          "ruleset_version",
+          "items",
+          "total_savings_kwh_month",
+          "total_savings_dop_month",
+          "note"
+        ],
+        "title": "RecommendationListOut",
+        "type": "object"
+      },
+      "RecommendationRecord": {
+        "description": "Una recomendaci\u00f3n explicable. El ahorro (si existe) es ESTIMADO y sus supuestos viajan con \u00e9l. `rule_id` y\n`rule_version` identifican la regla; `ruleset_version`, el conjunto de reglas con el que se calcul\u00f3.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "anomaly_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly Id"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "category": {
+            "enum": [
+              "equipment",
+              "goal",
+              "anomaly",
+              "data"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "equipment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipment Id"
+          },
+          "evidence": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "object"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "rule_version": {
+            "title": "Rule Version",
+            "type": "integer"
+          },
+          "ruleset_version": {
+            "title": "Ruleset Version",
+            "type": "integer"
+          },
+          "savings_dop_month": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Savings Dop Month"
+          },
+          "savings_kwh_month": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Savings Kwh Month"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "applied",
+              "dismissed",
+              "resolved"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_changed_at": {
+            "format": "date-time",
+            "title": "Status Changed At",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "home_id",
+          "equipment_id",
+          "anomaly_id",
+          "rule_id",
+          "rule_version",
+          "ruleset_version",
+          "category",
+          "title",
+          "summary",
+          "action",
+          "confidence",
+          "status",
+          "savings_kwh_month",
+          "savings_dop_month",
+          "assumptions",
+          "evidence",
+          "created_at",
+          "last_seen_at",
+          "status_changed_at"
+        ],
+        "title": "RecommendationRecord",
+        "type": "object"
+      },
+      "RecommendationStatusIn": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "active",
+              "applied",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "RecommendationStatusIn",
+        "type": "object"
+      },
       "RefreshIn": {
         "additionalProperties": false,
         "properties": {
@@ -4067,6 +5007,231 @@
         "title": "RegisterIn",
         "type": "object"
       },
+      "RoleAssignmentCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "role_name": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Role Name",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "role_name",
+          "reason"
+        ],
+        "title": "RoleAssignmentCreate",
+        "type": "object"
+      },
+      "RoleAssignmentOut": {
+        "properties": {
+          "assigned_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned By User Id"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "granted_at": {
+            "format": "date-time",
+            "title": "Granted At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "revoke_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoke Reason"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "revoked_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked By User Id"
+          },
+          "role_name": {
+            "title": "Role Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "role_name",
+          "assigned_by_user_id",
+          "reason",
+          "granted_at",
+          "expires_at",
+          "revoked_at",
+          "revoked_by_user_id",
+          "revoke_reason",
+          "status"
+        ],
+        "title": "RoleAssignmentOut",
+        "type": "object"
+      },
+      "RoleAssignmentRevoke": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "RoleAssignmentRevoke",
+        "type": "object"
+      },
+      "RoleAssignmentsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RoleAssignmentOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "RoleAssignmentsPage",
+        "type": "object"
+      },
+      "RoleOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "scopes"
+        ],
+        "title": "RoleOut",
+        "type": "object"
+      },
       "ScanQueuedOut": {
         "properties": {
           "status": {
@@ -4079,6 +5244,102 @@
           "status"
         ],
         "title": "ScanQueuedOut",
+        "type": "object"
+      },
+      "ScopeOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description"
+        ],
+        "title": "ScopeOut",
+        "type": "object"
+      },
+      "ScoreComponentOut": {
+        "description": "Un componente del Energy Score. `score` es nulo cuando faltan datos: no se rellena ni cuenta en el total.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Inputs",
+            "type": "object"
+          },
+          "key": {
+            "enum": [
+              "consumption",
+              "efficiency",
+              "habits",
+              "consistency"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "next_step": {
+            "title": "Next Step",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "weight",
+          "score",
+          "available",
+          "summary",
+          "detail",
+          "inputs",
+          "reasons",
+          "next_step"
+        ],
+        "title": "ScoreComponentOut",
         "type": "object"
       },
       "SessionOut": {
@@ -4390,6 +5651,18 @@
             "title": "Email",
             "type": "string"
           },
+          "email_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Verified At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4508,6 +5781,664 @@
         "summary": "Root"
       }
     },
+    "/api/v1/admin/audit-events": {
+      "get": {
+        "operationId": "list_audit_events_api_v1_admin_audit_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "actor_user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "result",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(success|denied|error)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Result"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEventsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Audit Events",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/me": {
+      "get": {
+        "description": "Anyone with a valid session can see their *own* admin access \u2014 this is how a\nnon-admin user discovers, correctly, that they have none (empty roles/scopes, not 403).",
+        "operationId": "my_access_api_v1_admin_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAccessOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Access",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/ocr/jobs": {
+      "get": {
+        "operationId": "list_ocr_jobs_api_v1_admin_ocr_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "queued",
+                    "processing",
+                    "completed",
+                    "failed_retryable",
+                    "failed_permanent",
+                    "dead_letter",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOcrJobsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Ocr Jobs",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/ocr/jobs/{job_id}": {
+      "get": {
+        "operationId": "detail_ocr_job_api_v1_admin_ocr_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOcrJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Detail Ocr Job",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/ocr/jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_ocr_job_api_v1_admin_ocr_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OcrOperationReason"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOcrJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Ocr Job",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/ocr/jobs/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_ocr_job_api_v1_admin_ocr_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OcrOperationReason"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOcrJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retry Ocr Job",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/role-assignments": {
+      "get": {
+        "operationId": "list_role_assignments_api_v1_admin_role_assignments_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "role_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(active|expired|revoked)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignmentsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Role Assignments",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "create_role_assignment_api_v1_admin_role_assignments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleAssignmentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Role Assignment",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/role-assignments/{assignment_id}/revoke": {
+      "post": {
+        "operationId": "revoke_role_assignment_api_v1_admin_role_assignments__assignment_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assignment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assignment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleAssignmentRevoke"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Role Assignment",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/roles": {
+      "get": {
+        "operationId": "list_roles_api_v1_admin_roles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RoleOut"
+                  },
+                  "title": "Response List Roles Api V1 Admin Roles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Roles",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/scopes": {
+      "get": {
+        "operationId": "list_scopes_api_v1_admin_scopes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScopeOut"
+                  },
+                  "title": "Response List Scopes Api V1 Admin Scopes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Scopes",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/auth/devices": {
       "put": {
         "description": "Registra (o renueva) el dispositivo para recibir avisos push. Idempotente.",
@@ -4583,6 +6514,66 @@
           }
         ],
         "summary": "Remove Device",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/email/verification": {
+      "post": {
+        "operationId": "request_email_verification_api_v1_auth_email_verification_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailVerificationRequestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Email Verification",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/email/verify": {
+      "post": {
+        "operationId": "verify_email_api_v1_auth_email_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerifyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Email",
         "tags": [
           "auth"
         ]
@@ -6019,68 +8010,9 @@
         ]
       }
     },
-    "/api/v1/homes/{home_id}/bills/ocr": {
-      "post": {
-        "description": "ERD-OCR-01/02: lee una foto de factura y devuelve un BORRADOR para que la persona lo confirme\no corrija. Nunca crea ni modifica una factura: el \u00fanico camino real a la base de datos sigue\nsiendo POST /homes/{home_id}/bills (ya validado), llamado despu\u00e9s de que alguien confirme.",
-        "operationId": "ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "home_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Home Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_ocr_bill_photo_api_v1_homes__home_id__bills_ocr_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OcrDraft"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Ocr Bill Photo",
-        "tags": [
-          "bills"
-        ]
-      }
-    },
     "/api/v1/homes/{home_id}/bills/ocr-jobs": {
       "post": {
-        "description": "ERD-OCR-PROD: guarda el original (foto o PDF, cifrado) y lo lee en segundo plano. Responde 202 de inmediato;\nconsulte `GET /bills/ocr-jobs/{document_id}`. Como `/ocr`, nunca crea una factura: solo deja un BORRADOR.",
+        "description": "ERD-OCR-PROD: guarda el original (foto o PDF, cifrado) y lo lee en segundo plano. Responde 202 de inmediato;\nconsulte `GET /bills/ocr-jobs/{document_id}`. Nunca crea una factura: solo deja un BORRADOR.",
         "operationId": "start_ocr_job_api_v1_homes__home_id__bills_ocr_jobs_post",
         "parameters": [
           {
@@ -6969,6 +8901,30 @@
               ],
               "title": "Bill Id"
             }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -7228,6 +9184,55 @@
         "summary": "Create Download Url",
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/energy-score": {
+      "get": {
+        "description": "Energy Score 0\u2013100 de la vivienda con sus cuatro componentes. Solo lectura: se deriva de los datos actuales.",
+        "operationId": "get_energy_score_api_v1_homes__home_id__energy_score_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnergyScoreOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Energy Score",
+        "tags": [
+          "energy-score"
         ]
       }
     },
@@ -8065,6 +10070,373 @@
         ]
       }
     },
+    "/api/v1/homes/{home_id}/outages": {
+      "get": {
+        "description": "Historial de interrupciones, de la m\u00e1s reciente a la m\u00e1s antigua.",
+        "operationId": "list_outages_api_v1_homes__home_id__outages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OutageOut"
+                  },
+                  "title": "Response List Outages Api V1 Homes  Home Id  Outages Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Outages",
+        "tags": [
+          "outages"
+        ]
+      },
+      "post": {
+        "operationId": "create_outage_api_v1_homes__home_id__outages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Outage",
+        "tags": [
+          "outages"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/outages/summary": {
+      "get": {
+        "description": "Totales por mes calendario (America/Santo_Domingo) de los \u00faltimos `months` meses, incluidos los meses sin apagones.",
+        "operationId": "get_summary_api_v1_homes__home_id__outages_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "months",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 24,
+              "minimum": 1,
+              "title": "Months",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Summary",
+        "tags": [
+          "outages"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/outages/{outage_id}": {
+      "delete": {
+        "operationId": "delete_outage_api_v1_homes__home_id__outages__outage_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "outage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Outage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Outage",
+        "tags": [
+          "outages"
+        ]
+      },
+      "get": {
+        "operationId": "get_outage_api_v1_homes__home_id__outages__outage_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "outage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Outage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Outage",
+        "tags": [
+          "outages"
+        ]
+      },
+      "put": {
+        "description": "Reemplazo completo: sirve para corregir datos o cerrar una interrupci\u00f3n abierta (poniendo `ended_at`).",
+        "operationId": "update_outage_api_v1_homes__home_id__outages__outage_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "outage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Outage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Outage",
+        "tags": [
+          "outages"
+        ]
+      }
+    },
     "/api/v1/homes/{home_id}/readings": {
       "get": {
         "operationId": "list_readings_api_v1_homes__home_id__readings_get",
@@ -8244,6 +10616,202 @@
         "summary": "Delete Reading",
         "tags": [
           "readings"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/recommendations": {
+      "get": {
+        "description": "Recomendaciones guardadas (por defecto las vigentes). Solo lectura: las crea `POST /refresh` o el sistema.",
+        "operationId": "get_recommendations_api_v1_homes__home_id__recommendations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "enum": [
+                "active",
+                "applied",
+                "dismissed",
+                "resolved",
+                "all"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Recommendations",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/recommendations/refresh": {
+      "post": {
+        "description": "Recalcula con los datos actuales (idempotente: repetirlo sin cambios no cambia nada) y devuelve las vigentes.",
+        "operationId": "refresh_api_v1_homes__home_id__recommendations_refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Refresh",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/recommendations/{recommendation_id}": {
+      "patch": {
+        "description": "Marcar como aplicada, descartarla o volver a activarla.",
+        "operationId": "update_recommendation_api_v1_homes__home_id__recommendations__recommendation_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recommendation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recommendation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationStatusIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Recommendation",
+        "tags": [
+          "recommendations"
         ]
       }
     },

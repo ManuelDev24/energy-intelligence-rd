@@ -244,9 +244,6 @@ export function createMockApi(): Api {
       bills = [...bills, created];
       return created;
     },
-    ocrBill: async () => {
-      throw new ApiError(501, "OCR no disponible en el mock");
-    },
     // ERD-OCR-PROD: el trabajo termina tras `ocrPolls` consultas; `ocrOutcome` decide si sale un borrador o un fallo.
     startOcrJob: async (homeId) => {
       requireHome(homeId);
@@ -289,6 +286,36 @@ export function createMockApi(): Api {
     getDashboard: async (homeId) => {
       const home = requireHome(homeId);
       return DashboardSchema.parse(homeId === HOME_A ? DASHBOARD_A : dashboardWithoutProjection(home));
+    },
+    listOutages: async (homeId) => {
+      requireHome(homeId);
+      return [];
+    },
+    getOutageSummary: async (homeId) => {
+      requireHome(homeId);
+      return {
+        home_id: homeId, timezone: "America/Santo_Domingo", from_month: "2026-10", to_month: "2026-10",
+        months: [{ month: "2026-10", count: 0, total_minutes: 0, longest_minutes: 0, average_minutes: null, ongoing: 0 }],
+        totals: { count: 0, total_minutes: 0, longest_minutes: 0, average_minutes: null, ongoing: 0 }, note: "",
+      };
+    },
+    createOutage: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
+    updateOutage: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
+    deleteOutage: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
+    getEnergyScore: async (homeId) => ({
+      home_id: homeId, score_version: 1, as_of: "2026-10-11", status: "insufficient_data", score: null, band: null, band_label: null, quality: "INFERRED",
+      coverage_pct: 0, components: [], reasons: ["Hacen falta datos de al menos 2 componentes; hoy hay 0."], method: "", note: "",
+    }),
+    listRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
+    refreshRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
+    updateRecommendation: async () => {
+      throw new ApiError(404, "No encontrado");
     },
     listAnomalies: async () => [],
     updateAnomaly: async () => {

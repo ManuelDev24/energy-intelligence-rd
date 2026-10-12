@@ -8,6 +8,7 @@ Distributor = Literal["EDESUR", "EDENORTE", "EDEESTE", "Otra"]
 
 
 class ProfileFields(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     province: str | None = Field(default=None, min_length=1, max_length=120)
     municipality: str | None = Field(default=None, min_length=1, max_length=120)
     sector: str | None = Field(default=None, min_length=1, max_length=120)
@@ -22,6 +23,7 @@ class ProfileFields(BaseModel):
 
 
 class HomeCreate(ProfileFields):
+    model_config = ConfigDict(extra="forbid")
     code: str | None = Field(default=None, min_length=1, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
     name: str = Field(min_length=1, max_length=120)
     address: str | None = Field(default=None, max_length=255)
@@ -31,6 +33,7 @@ class HomeCreate(ProfileFields):
 
 class HomeUpdate(ProfileFields):
     """Actualización parcial: solo se modifican los campos enviados."""
+    model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None, min_length=1, max_length=120)
     address: str | None = Field(default=None, max_length=255)

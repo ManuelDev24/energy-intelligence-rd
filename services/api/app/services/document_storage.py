@@ -7,13 +7,13 @@ Así nunca queda un objeto sin fila que lo gobierne.
 import hashlib
 import io
 import logging
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app import rls
 from app.config import settings
 from app.models import HomeMember
 from app.models.document import Document, StorageDeletion
@@ -104,6 +104,8 @@ def redeem_download(db: Session, token: str, *, now=None) -> tuple[Document, byt
     """Canjea el enlace firmado. Revalida que el documento exista y que la persona siga en la vivienda."""
     claim: DownloadClaim = verify_download(token, now=now)
     store = get_store()
+    # Auditoría C-01: la firma del enlace (HMAC del servidor) acredita persona y vivienda; la membresía se revalida justo abajo.
+    rls.set_context(db, user_id=claim.user_id, home_id=claim.home_id)
     document = documents.get_document(db, claim.home_id, claim.document_id)
     if claim.user_id is not None and db.scalar(select(HomeMember.user_id).where(
             HomeMember.home_id == claim.home_id, HomeMember.user_id == claim.user_id)) is None:

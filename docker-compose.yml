@@ -27,6 +27,10 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-energy}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/${POSTGRES_DB:-energy_rd}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8081,http://localhost:19006}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      # Auditoría C-03: la API arranca con autenticación ENCENDIDA. Este compose es de desarrollo: el modo piloto local (sin cuentas)
+      # se pide aquí de forma explícita; para probar cuentas use AUTH_ENABLED=true y un AUTH_SIGNING_KEY aleatorio.
+      AUTH_ENABLED: ${AUTH_ENABLED:-false}
+      AUTH_SIGNING_KEY: ${AUTH_SIGNING_KEY:-}
       SEED_PILOT: ${SEED_PILOT:-false}
       MIGRATE_ON_START: ${MIGRATE_ON_START:-true}
     ports:
@@ -48,6 +52,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-energy}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/${POSTGRES_DB:-energy_rd}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      # Auditoría C-03: la API arranca con autenticación ENCENDIDA. Este compose es de desarrollo: el modo piloto local (sin cuentas)
+      # se pide aquí de forma explícita; para probar cuentas use AUTH_ENABLED=true y un AUTH_SIGNING_KEY aleatorio.
+      AUTH_ENABLED: ${AUTH_ENABLED:-false}
+      AUTH_SIGNING_KEY: ${AUTH_SIGNING_KEY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       SEED_PILOT: "false"
       MIGRATE_ON_START: "false"
@@ -68,6 +76,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-energy}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/${POSTGRES_DB:-energy_rd}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      # Auditoría C-03: la API arranca con autenticación ENCENDIDA. Este compose es de desarrollo: el modo piloto local (sin cuentas)
+      # se pide aquí de forma explícita; para probar cuentas use AUTH_ENABLED=true y un AUTH_SIGNING_KEY aleatorio.
+      AUTH_ENABLED: ${AUTH_ENABLED:-false}
+      AUTH_SIGNING_KEY: ${AUTH_SIGNING_KEY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       SEED_PILOT: "false"
       MIGRATE_ON_START: "false"

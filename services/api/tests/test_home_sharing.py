@@ -19,6 +19,9 @@ def share(auth_client, monkeypatch):
     monkeypatch.setitem(settings.__dict__, 'EMAIL_BACKEND', 'console')
     monkeypatch.setitem(settings.__dict__, 'EMAIL_DEV_OUTBOX', '')
     monkeypatch.setitem(settings.__dict__, 'INVITATION_URL', 'https://app.energy.example/invitacion')
+    # Estas pruebas cuentan los correos de ESTE flujo; el correo de verificación del registro se prueba en test_email_verification.py.
+    from app.services import email_verification
+    monkeypatch.setattr(email_verification, 'issue', lambda *args, **kwargs: None)
     email.DEV_OUTBOX.clear()
     yield auth_client
     email.DEV_OUTBOX.clear()
@@ -258,7 +261,7 @@ def test_invitation_url_follows_the_same_rules_as_the_reset_url():
         with pytest.raises(ValueError, match='INVITATION_URL'):
             Settings(ENVIRONMENT='development', INVITATION_URL=bad)
     with pytest.raises(ValueError, match='INVITATION_URL'):
-        Settings(ENVIRONMENT='staging', DATABASE_URL='postgresql+psycopg://u:p@db.example/x', AUTH_ENABLED=True,
+        Settings(ENVIRONMENT='staging', DATABASE_URL='postgresql+psycopg://u:p@db.example/x', AUTH_ENABLED=True, DB_REQUIRE_RESTRICTED_ROLE=True,
                  AUTH_SIGNING_KEY='k' * 20 + 'abcdefghijklmnopqrstuvwxyz', CORS_ORIGINS='https://a.example',
                  EMAIL_BACKEND='resend', RESEND_API_KEY='re_x', EMAIL_FROM='a@b.co',
                  PASSWORD_RESET_URL='https://a.example/r', INVITATION_URL='http://a.example/i')

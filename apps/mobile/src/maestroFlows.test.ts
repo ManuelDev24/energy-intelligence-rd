@@ -55,16 +55,44 @@ describe('flujos de Maestro de cuentas', () => {
     expect(missing, 'testID inexistentes en la app').toEqual([]);
   });
 
+  it('confirma el diálogo nativo después de pedir cerrar sesión', () => {
+    const commands = parseAllDocuments(readFileSync(join(MAESTRO, 'auth-flow.yaml'), 'utf8'))[1].toJS() as Array<{ tapOn?: { id?: string; text?: string; below?: string } }>;
+    const logouts = commands.map((command, index) => command.tapOn?.id === 'auth-logout' ? index : -1).filter((index) => index >= 0);
+    expect(logouts).toHaveLength(2);
+    for (const index of logouts) {
+      expect(commands[index + 1]?.tapOn).toMatchObject({ text: '^Cerrar sesión$', below: '^¿Cerrar sesión.*' });
+    }
+  });
+
+  it('usa navegación de regreso específica de plataforma, no back Android en iOS', () => {
+    const { text } = flowIds('auth-flow.yaml');
+    expect(text).not.toMatch(/^- back\s*$/m);
+    expect(text.match(/^- runFlow: back\.yaml$/gm)).toHaveLength(3);
+    const back = parseAllDocuments(readFileSync(join(MAESTRO, 'back.yaml'), 'utf8'))[1].toJS();
+    expect(back).toEqual(expect.arrayContaining([
+      { runFlow: { when: { platform: 'iOS' }, commands: [{ swipe: { start: '1%,50%', end: '85%,50%', duration: 600 } }] } },
+      { runFlow: { when: { platform: 'Android' }, commands: ['back'] } },
+    ]));
+  });
+
+  it('lleva el botón de meta al área visible y espera al formulario', () => {
+    const commands = parseAllDocuments(readFileSync(join(MAESTRO, 'auth-flow.yaml'), 'utf8'))[1].toJS() as Array<{ tapOn?: { id?: string }; scrollUntilVisible?: unknown; extendedWaitUntil?: unknown }>;
+    const edit = commands.findIndex((command) => command.tapOn?.id === 'goal-edit');
+    expect(commands[edit - 1]?.scrollUntilVisible).toMatchObject({ element: { id: 'goal-edit' }, direction: 'DOWN', visibilityPercentage: 100 });
+    expect(commands[edit + 1]?.extendedWaitUntil).toMatchObject({ visible: { id: 'f-goal-kwh' }, timeout: 20000 });
+  });
+
   it('el comprobador detecta un id inventado', () => {
     expect(exists('auth-submit')).toBe(true);
     expect(exists('account-onboarding-name')).toBe(true);
     expect(exists('boton-que-no-existe')).toBe(false);
   });
 
-  it('el flujo no toca OCR y declara honestamente que no se ha ejecutado', () => {
+  it('el flujo no toca OCR y declara honestamente la aceptación parcial por plataforma', () => {
     const { text } = flowIds('auth-flow.yaml');
     expect(text.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n')).not.toMatch(/ocr|BillOcr|bill-ocr/i);
-    expect(text).toContain('NO EJECUTADO');
+    expect(text).toContain('iOS EJECUTADO');
+    expect(text).toContain('Android NO EJECUTADO');
   });
 
   it('run-auth.sh genera un correo único por corrida y no lleva secretos', () => {

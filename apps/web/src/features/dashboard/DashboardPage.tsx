@@ -15,6 +15,7 @@ import { QueryState } from "@/components/query-state";
 import { Card, CardTitle } from "@/components/ui/card";
 import { GoalProgressSection } from "@/features/goal/GoalProgressCard";
 import { CycleCard } from "@/features/dashboard/CycleCard";
+import { EnergyScoreCard } from "@/features/dashboard/EnergyScoreCard";
 import { AnomalySection } from "@/features/anomalies/AnomalySection";
 import { useBills, useDashboard, useAnomalies, useUpdateAnomaly } from "@/lib/api/hooks";
 import type { Dashboard, Metric } from "@/lib/api/schemas";
@@ -223,6 +224,7 @@ function HomeDashboard({ homeId }: { homeId: string }) {
             {!billId ? <AnomalySection anomalies={anomalies.data} isLoading={anomalies.isLoading} pendingId={updateAnomaly.isPending ? updateAnomaly.variables?.id : null} onDismiss={(anomaly) => updateAnomaly.mutate({ id: anomaly.id, status: "dismissed" })} /> : null}
 
             {!billId ? <GoalProgressSection homeId={homeId} /> : null}
+            {!billId && homeId ? <EnergyScoreCard homeId={homeId} /> : null}
 
             {!bills.isLoading && !bills.error && history.length > 0 ? (
               <Card>
