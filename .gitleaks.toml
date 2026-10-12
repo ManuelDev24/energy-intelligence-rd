@@ -1,0 +1,24 @@
+# Config de gitleaks para energy-intelligence-rd.
+#
+# [[allowlist]] abajo: 2 falsos positivos individualmente verificados, NO secretos reales
+# (ver docs/qa/ERD-RELEASE-QA.md § "Secret scan" y el hallazgo original del 2026-10-11/12):
+#   - packages/core/src/telemetry.test.ts: `const JWT = 'eyJhbG...-123'` es un placeholder
+#     truncado a propósito (tiene "..." literal) para probar que el scrubber de Sentry redacta
+#     texto con forma de JWT; no decodifica ni autentica nada.
+#   - docs/qa/evidence/dev-recovery-2026-10-11/native-ios-auth.json: los valores de
+#     `latest_source_sha256` son hashes SHA-256 de archivos fuente, guardados como metadato de
+#     evidencia de QA, no credenciales.
+#
+# El alcance queda limitado a esas dos rutas exactas; no ampliar sin volver a verificar cada hallazgo
+# con la misma evidencia concreta (no "parece sintético").
+title = "energy-intelligence-rd"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsos positivos verificados: JWT placeholder truncado en una prueba y hashes SHA-256 de evidencia de QA (no secretos reales)"
+paths = [
+  '''^packages/core/src/telemetry\.test\.ts$''',
+  '''^docs/qa/evidence/dev-recovery-2026-10-11/native-ios-auth\.json$''',
+]
