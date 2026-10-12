@@ -31,7 +31,8 @@ def ocr_process(db: Session, job) -> None:
         document_id = uuid.UUID(job.payload["document_id"])
     except (KeyError, ValueError, TypeError) as exc:
         raise PermanentFailure("payload sin document_id") from exc
-    ocr_jobs.process(db, document_id, attempt=job.attempts, max_attempts=job.max_attempts)
+    ocr_jobs.process(db, document_id, attempt=job.attempts, max_attempts=job.max_attempts,
+                     generation=job.generation)
 
 
 @register("anomalies.scan_home", timeout_seconds=120, max_attempts=3)

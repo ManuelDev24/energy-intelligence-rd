@@ -56,7 +56,7 @@ Proyecto Neon existente (región AWS `us-east-1`, la más cercana a Render *Virg
    `postgresql+psycopg://erd_prod:CLAVE@ep-xxxx.us-east-1.aws.neon.tech/energyrd?sslmode=require&channel_binding=require`
 5. (Recomendado para producción) Plan **Launch**: historial de restauración de hasta 7 días (Free: 6 h).
 6. **Roles de runtime (obligatorio, auditoría C-01).** El rol `erd_staging`/`erd_prod` es el **dueño**: solo migra (`MIGRATION_DATABASE_URL`).
-   El API usa `erd_app` y el worker `erd_worker` (sujetos a la RLS), que **crea la migración `0025`** sin contraseña. Tras la primera migración
+   El API usa `erd_app` y el worker `erd_worker` (sujetos a la RLS), que **crea la migración `0027`** sin contraseña. Tras la primera migración
    (sección 2) sigue **`docs/ops/DB_ROLES.md`** (asignar LOGIN y contraseña, construir las dos URL, `DB_REQUIRE_RESTRICTED_ROLE=true` ya está en
    `render.yaml`). Si el rol de `DATABASE_URL` ignora la RLS el servicio **no arranca**: es intencional.
 

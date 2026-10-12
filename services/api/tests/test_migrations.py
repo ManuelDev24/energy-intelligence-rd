@@ -120,6 +120,16 @@ def test_percentage_downgrade_refuses_loss_of_extreme_values(migrated, alembic_c
             ScriptDirectory.from_config(alembic_cfg).get_current_head()
 
 
+# Admin RBAC de Módulo 4: migración 0024 sigue a 0023; no alterar el head de Módulo 1.
+ADMIN_TABLES = {"admin_roles", "admin_scopes", "admin_role_scopes", "admin_role_assignments", "admin_audit_events"}
+
+def test_0024_admin_rbac_roundtrip(migrated, alembic_cfg):
+    assert ADMIN_TABLES <= _tables(migrated)
+    command.downgrade(alembic_cfg, "0023")
+    assert not (ADMIN_TABLES & _tables(migrated))
+    command.upgrade(alembic_cfg, "head")
+    assert ADMIN_TABLES <= _tables(migrated)
+
 PHASE2_TABLES = {"meter_readings", "home_goals", "tariffs", "tariff_fixed_charges", "tariff_blocks"}
 OFFICIAL = ("SIE-121-2026-TF",)
 
@@ -281,7 +291,7 @@ def test_0023_power_outages_roundtrips_and_the_database_blocks_overlaps(migrated
 
 
 # ---------- auditoría C-16: correo único sin distinguir mayúsculas, garantizado por la base ----------
-def test_0024_the_database_refuses_mixed_case_and_case_only_duplicate_emails(migrated):
+def test_0026_the_database_refuses_mixed_case_and_case_only_duplicate_emails(migrated):
     from sqlalchemy.exc import IntegrityError
     with migrated.begin() as c:
         c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'ana@example.com','x')"))
@@ -293,14 +303,14 @@ def test_0024_the_database_refuses_mixed_case_and_case_only_duplicate_emails(mig
         c.execute(text("DELETE FROM users WHERE email='ana@example.com'"))
 
 
-def test_0024_upgrade_lowercases_existing_emails_and_stops_on_case_only_duplicates(migrated, alembic_cfg):
-    command.downgrade(alembic_cfg, "0023")
+def test_0026_upgrade_lowercases_existing_emails_and_stops_on_case_only_duplicates(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0025")
     with migrated.begin() as c:
         c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'Mixto@Example.com','x')"))
     command.upgrade(alembic_cfg, "head")
     with migrated.connect() as c:
         assert c.execute(text("SELECT email FROM users WHERE lower(email)='mixto@example.com'")).scalar() == "mixto@example.com"
-    command.downgrade(alembic_cfg, "0023")
+    command.downgrade(alembic_cfg, "0025")
     with migrated.begin() as c:
         c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'MIXTO@example.com','x')"))
     with pytest.raises(Exception, match="mayúsculas"):

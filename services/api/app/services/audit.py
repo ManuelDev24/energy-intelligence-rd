@@ -9,7 +9,7 @@ from app.models.audit import AuditEvent
 
 # Auditoría C-15 (DB-04): el historial de cambios no debe ser una segunda copia de los datos personales. Estos campos se guardan
 # como «[redacted:xxxxxx]»: el sufijo es un HMAC corto con la clave de la aplicación, para ver SI cambió un valor sin guardar cuál era
-# (y sin poder invertirlo fuera de la aplicación). Debe coincidir con la migración 0026.
+# (y sin poder invertirlo fuera de la aplicación). Debe coincidir con la migración 0028.
 SENSITIVE_FIELDS = frozenset({"account_number", "address", "city", "sector", "province", "municipality"})
 
 

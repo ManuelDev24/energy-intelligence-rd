@@ -33,6 +33,9 @@ from app.schemas.anomaly import AnomalyRecord, AnomalyStatusIn
 from app.schemas.outage import OutageIn, OutageOut, OutageSummaryOut
 from app.schemas.energy_score import EnergyScoreOut
 from app.schemas.recommendation import RecommendationListOut, RecommendationRecord, RecommendationStatusIn
+from app.schemas.admin import (AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
+                               AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate,
+                               RoleAssignmentOut, RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut)
 
 ROOT = Path(__file__).resolve().parents[3]
 MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, AlertRecord,
@@ -41,7 +44,10 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
           PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
-          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn]
+          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn,
+          AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
+          AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate, RoleAssignmentOut,
+          RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut]
 
 
 def generate():

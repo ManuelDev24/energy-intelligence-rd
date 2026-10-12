@@ -1,4 +1,4 @@
-"""Auditoría C-01: aislamiento por vivienda en la base (RLS, migración 0025) probado con los roles reales `erd_app` y `erd_worker`.
+"""Auditoría C-01: aislamiento por vivienda en la base (RLS, migración 0027) probado con los roles reales `erd_app` y `erd_worker`.
 
 Los datos se crean como superusuario de pruebas (que ignora la RLS) y se leen/escriben con los roles restringidos, con el contexto
 (`app.user_id`, `app.home_id`) que fija el API. Es la «matriz RLS» que pedía la auditoría: tabla × operación × vivienda propia/ajena/sin contexto.
@@ -79,7 +79,7 @@ def test_every_table_with_a_home_column_has_rls_and_both_policies(migrated):
         protected = {r[0] for r in c.execute(text(
             "SELECT relname FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r' AND relrowsecurity"))}
         policies = {(r[0], r[1]) for r in c.execute(text("SELECT tablename, unnest(roles)::text FROM pg_policies WHERE schemaname='public'"))}
-    # audit_events y home_invitations quedan fuera a propósito (ver la migración 0025 y docs/ops/DB_ROLES.md).
+    # audit_events y home_invitations quedan fuera a propósito (ver la migración 0027 y docs/ops/DB_ROLES.md).
     unprotected = with_home - protected - {"audit_events", "home_invitations"}
     assert not unprotected, f"Tablas con home_id sin RLS: {sorted(unprotected)}"
     assert set(ALL_TABLES) <= protected
@@ -274,7 +274,7 @@ def test_rls_module_rejects_anything_that_is_not_a_uuid():
 
 def test_migration_downgrade_and_upgrade_roundtrip(migrated, alembic_cfg):
     from alembic import command
-    command.downgrade(alembic_cfg, "0024")
+    command.downgrade(alembic_cfg, "0026")
     with migrated.connect() as c:
         assert c.execute(text("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relrowsecurity")).scalar() == 0
         assert c.execute(text("SELECT count(*) FROM pg_proc WHERE proname IN ('app_user','app_home')")).scalar() == 0
@@ -381,3 +381,24 @@ def test_the_regrant_script_matches_the_migration_and_is_idempotent(migrated):
                 assert c.execute(text("SELECT has_table_privilege(:r, :t, 'SELECT, INSERT, UPDATE, DELETE')"), {"r": role, "t": f"public.{table}"}).scalar()
                 assert not c.execute(text("SELECT has_table_privilege(:r, :t, 'TRUNCATE')"), {"r": role, "t": f"public.{table}"}).scalar()
         assert not c.execute(text("SELECT has_table_privilege('erd_app', 'public.alembic_version', 'SELECT')")).scalar()
+
+
+# ---------- operación administrativa del OCR (migración 0031): acceso acotado ----------
+def test_admin_ocr_context_opens_only_documents_and_never_other_home_data(world):
+    _, engine, a, b = world
+    with engine.connect() as connection, connection.begin():
+        connection.execute(text("SELECT set_config('app.admin_ocr', 'on', true)"))   # sin persona ni vivienda en el contexto
+        assert count(connection, "documents") == 2 and count(connection, "document_ocr") == 2
+        for table in ("bills", "meter_readings", "contracts", "equipment", "alerts", "homes", "home_members"):
+            assert count(connection, table) == 0, table
+        assert connection.execute(text("UPDATE documents SET retention_until = now() + interval '8 days'")).rowcount == 2
+        assert connection.execute(text("DELETE FROM documents")).rowcount == 0   # solo SELECT/UPDATE: no se puede borrar
+
+
+def test_without_the_admin_flag_no_document_is_visible_without_a_home(world):
+    _, engine, a, b = world
+    connection, transaction = as_app(engine)
+    try:
+        assert count(connection, "documents") == 0
+    finally:
+        transaction.rollback(); connection.close()

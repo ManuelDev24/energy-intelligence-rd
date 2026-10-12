@@ -61,7 +61,7 @@ def alembic_cfg(engine, monkeypatch):
 
 
 # Auditoría C-01: con TEST_RLS_ROLE=1 la API de las pruebas se conecta como `erd_app` (sin privilegios, sujeto a RLS) en vez de como el
-# superusuario de la base de pruebas, para ejercitar las políticas de la migración 0025 con toda la suite. Las contraseñas son solo de
+# superusuario de la base de pruebas, para ejercitar las políticas de la migración 0027 con toda la suite. Las contraseñas son solo de
 # pruebas y los roles se crean con NOLOGIN en la migración: aquí se les da LOGIN en el servidor de pruebas.
 RLS_MODE = os.getenv("TEST_RLS_ROLE") == "1"
 RLS_TEST_PASSWORD = "erd-rls-tests-only"

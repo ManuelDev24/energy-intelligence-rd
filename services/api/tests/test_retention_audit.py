@@ -93,7 +93,7 @@ def test_deleting_the_account_detaches_the_author_from_the_audit(auth_client, mi
 
 def test_0026_migration_redacts_existing_rows(migrated, alembic_cfg):
     from alembic import command
-    command.downgrade(alembic_cfg, "0025")
+    command.downgrade(alembic_cfg, "0027")
     with migrated.begin() as c:
         c.exec_driver_sql("""INSERT INTO audit_events(id,home_id,entity_id,entity,operation,actor,before,after,created_at)
                              VALUES(gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),'contracts','update','pilot',

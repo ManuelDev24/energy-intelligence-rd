@@ -21,6 +21,15 @@
 - Implementación de seguridad y dependencias separadas en copias sin secretos bajo ~/.hermes/cache/scratch/energy-fullscope-20261004/{auth-backend,dependencies}; no integradas aún.
 - Nunca interpretar baseline verde como autenticación, OCR, despliegue, CI remoto o integraciones completadas.
 
+## Auditoría integral verificada — 2026-10-10
+- Baseline real: `origin/Dev` `92d39f5`, CI `38082199280` verde y ningún PR abierto.
+- El piloto está bloqueado únicamente para promoción a QA por la aceptación OCR con fotos reales anonimizadas de EDESUR, EDENORTE y EDEESTE.
+- El producto completo del plan no está próximo al 100%: quedan 59 paquetes finitos, 19 parciales y 40 no construidos.
+- No existen implementaciones rastreadas en `apps/admin`, `mcp/energy-rd-mcp` ni `packages/ui`; las carpetas están vacías.
+- Fases 4–8 (Copilot/MCP, admin, IoT, solar, segmentos y plataforma nacional) son principalmente visión/documentación, no producto implementado.
+- `npm audit` actual confirma 20 avisos altos y 0 críticos; Manuel aceptó temporalmente el riesgo, pero la vigilancia/actualización sigue pendiente.
+- Backlog y dependencias: `docs/COMPLETE_PROJECT_GAP_ANALYSIS_2026-10-10.md`.
+
 ## Hallazgos del Módulo 1 (2026-10-11)
 - **React Query oculta los mocks de red en pruebas E2E**: el panel precarga facturas y panel (`staleTime` 60 s), así que `page.route` sobre una pantalla ya visitada no se ejecuta. Las pruebas de estados (loading/error/Reintentar) deben registrar la ruta *antes* de elegir la vivienda. «Entrar a una pantalla» no siempre vuelve a pedir datos: Ahorro y Energy Score usan `staleTime: 0` + `refetchOnMount: "always"` a propósito.
 - **`next dev` y `next build` comparten `.next`**: hay que borrarla entre un build de producción y una corrida E2E, y nunca correr dos servidores a la vez.
@@ -32,3 +41,8 @@
 - **Maestro**: los flujos `auth-flow`/`pilot-flow` recorren Perfil y Panel, que ahora tienen un botón y dos tarjetas más; si algún flujo asume la altura de la pantalla puede necesitar un `scroll`. No se pudo comprobar sin emulador.
 - **Contenedor efímero**: los commits del módulo viven solo en este contenedor hasta que se empujen.
 
+## ERD-ADM-RBAC + ERD-OCR-03 (Módulo 2, 2026-10-11)
+- `apps/admin` nuevo: Next.js con BFF de mismo origen, cookies `HttpOnly`/`SameSite=Strict`, nunca tokens en `localStorage`.
+- **Quirk real de Next dev**: `request.url` puede reportar hostname `localhost` aunque el servidor escuche en otro host (`-H 127.0.0.1`); el chequeo de mismo origen del BFF debe confiar en el header `Host`, no en `url.origin`. Detectado y corregido ejecutando el E2E real contra el stack vivo — no lo habría encontrado ninguna prueba unitaria con mocks.
+- Carrera de revocación del último `super_admin`: dos revocaciones concurrentes pueden contar cada una a la otra como activa y dejar cero; se serializa con `SELECT ... FOR UPDATE` sobre la fila del rol compartido dentro de la misma transacción, antes de contar.
+- El borrado de cuenta (ERD-AUTH-03) puede chocar con la inmutabilidad de `admin_audit_events` si la FK de `actor_user_id` usa `ON DELETE SET NULL`: el trigger `BEFORE UPDATE` lo rechaza con 500. Se retiró la FK; el UUID queda como identificador seudónimo (pendiente de revisión legal de retención).

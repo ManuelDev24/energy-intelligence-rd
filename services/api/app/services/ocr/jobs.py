@@ -82,61 +82,80 @@ def retry(db: Session, home_id, document_id, *, now=None) -> DocumentOcr:
     if effective != "failed":
         return state
     with write_transaction(db):
+        job = db.scalar(select(Job).where(Job.kind == KIND, Job.idempotency_key == str(document_id))
+                        .with_for_update().execution_options(populate_existing=True))
+        document = db.get(Document, document_id, with_for_update=True, populate_existing=True)
+        if document is None or document.bill_id is not None:
+            raise NotFound("Documento no encontrado")
+        state = db.get(DocumentOcr, document_id, with_for_update=True, populate_existing=True)
+        if state is None:
+            raise NotFound("Este documento no tiene lectura de factura")
+        if state.status != "failed" or (job is not None and job.status in ("running", "queued", "cancelled")):
+            return state
         state.status, state.error_code, state.attempts = "pending", None, 0
+        state.generation += 1
         state.finished_at, state.started_at, state.created_at = None, None, _now(now)
-        job = _job_for(db, document_id)
         if job is not None:
-            db.delete(job)  # el trabajo viejo (muerto o terminado) libera su clave de idempotencia
+            db.delete(job)  # household retry retains its existing idempotent enqueue behavior
             db.flush()
-        jobs.enqueue(db, KIND, {"document_id": str(document_id)}, idempotency_key=str(document_id), now=now, commit=False)
+        new_job, _ = jobs.enqueue(db, KIND, {"document_id": str(document_id)},
+                                  idempotency_key=str(document_id), now=now, commit=False)
+        new_job.generation = state.generation
     return state
 
 
-def _fail(db: Session, document_id, code: str, *, now=None) -> None:
+def _fail(db: Session, document_id, code: str, *, generation: int = 0, now=None) -> None:
     with write_transaction(db):
+        document = db.get(Document, document_id, with_for_update=True, populate_existing=True)
+        if document is None or document.bill_id is not None:
+            return
         state = db.get(DocumentOcr, document_id, with_for_update=True, populate_existing=True)
-        if state is not None:
+        if state is not None and state.generation == generation and state.status == "processing":
             state.status, state.error_code, state.finished_at, state.draft = "failed", code, _now(now), None
 
 
-def process(db: Session, document_id, *, attempt: int, max_attempts: int, engine=None, now=None) -> str:
+def process(db: Session, document_id, *, attempt: int, max_attempts: int, engine=None, now=None,
+            generation: int = 0) -> str:
     """Cuerpo del trabajo `ocr.process` (idempotente). Devuelve `done`, `failed` o `skipped`; lanza para reintentar."""
     with write_transaction(db):
+        document = db.get(Document, document_id, with_for_update=True, populate_existing=True)
+        if document is None or document.bill_id is not None:
+            return "skipped"
         state = db.get(DocumentOcr, document_id, with_for_update=True, populate_existing=True)
-        if state is None or state.status in ("done", "failed"):
-            return "skipped"  # borrado mientras esperaba, o ya resuelto por un intento anterior
+        if state is None or state.generation != generation or state.status in ("done", "failed", "cancelled"):
+            return "skipped"
         state.status, state.attempts, state.started_at = "processing", attempt, _now(now)
-    document = db.get(Document, document_id, populate_existing=True)
-    if document is None:
-        return "skipped"
     started = time.monotonic()
     try:
         content = get_store().get(document.storage_key)
     except ObjectMissing:
-        _fail(db, document_id, "file_missing", now=now)
+        _fail(db, document_id, "file_missing", generation=generation, now=now)
         return "failed"
     except DecryptionError:
-        _fail(db, document_id, "engine_error", now=now)  # un objeto alterado o con clave perdida no se arregla reintentando
+        _fail(db, document_id, "engine_error", generation=generation, now=now)  # un objeto alterado o con clave perdida no se arregla reintentando
         return "failed"
     except StorageFailure:
         if attempt >= max_attempts:
-            _fail(db, document_id, "engine_error", now=now)
+            _fail(db, document_id, "engine_error", generation=generation, now=now)
         raise
     try:
         extracted = pipeline.extract_document(content, document.content_type, engine)
     except pipeline.UnreadableDocument as exc:
-        _fail(db, document_id, exc.code, now=now)
+        _fail(db, document_id, exc.code, generation=generation, now=now)
         return "failed"
     except pipeline.EngineError:
         if attempt >= max_attempts:
-            _fail(db, document_id, "engine_error", now=now)
+            _fail(db, document_id, "engine_error", generation=generation, now=now)
         raise
     draft = parse_bill_text(extracted.text)
     if extracted.pages_read < extracted.pages_total:
         draft.warnings.append(f"Solo se leyeron las primeras {extracted.pages_read} de {extracted.pages_total} páginas del PDF.")
     with write_transaction(db):
+        document = db.get(Document, document_id, with_for_update=True, populate_existing=True)
+        if document is None or document.bill_id is not None:
+            return "skipped"
         state = db.get(DocumentOcr, document_id, with_for_update=True, populate_existing=True)
-        if state is None:
+        if state is None or state.generation != generation or state.status != "processing":
             return "skipped"
         state.status, state.error_code, state.finished_at = "done", None, _now(now)
         state.engine, state.method = extracted.engine, extracted.method

@@ -95,7 +95,7 @@ async def http_error(request: Request, exc: HTTPException):
 @app.exception_handler(RequestValidationError)
 async def validation_error(request: Request, exc: RequestValidationError):
     errors = exc.errors()
-    if request.url.path.startswith("/api/v1/auth/"):
+    if request.url.path.startswith(("/api/v1/auth/", "/api/v1/admin/")):
         errors = [{k: v for k, v in error.items() if k not in {"input", "ctx"}} for error in errors]
     return JSONResponse({"detail": jsonable_encoder(errors, custom_encoder={ValueError: str}),
                          "code": "validation_error", "request_id": getattr(request.state, "request_id", None)},

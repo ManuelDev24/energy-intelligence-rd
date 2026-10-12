@@ -20,8 +20,8 @@ Downgrade quita políticas y RLS; no borra los roles (pueden estar en uso por ot
 """
 from alembic import op
 
-revision = "0025"
-down_revision = "0024"
+revision = "0027"
+down_revision = "0026"
 branch_labels = None
 depends_on = None
 

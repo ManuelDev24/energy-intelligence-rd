@@ -22,7 +22,7 @@ class AuditEvent(Base):
     entity: Mapped[str] = mapped_column(String(32), nullable=False)
     operation: Mapped[str] = mapped_column(String(16), nullable=False)
     actor: Mapped[str] = mapped_column(String(32), nullable=False, default="pilot")
-    # Auditoría C-15 (migración 0026): quién actuó, cuando hubo sesión. SET NULL al borrar la cuenta (además se seudonimiza `actor`).
+    # Auditoría C-15 (migración 0028): quién actuó, cuando hubo sesión. SET NULL al borrar la cuenta (además se seudonimiza `actor`).
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
     before: Mapped[dict | None] = mapped_column(JSONB)
     after: Mapped[dict | None] = mapped_column(JSONB)

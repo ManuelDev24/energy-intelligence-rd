@@ -20,7 +20,7 @@ Borra en lotes de 1 000 filas con commit entre lotes (no retiene bloqueos largos
 
 - `audit_events.actor_user_id` registra **quién** hizo el cambio (antes `actor` era siempre `pilot`). Al borrar la cuenta queda en NULL y `actor` se seudonimiza.
 - `account_number`, `address`, `city`, `sector`, `province` y `municipality` se guardan como `[redacted:xxxxxx]`: el sufijo es un HMAC corto con la clave
-  de la aplicación, suficiente para ver *si* cambió un valor, no *cuál* era. La migración `0026` reemplazó los valores ya guardados por `[redacted]`.
+  de la aplicación, suficiente para ver *si* cambió un valor, no *cuál* era. La migración `0028` reemplazó los valores ya guardados por `[redacted]`.
 
 ## Cifrado de columnas con datos personales (DB-03) — decisión pendiente del dueño
 

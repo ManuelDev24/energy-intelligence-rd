@@ -11,7 +11,7 @@ from app.database import Base
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (CheckConstraint("role IN ('user', 'admin', 'support')", name="ck_users_role"),
-                      # Auditoría C-16 (migración 0024): el correo se guarda en minúsculas y es único sin distinguir mayúsculas.
+                      # Auditoría C-16 (migración 0026): el correo se guarda en minúsculas y es único sin distinguir mayúsculas.
                       CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
                       Index("uq_users_email_lower", text("lower(email)"), unique=True),
                       CheckConstraint("(terms_version IS NULL) = (terms_accepted_at IS NULL)",
@@ -25,7 +25,7 @@ class User(Base):
     # NULL = usuario legado anterior al consentimiento (migración 0012).
     terms_version: Mapped[str | None] = mapped_column(String(32))
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # Auditoría C-10 (migración 0027): NULL hasta que la persona abre el enlace enviado a su correo.
+    # Auditoría C-10 (migración 0029): NULL hasta que la persona abre el enlace enviado a su correo.
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

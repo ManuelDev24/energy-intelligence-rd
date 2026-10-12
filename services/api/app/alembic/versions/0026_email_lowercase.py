@@ -11,8 +11,8 @@ Downgrade quita ambas restricciones (no devuelve las mayúsculas originales).
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0024"
-down_revision = "0023"
+revision = "0026"
+down_revision = "0025"
 branch_labels = None
 depends_on = None
 

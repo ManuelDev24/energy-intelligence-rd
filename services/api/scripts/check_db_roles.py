@@ -24,9 +24,9 @@ def main() -> int:
             "SELECT relname FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r' AND relrowsecurity"))}
         missing = sorted(with_home - protected - {"audit_events", "home_invitations"})
         if missing:
-            problems.append(f"tablas con home_id sin RLS: {', '.join(missing)} (¿falta aplicar la migración 0025?)")
+            problems.append(f"tablas con home_id sin RLS: {', '.join(missing)} (¿falta aplicar la migración 0027?)")
         if "homes" not in protected:
-            problems.append("la tabla homes no tiene RLS (¿falta aplicar la migración 0025?)")
+            problems.append("la tabla homes no tiene RLS (¿falta aplicar la migración 0027?)")
         role = connection.execute(text("SELECT current_user")).scalar()
     if problems:
         print(f"ERROR rol «{role}»:")

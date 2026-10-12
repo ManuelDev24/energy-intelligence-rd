@@ -113,7 +113,7 @@ class Settings(BaseSettings):
     AUTH_AUDIENCE: str = "energy-rd-clients"
     SEED_PILOT: bool = False
     MIGRATE_ON_START: bool = False
-    # Auditoría C-01: con la RLS (migración 0025) el API debe conectarse como `erd_app` y el worker como `erd_worker` (roles sin privilegios
+    # Auditoría C-01: con la RLS (migración 0027) el API debe conectarse como `erd_app` y el worker como `erd_worker` (roles sin privilegios
     # especiales). Si esta bandera está activa, el arranque falla cuando el rol de la conexión es superusuario, ignora la RLS o es dueño de las
     # tablas. Obligatoria en staging/production. `MIGRATION_DATABASE_URL` (rol dueño) solo la usan las migraciones (Alembic).
     DB_REQUIRE_RESTRICTED_ROLE: bool = False

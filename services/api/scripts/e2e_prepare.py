@@ -51,7 +51,7 @@ def migrate(url: str) -> None:
 
 
 def provision_roles(url: str) -> dict:
-    """Auditoría C-01: el E2E conecta el API como `erd_app` y el worker como `erd_worker` (los roles sin privilegios de la migración 0025),
+    """Auditoría C-01: el E2E conecta el API como `erd_app` y el worker como `erd_worker` (los roles sin privilegios de la migración 0027),
     con contraseñas aleatorias de esta corrida, para ejercitar la RLS en toda la pila. Las URL quedan solo en el run.json (carpeta ignorada)."""
     parsed = _guard(url)
     admin = create_engine(parsed, isolation_level="AUTOCOMMIT")
