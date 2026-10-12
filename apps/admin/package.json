@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start -p 3100",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
     "e2e": "node e2e/run.mjs",
     "e2e:safety": "node --test e2e/safety.test.mjs"
   },

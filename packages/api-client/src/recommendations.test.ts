@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "./index";
 
-const HOME = "00000000-0000-0000-0000-000000000001";
-const ID = "00000000-0000-0000-0000-0000000000a1";
+const HOME = "00000000-0000-4000-8000-000000000001";
+const ID = "00000000-0000-4000-8000-0000000000a1";
 const row = {
   id: ID, home_id: HOME, equipment_id: null, anomaly_id: null, rule_id: "ac-one-hour", rule_version: 1, ruleset_version: 1, category: "equipment",
   title: "Una hora menos de aire acondicionado al día (Sala)", summary: "Sala usa unas 6 h al día.", action: "Sube el termostato.", confidence: "medium",
@@ -41,14 +41,14 @@ describe("recommendations API (ERD-SAVE-01)", () => {
   it("rejects unknown categories, a foreign home and malformed rows", async () => {
     const api = (body: unknown) => createApiClient("http://api.test", vi.fn().mockResolvedValue(json(body))).listRecommendations(HOME);
     await expect(api({ ...list, items: [{ ...row, category: "mystery" }] })).rejects.toMatchObject({ code: "invalid_response" });
-    await expect(api({ ...list, home_id: "00000000-0000-0000-0000-000000000002" })).rejects.toMatchObject({ code: "invalid_response" });
+    await expect(api({ ...list, home_id: "00000000-0000-4000-8000-000000000002" })).rejects.toMatchObject({ code: "invalid_response" });
     await expect(api({ ...list, items: [{ ...row, id: undefined }] })).rejects.toMatchObject({ code: "invalid_response" });
   });
 
   it("updates one and rejects an answer for another id", async () => {
     const ok = createApiClient("http://api.test", vi.fn().mockResolvedValue(json({ ...row, status: "applied" })));
     expect((await ok.updateRecommendation(HOME, ID, "applied")).status).toBe("applied");
-    const other = createApiClient("http://api.test", vi.fn().mockResolvedValue(json({ ...row, id: "00000000-0000-0000-0000-0000000000b2" })));
+    const other = createApiClient("http://api.test", vi.fn().mockResolvedValue(json({ ...row, id: "00000000-0000-4000-8000-0000000000b2" })));
     await expect(other.updateRecommendation(HOME, ID, "dismissed")).rejects.toMatchObject({ code: "invalid_response" });
   });
 });

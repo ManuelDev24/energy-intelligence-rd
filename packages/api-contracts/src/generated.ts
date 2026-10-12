@@ -27,11 +27,11 @@ export const BillOutSchema = z.object({
   "home_id": z.string().uuid(),
   "period_start": z.string().date(),
   "period_end": z.string().date(),
-  "kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "amount_dop": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "amount_dop": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "days": z.number().finite().int(),
-  "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
-  "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "reading_previous": z.union([z.string(), z.null()]),
+  "reading_current": z.union([z.string(), z.null()]),
   "due_date": z.union([z.string().date(), z.null()]),
   "paid_at": z.union([z.string().datetime({ offset: true }), z.null()]),
   "source": z.enum(["manual", "seed"]),
@@ -40,7 +40,7 @@ export const BillOutSchema = z.object({
 export type BillOut = z.infer<typeof BillOutSchema>;
 
 export const MetricSchema = z.object({
-  "value": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "value": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "unit": z.string(),
   "quality": z.enum(["REAL", "ESTIMATED", "PROJECTED"])
 });
@@ -127,8 +127,8 @@ export const EquipmentOutSchema = z.object({
   "brand": z.union([z.string(), z.null()]),
   "model": z.union([z.string(), z.null()]),
   "icon": z.union([z.enum(["snowflake", "refrigerator", "flame", "washing-machine", "tv", "fan", "lightbulb", "laptop", "microwave", "waves", "plug"]), z.null()]),
-  "power_w": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "hours_per_day": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "power_w": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "hours_per_day": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "created_at": z.string().datetime({ offset: true })
 });
 export type EquipmentOut = z.infer<typeof EquipmentOutSchema>;
@@ -169,8 +169,8 @@ export const AlertRecordSchema = z.object({
   "anomaly_id": z.union([z.string().uuid(), z.null()]),
   "status": z.enum(["unread", "read", "dismissed"]),
   "message": z.string(),
-  "kwh_pct": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
-  "threshold_pct": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "kwh_pct": z.union([z.string(), z.null()]),
+  "threshold_pct": z.union([z.string(), z.null()]),
   "basis_bill_id": z.union([z.string().uuid(), z.null()]),
   "basis_period_start": z.union([z.string().date(), z.null()]),
   "basis_period_end": z.union([z.string().date(), z.null()]),
@@ -180,19 +180,19 @@ export type AlertRecord = z.infer<typeof AlertRecordSchema>;
 
 export const AlertSettingsOutSchema = z.object({
   "home_id": z.string().uuid(),
-  "warning_pct": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "critical_pct": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String)
+  "warning_pct": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "critical_pct": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String)
 });
 export type AlertSettingsOut = z.infer<typeof AlertSettingsOutSchema>;
 
 export const BillCreateSchema = z.object({
   "period_start": z.string().date(),
   "period_end": z.string().date(),
-  "kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
-  "amount_dop": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
+  "kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "amount_dop": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "days": z.number().finite().int().min(0).max(366),
-  "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
-  "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
+  "reading_previous": z.union([z.string(), z.null()]).default(null),
+  "reading_current": z.union([z.string(), z.null()]).default(null),
   "due_date": z.union([z.string().date(), z.null()]).default(null),
   "source": z.literal("manual").default("manual"),
   "document_id": z.union([z.string().uuid(), z.null()]).default(null)
@@ -202,11 +202,11 @@ export type BillCreate = z.infer<typeof BillCreateSchema>;
 export const BillUpdateSchema = z.object({
   "period_start": z.string().date(),
   "period_end": z.string().date(),
-  "kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
-  "amount_dop": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
+  "kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "amount_dop": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "days": z.number().finite().int().min(0).max(366),
-  "reading_previous": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
-  "reading_current": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
+  "reading_previous": z.union([z.string(), z.null()]).default(null),
+  "reading_current": z.union([z.string(), z.null()]).default(null),
   "due_date": z.union([z.string().date(), z.null()]).default(null)
 });
 export type BillUpdate = z.infer<typeof BillUpdateSchema>;
@@ -218,14 +218,14 @@ export const EquipmentInSchema = z.object({
   "brand": z.union([z.string().max(60), z.null()]).default(null),
   "model": z.union([z.string().max(60), z.null()]).default(null),
   "icon": z.union([z.enum(["snowflake", "refrigerator", "flame", "washing-machine", "tv", "fan", "lightbulb", "laptop", "microwave", "waves", "plug"]), z.null()]).default(null),
-  "power_w": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,11}0*$)\\d{0,8}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
-  "hours_per_day": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String)
+  "power_w": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "hours_per_day": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String)
 });
 export type EquipmentIn = z.infer<typeof EquipmentInSchema>;
 
 export const AlertSettingsInSchema = z.object({
-  "warning_pct": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
-  "critical_pct": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String)
+  "warning_pct": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "critical_pct": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String)
 });
 export type AlertSettingsIn = z.infer<typeof AlertSettingsInSchema>;
 
@@ -257,7 +257,7 @@ export const ReadingOutSchema = z.object({
   "id": z.string().uuid(),
   "home_id": z.string().uuid(),
   "read_at": z.string().datetime({ offset: true }),
-  "reading_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "reading_kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "source": z.literal("manual"),
   "note": z.union([z.string(), z.null()]),
   "created_at": z.string().datetime({ offset: true })
@@ -266,7 +266,7 @@ export type ReadingOut = z.infer<typeof ReadingOutSchema>;
 
 export const ReadingCreateSchema = z.object({
   "read_at": z.string().datetime({ offset: true }),
-  "reading_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String),
+  "reading_kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "note": z.union([z.string().max(255), z.null()]).default(null),
   "source": z.literal("manual").default("manual")
 });
@@ -275,9 +275,9 @@ export type ReadingCreate = z.infer<typeof ReadingCreateSchema>;
 export const ConsumptionBucketSchema = z.object({
   "start": z.string().date(),
   "end": z.string().date(),
-  "kwh": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "kwh": z.union([z.string(), z.null()]),
   "quality": z.union([z.enum(["REAL", "ESTIMATED", "PROJECTED"]), z.null()]),
-  "coverage_ratio": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "coverage_ratio": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "reason_code": z.union([z.enum(["no_coverage", "partial_coverage"]), z.null()]),
   "reason": z.union([z.string(), z.null()])
 });
@@ -294,8 +294,8 @@ export type ConsumptionComparison = z.infer<typeof ConsumptionComparisonSchema>;
 
 export const ConsumptionTotalsSchema = z.object({
   "kwh": z.union([MetricSchema, z.null()]),
-  "covered_days": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "coverage_ratio": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String)
+  "covered_days": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "coverage_ratio": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String)
 });
 export type ConsumptionTotals = z.infer<typeof ConsumptionTotalsSchema>;
 
@@ -321,15 +321,15 @@ export type ConsumptionOut = z.infer<typeof ConsumptionOutSchema>;
 
 export const GoalOutSchema = z.object({
   "home_id": z.string().uuid(),
-  "monthly_amount_rd": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
-  "monthly_kwh": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "monthly_amount_rd": z.union([z.string(), z.null()]),
+  "monthly_kwh": z.union([z.string(), z.null()]),
   "updated_at": z.string().datetime({ offset: true })
 });
 export type GoalOut = z.infer<typeof GoalOutSchema>;
 
 export const GoalInSchema = z.object({
-  "monthly_amount_rd": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null),
-  "monthly_kwh": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String), z.null()]).default(null)
+  "monthly_amount_rd": z.union([z.string(), z.null()]).default(null),
+  "monthly_kwh": z.union([z.string(), z.null()]).default(null)
 });
 export type GoalIn = z.infer<typeof GoalInSchema>;
 
@@ -345,12 +345,12 @@ export const TariffRefSchema = z.object({
 export type TariffRef = z.infer<typeof TariffRefSchema>;
 
 export const GoalMetricProgressSchema = z.object({
-  "target": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "target": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "unit": z.string(),
   "so_far": z.union([MetricSchema, z.null()]),
   "projected": z.union([MetricSchema, z.null()]),
-  "percent_so_far": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
-  "percent_projected": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "percent_so_far": z.union([z.string(), z.null()]),
+  "percent_projected": z.union([z.string(), z.null()]),
   "status": z.enum(["on_track", "at_risk", "exceeded", "insufficient_data"]),
   "basis": z.union([z.enum(["readings", "bills_prorated", "tariff", "bill_average_price"]), z.null()]),
   "projection_method": z.union([z.enum(["run_rate_readings", "linear_least_squares"]), z.null()]),
@@ -376,16 +376,16 @@ export const GoalProgressOutSchema = z.object({
 export type GoalProgressOut = z.infer<typeof GoalProgressOutSchema>;
 
 export const TariffBlockOutSchema = z.object({
-  "from_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "to_kwh": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
-  "price_rd_per_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String)
+  "from_kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "to_kwh": z.union([z.string(), z.null()]),
+  "price_rd_per_kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String)
 });
 export type TariffBlockOut = z.infer<typeof TariffBlockOutSchema>;
 
 export const TariffFixedChargeOutSchema = z.object({
-  "from_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "to_kwh": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
-  "amount_rd": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String)
+  "from_kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "to_kwh": z.union([z.string(), z.null()]),
+  "amount_rd": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String)
 });
 export type TariffFixedChargeOut = z.infer<typeof TariffFixedChargeOutSchema>;
 
@@ -395,7 +395,7 @@ export const TariffOutSchema = z.object({
   "tariff_code": z.string(),
   "effective_from": z.string().date(),
   "effective_to": z.union([z.string().date(), z.null()]),
-  "flat_all_units_from_kwh": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "flat_all_units_from_kwh": z.union([z.string(), z.null()]),
   "fixed_charges": z.array(TariffFixedChargeOutSchema),
   "blocks": z.array(TariffBlockOutSchema),
   "source_resolution": z.string(),
@@ -419,7 +419,7 @@ export type ContractOut = z.infer<typeof ContractOutSchema>;
 export const BillItemInSchema = z.object({
   "label": z.string().min(1).max(200),
   "kind": z.enum(["charge", "discount"]),
-  "amount_dop": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)")), z.number().finite()]).transform(String)
+  "amount_dop": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String)
 });
 export type BillItemIn = z.infer<typeof BillItemInSchema>;
 
@@ -432,7 +432,7 @@ export const BillItemOutSchema = z.object({
   "position": z.number().finite().int(),
   "label": z.string(),
   "kind": z.enum(["charge", "discount"]),
-  "amount_dop": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String)
+  "amount_dop": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String)
 });
 export type BillItemOut = z.infer<typeof BillItemOutSchema>;
 
@@ -440,9 +440,9 @@ export const BillItemsOutSchema = z.object({
   "home_id": z.string().uuid(),
   "bill_id": z.string().uuid(),
   "items": z.array(BillItemOutSchema),
-  "items_total_dop": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
-  "bill_amount_dop": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "difference_dop": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()])
+  "items_total_dop": z.union([z.string(), z.null()]),
+  "bill_amount_dop": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "difference_dop": z.union([z.string(), z.null()])
 });
 export type BillItemsOut = z.infer<typeof BillItemsOutSchema>;
 
@@ -634,10 +634,10 @@ export const AnomalyRecordSchema = z.object({
   "severity": z.enum(["info", "warning", "critical"]),
   "confidence": z.enum(["low", "medium", "high"]),
   "status": z.enum(["open", "acknowledged", "dismissed", "resolved"]),
-  "observed_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "baseline_kwh": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
-  "delta_pct": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
-  "days": z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String),
+  "observed_kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "baseline_kwh": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
+  "delta_pct": z.union([z.string(), z.null()]),
+  "days": z.union([z.string().regex(new RegExp("^-?\\d+(\\.\\d+)?$")), z.number().finite()]).transform(String),
   "period_start": z.string().date(),
   "period_end": z.string().date(),
   "explanation": z.string(),
@@ -665,8 +665,8 @@ export const RecommendationRecordSchema = z.object({
   "action": z.string(),
   "confidence": z.enum(["low", "medium", "high"]),
   "status": z.enum(["active", "applied", "dismissed", "resolved"]),
-  "savings_kwh_month": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
-  "savings_dop_month": z.union([z.union([z.string().regex(new RegExp("^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$")), z.number().finite()]).transform(String), z.null()]),
+  "savings_kwh_month": z.union([z.string(), z.null()]),
+  "savings_dop_month": z.union([z.string(), z.null()]),
   "assumptions": z.array(z.string()),
   "evidence": z.record(z.string(), z.string()),
   "created_at": z.string().datetime({ offset: true }),

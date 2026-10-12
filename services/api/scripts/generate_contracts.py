@@ -6,7 +6,11 @@ Cross-field business validators remain authoritative in Python/API tests.
 import argparse
 import json
 import os
+import typing
+from decimal import Decimal
 from pathlib import Path
+
+from pydantic import BaseModel
 
 # Herramienta de compilación: no abre conexiones ni atiende peticiones; los modos de autenticación no cambian el esquema.
 os.environ.setdefault("ENVIRONMENT", "development")
@@ -50,6 +54,44 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut]
 
 
+def _is_decimal_annotation(annotation) -> bool:
+    """True si la anotación es Decimal o Decimal | None (desenvuelve Optional/Union)."""
+    if annotation is Decimal:
+        return True
+    return any(_is_decimal_annotation(arg) for arg in typing.get_args(annotation))
+
+
+def _nested_models(model, seen=None):
+    """BaseModel y todo submodelo anidado alcanzable desde sus campos (recursivo, incl. listas/Optional)."""
+    seen = set() if seen is None else seen
+    if model in seen:
+        return seen
+    seen.add(model)
+    for info in model.model_fields.values():
+        stack = [info.annotation]
+        while stack:
+            annotation = stack.pop()
+            if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+                _nested_models(annotation, seen)
+            else:
+                stack.extend(typing.get_args(annotation))
+    return seen
+
+
+# Pydantic 2.14 dejó de emitir un `pattern` distintivo para Decimal en modo serialización
+# (antes: {"type": "string", "pattern": "^-?\\d+(\\.\\d+)?$"}; ahora: {"type": "string"} liso,
+# indistinguible de un string normal). Se detecta por el tipo real del campo en el modelo vivo,
+# no por la forma del JSON schema generado. Recorre también submodelos anidados (p. ej. `Metric`
+# dentro de `DashboardOut`), que no están en MODELS por separado.
+_ALL_MODELS: set[type] = set()
+for _m in MODELS:
+    _ALL_MODELS |= _nested_models(_m)
+DECIMAL_FIELDS_BY_MODEL: dict[str, set[str]] = {
+    model.__name__: {name for name, info in model.model_fields.items() if _is_decimal_annotation(info.annotation)}
+    for model in _ALL_MODELS
+}
+
+
 def generate():
     definitions = {}
     for model in MODELS:
@@ -58,7 +100,7 @@ def generate():
         definitions[model.__name__] = schema
     rendered = {}
 
-    def render(schema):
+    def render(schema, is_decimal=False):
         if "$ref" in schema:
             name = schema["$ref"].rsplit("/", 1)[1]
             visit(name)
@@ -83,13 +125,18 @@ def generate():
                 result += ".datetime({ offset: true })"
             if "pattern" in schema:
                 result += f'.regex(new RegExp({json.dumps(schema["pattern"])}))'
-                # Decimal serialization schemas have a pattern and no maxLength.
-                # Accept finite numeric responses for compatibility with older fixtures.
-                if "\\d" in schema["pattern"]:
-                    result = f"z.union([{result}, z.number().finite()]).transform(String)"
             for key, method in [("minLength", "min"), ("maxLength", "max")]:
                 if key in schema:
                     result += f'.{method}({schema[key]})'
+            if is_decimal:
+                # Pydantic 2.14+ ya no deja un `pattern` distintivo en el schema de Decimal (ver
+                # DECIMAL_FIELDS_BY_MODEL arriba); el campo se identificó por el tipo real del modelo.
+                # Se repone aquí el mismo patrón numérico que antes venía del schema, para que un
+                # string no numérico (p. ej. "abc") siga rechazándose, y se acepta también un número
+                # finito por compatibilidad con fixtures/clientes antiguos.
+                if "pattern" not in schema:
+                    result += f'.regex(new RegExp({json.dumps(r"^-?\d+(\.\d+)?$")}))'
+                result = f"z.union([{result}, z.number().finite()]).transform(String)"
             return result
         if kind in {"integer", "number"}:
             result = "z.number().finite()" + (".int()" if kind == "integer" else "")
@@ -110,9 +157,10 @@ def generate():
                 extra = schema.get("additionalProperties", True)
                 # Bare `dict` fields (e.g. observed check values, audit snapshots) are opaque JSON objects.
                 return f'z.record(z.string(), {"z.unknown()" if extra is True else render(extra)})'
+            decimal_fields = DECIMAL_FIELDS_BY_MODEL.get(schema.get("title", "").replace(" ", ""), set())
             props = []
             for name, prop in schema["properties"].items():
-                value = render(prop)
+                value = render(prop, is_decimal=name in decimal_fields)
                 if name not in schema.get("required", []):
                     value += f'.default({json.dumps(prop["default"])})' if "default" in prop else ".optional()"
                 props.append(f"  {json.dumps(name)}: {value}")
@@ -121,7 +169,9 @@ def generate():
 
     def visit(name):
         if name not in rendered:
-            value = render(definitions[name])
+            schema = dict(definitions[name])
+            schema.setdefault("title", name)
+            value = render(schema)
             rendered[name] = f"export const {name}Schema = {value};\nexport type {name} = z.infer<typeof {name}Schema>;\n"
 
     for name in definitions:

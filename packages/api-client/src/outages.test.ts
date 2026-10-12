@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "./index";
 
-const HOME = "00000000-0000-0000-0000-000000000001";
-const ID = "00000000-0000-0000-0000-0000000000a1";
+const HOME = "00000000-0000-4000-8000-000000000001";
+const ID = "00000000-0000-4000-8000-0000000000a1";
 const row = (over: Record<string, unknown> = {}) => ({
   id: ID, home_id: HOME, started_at: "2026-10-11T18:30:00Z", ended_at: "2026-10-11T20:00:00Z", cause: "utility_fault", note: null, source: "manual",
   created_at: "2026-10-11T21:00:00Z", updated_at: "2026-10-11T21:00:00Z", ongoing: false, duration_minutes: 90, ...over,
@@ -57,10 +57,10 @@ describe("outages API (ERD-INT-01)", () => {
 
   it("rejects a foreign home, an unknown cause and a malformed summary", async () => {
     const api = (body: unknown) => createApiClient("http://api.test", fresh(body));
-    await expect(api([row({ home_id: "00000000-0000-0000-0000-000000000002" })]).listOutages(HOME)).rejects.toMatchObject({ code: "invalid_response" });
+    await expect(api([row({ home_id: "00000000-0000-4000-8000-000000000002" })]).listOutages(HOME)).rejects.toMatchObject({ code: "invalid_response" });
     await expect(api([row({ cause: "rayo" })]).listOutages(HOME)).rejects.toMatchObject({ code: "invalid_response" });
     await expect(api(summary({ months: [{ month: "2026-10" }] })).getOutageSummary(HOME)).rejects.toMatchObject({ code: "invalid_response" });
-    await expect(api(summary({ home_id: "00000000-0000-0000-0000-000000000002" })).getOutageSummary(HOME)).rejects.toMatchObject({ code: "invalid_response" });
+    await expect(api(summary({ home_id: "00000000-0000-4000-8000-000000000002" })).getOutageSummary(HOME)).rejects.toMatchObject({ code: "invalid_response" });
   });
 
   it("surfaces a 409 overlap as an API error", async () => {

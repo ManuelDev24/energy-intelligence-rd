@@ -19,6 +19,10 @@ export default function VerifyEmailPage() {
     const { hash, pathname, search } = window.location;
     if (hash) window.history.replaceState(window.history.state, "", `${pathname}${search}`);
     const token = parseResetToken(hash);
+    // Regla nueva (eslint-plugin-react-hooks@7, experimental "set-state-in-effect"): decide el
+    // estado inicial de la vista a partir del fragmento de la URL leído una sola vez (StrictMode-safe
+    // vía `consumed`); comportamiento existente.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!token) { setState("invalid"); return; }
     setState("working");
     verifyEmail(token).then(() => setState("done")).catch((cause) => {
@@ -38,7 +42,6 @@ export default function VerifyEmailPage() {
           <div role="status" className="mt-3 text-sm">
             <p>Listo: tu correo quedó confirmado. Ya puedes recibir avisos por correo.</p>
             {/* Enlace de documento completo a propósito: recarga la sesión para que el aviso de «confirma tu correo» desaparezca. */}
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <p className="mt-3"><a href="/homes" className={linkClass}>Ir a Energy RD</a></p>
           </div>
         ) : null}

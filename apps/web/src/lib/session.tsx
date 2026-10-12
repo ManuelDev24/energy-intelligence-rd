@@ -27,6 +27,10 @@ export function SessionProvider({ children, authEnabled = configuredAuth }: { ch
   const sequence = useRef(0);
   const busy = useRef(false);
   const selection = useRef({ userId: user?.id, homeId });
+  // Regla nueva (eslint-plugin-react-hooks@7, experimental "refs"): sincroniza intencionalmente
+  // el ref en cada render para que `check()` lea el valor más reciente sin depender de un efecto
+  // que corre después del commit. Comportamiento existente, sin cambios; solo se documenta.
+  // eslint-disable-next-line react-hooks/refs
   selection.current = { userId: user?.id, homeId };
   const reset = useCallback(() => {
     sequence.current += 1;
@@ -55,6 +59,9 @@ export function SessionProvider({ children, authEnabled = configuredAuth }: { ch
   }, [reset]);
   useEffect(() => {
     if (!authEnabled) {
+      // Regla nueva (eslint-plugin-react-hooks@7, experimental "set-state-in-effect"): este efecto
+      // SÍ sincroniza con un sistema externo real (localStorage) al montar; comportamiento existente.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       try { setHomeId(window.localStorage.getItem(STORAGE_KEY)); } catch { /* Memory-only pilot */ }
       setReady(true); return;
     }

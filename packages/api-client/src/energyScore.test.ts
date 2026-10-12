@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "./index";
 
-const HOME = "00000000-0000-0000-0000-000000000001";
+const HOME = "00000000-0000-4000-8000-000000000001";
 const component = (key: string, score: number | null) => ({ key, label: key, weight: 25, score, available: score !== null, summary: "s", detail: "d", inputs: {}, reasons: [], next_step: "n" });
 const body = (over: Record<string, unknown> = {}) => ({
   home_id: HOME, score_version: 1, as_of: "2026-10-11", status: "ok", score: 72, band: "good", band_label: "Bueno", quality: "INFERRED", coverage_pct: 100,
@@ -25,7 +25,7 @@ describe("Energy Score API (ERD-SCORE-01)", () => {
   });
 
   it("rejects a foreign home, an unknown band, a non-integer score and a missing field", async () => {
-    await expect(client(body({ home_id: "00000000-0000-0000-0000-000000000002" })).getEnergyScore(HOME)).rejects.toMatchObject({ code: "invalid_response" });
+    await expect(client(body({ home_id: "00000000-0000-4000-8000-000000000002" })).getEnergyScore(HOME)).rejects.toMatchObject({ code: "invalid_response" });
     await expect(client(body({ band: "excelente" })).getEnergyScore(HOME)).rejects.toMatchObject({ code: "invalid_response" });
     await expect(client(body({ score: 72.5 })).getEnergyScore(HOME)).rejects.toMatchObject({ code: "invalid_response" });
     await expect(client(body({ components: undefined })).getEnergyScore(HOME)).rejects.toMatchObject({ code: "invalid_response" });

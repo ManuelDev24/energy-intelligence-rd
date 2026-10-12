@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "./index";
 
-const HOME = "00000000-0000-0000-0000-000000000001";
-const BILL = "00000000-0000-0000-0000-0000000000b1";
+const HOME = "00000000-0000-4000-8000-000000000001";
+const BILL = "00000000-0000-4000-8000-0000000000b1";
 const bill = {
   id: BILL, home_id: HOME, period_start: "2026-09-01", period_end: "2026-09-30", kwh: "300.00", amount_dop: "3600.00", days: 30,
   reading_previous: null, reading_current: null, due_date: "2026-10-15", paid_at: "2026-10-10T12:00:00Z", source: "manual", created_at: "2026-10-01T00:00:00Z",
@@ -20,7 +20,7 @@ describe("pago de facturas (ERD-ALERT-02)", () => {
     expect(result.paid_at).toBe("2026-10-10T12:00:00Z");
   });
   it("rechaza la respuesta de otra factura o sin los campos nuevos", async () => {
-    const other = createApiClient("http://api.test", vi.fn().mockResolvedValue(json({ ...bill, id: "00000000-0000-0000-0000-0000000000b2" })));
+    const other = createApiClient("http://api.test", vi.fn().mockResolvedValue(json({ ...bill, id: "00000000-0000-4000-8000-0000000000b2" })));
     await expect(other.setBillPayment(HOME, BILL, true)).rejects.toMatchObject({ code: "invalid_response" });
     const { due_date: _due, paid_at: _paid, ...legacy } = bill;
     const old = createApiClient("http://api.test", vi.fn().mockResolvedValue(json(legacy)));

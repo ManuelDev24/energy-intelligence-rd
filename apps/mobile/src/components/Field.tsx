@@ -1,4 +1,4 @@
-import type { ComponentProps, Ref } from 'react';
+import type { ComponentProps, ComponentRef, Ref } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, spacing } from '../theme';
@@ -9,7 +9,7 @@ export function Field({
   testID,
   inputRef,
   ...props
-}: { label: string; error?: string; testID: string; inputRef?: Ref<TextInput> } & ComponentProps<typeof TextInput>) {
+}: { label: string; error?: string; testID: string; inputRef?: Ref<ComponentRef<typeof TextInput>> } & ComponentProps<typeof TextInput>) {
   return (
     <View style={{ gap: 4 }}>
       <Text style={s.label}>{label}</Text>
