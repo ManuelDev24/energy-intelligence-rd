@@ -301,3 +301,14 @@ filesystem efímero (la API no escribe en disco); no apto para producción.
 10. (Más adelante) Sentry Free: crear proyectos y pedir la integración en código.
 11. Bucket privado + claves `STORAGE_*` por entorno y respaldo de `STORAGE_ENCRYPTION_KEYS` (§4b); decidir si staging lleva worker de pago.
 12. EAS: credenciales FCM/APNs, `projectId` y build nuevo (módulos nativos) para probar los avisos push en un teléfono real.
+
+## Migraciones: política expand/contract y rollback (auditoría C-24, DB-10)
+
+- En producción el **rollback de datos es restaurar (PITR/dump), no `alembic downgrade`**: los `downgrade` borran tablas/columnas
+  y no se ejecutan contra datos reales.
+- Toda migración debe ser **aditiva** (*expand*): columnas nuevas nulas o con valor por defecto, tablas e índices nuevos. El código
+  desplegado inmediatamente antes (N-1) tiene que seguir funcionando con el esquema nuevo.
+- Quitar o renombrar (*contract*) va en un release posterior, cuando ninguna versión desplegada lo usa, y exige copia de seguridad
+  verificada previa (`scripts/backup_pilot.sh`) y aprobación expresa en la revisión.
+- Los accesos directos a la base (scripts de soporte/importación) deben pasar por los servicios de la API: las reglas de negocio
+  (monotonía de lecturas, `days` vs. período, «siempre hay un propietario») viven en la aplicación (DB-09, decisión aceptada).

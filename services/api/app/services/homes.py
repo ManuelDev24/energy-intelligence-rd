@@ -1,11 +1,12 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app import rls
-from app.models import Bill, Home, HomeMember
+from app.config import settings
+from app.models import Bill, Home, HomeMember, User
 from app.services.audit import record_change, snapshot
-from app.services.errors import InvalidInput
+from app.services.errors import ApplicationError, InvalidInput
 from app.services.transactions import require_home, write_transaction
 
 
@@ -16,9 +17,23 @@ def list_homes(db, limit=100, offset=0, *, user_id=None):
     return list(db.scalars(query.order_by(Home.code, Home.created_at, Home.id).limit(limit).offset(offset)))
 
 
+class HomeLimitReached(ApplicationError):
+    status_code = 409
+    code = "home_limit_reached"
+
+
 def create_home(db, payload, *, owner_id=None):
     with write_transaction(db):
-        home = Home(id=uuid.uuid4(), **payload.model_dump())
+        data = payload.model_dump()
+        if owner_id is not None:
+            # Auditoría C-24 (DB-11): `code` es único global; con cuentas, aceptarlo revelaría si existe en otro hogar (409). Se ignora.
+            data["code"] = None
+            # DB-12: tope de viviendas propias por persona (abuso de almacenamiento). Se serializa con la fila de la persona.
+            db.execute(select(User.id).where(User.id == owner_id).with_for_update())
+            owned = db.scalar(select(func.count()).select_from(HomeMember).where(HomeMember.user_id == owner_id, HomeMember.role == "owner"))
+            if owned >= settings.MAX_HOMES_PER_USER:
+                raise HomeLimitReached(f"Alcanzaste el máximo de {settings.MAX_HOMES_PER_USER} viviendas propias")
+        home = Home(id=uuid.uuid4(), **data)
         rls.set_context(db, home_id=home.id)  # el INSERT … RETURNING lee la fila nueva antes de que exista la membresía
         db.add(home)
         db.flush()

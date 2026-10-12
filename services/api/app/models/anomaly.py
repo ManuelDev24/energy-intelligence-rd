@@ -33,7 +33,7 @@ class Anomaly(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     home_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("homes.id", ondelete="CASCADE"), nullable=False)
-    bill_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("bills.id", ondelete="CASCADE"))
+    bill_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("bills.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(12), nullable=False)
     source: Mapped[str] = mapped_column(String(10), nullable=False)
     granularity: Mapped[str] = mapped_column(String(10), nullable=False)

@@ -33,8 +33,8 @@ class Recommendation(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     home_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("homes.id", ondelete="CASCADE"), nullable=False)
-    equipment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("equipment.id", ondelete="SET NULL"))
-    anomaly_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("anomalies.id", ondelete="SET NULL"))
+    equipment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("equipment.id", ondelete="SET NULL"), index=True)
+    anomaly_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("anomalies.id", ondelete="SET NULL"), index=True)
     rule_id: Mapped[str] = mapped_column(String(40), nullable=False)
     rule_version: Mapped[int] = mapped_column(Integer, nullable=False)
     ruleset_version: Mapped[int] = mapped_column(Integer, nullable=False)

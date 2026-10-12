@@ -43,10 +43,10 @@ class Alert(Base):
     )
     # Factura que dispara la alerta y factura del período base con la que se compara.
     bill_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("bills.id", ondelete="CASCADE")
+        UUID(as_uuid=True), ForeignKey("bills.id", ondelete="CASCADE"), index=True
     )
     basis_bill_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("bills.id", ondelete="CASCADE")
+        UUID(as_uuid=True), ForeignKey("bills.id", ondelete="CASCADE"), index=True
     )
     basis_period_start: Mapped[date | None] = mapped_column(Date)
     basis_period_end: Mapped[date | None] = mapped_column(Date)
@@ -54,7 +54,7 @@ class Alert(Base):
     kwh_pct: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
     threshold_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
     # Alertas de anomalía: la anomalía que las origina; las de reglas (pago, datos incompletos) llevan clave de deduplicación.
-    anomaly_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("anomalies.id", ondelete="CASCADE"))
+    anomaly_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("anomalies.id", ondelete="CASCADE"), index=True)
     dedupe_key: Mapped[str | None] = mapped_column(String(80))
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     severity: Mapped[str] = mapped_column(String(20), nullable=False)
