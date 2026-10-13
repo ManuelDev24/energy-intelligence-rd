@@ -6,6 +6,8 @@ import { ErrorState } from "@/components/error-state";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { controlClass, controlErrorClass } from "@/components/ui/control";
+import { cn } from "@/lib/cn";
 import { userMessage } from "@/lib/api/errors";
 import { usePutBillItems } from "@/lib/api/hooks";
 import type { BillItemsOut } from "@/lib/api/schemas";
@@ -77,7 +79,7 @@ export function BillItemsSection({ homeId, billId, query, unavailable }: Props) 
                       aria-invalid={e.label ? true : undefined}
                       aria-describedby={e.label ? `${d.key}-label-error` : undefined}
                       onChange={ev => update(d.key, { label: ev.target.value })}
-                      className="h-10 rounded-lg border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className={cn(controlClass, e.label && controlErrorClass)}
                     />
                   {e.label ? <p id={`${d.key}-label-error`} role="alert" className="text-xs text-danger">{e.label}</p> : null}
                   <div className="flex flex-wrap gap-2">
@@ -85,7 +87,7 @@ export function BillItemsSection({ homeId, billId, query, unavailable }: Props) 
                       aria-label={`Tipo del concepto ${n}`}
                       value={d.kind}
                       onChange={ev => update(d.key, { kind: ev.target.value as ItemDraft["kind"] })}
-                      className="h-10 rounded-lg border border-border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className={cn(controlClass, "w-auto")}
                     >
                       <option value="charge">Cargo</option>
                       <option value="discount">Descuento</option>
@@ -98,12 +100,12 @@ export function BillItemsSection({ homeId, billId, query, unavailable }: Props) 
                       aria-invalid={e.amount ? true : undefined}
                       aria-describedby={e.amount ? `${d.key}-amount-error` : undefined}
                       onChange={ev => update(d.key, { amount: ev.target.value })}
-                      className="h-10 w-36 rounded-lg border border-border bg-background px-3 text-right text-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className={cn(controlClass, "w-36 text-right tabular-nums", e.amount && controlErrorClass)}
                     /></span>
                     <div className="ml-auto flex items-end gap-1">
-                      <Button type="button" variant="outline" className="h-10 w-10 px-0" aria-label={`Subir concepto ${n}`} disabled={index === 0} onClick={() => setDrafts(list => list && moveItem(list, index, -1))}><ArrowUp className="h-4 w-4" aria-hidden /></Button>
-                      <Button type="button" variant="outline" className="h-10 w-10 px-0" aria-label={`Bajar concepto ${n}`} disabled={index === drafts.length - 1} onClick={() => setDrafts(list => list && moveItem(list, index, 1))}><ArrowDown className="h-4 w-4" aria-hidden /></Button>
-                      <Button type="button" variant="outline" className="h-10 w-10 px-0" aria-label={`Quitar concepto ${n}`} onClick={() => setDrafts(list => list && list.filter(x => x.key !== d.key))}><Trash2 className="h-4 w-4" aria-hidden /></Button>
+                      <Button type="button" variant="outline" size="icon" aria-label={`Subir concepto ${n}`} disabled={index === 0} onClick={() => setDrafts(list => list && moveItem(list, index, -1))}><ArrowUp className="h-4 w-4" aria-hidden /></Button>
+                      <Button type="button" variant="outline" size="icon" aria-label={`Bajar concepto ${n}`} disabled={index === drafts.length - 1} onClick={() => setDrafts(list => list && moveItem(list, index, 1))}><ArrowDown className="h-4 w-4" aria-hidden /></Button>
+                      <Button type="button" variant="outline" size="icon" aria-label={`Quitar concepto ${n}`} onClick={() => setDrafts(list => list && list.filter(x => x.key !== d.key))}><Trash2 className="h-4 w-4" aria-hidden /></Button>
                     </div>
                   </div>
                   {e.amount ? <p id={`${d.key}-amount-error`} role="alert" className="text-xs text-danger">{e.amount}</p> : null}
