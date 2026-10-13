@@ -121,10 +121,18 @@ OCR con foto real, que había fallado solo por la ausencia de `tesseract`, aprob
 | UI-12 | P2 | Web | Las 5 tablas con `overflow-x-auto` no eran accesibles por teclado (`scrollable-region-focusable`); axe lo detectó al corregir UI-08. | **Corregido** (`ScrollRegion`: rol `region`, nombre y foco). |
 | REM-1 | Info | Repo | Se retiró un falso hallazgo propio: `npm ci` falla con npm 10 pero el CI usa Node 24 y pasa. El lockfile no se tocó. | Cerrado. |
 
+## CI de GitHub Actions
+
+Run [38331407723](https://github.com/ManuelDev24/energy-intelligence-rd/actions/runs/38331407723) sobre `a65c55a` (2026-10-13):
+**4 de 4 jobs en verde.** `api (pytest + migrations)` (ruff, mypy, contratos, arquitectura, migraciones, seed, pytest con
+cobertura en 12 min y segunda pasada con el rol restringido en 4 min; incluye `test_performance_budget.py`, que pasó en el
+runner sin cambiar presupuestos), `web + mobile + core`, `web + mobile (recorridos vs API real)` y `e2e web`
+(Playwright contra PostgreSQL, API y worker reales, 4 min). Los commits posteriores son solo documentación (`[skip ci]`).
+
 ## Recomendación (la decisión es de Manuel)
 
-- **Promover `Dev` → `QA`: GO condicionado** a que el CI de `Dev` quede en verde sobre el commit final y a la revisión
-  visual manual de «Mi cuenta», Perfil, Apagones, factura y Onboarding en 360, 390, 768 y 1280 px.
+- **Promover `Dev` → `QA`: GO condicionado** a la revisión visual manual de «Mi cuenta», Perfil, Apagones, factura y
+  Onboarding en 360, 390, 768 y 1280 px. La condición del CI en verde ya se cumple (ver arriba).
 - **Producción: NO-GO todavía.** Siguen abiertos puntos que este trabajo no puede cerrar: roles de Neon y RLS en
   producción (C-01), revisión legal (C-04), Sentry y simulacro de restauración (C-05), staging y RTO/RPO (C-19), pruebas en
   dispositivos reales y lectores de pantalla (C-25), C-23 y la revisión de `braces`/`node-forge` antes del **2026-11-04**
