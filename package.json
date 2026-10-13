@@ -19,7 +19,7 @@
     "contracts:generate": "cd services/api && uv run python -m scripts.generate_contracts",
     "contracts:check": "cd services/api && uv run python -m scripts.generate_contracts --check",
     "audit:monitor": "node scripts/audit-monitor.mjs",
-    "test:scripts": "node --test scripts/audit-monitor.test.mjs"
+    "test:scripts": "node --test scripts/audit-monitor.test.mjs docs/qa/evidence/web-quality-2026-10-07/simulated-api.test.mjs"
   },
   "workspaces": [
     "apps/*",
@@ -27,8 +27,12 @@
     "packages/*"
   ],
   "overrides": {
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@types/react-test-renderer": "19.1.0",
     "vite": "7.3.6",
     "postcss": "8.5.28",
     "xcode@3.0.1": {

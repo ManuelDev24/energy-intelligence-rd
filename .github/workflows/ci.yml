@@ -80,6 +80,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint --workspace apps/web
       - run: npm test
+      - run: npm run test:scripts
       - run: npm run test --workspace apps/admin
       - run: npm run e2e:safety --workspace apps/admin
       - run: npm run build --workspace apps/admin

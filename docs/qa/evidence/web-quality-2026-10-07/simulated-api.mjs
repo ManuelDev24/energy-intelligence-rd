@@ -25,6 +25,7 @@ import {
   HomeOutSchema,
 } from "../../../../packages/api-contracts/src/generated.ts";
 
+const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 8000);
 const ORIGINS = (process.env.CORS_ORIGINS ?? "http://localhost:3000").split(",");
 const NOW = "2026-10-07T12:00:00.000Z";
@@ -63,7 +64,13 @@ function freshState() {
   };
 }
 let state = freshState();
+const MAX_SIMULATED_DELAY_MS = 10_000;
 const sim = { delay: 0, fail: 0 };
+
+function simulatedDelay(value) {
+  const delay = Number(value);
+  return Number.isFinite(delay) ? Math.min(Math.max(Math.trunc(delay), 0), MAX_SIMULATED_DELAY_MS) : 0;
+}
 
 // ---------- "backend": cálculos del dashboard (la web NO calcula nada de esto) ----------
 const metric = (value, unit, quality) => ({ value: typeof value === "number" ? money(value) : value, unit, quality });
@@ -191,7 +198,7 @@ const readBody = (req) => new Promise((resolve) => {
 });
 const checked = (schema, value) => schema.parse(value) && value; // valida contra el contrato y devuelve el original
 
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   const origin = req.headers.origin;
   const cors = {
     "Access-Control-Allow-Origin": ORIGINS.includes(origin) ? origin : ORIGINS[0],
@@ -205,7 +212,7 @@ createServer(async (req, res) => {
 
   if (path === "/__sim") {
     if (url.searchParams.get("reset")) { state = freshState(); sim.delay = 0; sim.fail = 0; }
-    if (url.searchParams.has("delay")) sim.delay = Number(url.searchParams.get("delay"));
+    if (url.searchParams.has("delay")) sim.delay = simulatedDelay(url.searchParams.get("delay"));
     if (url.searchParams.has("fail")) sim.fail = Number(url.searchParams.get("fail"));
     return send(res, 200, { ...sim, homes: state.homes.length, bills: state.bills.length }, cors);
   }
@@ -287,7 +294,12 @@ createServer(async (req, res) => {
     console.error("CONTRATO VIOLADO por el simulador:", req.method, path, e?.issues ?? e);
     return send(res, 500, { detail: "El simulador generó una respuesta fuera de contrato" }, cors);
   }
-}).listen(PORT, () => console.log(`API SIMULADA (no es la real) en http://localhost:${PORT}`));
+});
+server.listen(PORT, HOST, () => {
+  const address = server.address();
+  if (process.send) process.send({ type: "simulator-listening", address });
+  console.log(`API SIMULADA (no es la real) en http://${HOST}:${PORT}`);
+});
 
 const pickBill = (b) => ({
   period_start: b.period_start, period_end: b.period_end, kwh: String(b.kwh), amount_dop: String(b.amount_dop), days: b.days,

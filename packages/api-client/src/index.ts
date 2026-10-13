@@ -85,8 +85,14 @@ function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   });
 }
 
+function withoutTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+  return value.slice(0, end);
+}
+
 export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch, timeoutMs = 10_000) {
-  const root = `${baseUrl.replace(/\/+$/, "")}/api/v1`;
+  const root = `${withoutTrailingSlashes(baseUrl)}/api/v1`;
   async function request<S extends z.ZodTypeAny>(path: string, schema: S, init?: RequestInit, expectedStatus?: number): Promise<z.output<S>> {
     const ctrl = new AbortController();
     const cancel = () => ctrl.abort(init?.signal?.reason);
