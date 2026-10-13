@@ -19,9 +19,10 @@ export function ErrorView({ message, onRetry }: { message: string; onRetry: () =
   );
 }
 
-export function Forbidden({ onRetry }: { onRetry: () => void }) {
+export function Forbidden({ onRetry, heading }: { onRetry: () => void; heading?: string }) {
   return (
     <div role="alert" style={{ padding: 24 }}>
+      {heading ? <h1>{heading}</h1> : null}
       <p>No tienes permiso para ver esta sección (403).</p>
       <button style={controlStyle} onClick={onRetry}>Reintentar</button>
     </div>
