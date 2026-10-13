@@ -72,6 +72,9 @@ Los dumps se guardan fuera de Git y el restore drill solo usa una base desechabl
 
 - [Arquitectura implementada](docs/architecture/CURRENT_ARCHITECTURE.md)
 - [Auditoría original](docs/architecture/AUDIT_2026-10-04.md)
+- [Tamaños y densidad de controles](docs/architecture/UI_DENSITY.md)
+- [Mapa de dependencias](docs/architecture/DEPENDENCY_MAP.md)
+- [Informe de cierre de UI y QA](docs/audit/CIERRE-UI-QA-2026-10-13.md)
 - [Guía de demo](docs/DEMO_GUIDE.md)
 - [Checklist de release](docs/RELEASE_CHECKLIST.md)
 - [API y reglas de datos](services/api/README.md)
