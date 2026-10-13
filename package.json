@@ -19,7 +19,7 @@
     "contracts:generate": "cd services/api && uv run python -m scripts.generate_contracts",
     "contracts:check": "cd services/api && uv run python -m scripts.generate_contracts --check",
     "audit:monitor": "node scripts/audit-monitor.mjs",
-    "test:scripts": "node --test scripts/audit-monitor.test.mjs docs/qa/evidence/web-quality-2026-10-07/simulated-api.test.mjs"
+    "test:scripts": "node --test scripts/audit-monitor.test.mjs docs/qa/evidence/web-quality-2026-10-07/simulated-api.test.mjs scripts/bundle-budget.test.mjs"
   },
   "workspaces": [
     "apps/*",
