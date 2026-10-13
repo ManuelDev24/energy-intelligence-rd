@@ -37,9 +37,8 @@ class RefreshResult:
 
 
 def gather_facts(db: Session, home_id) -> engine.Facts:
-    from app.services.equipment import shares_pct  # import tardío: equipment.py llama a este módulo tras escribir
     items = list(db.scalars(select(Equipment).where(Equipment.home_id == home_id).order_by(Equipment.room, Equipment.name, Equipment.id)))
-    shares = shares_pct([e.power_w * e.hours_per_day for e in items])
+    shares = calc.shares_pct([e.power_w * e.hours_per_day for e in items])
     equipment = [
         engine.EquipmentFact(id=e.id, name=e.name, kind=e.kind, power_w=e.power_w, hours_per_day=e.hours_per_day, share_pct=share,
                              monthly_kwh=calc.equipment_monthly_kwh(e.power_w, e.hours_per_day))

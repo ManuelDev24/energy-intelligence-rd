@@ -1,5 +1,5 @@
 """Estimación de consumo por equipos declarados. Todo resultado es ESTIMATED."""
-from decimal import ROUND_DOWN, Decimal
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -55,22 +55,6 @@ NOTE = ("Estimación por potencia nominal × horas de uso declaradas × 30 días
         "El porcentaje por equipo es su parte del total estimado de los equipos declarados, no de la factura.")
 
 
-def shares_pct(raw: list[Decimal]) -> list[Decimal]:
-    """Reparto en % con 2 decimales que suma exactamente 100,00 (método del mayor resto). Sin consumo: todo 0."""
-    total = sum(raw, Decimal(0))
-    if total <= 0:
-        return [Decimal("0.00")] * len(raw)
-    cents = Decimal("0.01")
-    exact = [value / total * 100 for value in raw]
-    floors = [x.quantize(cents, rounding=ROUND_DOWN) for x in exact]
-    missing = int(((Decimal(100) - sum(floors, Decimal(0))) / cents).to_integral_value())
-    # Quien más resto tiene recibe el centésimo que falta; a igualdad, el de menor índice (resultado estable).
-    order = sorted(range(len(raw)), key=lambda i: (-(exact[i] - floors[i]), i))
-    for i in order[:missing]:
-        floors[i] += cents
-    return floors
-
-
 def _m(value: Decimal, unit: str, quality: str) -> Metric:
     return Metric(value=value, unit=unit, quality=quality)
 
@@ -81,7 +65,7 @@ def build_estimate(db: Session, home: Home) -> EquipmentEstimateOut:
     ))
     out_items = []
     total_daily = total_monthly = Decimal(0)
-    shares = shares_pct([e.power_w * e.hours_per_day for e in items])
+    shares = calc.shares_pct([e.power_w * e.hours_per_day for e in items])
     for e, share in zip(items, shares, strict=True):
         daily = calc.equipment_daily_kwh(e.power_w, e.hours_per_day)
         monthly = calc.equipment_monthly_kwh(e.power_w, e.hours_per_day)

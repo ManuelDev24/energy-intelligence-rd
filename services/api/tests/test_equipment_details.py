@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 
 from app.models.equipment import EQUIPMENT_ICONS, EQUIPMENT_KINDS
-from app.services.equipment import shares_pct
+from app.services.calculations import shares_pct
 from tests.test_api_homes_bills import mk_home
 from tests.test_api_insights import EQ, eq_url
 
