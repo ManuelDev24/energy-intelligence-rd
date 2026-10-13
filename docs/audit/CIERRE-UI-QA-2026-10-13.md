@@ -15,7 +15,7 @@ prueba figura como no verificado, no como hecho.
 | 05 | Android (Material) | Auditoría estática hecha; **sin dispositivo** | `RECORD_AUDIO` bloqueado, `allowBackup` apagado, mismos controles accesibles. Sin dispositivo: edge-to-edge con teclado, botón atrás y TalkBack sin comprobar (ver UI-06). |
 | 06 | Código compartido | Hecho | `DEPENDENCY_MAP.md`; fechas RD unificadas en `core`; sin ciclos ni imports cruzados. |
 | 07 | Seguridad y go-live | Parcial: estático, dependencias y pruebas contra API real | Escaneo estático y dependencias (abajo). Con PostgreSQL real: suite de la API completa (incluye `test_auth_abuse`, `test_auth_security` y `test_rls`) y su segunda pasada con el rol restringido `erd_app` bajo RLS y E2E de autorización entre personas, rutas sin sesión, origen en peticiones que cambian datos y cabeceras de seguridad. **No ejecutado:** pruebas de intrusión externas y de carga. C-23 sigue abierto. |
-| 08 | QA visual y accesibilidad | Parcial | axe sobre 7 páginas públicas (28 combinaciones) y 11 pantallas con sesión (44 combinaciones), ambas con 0 violaciones tras las correcciones; recorrido con teclado de 4 páginas. Sin regresión visual automatizada ni VoiceOver/TalkBack. |
+| 08 | QA visual y accesibilidad | Parcial | axe sobre 7 páginas públicas (28 combinaciones), 11 pantallas con sesión (44 combinaciones) y el login del admin (4 anchos), todas con 0 violaciones tras las correcciones; recorrido con teclado de 4 páginas. Sin regresión visual automatizada ni VoiceOver/TalkBack. |
 | 09 | Rendimiento | Hecho en lo medible en local | Bundles web, LCP/CLS de laboratorio, latencia y SQL por petición de la API, concurrencia y **presupuesto automatizado** (`test_performance_budget.py`, cierra F08-02). **No medido:** arranque en frío en móvil, memoria/batería, datos de campo y producción. |
 | 10 | Orquestación y cierre | Este informe | La decisión final es de Manuel. |
 
@@ -108,7 +108,7 @@ OCR con foto real, que había fallado solo por la ausencia de `tesseract`, aprob
 | ID | Sev. | Plataforma | Hallazgo | Estado |
 |---|---|---|---|---|
 | UI-01 | P3 | Web | `/dashboard`, `/consumption` y `/bills` cargan ~100 kB más que el resto porque `recharts` va incluido de forma estática. No se cambió: son gráficas del contenido principal y diferirlas sin medir el efecto en usuarios puede empeorar el salto de diseño. | Abierto: medir LCP antes de decidir. |
-| UI-02 | P3 | Web | Los enlaces de texto de las páginas públicas miden ~17 px de alto. axe no lo marca (probablemente por las excepciones de enlace en línea y de espaciado de WCAG 2.5.8; no se comprobó cuál aplica), pero quedan por debajo de los 44 px recomendados en táctil. | Abierto. |
+| UI-02 | P3 | Web | Los enlaces de texto independientes de las páginas públicas medían ~17 px de alto (axe no lo marcaba; no se comprobó qué excepción de WCAG 2.5.8 aplicaba). | **Corregido** (`textLinkClass`, `py-2`, ~36 px; los enlaces dentro de una frase usan `inlineLinkClass` sin padding). La primera versión partía en tres líneas el enlace de «Términos» del registro; se detectó en una captura y se corrigió. |
 | UI-03 | P2 | Móvil | `Button` con `loading` y `Field` con altura mínima no se han visto renderizados; las pruebas son de estructura. | Abierto: requiere simulador. |
 | UI-04 | P3 | Web | Los tamaños 36/44 px dependen de `pointer: coarse`. Un portátil táctil con ratón puede mostrar 44 px; es aceptable. | Aceptado. |
 | UI-05 | Info | Web | `/api/bff/auth/me` responde 401 sin sesión: es la sonda de sesión, no un error. | Cerrado. |
@@ -119,6 +119,8 @@ OCR con foto real, que había fallado solo por la ausencia de `tesseract`, aprob
 | UI-10 | P2 | Web | Casilla de `Checkbox` de 16 px (WCAG 2.5.8, `target-size`) y `<summary>` de 20 px de alto en Consumo. | **Corregido** (24 px y `py-1`). |
 | UI-11 | P3 | Web | `DeviceCard` usaba `h3` bajo un `h1` (`heading-order`). | **Corregido** (`h2`). |
 | UI-12 | P2 | Web | Las 5 tablas con `overflow-x-auto` no eran accesibles por teclado (`scrollable-region-focusable`); axe lo detectó al corregir UI-08. | **Corregido** (`ScrollRegion`: rol `region`, nombre y foco). |
+| UI-13 | P2 | Admin | `apps/admin` (consola mínima sin estilos): campos y botón del login de 21 px de alto, incumplimiento serio de `target-size` en axe. | **Corregido** (`lib/controls.ts`, 32 px en los 10 controles). Login: 0 violaciones y 0 desbordes a 4 anchos. **Las páginas protegidas del admin no se auditaron** (requieren una sesión administrativa). |
+| REM-2 | Info | E2E | La prueba «loading» de `06-states-keyboard` retrasaba 1,5 s la respuesta y fallaba en un equipo lento (también en un árbol limpio): la consulta del panel, con la misma clave de caché, terminaba antes de abrir «Facturas». | **Corregido**: la respuesta se retiene hasta ver «Cargando…». 20/20 en las especificaciones 01, 06 y 11. En el CI nunca había fallado. |
 | REM-1 | Info | Repo | Se retiró un falso hallazgo propio: `npm ci` falla con npm 10 pero el CI usa Node 24 y pasa. El lockfile no se tocó. | Cerrado. |
 
 ## CI de GitHub Actions
