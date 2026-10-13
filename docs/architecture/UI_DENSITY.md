@@ -13,6 +13,8 @@ Un solo contrato visual para formularios, que cada plataforma implementa con su 
 | Ancho (`width`) | `xs` 140 px (códigos, cantidades, hora) · `sm` 220 px (fecha, teléfono, kWh, montos) · `md` 320 px (**defecto**: nombres, contraseñas) · `lg` 400 px (correo, notas) · `full` (direcciones y formularios en contenedores ya estrechos, como el login). El tope aplica a etiqueta + control + mensajes. |
 | `FormField` / `Field` / `Select` / `Checkbox` | Mismo `aria-describedby`, `aria-invalid` y mensaje `role="alert"`. Sin `name` ni `id` se genera uno con `useId`. |
 | `Button` | Variantes `primary`, `outline`, `tertiary`, `danger`; tamaños `md`, `sm`, `icon`; `loading` deshabilita y marca `aria-busy`. |
+| `Checkbox` | Casilla de **24 px** (mínimo WCAG 2.5.8); la fila mide 36 px y 44 px en táctil. |
+| `ScrollRegion` | Todo contenedor con `overflow-x-auto` (tablas anchas) debe ser `ScrollRegion`: rol `region`, nombre y foco por teclado. |
 | `Card` | `density`: `compact` 12 px · `default` 16 px · `roomy` 24 px (antes todas eran 24 px). |
 | Color | Errores y éxitos usan los tokens `danger` y `success`, no `text-red-*` / `text-green-*`. |
 
@@ -40,6 +42,5 @@ Typecheck y lint de todos los workspaces; 97 + 17 + 65 pruebas de paquetes, 853 
 `check_architecture.py`; `contracts:check`; `next build` de producción con el gate `verify-tailwind-css.mjs` (3/3).
 Medido en Chromium con el CSS de producción: campos de 320, 140 y 400 px por 36 px, sin scroll horizontal a 390 px.
 
-**No verificado en este entorno:** pruebas de la API (pytest) y E2E de Playwright (no hay servidor PostgreSQL),
-Maestro y simuladores iOS/Android, y Lighthouse/axe en navegador real. Antes de promover a `QA`, correr
+**No verificado en este entorno:** Maestro y simuladores iOS/Android, y Lighthouse. Antes de promover a `QA`, correr
 `npm run e2e` en CI y revisar a mano «Mi cuenta», Perfil, Apagones y el formulario de factura en 360, 390, 768 y 1280 px.

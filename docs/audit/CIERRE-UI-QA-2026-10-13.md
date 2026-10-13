@@ -10,12 +10,12 @@ prueba figura como no verificado, no como hecho.
 |---|---|---|---|
 | 01 | Arquitectura y Design System | Hecho en lo que tiene consumidor | Auditoría en `UI_DENSITY.md` y `DEPENDENCY_MAP.md`. No se crearon Tabs, Breadcrumbs, Toast, Drawer, Dropdown ni Table: ninguna pantalla los usa (regla de `UI_KIT.md`: sin componente sin consumidor). |
 | 02 | Controles compactos | Web hecho; móvil mínimo | Medido en navegador (ver abajo). El móvil conserva 44 pt por convención táctil. |
-| 03 | Web UI/UX | Hecho en lo verificable | Kit unificado. Estados: offline (`ErrorState` muestra «Sin conexión»), sesión expirada (evento `energyrd.session-expired` con oyente y pruebas) y 401/403/409/422/429/5xx con mensajes propios. **No auditado:** Lighthouse completo y pantallas con sesión en navegador real. |
+| 03 | Web UI/UX | Hecho en lo verificable | Kit unificado. Estados: offline (`ErrorState` muestra «Sin conexión»), sesión expirada (evento `energyrd.session-expired` con oyente y pruebas) y 401/403/409/422/429/5xx con mensajes propios. 11 pantallas con sesión recorridas en navegador real a 4 anchos (abajo); se corrigieron 5 defectos. **No auditado:** Lighthouse completo y VoiceOver/NVDA. |
 | 04 | iOS (HIG) | Auditoría estática hecha; **sin dispositivo** | Safe areas vía `SafeAreaProvider`; 21 `Pressable` con `accessibilityRole`; imágenes sin etiqueta: ninguna; sin `allowFontScaling={false}`; teclado: corregidas 5 pantallas. Sin simulador: VoiceOver, Dynamic Type y gestos sin comprobar. |
 | 05 | Android (Material) | Auditoría estática hecha; **sin dispositivo** | `RECORD_AUDIO` bloqueado, `allowBackup` apagado, mismos controles accesibles. Sin dispositivo: edge-to-edge con teclado, botón atrás y TalkBack sin comprobar (ver UI-06). |
 | 06 | Código compartido | Hecho | `DEPENDENCY_MAP.md`; fechas RD unificadas en `core`; sin ciclos ni imports cruzados. |
-| 07 | Seguridad y go-live | Parcial: estático y dependencias | Escaneo de secretos, patrones peligrosos, almacenamiento de tokens y dependencias (abajo). **No ejecutado:** IDOR/BOLA, RLS y fuerza bruta (requieren PostgreSQL + API). C-23 sigue abierto. |
-| 08 | QA visual y accesibilidad | Parcial | axe (28 combinaciones, 0 violaciones) y recorrido con teclado de 4 páginas. Sin regresión visual, sin VoiceOver/TalkBack, sin pantallas con sesión. |
+| 07 | Seguridad y go-live | Parcial: estático, dependencias y pruebas contra API real | Escaneo estático y dependencias (abajo). Con PostgreSQL real: suite de la API completa (incluye `test_auth_abuse`, `test_auth_security` y `test_rls`) y E2E de autorización entre personas, rutas sin sesión, origen en peticiones que cambian datos y cabeceras de seguridad. **No ejecutado:** pruebas de intrusión externas y de carga. C-23 sigue abierto. |
+| 08 | QA visual y accesibilidad | Parcial | axe sobre 7 páginas públicas (28 combinaciones) y 11 pantallas con sesión (44 combinaciones), ambas con 0 violaciones tras las correcciones; recorrido con teclado de 4 páginas. Sin regresión visual automatizada ni VoiceOver/TalkBack. |
 | 09 | Rendimiento | Parcial: bundles y laboratorio web | Bundles y LCP/CLS de laboratorio (abajo). **No medido:** latencias p95/p99 de la API, consultas N+1, arranque en móvil, datos de campo. |
 | 10 | Orquestación y cierre | Este informe | La decisión final es de Manuel. |
 
@@ -70,8 +70,18 @@ representativo de producción.
 | `pip-audit` (Python) | Sin vulnerabilidades conocidas. |
 | `npm audit --omit=dev` | 15 altas, **todas** en el toolchain de Expo/React Native (`expo`, `react-native`, Metro, `braces`, `node-forge`). `npm run audit:monitor`: OK, avisos aceptados y vigentes hasta el 2026-11-04. |
 
-**Pruebas locales:** core 102, api-contracts 17, api-client 65, web 853, móvil 547, admin 23; typecheck y lint de todos
-los workspaces; arquitectura y contratos. API: 14 pasan y 25 se omiten sin PostgreSQL (las ejecuta el CI).
+**Pantallas con sesión (API, PostgreSQL y web reales; Chromium; axe con reglas WCAG 2.0/2.1/2.2 A y AA y buenas prácticas):**
+Inicio, Consumo, Lecturas, Facturas, Equipos, Alertas, Perfil, Ahorro, Apagones, Meta y Mi cuenta, a 360, 390, 768 y
+1280 px (44 combinaciones, con datos sembrados: 6 facturas, 3 lecturas y un equipo). Primera pasada: **2 reglas de axe
+incumplidas y 1 desborde horizontal**; tras corregir, **0 violaciones y 0 desbordes**. En «Mi cuenta» y Perfil los campos
+miden 320, 220 y 140 px por 36 px según el dato, como define `UI_DENSITY.md`. A 360 y 390 px se llega a Meta, Ahorro y
+Apagones desde «Más secciones» (antes no había ningún enlace a Apagones).
+
+**Pruebas locales:** core 102, api-contracts 17, api-client 65, web 858, móvil 549, admin 23; typecheck y lint de todos
+los workspaces; arquitectura y contratos. **API contra PostgreSQL 16 real: 1287 aprobadas, 9 omitidas (exigían `tesseract`,
+que no estaba instalado) y 96,23 % de cobertura** (umbral 92 %); migraciones subida/bajada/subida y seed idempotente
+correctos. **E2E Playwright completo contra API, worker y web reales: 67 de 67** (66 en la corrida completa y la prueba de
+OCR con foto real, que había fallado solo por la ausencia de `tesseract`, aprobada al instalarlo).
 
 ## Hallazgos
 
@@ -84,6 +94,11 @@ los workspaces; arquitectura y contratos. API: 14 pasan y 25 se omiten sin Postg
 | UI-05 | Info | Web | `/api/bff/auth/me` responde 401 sin sesión: es la sonda de sesión, no un error. | Cerrado. |
 | UI-06 | P2 | Android | Los formularios usan `KeyboardAvoidingView` con `behavior` solo en iOS (en Android se confía en que el sistema redimensione la ventana). Con *edge-to-edge* obligatorio en Android 15+ eso puede no ocurrir y el teclado taparía campos. No se puede comprobar sin dispositivo. | Abierto: probar en Android 15 antes de publicar. |
 | UI-07 | P2 | Móvil | 5 pantallas con campos (Perfil con la contraseña de eliminar cuenta, Ajustes, Compartir, Lectura OCR, Viviendas con invitación) no ajustaban el área visible al teclado; Perfil además podía perder el primer toque (sin `keyboardShouldPersistTaps`; no reproducido en dispositivo). | **Corregido** (`automaticallyAdjustKeyboardInsets` + `keyboardShouldPersistTaps="handled"`) y protegido con `keyboardGuard.test.ts` (verificado que falla si se quita). En iOS; Android: ver UI-06. |
+| UI-08 | P2 | Web | A 768 px la tabla de Apagones ensanchaba `<main>` (hijo flex sin `min-w-0`) a 798 px: scroll horizontal global. | **Corregido** (`min-w-0`); 0 desbordes en las 44 combinaciones. |
+| UI-09 | P2 | Web | Sin ningún enlace a Apagones y con Ahorro solo dentro de una nota, en pantallas menores de 768 px (la barra lateral se oculta y la inferior omite esos destinos). | **Corregido** (`MoreSections` en Perfil, 44 px, solo en pantallas estrechas); comprobado en 360 y 390 px. |
+| UI-10 | P2 | Web | Casilla de `Checkbox` de 16 px (WCAG 2.5.8, `target-size`) y `<summary>` de 20 px de alto en Consumo. | **Corregido** (24 px y `py-1`). |
+| UI-11 | P3 | Web | `DeviceCard` usaba `h3` bajo un `h1` (`heading-order`). | **Corregido** (`h2`). |
+| UI-12 | P2 | Web | Las 5 tablas con `overflow-x-auto` no eran accesibles por teclado (`scrollable-region-focusable`); axe lo detectó al corregir UI-08. | **Corregido** (`ScrollRegion`: rol `region`, nombre y foco). |
 | REM-1 | Info | Repo | Se retiró un falso hallazgo propio: `npm ci` falla con npm 10 pero el CI usa Node 24 y pasa. El lockfile no se tocó. | Cerrado. |
 
 ## Recomendación (la decisión es de Manuel)
