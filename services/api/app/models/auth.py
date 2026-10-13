@@ -1,0 +1,114 @@
+import uuid
+from datetime import datetime
+
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, func, text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+    __table_args__ = (CheckConstraint("role IN ('user', 'admin', 'support')", name="ck_users_role"),
+                      # Auditoría C-16 (migración 0026): el correo se guarda en minúsculas y es único sin distinguir mayúsculas.
+                      CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
+                      Index("uq_users_email_lower", text("lower(email)"), unique=True),
+                      CheckConstraint("(terms_version IS NULL) = (terms_accepted_at IS NULL)",
+                                      name="ck_users_terms_consent"))
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="user", server_default="user")
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    # NULL = usuario legado anterior al consentimiento (migración 0012).
+    terms_version: Mapped[str | None] = mapped_column(String(32))
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Auditoría C-10 (migración 0029): NULL hasta que la persona abre el enlace enviado a su correo.
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EmailVerificationToken(Base):
+    """Auditoría C-10: un solo uso; solo se guarda el SHA-256 del token, ligado al correo que verifica."""
+    __tablename__ = "email_verification_tokens"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+                                               index=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class HomeMember(Base):
+    __tablename__ = "home_members"
+    __table_args__ = (CheckConstraint("role IN ('owner', 'member')", name="ck_home_members_role"),)
+    home_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("homes.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("auth_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PasswordResetToken(Base):
+    """ERD-AUTH-05: un solo uso; solo se guarda el SHA-256 del token (nunca el token)."""
+    __tablename__ = "password_reset_tokens"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+                                               nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # HMAC del peer que lo pidió (seudónimo, igual que auth_abuse_buckets); nunca IP en claro.
+    requested_peer_hash: Mapped[str | None] = mapped_column(String(64))
+
+
+class HomeInvitation(Base):
+    """ERD-SHARE-01: invitación de un solo uso a una vivienda; solo se guarda el SHA-256 del token."""
+    __tablename__ = "home_invitations"
+    __table_args__ = (
+        CheckConstraint("accepted_at IS NULL OR revoked_at IS NULL", name="ck_home_invitations_final_state"),
+        Index("uq_home_invitations_active", "home_id", "email", unique=True,
+              postgresql_where="accepted_at IS NULL AND revoked_at IS NULL"),
+        Index("ix_home_invitations_invited_by", "invited_by", "created_at"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    home_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("homes.id", ondelete="CASCADE"),
+                                               nullable=False, index=True)
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class NotificationPreference(Base):
+    """ERD-PROF-01: preferencias de aviso por usuario. Sin fila = valores por defecto (activados). Se aplican cuando
+    existan los envíos (ERD-ALERT-02); hoy solo se guardan."""
+    __tablename__ = "notification_preferences"
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    alerts_email: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    alerts_push: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

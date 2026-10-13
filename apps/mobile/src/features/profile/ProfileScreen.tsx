@@ -1,0 +1,35 @@
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useHomes } from '../../api/hooks';
+import { AUTH_ENABLED } from '../../config';
+import { AccountDeletionSection } from './AccountDeletionSection';
+import { AccountSummary } from '../auth/AccountSummary';
+import { Button } from '../../components/ui';
+import { useSession } from '../../store/session';
+import { colors, spacing } from '../../theme';
+
+export function ProfileScreen({ onHome, onService, onHomes, onAccountSettings, onShare, onOutages }: { onHome: () => void; onService: () => void; onHomes: () => void; onAccountSettings: () => void; onShare: () => void; onOutages?: () => void }) {
+  const homeId = useSession(state => state.selectedHomeId);
+  const home = useHomes().data?.find(item => item.id === homeId);
+  return <ScrollView style={s.screen} contentContainerStyle={s.content} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
+    <Text style={s.title} accessibilityRole="header">Perfil</Text>
+    {AUTH_ENABLED ? <AccountSummary /> : <Text style={s.hint}>Modo piloto: sin cuenta personal. La edición del perfil no está habilitada.</Text>}
+    <View style={s.card}>
+      <Text style={s.subtitle} accessibilityRole="header">{home?.name ?? 'Seleccione una vivienda'}</Text>
+      <Button title="Mi vivienda" testID="profile-home" variant="secondary" disabled={!homeId} onPress={onHome} />
+      <Button title="Mi servicio" testID="profile-service" variant="secondary" disabled={!homeId} onPress={onService} />
+      {onOutages ? <Button title="Apagones" testID="profile-outages" variant="secondary" disabled={!homeId} onPress={onOutages} /> : null}
+      <Button title="Cambiar vivienda" testID="profile-homes" variant="secondary" onPress={onHomes} />
+    </View>
+    <View style={s.card}>
+      <Text style={s.subtitle} accessibilityRole="header">Ajustes de cuenta</Text>
+      {AUTH_ENABLED ? <>
+        <Button title="Contraseña, avisos y sesiones" testID="profile-account-settings" variant="secondary" onPress={onAccountSettings} />
+        <Button title="Compartir vivienda" testID="profile-share" variant="secondary" disabled={!homeId} onPress={onShare} />
+        <Text style={s.hint}>La app solo está disponible en español y mide en kWh y RD$: no hay ajustes de idioma ni de unidades. Cambiar el correo de la cuenta todavía no es posible.</Text>
+      </> : <Text style={s.hint}>Modo piloto: sin cuenta personal, no hay ajustes de cuenta.</Text>}
+    </View>
+    {AUTH_ENABLED ? <AccountDeletionSection /> : null}
+    <Text style={s.hint}>El perfil describe su vivienda. No calcula consumo, ahorro ni tarifas automáticamente.</Text>
+  </ScrollView>;
+}
+const s = StyleSheet.create({ screen: { flex: 1, backgroundColor: colors.bg }, content: { padding: spacing.lg, gap: spacing.lg }, title: { color: colors.text, fontSize: 24, fontWeight: '700' }, subtitle: { color: colors.text, fontSize: 18, fontWeight: '600' }, hint: { color: colors.muted, lineHeight: 22 }, card: { backgroundColor: colors.card, padding: spacing.lg, borderRadius: 12, borderWidth: 1, borderColor: colors.border, gap: spacing.md } });

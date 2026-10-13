@@ -1,0 +1,62 @@
+[
+  {
+    "check": "las anomalías se guardaron al escribir (sin worker): un pico por lecturas y un aumento por factura",
+    "ok": true,
+    "detail": "[('increase', 'bills'), ('peak', 'readings')]"
+  },
+  {
+    "check": "cada anomalía trae confianza, explicación y estado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el panel muestra título por tipo, confianza y 'no identifica equipos'",
+    "ok": true,
+    "detail": "Desviaciones detectadas |  | Comparación con tu historial de lecturas y facturas; no identifica equipos. La confianza indica cuánto respaldan lo"
+  },
+  {
+    "check": "el pico por lecturas ofrece investigar en Consumo y la factura NO",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "Consumo se abre con el rango de la desviación",
+    "ok": true,
+    "detail": "/consumption?from=2026-09-21&to=2026-10-04&granularity=day"
+  },
+  {
+    "check": "«Ver factura» abre el detalle de la factura señalada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "descartar quita una tarjeta del panel",
+    "ok": true,
+    "detail": "2 -> 1"
+  },
+  {
+    "check": "sigue descartada tras recargar (persistida)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "la descartada se conserva con estado 'dismissed'",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "tras otro escaneo lo descartado no reaparece ni se duplica",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el BFF rechaza filtros fuera de lista (400)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el navegador nunca habló con la API directamente (solo /api/bff)",
+    "ok": true,
+    "detail": "[]"
+  }
+]

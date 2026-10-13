@@ -1,0 +1,390 @@
+import { NextResponse } from "next/server";
+import { createHmac } from "crypto";
+import { z } from "zod";
+import { UUID, domainRoute, ownsBill, phase2QueryOk, phase2Route, writeSchema } from "./bff-routes";
+import { DashboardSchema, UserOutSchema, TokensOutSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, OcrJobSchema, PasswordChangeInSchema} from "@energyrd/api-contracts";
+
+export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
+export function readBffConfig(source: Record<string, string | undefined> = process.env): BffConfig {
+  const development = source.NODE_ENV === "development" || source.NODE_ENV === "test";
+  if (source.NEXT_PUBLIC_AUTH_ENABLED && !["true", "false"].includes(source.NEXT_PUBLIC_AUTH_ENABLED)) throw new Error("NEXT_PUBLIC_AUTH_ENABLED must be true or false");
+  const enabled = source.NEXT_PUBLIC_AUTH_ENABLED === "true";
+  if (!enabled && !development) throw new Error("Development pilot authentication must not run in production");
+  const api = new URL(source.API_BASE_URL || (development ? "http://localhost:8000" : ""));
+  const origin = new URL(source.WEB_ORIGIN || (development ? "http://localhost:3000" : ""));
+  for (const url of [api, origin]) {
+    if (url.username || url.password || url.search || url.hash || url.pathname !== "/" || !["http:", "https:"].includes(url.protocol)) throw new Error("Only credential-free HTTP origins are allowed");
+    if (!development && url.protocol !== "https:") throw new Error("Production requires HTTPS API_BASE_URL and WEB_ORIGIN");
+  }
+  return { enabled, apiBase: api.origin, origin: origin.origin, secure: !development || origin.protocol === "https:", bffApiSharedSecret: source.BFF_API_SHARED_SECRET || "" };
+}
+const UserSchema = UserOutSchema;
+const PairSchema = TokensOutSchema.extend({ access_token: z.string().min(1).max(4096).regex(/^[A-Za-z0-9._~-]+$/), refresh_token: z.string().min(1).max(4096).regex(/^[A-Za-z0-9._~-]+$/), expires_in: z.number().int().min(1).max(900) });
+const CredentialSchema = z.object({ email: z.string().email().max(254), password: z.string().min(12).max(128) }).strict();
+// ERD-AUTH-03: el registro exige accept_terms === true literal (nunca un string/1) y nunca admite
+// una versión de términos elegida por el cliente: la fija el servidor. El formato de correo se
+// valida igual que en login.
+const RegisterSchema = RegisterInSchema.extend({ email: z.string().email().max(254) }).strict();
+const AccountDeletionSchema = AccountDeletionInSchema.strict();
+// ERD-AUTH-05: recuperación de contraseña. Rutas públicas (sin sesión ni Authorization) que no emiten
+// cookies de sesión, así que no necesitan el apretón de manos de época; sí conservan Origin/CSRF/JSON.
+// El token solo viaja en el cuerpo JSON (nunca en la URL de la API) y tiene exactamente 43 caracteres
+// base64url, igual que el contrato.
+const FORGOT = "/auth/password/forgot";
+const RESET = "/auth/password/reset";
+// Auditoría C-10: canje del enlace de verificación de correo. Pública y sin cookies de sesión, igual que la recuperación.
+const VERIFY_EMAIL = "/auth/email/verify";
+const VerifyEmailSchema = EmailVerifyInSchema.strict();
+const ForgotSchema = PasswordForgotInSchema.extend({ email: z.string().email().max(254) }).strict();
+const ResetSchema = PasswordResetInSchema.strict();
+// ERD-PROF-01: cambio con sesión iniciada; la nueva contraseña debe diferir de la actual (la API también lo exige).
+const PasswordChangeSchema = PasswordChangeInSchema.strict().refine(body => body.current_password !== body.new_password, { path: ["new_password"] });
+const PASSWORD_CHANGE = "/auth/password/change";
+// Exportación de datos del titular: se reenvía tal cual, solo se comprueba que lo sea.
+const EXPORT_DISPOSITION = /^attachment; filename="energyrd-datos-\d{4}-\d{2}-\d{2}\.json"$/;
+const accessName = (config: BffConfig) => config.secure ? "__Host-erd-access" : "erd-access";
+const logoutName = (config: BffConfig) => config.secure ? "__Host-erd-logout" : "erd-logout";
+// Per-browser auth epoch: rotated by every logout. Session cookies are bound to the epoch that was
+// current when their login *request* was sent, so a login whose Set-Cookie lands after a logout
+// (aborting fetch cannot stop it) carries a dead epoch: it is rejected and revoked on first use.
+const epochName = (config: BffConfig) => config.secure ? "__Host-erd-epoch" : "erd-epoch";
+const EPOCH = /^[0-9a-f]{32}$/;
+const EPOCH_MAX_AGE = 400 * 24 * 60 * 60;
+function cookie(request: Request, name: string) {
+  const parts = (request.headers.get("cookie") || "").split(";").map(part => part.trim().split("="));
+  const matches = parts.filter(([key]) => key === name);
+  return matches.length === 1 && /^[A-Za-z0-9._~-]{1,4160}$/.test(matches[0][1] || "") ? matches[0][1] : undefined;
+}
+function bound(request: Request, name: string) {
+  const value = cookie(request, name);
+  const at = value?.indexOf("~") ?? -1;
+  if (!value) return undefined;
+  // Unbound (pre-epoch) cookies are never accepted as a session, only revoked.
+  return at > 0 && EPOCH.test(value.slice(0, at)) && at < value.length - 1 ? { epoch: value.slice(0, at), token: value.slice(at + 1) } : { epoch: undefined, token: value };
+}
+function setEpoch(response: NextResponse, config: BffConfig) {
+  response.cookies.set(epochName(config), crypto.randomUUID().replace(/-/g, ""), { httpOnly: true, secure: config.secure, sameSite: "strict", path: "/", maxAge: EPOCH_MAX_AGE });
+  return response;
+}
+function reply(body: unknown, status = 200) {
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store, private", "Vary": "Cookie", "X-Content-Type-Options": "nosniff" } });
+}
+// ERD-SEC-PROXY-01: the BFF<->API connection is server-to-server, so the API would otherwise see
+// only the BFF's own socket IP for every browser. Sign the REAL browser IP (first hop of the
+// incoming X-Forwarded-For) so the API can budget auth abuse per browser instead of per proxy.
+// Topology-dependent, not a general trust rule: this assumes Next.js on Render sees Cloudflare's
+// already-trusted X-Forwarded-For chain (Cloudflare sets/appends it at the edge in front of Render);
+// it must not be reused behind a proxy that lets a client set its own X-Forwarded-For unchecked.
+const CLIENT_IP_DOMAIN = "energy-rd:client-ip:v1";
+function firstForwardedIp(request: Request): string | undefined {
+  const header = request.headers.get("x-forwarded-for");
+  const ip = header?.split(",")[0]?.trim();
+  return ip || undefined;
+}
+function signClientIp(ip: string, secret: string, now: number = Date.now() / 1000): string {
+  const ts = Math.floor(now);
+  const mac = createHmac("sha256", secret).update(`${CLIENT_IP_DOMAIN}:${ip}:${ts}`).digest("hex");
+  return `${ip}.${ts}.${mac}`;
+}
+function clear(response: NextResponse, config: BffConfig) {
+  for (const name of [accessName(config), logoutName(config)]) response.cookies.set(name, "", { httpOnly: true, secure: config.secure, sameSite: "strict", path: "/", maxAge: 0 });
+  return response;
+}
+// ---------- Fase 2 (ERD-CONS-01 / ERD-GOAL-01): lecturas, consumo, meta, progreso, tarifas ----------
+// Upstream error text (detail/msg) is never forwarded: only local Spanish messages chosen by
+// status, path and an allowlisted field table. Unknown fields are dropped, not echoed.
+const FIELD_MESSAGES: Record<string, string> = {
+  email: "Introduce un correo electrónico válido.",
+  password: "La contraseña debe tener entre 12 y 128 caracteres.",
+  current_password: "Escribe tu contraseña actual (entre 12 y 128 caracteres).",
+  alerts_email: "Indica si quieres avisos por correo.",
+  alerts_push: "Indica si quieres avisos en el teléfono.",
+  name: "Revisa el nombre (obligatorio, máximo 120 caracteres).",
+  distributor: "Selecciona una distribuidora válida.",
+  code: "Revisa el código (letras, números, guion o guion bajo).",
+  address: "Revisa la dirección (máximo 255 caracteres).",
+  city: "Revisa la ciudad (máximo 120 caracteres).",
+  province: "Revisa la provincia (máximo 120 caracteres).",
+  municipality: "Revisa el municipio (máximo 120 caracteres).",
+  sector: "Revisa el sector (máximo 120 caracteres).",
+  user_type: "Revisa el tipo de usuario (máximo 120 caracteres).",
+  occupants: "Introduce un número de ocupantes entre 1 y 999.",
+  has_ac: "Revisa si tienes aire acondicionado.",
+  has_water_heater: "Revisa si tienes calentador de agua.",
+  has_pool: "Revisa si tienes piscina.",
+  has_solar: "Revisa si tienes paneles solares.",
+  has_inverter: "Revisa si tienes inversor.",
+  account_number: "Revisa el número de cuenta (máximo 120 caracteres).",
+  period_start: "Revisa la fecha de inicio del período.",
+  period_end: "Revisa la fecha de fin del período.",
+  kwh: "Introduce un consumo en kWh válido.",
+  amount_dop: "Introduce un monto en RD$ válido.",
+  days: "Introduce un número de días válido (0 a 366).",
+  reading_previous: "Revisa la lectura anterior del medidor.",
+  reading_current: "Revisa la lectura actual del medidor.",
+  source: "Origen de la factura no válido.",
+  room: "Revisa la habitación (máximo 80 caracteres).",
+  power_w: "Introduce una potencia en vatios válida.",
+  hours_per_day: "Introduce horas de uso por día válidas.",
+  status: "Estado de alerta no válido.",
+  warning_pct: "Revisa el umbral de advertencia.",
+  critical_pct: "Revisa el umbral crítico.",
+  read_at: "Revisa la fecha y hora de la lectura (no puede ser futura).",
+  reading_kwh: "Introduce la lectura del medidor en kWh (0 o más, hasta 2 decimales).",
+  note: "La nota admite como máximo 255 caracteres.",
+  monthly_amount_rd: "Introduce una meta en RD$ mayor que 0, con hasta 2 decimales.",
+  monthly_kwh: "Introduce una meta en kWh mayor que 0, con hasta 2 decimales.",
+  label: "Revisa el concepto (obligatorio, máximo 200 caracteres).",
+  kind: "Selecciona cargo o descuento.",
+  items: "Revisa los conceptos (máximo 100).",
+  accept_terms: "Debes aceptar los términos y la política de privacidad.",
+  token: "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.",
+  new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
+};
+const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|verification_token_invalid|email_not_verified|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
+const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
+function statusMessage(status: number, path: string, code?: unknown) {
+  // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
+  // ERD-AUTH-05: token de recuperación inválido, caducado o ya usado (sin distinguir cuál).
+  if (status === 400 && code === "verification_token_invalid") return "El enlace de verificación no es válido o caducó. Pide uno nuevo desde la aplicación.";
+  if (status === 400 && code === "reset_token_invalid") return "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.";
+  if (status === 429 && (path === FORGOT || path === RESET || path === VERIFY_EMAIL)) return "Demasiadas solicitudes de recuperación. Espera unos minutos e inténtalo de nuevo.";
+  if (status === 403 && code === "reauthentication_failed") return "La contraseña no es correcta.";
+  // ERD-SHARE-01: la propiedad ya se puede transferir; el mismo código lo usan borrar cuenta y salir de la vivienda.
+  if (status === 409 && code === "ownership_transfer_required") return path === "/auth/me" ? "No puedes eliminar la cuenta: eres el único propietario de una vivienda compartida. Transfiere la propiedad o expulsa a los demás miembros antes de continuar." : "Eres el propietario: transfiere la propiedad a otro miembro antes de salir, o borra la vivienda si eres el único miembro.";
+  if (status === 403 && code === "email_not_verified") return "Confirma tu correo para continuar: abre el enlace que te enviamos o usa «Reenviar el enlace» en el aviso de tu cuenta.";
+  if (status === 400 && code === "invitation_invalid") return "La invitación no es válida o ha caducado. Pide al propietario que te envíe una nueva, y ábrela con la cuenta del correo invitado.";
+  if (status === 409 && code === "already_member") return "Esa persona ya es miembro de la vivienda.";
+  if (status === 409 && code === "invitation_pending") return "Ya hay una invitación pendiente para ese correo. Revócala para enviar otra.";
+  if (status === 409 && code === "invitation_limit_reached") return "Hay demasiadas invitaciones pendientes en esta vivienda. Revoca alguna o espera a que caduquen.";
+  if (status === 429 && code === "invitation_rate_limited") return "Has enviado demasiadas invitaciones hoy. Inténtalo mañana.";
+  if (status === 422 && /\/invitations$/.test(path)) return "Indica un correo válido que no sea el tuyo.";
+  if (status === 403 && /\/(members|invitations|transfer-ownership)/.test(path) && code !== "reauthentication_failed") return "Solo el propietario de la vivienda puede hacer esto.";
+  // ERD-OCR-PROD
+  if (status === 409 && code === "document_quota_exceeded") return "Ya hay varias facturas en proceso o sin confirmar en esta vivienda. Espera a que terminen o confirma o elimina alguna.";
+  if (status === 503 && code === "storage_unavailable") return "La lectura de facturas no está disponible en este momento. Puedes registrar la factura manualmente.";
+  if (status === 422 && /\/bills\/ocr-jobs$/.test(path)) return "No se pudo leer el archivo: usa una foto (JPG, PNG, WEBP o HEIC) o un PDF.";
+  // Fase 2: mensajes propios por ruta (el texto de la API nunca se reenvía).
+  if (status === 409 && /\/readings$/.test(path)) return "Ya existe una lectura con esa fecha y hora.";
+  if (status === 409 && /\/outages(\/[0-9a-f-]{36})?$/.test(path)) return "Ya hay una interrupción registrada que se solapa con ese período. Edita esa o ajusta las horas.";
+  if (status === 422 && /\/outages(\/[0-9a-f-]{36})?$/.test(path)) return "Revisa las fechas: el apagón no puede estar en el futuro, debe terminar después de empezar y durar como máximo 30 días.";
+  if (status === 422 && code === "invalid_input" && /\/readings$/.test(path)) return "La lectura debe ser mayor o igual que la anterior y menor o igual que la siguiente.";
+  if (status === 422 && code === "invalid_input" && /\/consumption$/.test(path)) return "Rango de fechas inválido: máximo 366 días.";
+  if (status === 401) return path === "/auth/login" ? "Credenciales inválidas." : "La sesión venció. Inicia sesión de nuevo.";
+  if (status === 409) return path === "/auth/register" ? "Ya existe una cuenta con este correo electrónico." : path.includes("/bills") ? "Registro duplicado o período solapado con otra factura de esta vivienda." : "La operación entra en conflicto con datos existentes.";
+  if (status === 422) return "Datos inválidos. Revisa los campos marcados.";
+  if (status === 404) return "No encontrado o sin acceso.";
+  if (status === 403) return "No tienes permiso para esta operación.";
+  if (status === 429) return "Demasiados intentos. Espera un momento e inténtalo de nuevo.";
+  if (status === 400) return "Solicitud inválida.";
+  if (status >= 500) return "Error del servidor. Inténtalo de nuevo más tarde.";
+  return "No se pudo completar la solicitud.";
+}
+function fieldIssues(issues: { path?: readonly PropertyKey[]; loc?: readonly unknown[] }[]) {
+  const seen = new Set<string>();
+  const out: { loc: string[]; msg: string }[] = [];
+  for (const issue of issues) {
+    const field = (issue.loc ?? issue.path ?? []).at(-1);
+    if (typeof field !== "string" || !Object.hasOwn(FIELD_MESSAGES, field) || seen.has(field)) continue;
+    seen.add(field); out.push({ loc: ["body", field], msg: FIELD_MESSAGES[field] });
+  }
+  return out;
+}
+function invalid(issues: z.ZodIssue[]) {
+  const fields = fieldIssues(issues);
+  return reply({ detail: fields.length ? fields : statusMessage(422, ""), code: "validation_error" }, 422);
+}
+function safeError(body: unknown, status: number, path: string) {
+  const parsed = z.object({ detail: z.unknown().optional(), code: z.unknown().optional(), request_id: z.unknown().optional() }).safeParse(body);
+  const value = parsed.success ? parsed.data : {};
+  const issues = z.array(z.object({ loc: z.array(z.unknown()).optional() })).safeParse(value.detail);
+  const fields = status === 422 && issues.success ? fieldIssues(issues.data) : [];
+  return {
+    detail: fields.length ? fields : statusMessage(status, path, value.code),
+    ...(typeof value.code === "string" && SAFE_CODE.test(value.code) ? { code: value.code } : {}),
+    ...(typeof value.request_id === "string" && SAFE_REQUEST_ID.test(value.request_id) ? { request_id: value.request_id } : {}),
+  };
+}
+// ERD-OCR-PROD: única ruta multipart (`bills/ocr-jobs`; la antigua `bills/ocr` síncrona se retiró, auditoría C-02). Acepta foto o PDF
+// (hasta 20 MiB + sobre multipart); la API valida el tipo real por los bytes. Aquí solo se acota el total para no leer cuerpos arbitrarios.
+const OCR_JOB_MAX_BYTES = 20 * 1024 * 1024 + 4096;
+const OCR_TIMEOUT_MS = 45_000; // Tesseract tarda más que una consulta normal
+const MULTIPART = /^multipart\/form-data;\s*boundary=[^\s;]+$/i;
+/** Server-only boundary. No refresh endpoint: expiry always requires a fresh login. */
+export async function handleBff(request: Request, config: BffConfig, fetchImpl: typeof fetch = fetch): Promise<NextResponse> {
+  if (!config.enabled) return reply({ detail: "Autenticación no disponible en el piloto local." }, 404);
+  const url = new URL(request.url);
+  const path = url.pathname.slice("/api/bff".length);
+  const method = request.method;
+  if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) return reply({ detail: "Método no permitido." }, 405);
+  const ocrJobStart = method === "POST" && new RegExp(`^/homes/${UUID}/bills/ocr-jobs$`).test(path);
+  const ocr = ocrJobStart;
+  const ocrLimit = OCR_JOB_MAX_BYTES;
+  if (method !== "GET") {
+    if (request.headers.get("origin") !== config.origin || (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) return reply({ detail: "Origen no permitido." }, 403);
+    if (ocr) {
+      if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: "Se requiere una foto o un PDF." }, 415);
+    } else if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
+  }
+  const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
+  const legal = path === "/legal" && method === "GET";
+  const recovery = method === "POST" && (path === FORGOT || path === RESET || path === VERIFY_EMAIL);
+  const passwordChange = method === "POST" && path === PASSWORD_CHANGE;
+  const phase2 = auth || legal || recovery || passwordChange ? null : phase2Route(path, method);
+  const schema = legal ? LegalOutSchema : passwordChange ? PairSchema : ocrJobStart ? OcrJobSchema : phase2 ? phase2.response : domainRoute(path, method);
+  if (!auth && !legal && !recovery && !schema) return reply({ detail: "Ruta no permitida." }, 404);
+  if (new RegExp(`^/homes/${UUID}$`).test(path) && url.search) return reply({ detail: "Consulta no permitida." }, 400);
+  if (phase2 && !phase2QueryOk(phase2, url.searchParams)) return reply({ detail: "Consulta no permitida." }, 400);
+  if (!phase2 && !legal) for (const [key, value] of url.searchParams) {
+    if (auth || recovery || !["limit", "offset", "include_dismissed"].includes(key) || (key === "include_dismissed" ? !["true", "false"].includes(value) : !/^\d{1,6}$/.test(value)) || url.searchParams.getAll(key).length !== 1) return reply({ detail: "Consulta no permitida." }, 400);
+  }
+  if (legal && url.search) return reply({ detail: "Consulta no permitida." }, 400);
+  const headers: Record<string, string> = { Accept: "application/json" };
+  const forwardedIp = firstForwardedIp(request);
+  if (config.bffApiSharedSecret && forwardedIp) headers["X-Forwarded-Client-Ip"] = signClientIp(forwardedIp, config.bffApiSharedSecret);
+  let body: string | ArrayBuffer | undefined;
+  const logout = path === "/auth/logout";
+  const deleteAccount = path === "/auth/me" && method === "DELETE";
+  if (ocr) {
+    if (Number(request.headers.get("content-length") || 0) > ocrLimit) return reply({ detail: "Solicitud demasiado grande." }, 413);
+    try {
+      const bytes = await request.arrayBuffer();
+      if (bytes.byteLength > ocrLimit) return reply({ detail: "Solicitud demasiado grande." }, 413);
+      body = bytes;
+      headers["Content-Type"] = request.headers.get("content-type")!;
+    } catch { return reply({ detail: "Solicitud inválida." }, 400); }
+  } else if (method !== "GET") {
+    try {
+      const text = await request.text();
+      if (text.length > 32_768) return reply({ detail: "Solicitud demasiado grande." }, 413);
+      const value = JSON.parse(text || "{}");
+      if (path === "/auth/login" || path === "/auth/register") {
+        const credentials = (path === "/auth/register" ? RegisterSchema : CredentialSchema).safeParse(value);
+        if (!credentials.success) return invalid(credentials.error.issues);
+        if (!EPOCH.test(cookie(request, epochName(config)) || "")) return setEpoch(reply({ detail: "Activa las cookies de este sitio e inténtalo de nuevo.", code: "auth_epoch_required" }, 428), config);
+        body = JSON.stringify(credentials.data);
+      } else if (recovery) {
+        const parsed = (path === RESET ? ResetSchema : path === VERIFY_EMAIL ? VerifyEmailSchema : ForgotSchema).safeParse(value);
+        if (!parsed.success) return invalid(parsed.error.issues);
+        body = JSON.stringify(parsed.data);
+      } else if (passwordChange) {
+        const parsed = PasswordChangeSchema.safeParse(value);
+        if (!parsed.success) return invalid(parsed.error.issues);
+        body = JSON.stringify(parsed.data);
+      } else if (logout) {
+        if (Object.keys(value).length) return reply({ detail: "No se aceptan credenciales del navegador." }, 422);
+        const token = bound(request, logoutName(config))?.token;
+        if (!token) return setEpoch(clear(reply({ ok: true }), config), config);
+        body = JSON.stringify({ refresh_token: token });
+      } else if (deleteAccount) {
+        const parsed = AccountDeletionSchema.safeParse(value);
+        if (!parsed.success) return invalid(parsed.error.issues);
+        body = JSON.stringify(parsed.data);
+      } else {
+        const parsed = (phase2 ? phase2.body ?? z.object({}).strict() : writeSchema(path, method)).safeParse(value);
+        if (!parsed.success) return invalid(parsed.error.issues);
+        body = method === "DELETE" ? undefined : JSON.stringify(parsed.data);
+      }
+      headers["Content-Type"] = "application/json";
+    } catch { return reply({ detail: "JSON inválido." }, 400); }
+  }
+  if ((!auth || path === "/auth/me") && !legal && !recovery) {
+    const epoch = cookie(request, epochName(config));
+    const access = bound(request, accessName(config));
+    const refresh = bound(request, logoutName(config));
+    const expired = () => reply({ detail: "La sesión venció. Inicia sesión de nuevo.", code: "http_401" }, 401);
+    if (refresh && (!epoch || refresh.epoch !== epoch)) {
+      // A session from before the latest logout must not stay alive server-side: revoke it.
+      // Cookies are not cleared here (reads never clear; a late clear could erase a newer login).
+      try { await fetchImpl(`${config.apiBase}/api/v1/auth/logout`, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: refresh.token }), redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(10_000) }); }
+      catch { /* Revocation is retried on the next request that still carries the stale cookie. */ }
+      return expired();
+    }
+    if (!access || !epoch || access.epoch !== epoch) return expired();
+    headers.Authorization = `Bearer ${access.token}`;
+  }
+  try {
+    const upstream = await fetchImpl(`${config.apiBase}/api/v1${path}${url.search}`, { method, headers, body, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(ocr ? OCR_TIMEOUT_MS : 10_000) });
+    if (upstream.status >= 300 && upstream.status < 400) throw new Error("Redirect rejected");
+    const data: unknown = upstream.status === 204 ? undefined : await upstream.json();
+    if (logout) return setEpoch(clear(reply(upstream.ok ? { ok: true } : safeError(data, upstream.status, path), upstream.ok ? 200 : upstream.status), config), config);
+    if (!upstream.ok) {
+      // Reads must not clear cookies: a late 401 could otherwise erase a new login.
+      const response = reply(safeError(data, upstream.status, path), upstream.status);
+      // Allow only delta-seconds within the API's maximum auth window (86400s).
+      // Never forward arbitrary upstream headers, cookie values or HTTP-date text.
+      const retryAfter = upstream.headers.get("Retry-After");
+      if (upstream.status === 429 && retryAfter && /^[1-9]\d{0,4}$/.test(retryAfter) && Number(retryAfter) <= 86400) {
+        response.headers.set("Retry-After", retryAfter);
+      }
+      return response;
+    }
+    if (path === FORGOT) {
+      // Siempre 202 {status:"accepted"} (sin enumeración); cualquier otra forma es un error de contrato.
+      if (upstream.status !== 202) throw new Error("Unexpected status");
+      return reply(PasswordForgotAcceptedSchema.strict().parse(data), 202);
+    }
+    if (path === RESET || path === VERIFY_EMAIL) {
+      if (upstream.status !== 204) throw new Error("Unexpected status");
+      // Public reset revokes only the token owner's sessions in the API. A late response
+      // must never erase cookies belonging to a newer login (possibly another account).
+      // Revoked sessions are rejected by the normal 401 path; no second logout write.
+      return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store, private", "Vary": "Cookie" } });
+    }
+    if (path === "/auth/login" || path === "/auth/register" || passwordChange) {
+      // El cambio de contraseña revoca TODAS las sesiones (también esta) y trae una nueva: se renuevan las cookies.
+      const pair = PairSchema.parse(data);
+      const response = reply({ ok: true }, upstream.status);
+      const options = { httpOnly: true, secure: config.secure, sameSite: "strict" as const, path: "/" };
+      const epoch = cookie(request, epochName(config))!;
+      response.cookies.set(accessName(config), `${epoch}~${pair.access_token}`, { ...options, maxAge: pair.expires_in });
+      // This session cookie is only used for revocation, never rotation.
+      response.cookies.set(logoutName(config), `${epoch}~${pair.refresh_token}`, options);
+      return response;
+    }
+    const parsed = upstream.status === 204 && method === "DELETE" ? undefined : (legal ? LegalOutSchema : path === "/auth/me" ? UserSchema : schema!).parse(data);
+    if (parsed !== undefined && /\/dashboard$/.test(path)) {
+      const dashboard = parsed as z.infer<typeof DashboardSchema>;
+      if (dashboard.home.id !== path.split("/")[2] ||
+          (url.searchParams.has("bill_id") && dashboard.latest_bill?.bill_id !== url.searchParams.get("bill_id"))) throw new Error("Mismatched dashboard");
+    }
+    if (parsed !== undefined && phase2 && new RegExp(`^/homes/${UUID}/bills/${UUID}/(items|validate)$`).test(path) && !ownsBill(path, parsed)) throw new Error("Mismatched bill");
+    if (parsed !== undefined && /\/bills\/[0-9a-f-]{36}\/payment$/.test(path)) {
+      const [, , home, , bill] = path.split("/");
+      const row = parsed as { id: string; home_id: string };
+      if (row.id !== bill || row.home_id !== home) throw new Error("Mismatched bill");
+    }
+    if (parsed !== undefined && /\/anomalies(\/[0-9a-f-]{36})?$/.test(path)) {
+      const [, , home, , child] = path.split("/");
+      const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id: string }[];
+      if (rows.some(row => row.home_id !== home) || (child && rows[0]?.id !== child)) throw new Error("Mismatched anomaly");
+    }
+    if (parsed !== undefined && /\/outages(\/summary|\/[0-9a-f-]{36})?$/.test(path)) {
+      const [, , home, , child] = path.split("/");
+      const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id?: string }[];
+      if (rows.some(row => row.home_id !== home) || (child && child !== "summary" && rows[0]?.id !== child)) throw new Error("Mismatched outage");
+    }
+    if (parsed !== undefined && /\/energy-score$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched energy score");
+    if (parsed !== undefined && /\/recommendations(\/refresh|\/[0-9a-f-]{36})?$/.test(path)) {
+      const [, , home, , child] = path.split("/");
+      const row = parsed as { home_id: string; id?: string };
+      if (row.home_id !== home || (child && child !== "refresh" && row.id !== child)) throw new Error("Mismatched recommendation");
+    }
+    if (parsed !== undefined && /\/bills\/ocr-jobs\/[0-9a-f-]{36}(\/retry)?$/.test(path) && (parsed as { document_id: string }).document_id !== path.split("/")[5]) throw new Error("Mismatched OCR job");
+    if (parsed !== undefined && phase2 && /\/contract$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched home");
+    if (parsed !== undefined && new RegExp(`^/homes/${UUID}$`).test(path) && (parsed as { id: string }).id !== path.split("/")[2]) throw new Error("Mismatched home");
+    if (parsed === undefined) {
+      const response = new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+      return deleteAccount ? setEpoch(clear(response, config), config) : response;
+    }
+    const response = reply(parsed, upstream.status);
+    if (path === "/auth/me/export") {
+      const disposition = upstream.headers.get("content-disposition") ?? "";
+      response.headers.set("Content-Disposition", EXPORT_DISPOSITION.test(disposition) ? disposition : 'attachment; filename="energyrd-datos.json"');
+    }
+    return response;
+  } catch {
+    const response = reply({ detail: "No se pudo confirmar la respuesta de la API. No se reintentó la operación." }, 502);
+    return logout ? setEpoch(clear(response, config), config) : response;
+  }
+}

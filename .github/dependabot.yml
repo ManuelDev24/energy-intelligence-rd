@@ -1,0 +1,35 @@
+# Auditoría C-11: actualizaciones automáticas y revisables de dependencias, acciones de CI y la imagen base.
+# Los avisos de seguridad de GitHub (Dependabot alerts) se activan aparte en Settings → Code security.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    # init, analyze y upload-sarif de CodeQL DEBEN estar en la misma versión: si una sola sube, CodeQL falla con «configuration error».
+    # Un solo PR las actualiza juntas (y scripts/check_workflow_pins.py lo vigila en CI).
+    groups:
+      codeql:
+        patterns: ["github/codeql-action", "github/codeql-action/*"]
+    commit-message: { prefix: "ci" }
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    commit-message: { prefix: "deps" }
+  - package-ecosystem: uv
+    directory: /services/api
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    commit-message: { prefix: "deps" }
+  - package-ecosystem: docker
+    directory: /services/api
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 3
+    commit-message: { prefix: "deps" }

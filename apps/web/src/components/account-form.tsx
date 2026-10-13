@@ -1,0 +1,57 @@
+"use client";
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Logo } from "./app-shell";
+import { Button } from "./ui/button";
+import { Field } from "./ui/field";
+import { Card, CardTitle, CardDescription } from "./ui/card";
+import { useSession } from "@/lib/session";
+import { inlineLinkClass, textLinkClass } from "@/components/ui/text-link";
+export function AccountForm({ mode, suppressSessionError = false }: { mode: "login" | "register"; suppressSessionError?: boolean }) {
+  const { authenticate, error: sessionError } = useSession();
+  const effectiveSessionError = suppressSessionError ? null : sessionError;
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const label = mode === "login" ? "Iniciar sesión" : "Crear cuenta";
+  const blocked = mode === "register" && !acceptTerms;
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (pending || blocked) return;
+    setPending(true); setError(null);
+    try {
+      if (mode === "register") await authenticate("register", email, password, acceptTerms);
+      else await authenticate("login", email, password);
+      router.replace("/homes");
+    }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo iniciar sesión."); }
+    finally { setPassword(""); setPending(false); }
+  }
+  return <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-12">
+    <Logo size={48} />
+    <Card><h1 className="text-2xl font-bold">{label}</h1><CardDescription>Tu cuenta y tus viviendas, sin compartir datos del piloto.</CardDescription>
+      <form className="mt-5 flex flex-col gap-4" onSubmit={submit} aria-busy={pending}>
+        <Field width="full" name="email" label="Correo electrónico" className="text-base sm:text-sm" type="email" autoComplete="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} required disabled={pending} />
+        <Field width="full" name="password" label="Contraseña" className="text-base sm:text-sm" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={12} maxLength={128} hint="Entre 12 y 128 caracteres. No se recorta ni modifica." value={password} onChange={event => setPassword(event.target.value)} required disabled={pending} />
+        {mode === "register" ? (
+          <div className="flex items-start gap-2 text-sm">
+            <input id="accept-terms" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={acceptTerms} onChange={event => setAcceptTerms(event.target.checked)} disabled={pending} required />
+            <label htmlFor="accept-terms">
+              He leído y acepto los{" "}
+              <Link href="/legal" className={inlineLinkClass}>Términos y la Política de Privacidad</Link>
+              {" "}(documentos en borrador, pendientes de revisión legal).
+            </label>
+          </div>
+        ) : null}
+        {error || effectiveSessionError ? <p role="alert" className="text-sm text-danger">{error || effectiveSessionError} Revisa tus datos o inicia sesión de nuevo.</p> : null}
+        <Button type="submit" disabled={pending || blocked}>{pending ? `${label} · Verificando…` : label}</Button>
+      </form>
+      {mode === "login" ? <p className="mt-4 text-sm"><Link className={textLinkClass} href="/olvide-contrasena">Olvidé mi contraseña</Link></p> : null}
+      <p className="mt-4 text-sm"><Link className={textLinkClass} href={mode === "login" ? "/register" : "/login"}>{mode === "login" ? "¿Sin cuenta? Crear cuenta" : "Ya tengo cuenta"}</Link></p>
+    </Card>
+    <Card><CardTitle>Antes de continuar</CardTitle><p className="mt-2 text-sm text-muted-foreground">Guarda tu contraseña de forma segura. No verificamos la propiedad del correo electrónico al crear una cuenta.</p></Card>
+  </main>;
+}

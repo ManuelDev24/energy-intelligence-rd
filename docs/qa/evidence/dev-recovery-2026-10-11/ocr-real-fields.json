@@ -1,0 +1,161 @@
+{
+  "verification": "independent parent production re-run",
+  "baseline_commit": "fef74c83eeabeef2479bf92267200b132b317fa5",
+  "fields_total": 22,
+  "fields_ok": 21,
+  "counts": {
+    "ok": 21,
+    "missing": 1
+  },
+  "exact": false,
+  "safety_passed": true,
+  "images": 3,
+  "samples_used_for_tuning": true,
+  "phone_photo_holdout": false,
+  "native_flow": false,
+  "rows": [
+    {
+      "distributor": "EDESUR",
+      "fields": {
+        "period_start": {
+          "status": "ok",
+          "confidence": "high"
+        },
+        "period_end": {
+          "status": "ok",
+          "confidence": "high"
+        },
+        "days": {
+          "status": "ok",
+          "confidence": "high"
+        },
+        "kwh": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "amount_dop": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "reading_previous": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "reading_current": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "due_date": {
+          "status": "ok",
+          "confidence": "high"
+        }
+      },
+      "counts": {
+        "ok": 8
+      },
+      "seconds": 2.82,
+      "method": "ocr",
+      "pages_read": 1,
+      "manual_amount_review": false
+    },
+    {
+      "distributor": "EDENORTE",
+      "fields": {
+        "period_start": {
+          "status": "ok",
+          "confidence": "high"
+        },
+        "period_end": {
+          "status": "ok",
+          "confidence": "high"
+        },
+        "days": {
+          "status": "ok",
+          "confidence": "high"
+        },
+        "kwh": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "amount_dop": {
+          "status": "missing",
+          "confidence": "none"
+        },
+        "due_date": {
+          "status": "ok",
+          "confidence": "high"
+        }
+      },
+      "counts": {
+        "ok": 5,
+        "missing": 1
+      },
+      "seconds": 5.49,
+      "method": "ocr",
+      "pages_read": 1,
+      "manual_amount_review": true
+    },
+    {
+      "distributor": "EDEESTE",
+      "fields": {
+        "period_start": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "period_end": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "days": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "kwh": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "amount_dop": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "reading_previous": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "reading_current": {
+          "status": "ok",
+          "confidence": "inferred"
+        },
+        "due_date": {
+          "status": "ok",
+          "confidence": "inferred"
+        }
+      },
+      "counts": {
+        "ok": 8
+      },
+      "seconds": 4.85,
+      "method": "ocr",
+      "pages_read": 1,
+      "manual_amount_review": false
+    }
+  ],
+  "runtime": {
+    "pillow": "12.3.0",
+    "pillow-heif": "1.8.0",
+    "pypdfium2": "5.14.0",
+    "pytesseract": "0.3.13"
+  },
+  "tesseract": "5.5.3",
+  "source_sha256": {
+    "services/api/app/services/ocr/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "services/api/app/services/ocr/engine.py": "aa21576e66a0804bdfe642e279604065a5fa4d9996b7afb04ce149c80911658e",
+    "services/api/app/services/ocr/jobs.py": "02c8a89e77310d96de3424c8b12b5fe412f6a528a6dedbdf932208da6c10a2c5",
+    "services/api/app/services/ocr/parser.py": "7bc9732f9a11097403c6fb5ea25efe465a7e5bd29b7f0ae77d1ab182d0fcb4a7",
+    "services/api/app/services/ocr/pipeline.py": "b14550090c3e949d3be1bd31c69792596817daa8059bf49d376f87de8ed8356e",
+    "services/api/app/services/ocr/preprocess.py": "9386d3ca29ccbb94141562705a2f257a2ff9e5b56598b2421377dbdb70ef110f",
+    "services/api/app/services/ocr/qa.py": "a4670e551d04642562dbd8fdc0c6b0f602bb99b75c8474f5fe99a188a608a3c2"
+  },
+  "personal_values_in_report": false,
+  "acceptance": "partial: ambiguous EDENORTE amount and unseen phone/photo/PDF holdout remain"
+}

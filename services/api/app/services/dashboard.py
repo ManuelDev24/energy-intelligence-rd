@@ -1,14 +1,17 @@
 """Arma el dashboard de una vivienda a partir de sus facturas mensuales."""
 from decimal import Decimal
+from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, func, true, or_, and_
 from sqlalchemy.orm import Session
 
 from app.models import Bill, Home
 from app.schemas.dashboard import (
-    AlertOut, Comparison, DashboardHome, DashboardOut, DataStatus, LatestBill, Metric, ProjectionOut,
+    DashboardAlertSummary, Comparison, DashboardHome, DashboardOut, DataStatus, LatestBill, Metric, ProjectionOut,
 )
 from app.services import calculations as calc
+from app.services.alerts import thresholds as alert_thresholds
+from app.services.errors import NotFound
 
 QUALITY_LEGEND = {
     "REAL": "Dato tomado directamente de una factura mensual introducida.",
@@ -21,15 +24,30 @@ def _m(value: Decimal, unit: str, quality: str) -> Metric:
     return Metric(value=value, unit=unit, quality=quality)
 
 
-def build_dashboard(db: Session, home: Home) -> DashboardOut:
-    bills = list(db.scalars(
-        select(Bill).where(Bill.home_id == home.id).order_by(Bill.period_end.asc(), Bill.period_start.asc())
-    ))
+def build_dashboard(db: Session, home: Home, bill_id: UUID | None = None) -> DashboardOut:
+    scope = [Bill.home_id == home.id]
+    if bill_id is not None:
+        selected = db.scalar(select(Bill).where(Bill.id == bill_id, Bill.home_id == home.id))
+        if selected is None:
+            raise NotFound("Factura no encontrada en esta vivienda.")
+        scope.append(or_(Bill.period_end < selected.period_end,
+                         and_(Bill.period_end == selected.period_end, Bill.id <= selected.id)))
+    # Only six recent bills are needed for projection/comparison. Metadata covers all history.
+    stats = select(
+        func.count(Bill.id).filter(Bill.source == "manual").label("manual_count"),
+        func.count(Bill.id).filter(Bill.source == "seed").label("seed_count"),
+    ).where(*scope).subquery()
+    rows = list(db.execute(select(Bill, stats.c.manual_count, stats.c.seed_count).join(stats, true())
+                          .where(*scope).order_by(Bill.period_end.desc(), Bill.id.desc())
+                          .limit(calc.PROJECTION_WINDOW)))
+    bills = [row[0] for row in reversed(rows)]
+    # A single PostgreSQL snapshot keeps totals and the latest bill consistent.
+    counts = {source: count for source, count in zip(("manual", "seed"), rows[0][1:] if rows else (0, 0)) if count}
     reasons: list[str] = []
-    sources = {b.source for b in bills}
+    sources = set(counts)
     data_source = "none" if not bills else (next(iter(sources)) if len(sources) == 1 else "mixed")
     def status() -> DataStatus:  # se construye al final: pydantic copia la lista de motivos
-        return DataStatus(bills_count=len(bills), data_source=data_source, is_demo="seed" in sources,
+        return DataStatus(bills_count=sum(counts.values()), data_source=data_source, is_demo="seed" in sources,
                           insufficient_reasons=list(reasons))
 
     head = DashboardHome(id=home.id, code=home.code, name=home.name, distributor=home.distributor)
@@ -61,9 +79,10 @@ def build_dashboard(db: Session, home: Home) -> DashboardOut:
         )
         if v.kwh_pct is None:
             reasons.append("El período anterior tiene 0 kWh: no se calcula variación porcentual.")
-        sev = calc.severity_for(v.kwh_pct)
+        warning_pct, critical_pct = alert_thresholds(db, home.id)
+        sev = calc.severity_for(v.kwh_pct, warning_pct, critical_pct)
         if sev:
-            alert = AlertOut(
+            alert = DashboardAlertSummary(
                 severity=sev,
                 message=(f"El consumo subió {v.kwh_pct}% frente al período anterior "
                          f"({prev.kwh} kWh → {latest.kwh} kWh)."),
@@ -77,9 +96,11 @@ def build_dashboard(db: Session, home: Home) -> DashboardOut:
     projection = None
     proj = calc.project_next(bills)
     if proj is not None:
+        pct_vs_latest = calc.projection_vs_latest_pct(proj.kwh, latest.kwh)
         projection = ProjectionOut(
             method=proj.method, bills_used=proj.bills_used,
             kwh=_m(proj.kwh, "kWh", "PROJECTED"), amount_dop=_m(proj.amount_dop, "RD$", "PROJECTED"),
+            kwh_pct_vs_latest=(None if pct_vs_latest is None else _m(pct_vs_latest, "%", "PROJECTED")),
             note="Proyección de la próxima factura mensual por tendencia lineal; no incluye cambios de tarifa.",
         )
     else:

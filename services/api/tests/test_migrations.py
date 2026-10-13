@@ -1,9 +1,25 @@
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import DataError
 from alembic import command
+from alembic.script import ScriptDirectory
+import pytest
 
 
 def _tables(engine):
     return set(inspect(engine).get_table_names())
+
+
+def test_0006_auth_upgrade_downgrade_preserves_unowned_pilot(migrated, alembic_cfg):
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(), 'pilot', 'EDESUR') RETURNING id")).scalar_one()
+        assert c.execute(text("SELECT count(*) FROM home_members")).scalar() == 0
+    assert {"users", "home_members", "auth_sessions", "refresh_tokens"} <= _tables(migrated)
+    command.downgrade(alembic_cfg, "0005")
+    assert not ({"users", "home_members", "auth_sessions", "refresh_tokens"} & _tables(migrated))
+    command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT id FROM homes")).scalar_one() == hid
+        assert c.execute(text("SELECT count(*) FROM home_members")).scalar() == 0
 
 
 def test_connection(engine):
@@ -16,16 +32,36 @@ def test_upgrade_downgrade_upgrade(engine, alembic_cfg):
         c.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
 
     command.upgrade(alembic_cfg, "head")
-    assert {"homes", "bills", "alerts"} <= _tables(engine)
-    assert "code" in {c["name"] for c in inspect(engine).get_columns("homes")}
+    assert {"homes", "bills", "alerts", "equipment", "alert_settings"} <= _tables(engine)
 
-    # downgrade -1 revierte solo la última migración (0002): tablas siguen, columnas nuevas no.
-    command.downgrade(alembic_cfg, "-1")
+    # Revert insights explicitly; head may include later migrations.
+    command.downgrade(alembic_cfg, "0002")
     assert {"homes", "bills", "alerts"} <= _tables(engine)
-    assert "code" not in {c["name"] for c in inspect(engine).get_columns("homes")}
+    assert not ({"equipment", "alert_settings"} & _tables(engine))
+    assert "basis_bill_id" not in {c["name"] for c in inspect(engine).get_columns("alerts")}
 
     command.upgrade(alembic_cfg, "head")
-    assert "code" in {c["name"] for c in inspect(engine).get_columns("homes")}
+    assert {"equipment", "alert_settings"} <= _tables(engine)
+
+
+def test_0003_migrates_alert_statuses_both_ways(engine, alembic_cfg):
+    with engine.begin() as c:
+        c.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+    command.upgrade(alembic_cfg, "0002")
+    with engine.begin() as c:
+        hid = c.execute(text("INSERT INTO homes (id, name, distributor) VALUES (gen_random_uuid(), 'x', 'EDESUR') "
+                             "RETURNING id")).scalar()
+        for st in ("open", "acknowledged", "resolved"):
+            c.execute(text("INSERT INTO alerts (id, home_id, type, message, status) "
+                           "VALUES (gen_random_uuid(), :h, 't', 'm', :s)"), {"h": hid, "s": st})
+    command.upgrade(alembic_cfg, "head")
+    with engine.connect() as c:
+        assert sorted(c.execute(text("SELECT status FROM alerts")).scalars()) == ["dismissed", "read", "unread"]
+        assert set(c.execute(text("SELECT severity FROM alerts")).scalars()) == {"warning"}
+    command.downgrade(alembic_cfg, "0002")
+    with engine.connect() as c:
+        assert sorted(c.execute(text("SELECT status FROM alerts")).scalars()) == ["acknowledged", "open", "resolved"]
+    command.upgrade(alembic_cfg, "head")
 
 
 def test_full_downgrade_to_base_and_back(engine, alembic_cfg):
@@ -48,3 +84,241 @@ def test_models_match_migration(migrated):
     with migrated.connect() as c:
         diff = compare_metadata(MigrationContext.configure(c), Base.metadata)
     assert diff == []
+
+
+def test_percentage_precision_upgrade_preserves_existing_values(engine, alembic_cfg):
+    with engine.begin() as c:
+        c.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+    command.upgrade(alembic_cfg, "0003")
+    with engine.begin() as c:
+        hid = c.execute(text("INSERT INTO homes (id, name, distributor) "
+                             "VALUES (gen_random_uuid(), 'precision test', 'EDESUR') RETURNING id")).scalar()
+        c.execute(text("INSERT INTO alerts (id, home_id, type, severity, message, kwh_pct) "
+                       "VALUES (gen_random_uuid(), :h, 'bill_variation', 'critical', 'x', 999999.99)"), {"h": hid})
+    command.upgrade(alembic_cfg, "head")
+    columns = {c["name"]: c for c in inspect(engine).get_columns("alerts")}
+    assert columns["kwh_pct"]["type"].precision == 18
+    with engine.connect() as c:
+        assert str(c.execute(text("SELECT kwh_pct FROM alerts")).scalar()) == "999999.99"
+    command.downgrade(alembic_cfg, "0003")
+    assert {c["name"]: c for c in inspect(engine).get_columns("alerts")}["kwh_pct"]["type"].precision == 8
+    command.upgrade(alembic_cfg, "head")
+
+
+def test_percentage_downgrade_refuses_loss_of_extreme_values(migrated, alembic_cfg):
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes (id, name, distributor) "
+                             "VALUES (gen_random_uuid(), 'extreme test', 'EDESUR') RETURNING id")).scalar()
+        c.execute(text("INSERT INTO alerts (id, home_id, type, severity, message, kwh_pct) "
+                       "VALUES (gen_random_uuid(), :h, 'bill_variation', 'critical', 'x', 99999999999800.00)"), {"h": hid})
+    with pytest.raises(DataError):
+        command.downgrade(alembic_cfg, "0003")
+    with migrated.connect() as c:
+        assert str(c.execute(text("SELECT kwh_pct FROM alerts")).scalar()) == "99999999999800.00"
+        # El downgrade fallido es transaccional: la base debe seguir en la revisión cabeza actual.
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == \
+            ScriptDirectory.from_config(alembic_cfg).get_current_head()
+
+
+# Admin RBAC de Módulo 4: migración 0024 sigue a 0023; no alterar el head de Módulo 1.
+ADMIN_TABLES = {"admin_roles", "admin_scopes", "admin_role_scopes", "admin_role_assignments", "admin_audit_events"}
+
+def test_0024_admin_rbac_roundtrip(migrated, alembic_cfg):
+    assert ADMIN_TABLES <= _tables(migrated)
+    command.downgrade(alembic_cfg, "0023")
+    assert not (ADMIN_TABLES & _tables(migrated))
+    command.upgrade(alembic_cfg, "head")
+    assert ADMIN_TABLES <= _tables(migrated)
+
+PHASE2_TABLES = {"meter_readings", "home_goals", "tariffs", "tariff_fixed_charges", "tariff_blocks"}
+OFFICIAL = ("SIE-121-2026-TF",)
+
+
+def _tariff(c, code="TEST", start="2026-01-01", end="2026-06-30", dist="EDESUR"):
+    return c.execute(text("INSERT INTO tariffs(id,distributor,tariff_code,effective_from,effective_to,source_resolution) "
+                          "VALUES(gen_random_uuid(),:d,:c,:s,:e,'fixture sintética') RETURNING id"),
+                     {"d": dist, "c": code, "s": start, "e": end}).scalar_one()
+
+
+def test_0007_phase2_upgrade_downgrade_keeps_pilot_data(migrated, alembic_cfg):
+    assert PHASE2_TABLES <= _tables(migrated)
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'p2','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO meter_readings(id,home_id,read_at,reading_kwh,source) "
+                       "VALUES(gen_random_uuid(),:h,'2026-09-01T00:00:00-04:00',100,'manual')"), {"h": hid})
+    command.downgrade(alembic_cfg, "0006")
+    assert not (PHASE2_TABLES & _tables(migrated))
+    command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT id FROM homes")).scalar_one() == hid
+
+
+def test_0008_loads_official_bts1_transition_tariffs_only(migrated):
+    with migrated.connect() as c:
+        rows = c.execute(text(
+            "SELECT distributor, tariff_code, effective_from::text, effective_to::text, flat_all_units_from_kwh::text, "
+            "source_resolution, source_url FROM tariffs ORDER BY distributor")).all()
+        assert [r[0] for r in rows] == ["EDEESTE", "EDENORTE", "EDESUR"]
+        assert {r[1:] for r in rows} == {("BTS-1", "2026-10-01", "2026-12-31", "701.00", "SIE-121-2026-TF",
+                                          "https://sie.gob.do/document/sie-121-2026-tf/")}
+        fixed = c.execute(text("SELECT t.distributor, f.from_kwh::text, f.to_kwh::text, f.amount_rd::text "
+                               "FROM tariff_fixed_charges f JOIN tariffs t ON t.id=f.tariff_id "
+                               "ORDER BY t.distributor, f.from_kwh")).all()
+        assert fixed == [("EDEESTE", "0.00", "100.00", "41.34"), ("EDEESTE", "100.00", None, "127.83"),
+                         ("EDENORTE", "0.00", "100.00", "40.33"), ("EDENORTE", "100.00", None, "126.81"),
+                         ("EDESUR", "0.00", "100.00", "42.10"), ("EDESUR", "100.00", None, "128.59")]
+        prices = c.execute(text("SELECT t.distributor, array_agg(b.price_rd_per_kwh::text ORDER BY b.from_kwh) "
+                                "FROM tariff_blocks b JOIN tariffs t ON t.id=b.tariff_id GROUP BY t.distributor "
+                                "ORDER BY t.distributor")).all()
+        assert prices == [("EDEESTE", ["6.1700", "8.7100", "13.0400", "13.2600"]),
+                          ("EDENORTE", ["5.9700", "8.5100", "13.8300", "14.0400"]),
+                          ("EDESUR", ["6.0500", "8.5900", "12.8900", "13.0900"])]
+        bounds = c.execute(text("SELECT DISTINCT b.from_kwh::text, b.to_kwh::text FROM tariff_blocks b "
+                                "ORDER BY 1")).all()
+        assert bounds == [("0.00", "200.00"), ("200.00", "300.00"), ("300.00", "700.00"), ("700.00", None)]
+        # La columna de referencia (no facturable) no se carga.
+        assert c.execute(text("SELECT count(*) FROM tariff_blocks WHERE price_rd_per_kwh IN (15.12,16.09,15.53)")).scalar() == 0
+
+
+def test_0008_downgrade_deletes_only_official_rows(migrated, alembic_cfg):
+    with migrated.begin() as c:
+        mine = _tariff(c)
+    command.downgrade(alembic_cfg, "0007")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT id FROM tariffs")).scalar_one() == mine
+        assert c.execute(text("SELECT count(*) FROM tariff_blocks")).scalar() == 0
+    command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM tariffs")).scalar() == 4
+
+
+@pytest.mark.parametrize("sql", [
+    # lectura negativa
+    "INSERT INTO meter_readings(id,home_id,read_at,reading_kwh,source) VALUES(gen_random_uuid(),:h,now(),-1,'manual')",
+    # origen desconocido
+    "INSERT INTO meter_readings(id,home_id,read_at,reading_kwh,source) VALUES(gen_random_uuid(),:h,now(),1,'seed')",
+    # meta sin ningún objetivo
+    "INSERT INTO home_goals(home_id) VALUES(:h)",
+    # meta no positiva
+    "INSERT INTO home_goals(home_id,monthly_kwh) VALUES(:h,0)",
+    # distribuidora sin tarifa regulada
+    "INSERT INTO tariffs(id,distributor,tariff_code,effective_from,source_resolution) "
+    "VALUES(gen_random_uuid(),'Otra','BTS1','2026-01-01','x')",
+    # vigencia invertida
+    "INSERT INTO tariffs(id,distributor,tariff_code,effective_from,effective_to,source_resolution) "
+    "VALUES(gen_random_uuid(),'EDESUR','BTS1','2026-02-01','2026-01-01','x')",
+    # umbral de cobro plano no positivo
+    "INSERT INTO tariffs(id,distributor,tariff_code,effective_from,source_resolution,flat_all_units_from_kwh) "
+    "VALUES(gen_random_uuid(),'EDESUR','X','2030-01-01','x',0)",
+    # cargo fijo negativo
+    "INSERT INTO tariff_fixed_charges(id,tariff_id,from_kwh,amount_rd) "
+    "SELECT gen_random_uuid(),id,500,-1 FROM tariffs LIMIT 1",
+])
+def test_0007_constraints_reject_invalid_rows(migrated, sql):
+    from sqlalchemy.exc import IntegrityError
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'c','EDESUR') RETURNING id")).scalar_one()
+    with pytest.raises(IntegrityError):
+        with migrated.begin() as c:
+            c.execute(text(sql), {"h": hid})
+
+
+def test_0007_unique_reading_time_and_overlapping_tariff_versions(migrated):
+    from sqlalchemy.exc import IntegrityError
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'u','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO meter_readings(id,home_id,read_at,reading_kwh,source) "
+                       "VALUES(gen_random_uuid(),:h,'2026-09-01T00:00:00Z',1,'manual')"), {"h": hid})
+        _tariff(c)
+    with pytest.raises(IntegrityError):
+        with migrated.begin() as c:
+            c.execute(text("INSERT INTO meter_readings(id,home_id,read_at,reading_kwh,source) "
+                           "VALUES(gen_random_uuid(),:h,'2026-08-31T20:00:00-04:00',2,'manual')"), {"h": hid})
+    with pytest.raises(IntegrityError):  # versión solapada del mismo código y distribuidora
+        with migrated.begin() as c:
+            _tariff(c, start="2026-06-01", end=None)
+    with pytest.raises(IntegrityError):  # solapa con la BTS-1 oficial cargada en 0008
+        with migrated.begin() as c:
+            _tariff(c, code="BTS-1", start="2026-12-01", end="2027-03-31")
+
+
+def test_0021_existing_equipment_becomes_other_without_guessing_and_downgrade_roundtrips(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0020")
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'e','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO equipment(id,home_id,name,power_w,hours_per_day) VALUES(gen_random_uuid(),:h,'Aire sala',1500,6)"), {"h": hid})
+    command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:
+        row = c.execute(text("SELECT kind, brand, model, icon FROM equipment")).one()
+        assert tuple(row) == ("other", None, None, None)
+    command.downgrade(alembic_cfg, "0020")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT name FROM equipment")).scalar_one() == "Aire sala"
+    command.upgrade(alembic_cfg, "head")
+
+
+def test_0022_recommendations_table_roundtrips_and_cascades_with_the_home(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0021")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT to_regclass('public.recommendations')")).scalar() is None
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'r','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO recommendations(id,home_id,rule_id,rule_version,ruleset_version,category,title,summary,action,confidence,dedupe_key) "
+                       "VALUES(gen_random_uuid(),:h,'ac-one-hour',1,1,'equipment','t','s','a','medium','k')"), {"h": hid})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM homes WHERE id=:h"), {"h": hid})
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM recommendations")).scalar() == 0
+
+
+def test_0023_power_outages_roundtrips_and_the_database_blocks_overlaps(migrated, alembic_cfg):
+    from sqlalchemy.exc import IntegrityError
+    command.downgrade(alembic_cfg, "0022")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT to_regclass('public.power_outages')")).scalar() is None
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        hid = c.execute(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'o','EDESUR') RETURNING id")).scalar_one()
+        c.execute(text("INSERT INTO power_outages(id,home_id,started_at,ended_at) VALUES(gen_random_uuid(),:h,'2026-09-01T10:00Z','2026-09-01T12:00Z')"), {"h": hid})
+    with pytest.raises(IntegrityError):
+        with migrated.begin() as c:
+            c.execute(text("INSERT INTO power_outages(id,home_id,started_at) VALUES(gen_random_uuid(),:h,'2026-09-01T11:00Z')"), {"h": hid})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM homes WHERE id=:h"), {"h": hid})
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM power_outages")).scalar() == 0
+
+
+# ---------- auditoría C-16: correo único sin distinguir mayúsculas, garantizado por la base ----------
+def test_0026_the_database_refuses_mixed_case_and_case_only_duplicate_emails(migrated):
+    from sqlalchemy.exc import IntegrityError
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'ana@example.com','x')"))
+    for email in ("Ana@Example.com", "ANA@EXAMPLE.COM", "otra@Example.com"):
+        with pytest.raises(IntegrityError):
+            with migrated.begin() as c:
+                c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),:e,'x')"), {"e": email})
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM users WHERE email='ana@example.com'"))
+
+
+def test_0026_upgrade_lowercases_existing_emails_and_stops_on_case_only_duplicates(migrated, alembic_cfg):
+    command.downgrade(alembic_cfg, "0025")
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'Mixto@Example.com','x')"))
+    command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT email FROM users WHERE lower(email)='mixto@example.com'")).scalar() == "mixto@example.com"
+    command.downgrade(alembic_cfg, "0025")
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(gen_random_uuid(),'MIXTO@example.com','x')"))
+    with pytest.raises(Exception, match="mayúsculas"):
+        command.upgrade(alembic_cfg, "head")
+    with migrated.connect() as c:  # no modificó nada: ambas cuentas siguen como estaban
+        assert sorted(r[0] for r in c.execute(text("SELECT email FROM users"))) == ["MIXTO@example.com", "mixto@example.com"]
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM users WHERE email='MIXTO@example.com'"))
+    command.upgrade(alembic_cfg, "head")
+    with migrated.begin() as c:
+        c.execute(text("DELETE FROM users"))

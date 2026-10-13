@@ -1,0 +1,32 @@
+import { expect, it, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
+import { profileKeys, homeProfileInvalidations } from './keys';
+import { phase2Keys } from '../../api/phase2Keys';
+it('refresh de perfil invalida goalProgress solo en cuenta y vivienda origen', async () => {
+  const scope = ['account', 1];
+  const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 30000 } } });
+  const origin = phase2Keys(scope).goalProgress('one');
+  const untouched = [phase2Keys(scope).goalProgress('two'), phase2Keys(['account', 2]).goalProgress('one'), phase2Keys(['pilot']).goalProgress('one'), phase2Keys(scope).goal('one')];
+  for (const key of [origin, [...origin, '2026-10'], ...untouched]) qc.setQueryData(key, 'old');
+  for (const key of homeProfileInvalidations(scope, 'one')) await qc.invalidateQueries({ queryKey: key });
+  expect(qc.getQueryState(origin)?.isInvalidated).toBe(true);
+  expect(qc.getQueryState([...origin, '2026-10'])?.isInvalidated).toBe(true);
+  for (const key of untouched) expect(qc.getQueryState(key)?.isInvalidated).toBe(false);
+  const upstream = vi.fn(async () => 'new');
+  expect(await qc.fetchQuery({ queryKey: origin, queryFn: upstream })).toBe('new');
+  expect(upstream).toHaveBeenCalledOnce();
+  qc.clear();
+});
+it('separa cuenta y vivienda e invalida únicamente el perfil y dashboard de origen', async () => {
+  const a = profileKeys(['account', 1]); const b = profileKeys(['account', 2]);
+  const qc = new QueryClient();
+  for (const key of [a.home('one'), a.home('two'), b.home('one'), a.contract('one'), ['account', 1, 'homes'], ['account', 1, 'dashboard', 'one']]) qc.setQueryData(key, 'data');
+  for (const key of homeProfileInvalidations(['account', 1], 'one')) await qc.invalidateQueries({ queryKey: key });
+  expect(qc.getQueryState(a.home('one'))?.isInvalidated).toBe(true);
+  expect(qc.getQueryState(a.home('two'))?.isInvalidated).toBe(false);
+  expect(qc.getQueryState(b.home('one'))?.isInvalidated).toBe(false);
+  expect(qc.getQueryState(a.contract('one'))?.isInvalidated).toBe(false);
+  expect(qc.getQueryState(['account', 1, 'homes'])?.isInvalidated).toBe(true);
+  expect(qc.getQueryState(['account', 1, 'dashboard', 'one'])?.isInvalidated).toBe(true);
+  qc.clear(); expect(qc.getQueryData(a.home('one'))).toBeUndefined();
+});

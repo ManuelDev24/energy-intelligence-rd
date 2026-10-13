@@ -1,0 +1,90 @@
+# ERD-SEC-DEPS — resultado parcial
+
+## Cambio integrado y probado
+- Override acotado `xcode@3.0.1 → uuid@11.1.1`, sin `--force` ni cambios de SDK.
+- Generación del lockfile por npm; consumidor real xcode/uuid CommonJS probado: 1000 UUID válidos únicos.
+- Auditoría canónica JSON: 21 hallazgos altos, 0 moderados, 0 críticos. Antes: 28 hallazgos, 21 altos y 7 moderados. Advisories únicos: 3 antes, 2 ahora.
+- Resuelto uuid GHSA-w5hq-g745-h8pq. Pendientes braces GHSA-vfj7-8cjw-p6xm y node-forge GHSA-86w9-cpqp-85rv: no parche compatible publicado según registro consultado por el trabajador. No equivale a 21 CVE distintos ni demuestra explotación del runtime.
+
+## Verificación del coordinador
+- npm test: core 29, contratos 2, cliente 4, web 68, móvil 57; 5 integraciones web y 8 móviles omitidas.
+- npm run typecheck y npm run lint: exit 0. Lint solo web tiene script.
+- expo install --check: Dependencies are up to date.
+- expo-secure-store 57.0.4 añadido para siguiente slice auth móvil, versión compatible SDK57; todavía no equivale a auth UI integrada.
+- Build web de baseline y copia del trabajador pasan; compilación nativa/Maestro no reejecutados para este cambio.
+- CI remoto no probado; no commit/push.
+
+## Evidencia
+- Auditoría coordinador: ~/.hermes/cache/scratch/energy-fullscope-20261004/canonical-audit.json.
+- Informe completo del trabajador y propuesta de agrupación por tareas: ~/.hermes/cache/scratch/energy-fullscope-20261004/dependencies/DEPENDENCY_REPORT.md.
+
+## Estado
+ERD-SEC-DEPS PARCIAL. No cerrar mientras persistan los avisos altos o hasta documentar formalmente una aceptación de riesgo. Mantener herramientas de desarrollo en entorno confiable y vigilar upstream. No usar downgrades incompatibles para forzar una auditoría verde.
+
+## Revisión 2026-10-05 — aceptación de riesgo (aprobada por el owner 2026-10-05)
+- Auditoría repetida: 21 altos, 0 críticos; todos derivan de **2 paquetes**:
+  - `braces@3.0.3` (GHSA-vfj7-8cjw-p6xm, DoS por patrones anidados) ← `tailwindcss@3.4.19` (chokidar/micromatch). Solo compilación web; no se incluye en el bundle ni en la API.
+  - `node-forge@1.4.0` (GHSA-86w9-cpqp-85rv, verificación PKCS#1 v1.5) ← `@expo/cli` / `@expo/code-signing-certificates`. Solo herramienta de desarrollo Expo; no se incluye en la app compilada.
+- Registro npm (2026-10-05): la última versión publicada de ambos es la vulnerable → **no existe parche**. Las "correcciones" de `npm audit` son downgrades mayores absurdos (expo@44, react-native@0.72, eslint-config-next@14) y se rechazan.
+- Mitigación: patrones de glob solo del repo (no de usuarios); Expo CLI sin firma de actualizaciones OTA con certificados externos; CI y desarrollo en entornos confiables.
+- Salida definitiva: migración a Tailwind 4 (elimina chokidar/micromatch→braces) como tarea propia; actualizar Expo cuando upstream publique node-forge corregido.
+- Revisar en cada actualización de dependencias o en 30 días (2026-11-04).
+
+## Revisión 2026-10-10 — ERD-REL-VERIFY (Manuel)
+
+Auditoría de partida (`npm audit`, commit `4fbdc75`): **23** hallazgos = 21 altos + **2 moderados nuevos**.
+
+### Corregido
+- **2 moderados → 0.** `postcss-selector-parser@6.1.4` (GHSA-rj75-hqrm-r3gf, complejidad cuadrática al parsear
+  selectores planos) llegaba por `tailwindcss@3.4.19` y `postcss-nested@6.2.0`. Parche publicado en `7.1.6`
+  (2026-09-03); la rama `legacy-v6` no tiene corrección. Override acotado en `package.json`
+  (`tailwindcss@3.4.19 → postcss-selector-parser 7.1.6`, también para su `postcss-nested`).
+  **Prueba de no regresión:** el CSS de producción de la web es idéntico regla a regla antes/después del override
+  (única diferencia: las clases nuevas del enlace "Saltar al contenido" de ERD-WEB-QUALITY). Web build OK.
+- **Expo al parche recomendado por `expo install --check`:** `expo 57.0.26 → 57.0.27`, `expo-constants
+  57.0.20 → 57.0.21` (`@expo/cli 57.0.28`, `@expo/metro-file-map 57.0.4`, que ya no depende de `micromatch`).
+  `expo install --check`: *Dependencies are up to date*. Export iOS/Android OK; smoke Maestro re-ejecutado.
+
+### Riesgo residual (20 altos, 0 críticos) — mismos 2 advisories ya aceptados el 2026-10-05
+| Advisory | Paquete vulnerable | Llega por | ¿Parche? | Alcance |
+|---|---|---|---|---|
+| GHSA-vfj7-8cjw-p6xm (DoS) | `braces@3.0.3` (última publicada) | `micromatch` ← `tailwindcss@3`, `fast-glob` (`eslint-config-next`), `metro-file-map` | No | Build/lint/Metro en desarrollo; no llega al bundle web, a la app ni a la API |
+| GHSA-86w9-cpqp-85rv (firma PKCS#1) | `node-forge@1.4.0` (última publicada) | `@expo/code-signing-certificates` ← `@expo/cli` | No | Solo Expo CLI (firma de updates OTA, no usada) |
+
+Los otros 18 nombres del informe (`expo`, `react-native`, `metro*`, `@expo/*`, `eslint-config-next`,
+`tailwindcss`, `chokidar`, `fast-glob`, `micromatch`…) son **transitivos de esos dos advisories**, no
+vulnerabilidades propias. Las "correcciones" de `npm audit` siguen siendo downgrades mayores (expo@44,
+react-native@0.72, eslint-config-next@14, tailwind 4) y se rechazan.
+
+- Decisión: **la aceptación de riesgo del 2026-10-05 sigue vigente** para estos 2 advisories, con las mismas
+  mitigaciones. **Confirmada por Manuel el 2026-10-10** con el recuento actual (20 altos, 0 críticos).
+- Salida definitiva sin cambios: Tailwind 4 (tarea propia) y Expo cuando upstream publique `node-forge` corregido.
+- Próxima revisión: 2026-11-04 o en la próxima actualización de dependencias.
+
+## Revisión 2026-10-10 (segunda) — ERD-SEC-DEPS-MONITOR (Claude)
+
+### Hallazgo: la API Python tenía avisos que ningún recuento anterior incluía
+Todos los recuentos previos ("20 altos") eran **solo de npm**. `pip-audit` sobre `services/api/uv.lock` dio **28 avisos
+en `pillow 11.3.0`** (la librería que decodifica las fotos que suben los usuarios a `/bills/ocr`) y 1 en `pytest 8.4.2`
+(solo desarrollo). Todos tenían versión corregida, pero `pyproject.toml` fijaba `pillow<12`.
+
+**Corregido:** `pillow>=12.3,<13` (resuelve a 12.3.0) y `pytest>=9.0.3,<10` (9.1.1). Suite completa de la API con
+PostgreSQL real y Tesseract: **614 pasan, 0 fallan** (incluye OCR). `pip-audit` después: *No known vulnerabilities found*.
+
+### Vigilancia automatizada (nueva)
+- `docs/security/accepted-advisories.json`: los 2 avisos aceptados (braces, node-forge) con alcance, salida y `review_by`.
+- `npm run audit:monitor` (`scripts/audit-monitor.mjs`): falla si hay un aviso alto/crítico **no aceptado**, si una
+  aceptación **venció** (`review_by`), si el aviso **ya no existe** (retirar la entrada) o si el registro npm ya publica
+  una versión fuera del rango vulnerable (**actualizar**). Nunca ejecuta `npm audit fix`. 8 pruebas: `npm run test:scripts`.
+- `.github/workflows/deps-monitor.yml`: lunes 11:17 UTC, manual y en PRs que toquen lockfiles; incluye `pip-audit` de la API.
+  No se ha ejecutado en GitHub Actions (solo local); ver el estado en la pestaña Actions tras fusionar.
+- Estado hoy: 20 altos npm, 2 avisos únicos, ambos aceptados y vigentes hasta **2026-11-04**; ningún parche publicado.
+
+## Prueba aislada 2026-10-12 — migración web a Tailwind 4 (sin publicar)
+
+- Worktree desacoplado en `389f0a3`; no commit/push, ningún cambio en Expo/móvil. Los recuentos de arriba son históricos y **no describen este lockfile**.
+- `apps/web`: Tailwind `3.4.19 → 4.3.3`, `@tailwindcss/postcss`, `@import "tailwindcss"` + `@config` del preset TS existente; eliminado `autoprefixer` web y el override obsoleto de Tailwind 3. El preset sigue derivando los colores y radios de `packages/core/src/tokens.ts`.
+- RED inicial: `npm audit --json` identificó GHSA-vfj7-8cjw-p6xm en `braces@3.0.3` a través de Tailwind 3 (`chokidar` y `micromatch`); la prueba de seguridad en `apps/web/scripts/verify-tailwind-css.mjs` falló antes del cambio. Los tests de componentes y dashboard (32) y el build baseline pasaron con las variables de CI.
+- `npm ci` de raíz, web Vitest **837 pasan / 5 omitidos**, typecheck, lint y build de producción: pasan. Build con `NEXT_PUBLIC_AUTH_ENABLED=true API_BASE_URL=https://api.example.com WEB_ORIGIN=https://web.example.com CI=1`; `node --test apps/web/scripts/verify-tailwind-css.mjs`: color/radios y versión de Tailwind pasan; el gate global de `braces` **falla**. Playwright local en `/login` y `/register` a 390/1280 px: estilos calculados del botón, radios de tarjeta, ausencia de overflow y capturas visuales sin ruptura evidente. No prueba páginas autenticadas ni API real. Build avisa que `tailwind.config.ts` se reinterpreta como ES module (no bloqueante).
+- Bloqueo para **eliminar** GHSA-vfj7-8cjw-p6xm: `npm ls braces --all` ahora muestra una **ruta exclusivamente móvil**, `expo@57.0.27 → @expo/metro@56.0.2 → metro-file-map@0.84.5 → micromatch@4.0.8 → braces@3.0.3`. No es seguro quitarla con solo Tailwind, y este trabajo prohíbe editar Expo/móvil. `npm audit` sigue con **18 altos, 0 críticos, 2 advisories únicos**: braces y node-forge; no es auditoría en cero. `npm run audit:monitor`: OK (ambos aceptados, vigentes, sin parche publicado); `npm run test:scripts`: 8 pasan. Se mantiene la entrada braces en `docs/security/accepted-advisories.json`, con alcance/exit actualizado; node-forge intacto.
+- Siguiente paso separado: investigar una actualización compatible de la cadena Metro/Expo que retire `micromatch` (incluyendo comprobación SDK/export nativo), o esperar parche de `braces`. Solo entonces retirar la aceptación braces y exigir `npm ls braces --all` vacío + auditoría sin GHSA. Rollback de esta prueba aislada: descartar los archivos modificados en **este** worktree y ejecutar `npm ci` desde `389f0a3` (no restaurar el lockfile a mano); no tocar la copia canónica.

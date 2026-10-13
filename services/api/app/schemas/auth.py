@@ -1,0 +1,213 @@
+import uuid
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, StrictBool, field_validator, model_validator
+
+
+class Credentials(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr = Field(max_length=254)
+    password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        try:
+            value.get_secret_value().encode("utf-8", errors="strict")
+        except UnicodeEncodeError:
+            raise ValueError("Contraseña inválida") from None
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        return str(value).lower()
+
+
+class RegisterIn(Credentials):
+    """Registro: aceptación explícita (booleano estricto). La versión la fija el servidor."""
+    accept_terms: Literal[True]
+
+    @field_validator("accept_terms", mode="before")
+    @classmethod
+    def require_json_true(cls, value):
+        # Literal[True] alone admits 1 / 1.0 in lax mode; only the JSON literal true counts as consent.
+        if value is not True:
+            raise ValueError("Debes aceptar los términos")
+        return value
+
+
+class AccountDeletionIn(BaseModel):
+    """Reautenticación para borrar la cuenta; mismos límites que Credentials."""
+    model_config = ConfigDict(extra="forbid")
+    password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)
+
+
+class LegalOut(BaseModel):
+    terms_version: str
+    privacy_version: str
+    status: Literal["draft"]
+
+
+class RefreshIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    refresh_token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    email: str
+    role: Literal["user", "admin", "support"]
+    created_at: datetime
+    # Default None: clients parsing an older API (sin 0012) materialize null instead of failing.
+    terms_version: str | None = None
+    terms_accepted_at: datetime | None = None
+    # Auditoría C-10: None = correo sin verificar (no recibe avisos por correo).
+    email_verified_at: datetime | None = None
+
+
+class TokensOut(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int
+
+
+class PasswordForgotIn(BaseModel):
+    """ERD-AUTH-05: solicitud de enlace; la respuesta es idéntica exista o no la cuenta."""
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr = Field(max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        return str(value).lower()
+
+
+class PasswordForgotAccepted(BaseModel):
+    """Cuerpo fijo del 202: nunca dice si la cuenta existe ni si se envió correo."""
+    status: Literal["accepted"]
+
+
+class EmailVerifyIn(BaseModel):
+    """Auditoría C-10: token opaco del enlace de verificación (43 caracteres URL-safe), solo en el cuerpo."""
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+
+
+class EmailVerificationRequestOut(BaseModel):
+    """202 al pedir (re)envío del enlace. `already_verified` cuando no hace falta; el resto (incluido el tope por hora) es `accepted`."""
+    status: Literal["accepted", "already_verified"]
+
+
+class PasswordResetIn(BaseModel):
+    """Token opaco (43 caracteres URL-safe) solo en el cuerpo; misma política de contraseña que el registro."""
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+    new_password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)
+
+
+class PasswordChangeIn(BaseModel):
+    """ERD-AUTH-06: cambio con sesión iniciada; reautentica con la contraseña actual."""
+    model_config = ConfigDict(extra="forbid")
+    current_password: SecretStr = Field(min_length=12, max_length=128)
+    new_password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("current_password", "new_password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)
+
+    @model_validator(mode="after")
+    def require_different_password(self):
+        # Compara solo lo enviado por el cliente: no revela nada de la contraseña almacenada.
+        if self.current_password.get_secret_value() == self.new_password.get_secret_value():
+            raise ValueError("La nueva contraseña debe ser distinta de la actual")
+        return self
+
+
+class InvitationCreateIn(BaseModel):
+    """ERD-SHARE-01: solo se invita como miembro; la propiedad se cede con transfer-ownership."""
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr = Field(max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        return str(value).lower()
+
+
+class InvitationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    email: str
+    created_at: datetime
+    expires_at: datetime
+
+
+class InvitationAcceptIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+
+
+class MemberOut(BaseModel):
+    user_id: uuid.UUID
+    email: str
+    role: Literal["owner", "member"]
+    joined_at: datetime
+
+
+class OwnershipTransferIn(BaseModel):
+    """Reautentica con la contraseña actual: ceder la propiedad es una acción de alto impacto."""
+    model_config = ConfigDict(extra="forbid")
+    user_id: uuid.UUID
+    password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_encoding(cls, value):
+        return Credentials.validate_password_encoding(value)
+
+
+class NotificationPreferencesIn(BaseModel):
+    """Reemplazo completo: exactamente dos booleanos reales (nada de 0/1 ni "yes")."""
+    model_config = ConfigDict(extra="forbid")
+    alerts_email: StrictBool
+    alerts_push: StrictBool
+
+
+class NotificationPreferencesOut(BaseModel):
+    alerts_email: bool
+    alerts_push: bool
+    updated_at: datetime | None = None  # null = nunca guardadas (valores por defecto)
+
+
+class SessionOut(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    expires_at: datetime
+    current: bool
+
+
+class DeviceIn(BaseModel):
+    """ERD-ALERT-02: registra el token de notificaciones push (Expo) de este dispositivo."""
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=20, max_length=200, pattern=r"^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,}\]$")
+    platform: Literal["ios", "android"]
+
+
+class DeviceRemoveIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=20, max_length=200)

@@ -1,0 +1,42 @@
+[
+  {
+    "check": "OCR devuelve un borrador y NO crea factura",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "formulario precargado con lo leído",
+    "ok": true,
+    "detail": "kWh=320.00 monto=4500.00"
+  },
+  {
+    "check": "se creó exactamente una factura con el valor corregido",
+    "ok": true,
+    "detail": "{\"kwh\": \"320.00\", \"amount_dop\": \"4550.00\", \"period_start\": \"2026-09-01\", \"period_end\": \"2026-09-30\"}"
+  },
+  {
+    "check": "la factura confirmada se guarda como source=manual (nunca ocr)",
+    "ok": true,
+    "detail": "manual"
+  },
+  {
+    "check": "historial lista la factura",
+    "ok": true,
+    "detail": "Facturas | Registrar factura | 1–30 sep 2026 | 320 kWh · RD$ 4,550.00 | manual"
+  },
+  {
+    "check": "detalle muestra consumo y monto",
+    "ok": true,
+    "detail": "Detalle de factura | 1–30 sep 2026 | manual | Consumo | 320.00 kWh | Monto | RD$ 4,550.00 | Días facturados | 30 | Lectura anterior | 1,000.00 | Lectura actual | 1,320.00 | Volver | Editar"
+  },
+  {
+    "check": "factura inválida rechazada (422)",
+    "ok": true,
+    "detail": "422"
+  },
+  {
+    "check": "sigue habiendo una sola factura",
+    "ok": true,
+    "detail": ""
+  }
+]

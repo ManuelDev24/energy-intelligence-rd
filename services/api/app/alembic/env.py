@@ -9,13 +9,15 @@ import app.models  # noqa: F401  (registra tablas en Base.metadata)
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # No deshabilitar loggers ya creados (p. ej. "energyrd.api" cuando se migra en el mismo proceso).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
 
 def _url() -> str:
-    return config.get_main_option("sqlalchemy.url") or settings.DATABASE_URL
+    # Auditoría C-01: las migraciones usan el rol dueño (MIGRATION_DATABASE_URL); el API y el worker, roles restringidos (DATABASE_URL).
+    return config.get_main_option("sqlalchemy.url") or settings.MIGRATION_DATABASE_URL or settings.DATABASE_URL
 
 
 def run_migrations_offline() -> None:

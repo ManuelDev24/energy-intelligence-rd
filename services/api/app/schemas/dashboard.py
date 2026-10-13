@@ -42,10 +42,13 @@ class ProjectionOut(BaseModel):
     bills_used: int
     kwh: Metric                       # PROJECTED
     amount_dop: Metric                # PROJECTED
+    # Variación % de `kwh` frente a la última factura (PROJECTED). None si la última factura tiene 0 kWh.
+    # Default None: un cliente nuevo contra una API anterior recibe null en vez de fallar.
+    kwh_pct_vs_latest: Metric | None = None
     note: str
 
 
-class AlertOut(BaseModel):
+class DashboardAlertSummary(BaseModel):
     severity: Severity
     message: str
     basis_period_start: date
@@ -73,7 +76,7 @@ class DashboardOut(BaseModel):
     latest_bill: LatestBill | None
     comparison: Comparison | None
     projection: ProjectionOut | None
-    alert: AlertOut | None
+    alert: DashboardAlertSummary | None
     recommendation: str | None
     data_status: DataStatus
     quality_legend: dict[str, str]

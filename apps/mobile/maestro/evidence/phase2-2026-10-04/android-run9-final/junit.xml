@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="emulator-5554" tests="1" failures="0" time="255.778" timestamp="2026-10-04T15:24:12">
+    <testcase id="phase2-flow" name="phase2-flow" classname="phase2-flow" file="/Users/macbookpro/Desktop/energy-intelligence-rd/apps/mobile/maestro/phase2-flow.yaml" time="255.759" timestamp="2026-10-04T15:24:12" status="SUCCESS"/>
+  </testsuite>
+</testsuites>

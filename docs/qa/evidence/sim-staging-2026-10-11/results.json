@@ -1,0 +1,87 @@
+[
+  {
+    "check": "bucket privado creado con versionado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "migraciones hasta head en una base vacía",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "la API arranca con almacenamiento S3 y responde /health",
+    "ok": true,
+    "detail": "{\"status\": \"healthy\", \"database\": \"ok\"}"
+  },
+  {
+    "check": "subir la foto responde 202 de inmediato",
+    "ok": true,
+    "detail": "202"
+  },
+  {
+    "check": "el worker leyó la foto (estado done)",
+    "ok": true,
+    "detail": "{\"status\": \"done\", \"method\": \"ocr\", \"attempts\": 1}"
+  },
+  {
+    "check": "el borrador trae los campos esperados",
+    "ok": true,
+    "detail": "{\"period_start\": \"2026-09-03\", \"period_end\": \"2026-09-29\", \"days\": \"26\", \"kwh\": \"240.00\", \"amount_dop\": \"1304.05\", \"reading_previous\": \"4210.00\", \"reading_current\": \"4450.00\", \"due_date\": \"2026-10-13\"}"
+  },
+  {
+    "check": "el objeto del bucket existe, con el prefijo y CIFRADO (no es un PNG)",
+    "ok": true,
+    "detail": "prod/homes/7900350c-8ccf-4586-97d0-07d463749f89/documents/b9c43f2c-5a7d-4d0f-8793-102b4b71ed7b"
+  },
+  {
+    "check": "leer NO creó ninguna factura",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "confirmar crea la factura y la liga al original",
+    "ok": true,
+    "detail": "{\"id\":\"409603a5-97d7-4631-9088-0b5e19d26729\",\"home_id\":\"7900350c-8ccf-4586-97d0-07d463749f89\",\"period_start\":\"2026-09-03"
+  },
+  {
+    "check": "hay una alerta de pago por vencer",
+    "ok": true,
+    "detail": "[\"payment_due\"]"
+  },
+  {
+    "check": "el worker envió el correo de aviso sin cifras ni montos",
+    "ok": true,
+    "detail": "Energy RD: Su factura vence pronto"
+  },
+  {
+    "check": "la cola no tiene trabajos muertos ni concesiones vencidas",
+    "ok": true,
+    "detail": "{\"dead\": 0, \"dead_by_kind\": {}, \"oldest_queued_age_seconds\": 0, \"queued\": 0, \"running\": 0, \"stuck\": 0, \"succeeded\": 6}"
+  },
+  {
+    "check": "la conciliación inicial es consistente (salida 0)",
+    "ok": true,
+    "detail": "{\"documents\": 1, \"missing\": 0, \"missing_document_ids\": [], \"objects\": 1, \"orphan_delete_failed\": 0, \"orphans\": 0, \"orphans_deleted\": 0, \"orphans_too_new\": 0}"
+  },
+  {
+    "check": "tras perder el objeto la conciliación sale 1 y nombra el documento",
+    "ok": true,
+    "detail": "{\"documents\": 1, \"missing\": 1, \"missing_document_ids\": [\"b9c43f2c-5a7d-4d0f-8793-102b4b71ed7b\"], \"objects\": 0, \"orphan_delete_failed\": 0, \"orphans\": 0, \"orphans_deleted\": 0, \"orphans_too_new\": 0}"
+  },
+  {
+    "check": "quitar la marca de borrado (recuperar la versión) deja la conciliación en 0",
+    "ok": true,
+    "detail": "{\"documents\": 1, \"missing\": 0, \"missing_document_ids\": [], \"objects\": 1, \"orphan_delete_failed\": 0, \"orphans\": 0, \"orphans_deleted\": 0, \"orphans_too_new\": 0}"
+  },
+  {
+    "check": "el documento recuperado sigue listado para su dueño",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "borrar el documento vacía el bucket por la cola de borrado",
+    "ok": true,
+    "detail": "204, 0 objeto(s)"
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "exit_code": 0,
+  "elapsed_seconds": 202.3,
+  "tests": 1002,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "font_family": "DejaVuSans/DejaVuSans-Bold",
+  "fixture_expectations_changed": false,
+  "postgres": "isolated localhost:55439/erd_recovery_test",
+  "pilot_touched": false,
+  "passed": 1002,
+  "failing_tests": [],
+  "fixture_font_sha256": {
+    "DejaVuSans.ttf": "3fdf69cabf06049ea70a00b5919340e2ce1e6d02b0cc3c4b44fb6801bd1e0d22",
+    "DejaVuSans-Bold.ttf": "b184b89e3c1075f22f6b71575b6fc20d4972b3cfd3b23322ca6fd596dcaef167"
+  },
+  "source_sha256": {
+    "services/api/app/services/ocr/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "services/api/app/services/ocr/engine.py": "aa21576e66a0804bdfe642e279604065a5fa4d9996b7afb04ce149c80911658e",
+    "services/api/app/services/ocr/jobs.py": "02c8a89e77310d96de3424c8b12b5fe412f6a528a6dedbdf932208da6c10a2c5",
+    "services/api/app/services/ocr/parser.py": "7bc9732f9a11097403c6fb5ea25efe465a7e5bd29b7f0ae77d1ab182d0fcb4a7",
+    "services/api/app/services/ocr/pipeline.py": "b14550090c3e949d3be1bd31c69792596817daa8059bf49d376f87de8ed8356e",
+    "services/api/app/services/ocr/preprocess.py": "9386d3ca29ccbb94141562705a2f257a2ff9e5b56598b2421377dbdb70ef110f",
+    "services/api/app/services/ocr/qa.py": "a4670e551d04642562dbd8fdc0c6b0f602bb99b75c8474f5fe99a188a608a3c2"
+  }
+}

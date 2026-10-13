@@ -1,0 +1,79 @@
+{
+  "passed": true,
+  "original_documents": 3,
+  "field_counts": {
+    "ok": 21,
+    "missing": 1
+  },
+  "fields_total": 22,
+  "rows": [
+    {
+      "distributor": "EDESUR",
+      "field_status": {
+        "period_start": "ok",
+        "period_end": "ok",
+        "days": "ok",
+        "kwh": "ok",
+        "amount_dop": "ok",
+        "reading_previous": "ok",
+        "reading_current": "ok",
+        "due_date": "ok"
+      },
+      "encrypted_original_readback": true,
+      "worker_done": true,
+      "no_bill_before_confirmation": true,
+      "confirmation_using_independent_expectations": true,
+      "bill_readback_all_fields_match": true,
+      "document_attached": true,
+      "draft_cleared": true,
+      "seconds": 2.96
+    },
+    {
+      "distributor": "EDENORTE",
+      "field_status": {
+        "period_start": "ok",
+        "period_end": "ok",
+        "days": "ok",
+        "kwh": "ok",
+        "amount_dop": "missing",
+        "due_date": "ok"
+      },
+      "encrypted_original_readback": true,
+      "worker_done": true,
+      "no_bill_before_confirmation": true,
+      "confirmation_using_independent_expectations": true,
+      "bill_readback_all_fields_match": true,
+      "document_attached": true,
+      "draft_cleared": true,
+      "seconds": 5.56
+    },
+    {
+      "distributor": "EDEESTE",
+      "field_status": {
+        "period_start": "ok",
+        "period_end": "ok",
+        "days": "ok",
+        "kwh": "ok",
+        "amount_dop": "ok",
+        "reading_previous": "ok",
+        "reading_current": "ok",
+        "due_date": "ok"
+      },
+      "encrypted_original_readback": true,
+      "worker_done": true,
+      "no_bill_before_confirmation": true,
+      "confirmation_using_independent_expectations": true,
+      "bill_readback_all_fields_match": true,
+      "document_attached": true,
+      "draft_cleared": true,
+      "seconds": 4.98
+    }
+  ],
+  "api_transport": "in-process FastAPI TestClient, real PostgreSQL and real worker/Tesseract",
+  "storage": "encrypted task-only local files; not cloud S3",
+  "native_mobile": false,
+  "automated_confirmation_not_human_ui": true,
+  "pilot_touched": false,
+  "personal_values_in_report": false,
+  "database_disposable": true
+}

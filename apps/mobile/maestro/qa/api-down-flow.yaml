@@ -1,0 +1,20 @@
+# Con la API DETENIDA: la app muestra error con Reintentar (sin texto del servidor).
+appId: ${APP_ID || 'host.exp.Exponent'}
+---
+- launchApp:
+    stopApp: true
+- openLink: ${EXPO_URL || 'exp://127.0.0.1:8081'}
+- extendedWaitUntil:
+    visible:
+      id: "retry"
+    timeout: 120000
+- takeScreenshot: evidence/state-api-down-dashboard
+- tapOn:
+    id: "tab-Bills"
+- extendedWaitUntil:
+    visible:
+      id: "retry"
+    timeout: 60000
+- takeScreenshot: evidence/state-api-down-bills
+- tapOn:
+    id: "tab-Dashboard"

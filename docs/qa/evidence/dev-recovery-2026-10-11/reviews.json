@@ -1,0 +1,33 @@
+{
+  "ocr": {
+    "batch": "deleg_78fca16d",
+    "verdict": "approved within scope",
+    "critical": 0,
+    "required": 0,
+    "reviewer_reported_checks": 55,
+    "reviewer_reported_passed": 55,
+    "reviewer_did_not_certify_private_image_accuracy": true
+  },
+  "mobile": {
+    "batches": [
+      "deleg_f6a89b25",
+      "deleg_43d85492"
+    ],
+    "verdict": "approved within scope",
+    "critical": 0,
+    "required": 0,
+    "stale_verification_comment_optional_resolved": true,
+    "platform_status_assertions_strengthened_and_525_mobile_tests_repeated": true
+  },
+  "parent_executed_acceptance": {
+    "full_api_passed": 1002,
+    "js_passed": 1439,
+    "real_ocr_fields_correct": 21,
+    "real_ocr_fields_expected": 22,
+    "real_ocr_incorrect": 0,
+    "real_api_worker_documents_passed": 3,
+    "native_ios_full_runs_passed": 2,
+    "android_native_executed": false
+  },
+  "release_acceptance": "partial; reviewers do not close operational/native/holdout tasks"
+}

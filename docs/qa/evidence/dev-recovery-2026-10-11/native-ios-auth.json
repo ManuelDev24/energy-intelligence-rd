@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-11",
+  "integration_base": "fef74c83eeabeef2479bf92267200b132b317fa5",
+  "platform": "ios",
+  "device": "iPhone 18 Pro simulator",
+  "os": "iOS 27.0",
+  "expo_sdk": "57.0.0",
+  "consecutive_full_runs": 2,
+  "durations_seconds": [
+    132.5,
+    135.0
+  ],
+  "exit_codes": [
+    0,
+    0
+  ],
+  "latest_source_sha256": {
+    "apps/mobile/src/notifications/push.ts": "4818651032f8da42ec82e592da1b4bf763e60b7f6cf65276f4a8f07670826e52",
+    "apps/mobile/maestro/auth-flow.yaml": "70e9fb17e27f40aca073aeeccd0c741c4d3ad5e7934c295bec7cd4a36fb646d1",
+    "apps/mobile/maestro/back.yaml": "d1437bacf3ab52483385f38326b3e67924ebcd4d460eed732b185117aac491b4"
+  },
+  "api": "isolated localhost:8011",
+  "synthetic_accounts_only": true,
+  "real_email_sent": false,
+  "verified": [
+    "registration validation and consent",
+    "six-stage home onboarding",
+    "profile readback",
+    "empty consumption with 30-day filter",
+    "persisted goal and goal editor",
+    "logout confirmation",
+    "login and home selection",
+    "password forgot confirmation"
+  ],
+  "screenshots_visually_reviewed": 7,
+  "screenshots_published": false,
+  "not_verified": [
+    "Android native flow",
+    "software keyboard visibility",
+    "real push or email delivery",
+    "password reset through real email link",
+    "VoiceOver/TalkBack",
+    "native real-bill OCR"
+  ],
+  "task_acceptance": "partial: Android remains required",
+  "environment_adjustment": "Expo Go floating menu moved away from profile button without clearing storage"
+}

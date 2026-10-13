@@ -1,0 +1,72 @@
+[
+  {
+    "check": "el propietario ve el panel con su propio rol",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "correo inválido se rechaza en el cliente",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "invitación aparece como pendiente (con el correo normalizado)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el correo lleva el enlace con el token en el fragmento y sin datos del invitador",
+    "ok": true,
+    "detail": "http://localhost:3011/invitacion"
+  },
+  {
+    "check": "segunda invitación al mismo correo se bloquea (409)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el token se borra de la barra de direcciones",
+    "ok": true,
+    "detail": "http://localhost:3011/invitacion"
+  },
+  {
+    "check": "Bob acepta y llega al panel de la vivienda",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "Bob ve la vivienda en su lista",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "Bob (miembro) no puede listar miembros (403)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "reutilizar el token devuelve 400 invitation_invalid",
+    "ok": true,
+    "detail": "400"
+  },
+  {
+    "check": "contraseña incorrecta no transfiere (Alice sigue siendo propietaria)",
+    "ok": true,
+    "detail": "{'erd-share-1c84e0fffee54de38252edc3c852fda1@example.com': 'owner', 'erd-share-b5ecdd5761fa4bd992ce04414daefc61@example.com': 'member'}"
+  },
+  {
+    "check": "Bob ahora es propietario y Alice miembro",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "Alice sale y deja de ver la vivienda",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "el único propietario no puede salir (409)",
+    "ok": true,
+    "detail": ""
+  }
+]

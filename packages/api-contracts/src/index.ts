@@ -1,0 +1,92 @@
+export * from "./generated";
+import {
+  HomeOutSchema, BillOutSchema, DashboardOutSchema, EquipmentOutSchema,
+  EquipmentEstimateOutSchema, OcrJobOutSchema, AlertRecordSchema, AnomalyRecordSchema, RecommendationRecordSchema, RecommendationListOutSchema, EnergyScoreOutSchema, OutageInSchema, OutageOutSchema, OutageSummaryOutSchema, BillUpdateSchema, EquipmentInSchema, MetricSchema,
+} from "./generated";
+import type { z } from "zod";
+
+export const HomeSchema = HomeOutSchema;
+export const BillSchema = BillOutSchema;
+export const BillsSchema = BillSchema.array();
+export const DashboardSchema = DashboardOutSchema;
+export const EquipmentSchema = EquipmentOutSchema;
+export const EquipmentEstimateSchema = EquipmentEstimateOutSchema;
+export const AlertItemSchema = AlertRecordSchema;
+export const DistributorSchema = HomeSchema.shape.distributor;
+export const BillSourceSchema = BillSchema.shape.source;
+export const AlertStatusSchema = AlertItemSchema.shape.status;
+export const QualitySchema = MetricSchema.shape.quality;
+export type Home = z.infer<typeof HomeSchema>;
+export type Bill = z.infer<typeof BillSchema>;
+export type Dashboard = z.infer<typeof DashboardSchema>;
+export type Equipment = z.infer<typeof EquipmentSchema>;
+export type EquipmentEstimate = z.infer<typeof EquipmentEstimateSchema>;
+export type AlertItem = z.infer<typeof AlertItemSchema>;
+export type Alert = AlertItem;
+export const AnomalySchema = AnomalyRecordSchema;
+export const AnomaliesSchema = AnomalySchema.array();
+export type Anomaly = z.infer<typeof AnomalySchema>;
+// ERD-SAVE-01: recomendaciones de ahorro explicables (los ahorros son ESTIMATED y traen sus supuestos).
+export const RecommendationSchema = RecommendationRecordSchema;
+export const RecommendationListSchema = RecommendationListOutSchema;
+// ERD-INT-01: interrupciones del servicio eléctrico registradas a mano.
+export const OutageSchema = OutageOutSchema;
+export const OutagesSchema = OutageSchema.array();
+export const OutageSummarySchema = OutageSummaryOutSchema;
+export type Outage = z.infer<typeof OutageSchema>;
+export type OutageInput = z.input<typeof OutageInSchema>;
+export type OutageSummary = z.infer<typeof OutageSummarySchema>;
+// ERD-SCORE-01: Energy Score 0–100 calculado por el backend (indicador interno INFERIDO).
+export const EnergyScoreSchema = EnergyScoreOutSchema;
+export type EnergyScore = z.infer<typeof EnergyScoreSchema>;
+export type ScoreComponent = EnergyScore["components"][number];
+export type Recommendation = z.infer<typeof RecommendationSchema>;
+export type RecommendationList = z.infer<typeof RecommendationListSchema>;
+export type Distributor = Home["distributor"];
+export type Quality = z.infer<typeof QualitySchema>;
+export type AlertStatus = AlertItem["status"];
+export type Severity = AlertItem["severity"];
+// Optional readings are accepted by the API; decimal inputs are canonical strings.
+export type BillInput = Omit<z.infer<typeof BillUpdateSchema>, "reading_previous" | "reading_current" | "due_date">
+  & { reading_previous?: string | null; reading_current?: string | null; due_date?: string | null; document_id?: string | null };
+export type EquipmentInput = z.infer<typeof EquipmentInSchema>;
+// ERD-OCR-PROD: lectura asíncrona de un original (foto o PDF).
+export const OcrJobSchema = OcrJobOutSchema;
+export type OcrJob = z.infer<typeof OcrJobSchema>;
+export const OCR_ACTIVE_STATUSES = ["pending", "processing"] as const;
+export const isOcrActive = (job: Pick<OcrJob, "status">) => job.status === "pending" || job.status === "processing";
+
+// ---------- Fase 2: lecturas, consumo, metas y tarifas ----------
+import {
+  ReadingOutSchema, ReadingCreateSchema, ConsumptionOutSchema, ConsumptionBucketSchema, GoalOutSchema, GoalInSchema,
+  GoalProgressOutSchema, GoalMetricProgressSchema, TariffOutSchema, TariffRefSchema,
+} from "./generated";
+
+export const ReadingSchema = ReadingOutSchema;
+export const ReadingsSchema = ReadingSchema.array();
+export const ReadingInputSchema = ReadingCreateSchema;
+export const ConsumptionSchema = ConsumptionOutSchema;
+export const ConsumptionBucketItemSchema = ConsumptionBucketSchema;
+export const GranularitySchema = ConsumptionSchema.shape.granularity;
+export const GoalSchema = GoalOutSchema;
+// GET /goal devuelve null cuando la vivienda no tiene meta.
+export const GoalOrNullSchema = GoalSchema.nullable();
+export const GoalInputSchema = GoalInSchema;
+export const GoalProgressSchema = GoalProgressOutSchema;
+export const GoalMetricSchema = GoalMetricProgressSchema;
+export const GoalStatusSchema = GoalProgressSchema.shape.status;
+export const TariffSchema = TariffOutSchema;
+export const TariffsSchema = TariffSchema.array();
+export const TariffSourceSchema = TariffRefSchema;
+export type Reading = z.infer<typeof ReadingSchema>;
+export type ReadingInput = z.input<typeof ReadingInputSchema>;
+export type Consumption = z.infer<typeof ConsumptionSchema>;
+export type ConsumptionBucketItem = z.infer<typeof ConsumptionBucketItemSchema>;
+export type Granularity = z.infer<typeof GranularitySchema>;
+export type Goal = z.infer<typeof GoalSchema>;
+export type GoalInput = z.input<typeof GoalInputSchema>;
+export type GoalProgress = z.infer<typeof GoalProgressSchema>;
+export type GoalMetric = z.infer<typeof GoalMetricSchema>;
+export type GoalStatus = z.infer<typeof GoalStatusSchema>;
+export type Tariff = z.infer<typeof TariffSchema>;
+export type TariffSource = z.infer<typeof TariffSourceSchema>;

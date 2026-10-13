@@ -1,0 +1,264 @@
+import secrets
+
+import pytest
+from pydantic import ValidationError
+
+from app.config import DEFAULT_DATABASE_URL, Settings
+
+
+def config(**overrides):
+    # Supply every operational field so local .env/process values cannot change tests.
+    values = dict(DATABASE_URL=DEFAULT_DATABASE_URL, ENVIRONMENT="development", AUTH_ENABLED=False,
+                  SEED_PILOT=False, MIGRATE_ON_START=False, CORS_ORIGINS="http://localhost:3000")
+    return Settings(_env_file=None, **(values | overrides))
+
+
+def test_development_allows_explicit_demo_seed():
+    assert config(SEED_PILOT=True).SEED_PILOT
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_auth_disabled_is_rejected_in_deployment(environment):
+    with pytest.raises(ValidationError, match="AUTH_ENABLED"):
+        config(**(PRODUCTION | {"ENVIRONMENT": environment, "AUTH_ENABLED": False}))
+
+
+@pytest.mark.parametrize("key", ["", "short", "x"*64, "change_me_local_only_"*4])
+def test_enabled_auth_rejects_missing_weak_key(key):
+    with pytest.raises(ValidationError, match="AUTH_SIGNING_KEY"):
+        config(AUTH_ENABLED=True, AUTH_SIGNING_KEY=key)
+
+
+@pytest.mark.parametrize("field,value", [("AUTH_ACCESS_TTL_SECONDS",901),("AUTH_ACCESS_TTL_SECONDS",0),
+                                        ("AUTH_REFRESH_TTL_DAYS",0),("AUTH_REFRESH_TTL_DAYS",91)])
+def test_bounded_auth_ttls(field,value):
+    with pytest.raises(ValidationError):
+        config(**{field:value})
+
+
+def test_wildcard_cors_is_rejected():
+    with pytest.raises(ValidationError, match="explicit origins"):
+        config(CORS_ORIGINS="*")
+
+
+@pytest.mark.parametrize("environment", ["production", "staging"])
+def test_deployment_rejects_local_database_defaults(environment):
+    with pytest.raises(ValidationError, match="database credentials"):
+        config(ENVIRONMENT=environment)
+
+
+PRODUCTION = dict(ENVIRONMENT="production", DATABASE_URL="postgresql+psycopg://energy:private@db.internal/energy_rd",
+                  CORS_ORIGINS="https://energy.example", AUTH_ENABLED=True, AUTH_SIGNING_KEY=secrets.token_urlsafe(48),
+                  DB_REQUIRE_RESTRICTED_ROLE=True,
+                  EMAIL_BACKEND="resend", RESEND_API_KEY="re_" + secrets.token_urlsafe(24),
+                  EMAIL_FROM="no-reply@energy.example", PASSWORD_RESET_URL="https://energy.example/restablecer")
+
+
+def test_explicit_production_configuration_is_accepted():
+    assert config(**PRODUCTION).SEED_PILOT is False
+
+
+def test_production_rejects_demo_seed_without_exposing_password():
+    with pytest.raises(ValidationError, match="Demo seed") as exc:
+        config(**PRODUCTION, SEED_PILOT=True)
+    assert "private" not in str(exc.value)
+
+
+def test_production_rejects_migrations_on_each_replica():
+    with pytest.raises(ValidationError, match="single release step"):
+        config(**PRODUCTION, MIGRATE_ON_START=True)
+
+
+@pytest.mark.parametrize("origins", ["", "http://energy.example", "https://"])
+def test_production_rejects_missing_or_non_https_origins(origins):
+    with pytest.raises(ValidationError, match="HTTPS"):
+        config(**(PRODUCTION | {"CORS_ORIGINS": origins}))
+
+
+# ---------- ERD-AUTH-05: correo y recuperación de contraseña ----------
+EMAIL_PRODUCTION = dict(EMAIL_BACKEND="resend", RESEND_API_KEY="re_" + secrets.token_urlsafe(24),
+                        EMAIL_FROM="Energy RD <no-reply@energy.example>",
+                        PASSWORD_RESET_URL="https://app.energy.example/restablecer")
+
+
+def test_development_defaults_to_console_email():
+    settings = config()
+    assert settings.EMAIL_BACKEND == "console"
+    assert settings.PASSWORD_RESET_TTL_MINUTES == 30
+
+
+def test_resend_key_is_not_in_repr():
+    settings = config(**EMAIL_PRODUCTION)
+    assert EMAIL_PRODUCTION["RESEND_API_KEY"] not in repr(settings)
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_deployment_accepts_complete_resend_configuration(environment):
+    assert config(**(PRODUCTION | EMAIL_PRODUCTION | {"ENVIRONMENT": environment})).EMAIL_BACKEND == "resend"
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+@pytest.mark.parametrize("override", [
+    {"EMAIL_BACKEND": "console"},
+    {"RESEND_API_KEY": ""},
+    {"EMAIL_FROM": ""},
+    {"PASSWORD_RESET_URL": "http://app.energy.example/restablecer"},
+    {"PASSWORD_RESET_URL": "https://"},
+    {"PASSWORD_RESET_URL": "https://app.energy.example/restablecer?x=1"},
+    {"PASSWORD_RESET_URL": "https://app.energy.example/restablecer#token="},
+    {"EMAIL_DEV_OUTBOX": "/tmp/outbox.jsonl"},
+])
+def test_deployment_rejects_unsafe_email_configuration(environment, override):
+    with pytest.raises(ValidationError) as exc:
+        config(**(PRODUCTION | EMAIL_PRODUCTION | {"ENVIRONMENT": environment} | override))
+    assert EMAIL_PRODUCTION["RESEND_API_KEY"] not in str(exc.value)
+
+
+def test_unknown_email_backend_is_rejected():
+    with pytest.raises(ValidationError):
+        config(EMAIL_BACKEND="smtp")
+
+
+@pytest.mark.parametrize("field,value", [("PASSWORD_RESET_TTL_MINUTES", 4), ("PASSWORD_RESET_TTL_MINUTES", 61),
+                                         ("AUTH_FORGOT_LIMIT", 0), ("AUTH_RESET_LIMIT", 0),
+                                         ("PASSWORD_RESET_ACCOUNT_LIMIT", 0), ("PASSWORD_RESET_ACCOUNT_LIMIT", 21),
+                                         ("PASSWORD_RESET_ACCOUNT_WINDOW_SECONDS", 59),
+                                         ("PASSWORD_RESET_ACCOUNT_WINDOW_SECONDS", 86401)])
+def test_bounded_recovery_settings(field, value):
+    with pytest.raises(ValidationError):
+        config(**{field: value})
+
+
+# ---------- ERD-SEC-PROXY-01: fuente de IP de cliente detrás de Render/Cloudflare ----------
+def test_client_ip_source_defaults_to_socket():
+    assert config().CLIENT_IP_SOURCE == "socket"
+
+
+def test_unknown_client_ip_source_is_rejected():
+    with pytest.raises(ValidationError):
+        config(CLIENT_IP_SOURCE="x-forwarded-for")
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_cf_connecting_ip_requires_shared_secret_in_deployment(environment):
+    with pytest.raises(ValidationError, match="BFF_API_SHARED_SECRET"):
+        config(**(PRODUCTION | {"ENVIRONMENT": environment, "CLIENT_IP_SOURCE": "cf-connecting-ip"}))
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+@pytest.mark.parametrize("secret", ["", "short", "x" * 64, "change_me_local_only_" * 4])
+def test_cf_connecting_ip_rejects_weak_shared_secret(environment, secret):
+    with pytest.raises(ValidationError, match="BFF_API_SHARED_SECRET"):
+        config(**(PRODUCTION | {"ENVIRONMENT": environment, "CLIENT_IP_SOURCE": "cf-connecting-ip",
+                                 "BFF_API_SHARED_SECRET": secret}))
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_cf_connecting_ip_accepts_strong_shared_secret(environment):
+    settings = config(**(PRODUCTION | {"ENVIRONMENT": environment, "CLIENT_IP_SOURCE": "cf-connecting-ip",
+                                        "BFF_API_SHARED_SECRET": secrets.token_urlsafe(48)}))
+    assert settings.CLIENT_IP_SOURCE == "cf-connecting-ip"
+
+
+def test_socket_client_ip_source_does_not_require_shared_secret_in_deployment():
+    assert config(**PRODUCTION).CLIENT_IP_SOURCE == "socket"
+
+
+def test_bff_api_shared_secret_is_not_in_repr():
+    secret = secrets.token_urlsafe(48)
+    settings = config(**(PRODUCTION | {"CLIENT_IP_SOURCE": "cf-connecting-ip", "BFF_API_SHARED_SECRET": secret}))
+    assert secret not in repr(settings)
+
+
+# --- Auditoría C-03: fallo cerrado --------------------------------------------------------------------------------------
+def test_authentication_is_enabled_by_default():
+    assert Settings.model_fields["AUTH_ENABLED"].default is True
+
+
+def test_default_boot_without_a_signing_key_is_refused_even_in_development(monkeypatch):
+    monkeypatch.delenv("AUTH_ENABLED", raising=False)  # la suite lo fija en false (modo piloto) vía conftest
+    with pytest.raises(ValidationError, match="AUTH_SIGNING_KEY"):
+        Settings(_env_file=None, DATABASE_URL=DEFAULT_DATABASE_URL, ENVIRONMENT="development", CORS_ORIGINS="http://localhost:3000")
+
+
+def test_default_boot_with_a_strong_key_enables_authentication(monkeypatch):
+    monkeypatch.delenv("AUTH_ENABLED", raising=False)
+    cfg = Settings(_env_file=None, DATABASE_URL=DEFAULT_DATABASE_URL, ENVIRONMENT="development",
+                   CORS_ORIGINS="http://localhost:3000", AUTH_SIGNING_KEY=secrets.token_urlsafe(48))
+    assert cfg.AUTH_ENABLED is True
+
+
+@pytest.mark.parametrize("value", ["prod", "Production ", "dev", "test", ""])
+def test_unknown_environment_names_are_rejected(value):
+    with pytest.raises(ValidationError, match="ENVIRONMENT must be one of"):
+        config(ENVIRONMENT=value)
+
+
+@pytest.mark.parametrize("variable", ["RENDER", "DYNO", "K_SERVICE", "KUBERNETES_SERVICE_HOST"])
+def test_platform_without_declared_environment_is_refused(monkeypatch, variable):
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.setenv(variable, "true")
+    with pytest.raises(ValidationError, match="ENVIRONMENT must be set explicitly"):
+        Settings(_env_file=None, DATABASE_URL=DEFAULT_DATABASE_URL, AUTH_ENABLED=False, CORS_ORIGINS="http://localhost:3000")
+
+
+def test_remote_database_without_declared_environment_is_refused(monkeypatch):
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    with pytest.raises(ValidationError, match="ENVIRONMENT must be set explicitly"):
+        Settings(_env_file=None, DATABASE_URL="postgresql+psycopg://u:p@db.example.com/x", AUTH_ENABLED=False,
+                 CORS_ORIGINS="http://localhost:3000")
+
+
+def test_local_machine_without_declared_environment_still_works(monkeypatch):
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    for name in ("RENDER", "DYNO", "K_SERVICE", "KUBERNETES_SERVICE_HOST", "FLY_APP_NAME", "VERCEL", "RAILWAY_ENVIRONMENT"):
+        monkeypatch.delenv(name, raising=False)
+    cfg = Settings(_env_file=None, DATABASE_URL=DEFAULT_DATABASE_URL, AUTH_ENABLED=False, CORS_ORIGINS="http://localhost:3000")
+    assert cfg.ENVIRONMENT == "development"
+
+
+# --- Auditoría C-01: rol restringido obligatorio fuera de desarrollo --------------------------------------------------------
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_deployments_must_require_the_restricted_database_role(environment):
+    with pytest.raises(ValidationError, match="DB_REQUIRE_RESTRICTED_ROLE"):
+        config(**(PRODUCTION | EMAIL_PRODUCTION | {"ENVIRONMENT": environment, "DB_REQUIRE_RESTRICTED_ROLE": False}))
+    assert config(**(PRODUCTION | EMAIL_PRODUCTION | {"ENVIRONMENT": environment})).DB_REQUIRE_RESTRICTED_ROLE is True
+
+
+@pytest.mark.parametrize("url", ["postgresql+psycopg://energy:private@localhost/energy_rd", "postgresql+psycopg://owner@db.internal/energy_rd",
+                                 "postgresql+psycopg://energy:change_me_local_only@db.internal/energy_rd"])
+def test_the_migration_url_must_be_explicit_and_non_local_in_deployments(url):
+    with pytest.raises(ValidationError, match="MIGRATION_DATABASE_URL"):
+        config(**(PRODUCTION | EMAIL_PRODUCTION | {"MIGRATION_DATABASE_URL": url}))
+    assert config(**(PRODUCTION | EMAIL_PRODUCTION | {"MIGRATION_DATABASE_URL": "postgresql+psycopg://owner:s3cret@db.internal/energy_rd"}))
+
+
+def test_alembic_prefers_the_migration_url_over_the_application_url(monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "DATABASE_URL", "postgresql+psycopg://erd_app:x@db/energy")
+    monkeypatch.setattr(settings, "MIGRATION_DATABASE_URL", "postgresql+psycopg://owner:y@db/energy")
+    assert (settings.MIGRATION_DATABASE_URL or settings.DATABASE_URL).startswith("postgresql+psycopg://owner")
+
+
+def test_production_refuses_to_start_with_draft_legal_texts_unless_the_risk_is_explicitly_accepted():
+    """Re-auditoría C-04: nada de operar en producción aceptando términos en borrador por descuido."""
+    from app.services import legal
+    assert legal.LEGAL_STATUS == "draft"  # si cambia a «final», esta prueba debe revisarse junto con la guarda
+    with pytest.raises(RuntimeError, match="borrador"):
+        legal.require_final_legal("production", False)
+    legal.require_final_legal("production", True)      # aceptación explícita de la persona responsable
+    legal.require_final_legal("staging", False)        # staging y desarrollo sí pueden usar el borrador
+    legal.require_final_legal("development", False)
+
+
+def test_the_api_lifespan_enforces_the_legal_guard(monkeypatch):
+    import asyncio
+    from app import main
+    monkeypatch.setitem(main.settings.__dict__, "ENVIRONMENT", "production")
+    monkeypatch.setitem(main.settings.__dict__, "ALLOW_DRAFT_LEGAL", False)
+
+    async def start():
+        async with main.lifespan(main.app):
+            pass
+    with pytest.raises(RuntimeError, match="borrador"):
+        asyncio.run(start())

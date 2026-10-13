@@ -1,0 +1,67 @@
+[
+  {
+    "check": "registro lleva al asistente (cuenta sin viviendas)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "etapa 1 exige nombre, provincia y municipio",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "sin avanzar no hay viviendas",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "etapa 2 crea exactamente una vivienda",
+    "ok": true,
+    "detail": "[{\"province\": \"Santo Domingo\", \"municipality\": \"Santo Domingo Este\", \"sector\": \"Los Mina\", \"user_type\": null, \"occupants"
+  },
+  {
+    "check": "etapa 4 rechaza 0 ocupantes",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "etapa 6 rechaza meta inválida",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "perfil guardado",
+    "ok": true,
+    "detail": "{\"province\": \"Santo Domingo\", \"occupants\": 4, \"has_ac\": true, \"has_pool\": null}"
+  },
+  {
+    "check": "indicadores: uno elegido, el resto sin indicar (null)",
+    "ok": true,
+    "detail": "[True, None, None, None, None]"
+  },
+  {
+    "check": "contrato guardado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "meta guardada",
+    "ok": true,
+    "detail": "{\"home_id\": \"450e08af-e965-4766-afa6-ae8941889407\", \"monthly_amount_rd\": \"3000.00\", \"monthly_kwh\": \""
+  },
+  {
+    "check": "sigue habiendo una sola vivienda",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "llega al panel de la vivienda recién creada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "check": "segunda cuenta no ve la vivienda de la primera",
+    "ok": true,
+    "detail": ""
+  }
+]

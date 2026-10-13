@@ -6,17 +6,35 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115,<1",
     "uvicorn[standard]>=0.30,<1",
-    "sqlalchemy>=2.0.30,<2.1",
+    "sqlalchemy>=2.0.30,<2.2",
     "alembic>=1.13,<2",
     "psycopg[binary]>=3.2,<4",
     "pydantic>=2.7,<3",
     "pydantic-settings>=2.3,<3",
+    "argon2-cffi>=23.1,<26",
+    "PyJWT>=2.10.1,<3",
+    "email-validator>=2.2,<3",
+    # ERD-AUTH-05: cliente HTTP del backend de correo Resend (también lo usa TestClient en dev).
+    "httpx>=0.27,<1",
+    # ERD-OCR-01: subida de foto de factura (multipart) + OCR local (sin SaaS, sin costo por página).
+    "python-multipart>=0.0.9,<1",
+    "pillow>=12.3,<13",
+    "pytesseract>=0.3.10,<1",
+    # ERD-OBS-01: errores y trazas a Sentry (opcional: sin SENTRY_DSN no se envía nada), con redacción de datos personales.
+    "sentry-sdk>=2.20,<3",
+    "cryptography>=50,<51",
+    "boto3>=1.35,<2",
+    "pypdfium2>=4.30,<6",
+    "pillow-heif>=0.18,<2",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest>=8,<9",
-    "httpx>=0.27,<1",
+    "moto[s3]>=5.0,<6",
+    "mypy>=1.13,<3",
+    "pytest>=9.0.3,<10",
+    "pytest-cov>=6,<8",
+    "ruff>=0.8,<1",
 ]
 
 [tool.pytest.ini_options]
@@ -25,3 +43,47 @@ pythonpath = ["."]
 
 [tool.uv]
 package = false
+
+# Auditoría C-17: lint orientado a errores reales (variables/imports sin usar, nombres indefinidos, trampas de B). Reglas de estilo
+# (orden de imports, pyupgrade…) quedan fuera a propósito para no mezclar la adopción de la herramienta con un reformateo masivo.
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E9", "F", "B"]
+ignore = [
+    "B008",  # FastAPI declara dependencias con Depends(...) en los argumentos
+    "B905",  # zip(...) sin strict: se usa con secuencias de igual longitud por construcción
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]        # reexportaciones
+"tests/**" = ["F811", "F401"]   # los fixtures de pytest se importan y se reciben como argumentos
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+# Adopción gradual: se verifican estos módulos (nuevos o críticos para la seguridad y el cálculo). Ampliar la lista al tipar más código.
+files = [
+    "app/config.py",
+    "app/request_limits.py",
+    "app/observability.py",
+    "app/services/consumption_calc.py",
+    "app/services/errors.py",
+]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+omit = ["app/alembic/*"]
+
+[tool.coverage.report]
+skip_empty = true
+# Auditoría C-17: medido 97 % (líneas+ramas) el 2026-10-12; el umbral deja margen y solo debe subir.
+fail_under = 92

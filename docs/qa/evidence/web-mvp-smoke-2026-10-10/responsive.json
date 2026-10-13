@@ -1,0 +1,30 @@
+{
+  "loginInitial": [
+    {
+      "width": 320,
+      "scrollWidth": 320
+    },
+    {
+      "width": 375,
+      "scrollWidth": 375
+    },
+    {
+      "width": 768,
+      "scrollWidth": 768
+    },
+    {
+      "width": 1280,
+      "scrollWidth": 1280
+    }
+  ],
+  "loginApiError": [
+    {
+      "scrollWidth": 375,
+      "width": 375
+    },
+    {
+      "scrollWidth": 1280,
+      "width": 1280
+    }
+  ]
+}

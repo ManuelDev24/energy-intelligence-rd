@@ -142,3 +142,13 @@ def test_delete_home_cascades_bills(client):
     client.post(bill_url(h["id"]), json=BILL)
     assert client.delete(f"/api/v1/homes/{h['id']}").status_code == 204
     assert client.get(bill_url(h["id"])).status_code == 404
+
+
+def test_synchronous_ocr_route_no_longer_exists(client):
+    """AUDIT C-02: `POST /bills/ocr` ejecutaba Tesseract en el bucle de eventos y congelaba el servidor.
+    La lectura de facturas es siempre asíncrona (`/bills/ocr-jobs`, cubierta en test_ocr_prod.py)."""
+    home = mk_home(client)["id"]
+    r = client.post(f"/api/v1/homes/{home}/bills/ocr", files={"file": ("factura.png", b"x", "image/png")})
+    assert r.status_code in (404, 405)
+    from app.main import app
+    assert "/api/v1/homes/{home_id}/bills/ocr" not in app.openapi()["paths"]

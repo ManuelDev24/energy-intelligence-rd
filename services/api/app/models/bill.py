@@ -2,8 +2,9 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, UniqueConstraint, func, literal_column
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -23,8 +24,12 @@ class Bill(Base):
             name="ck_bills_readings_order",
         ),
         CheckConstraint("source IN ('manual', 'seed')", name="ck_bills_source"),
+        CheckConstraint("due_date IS NULL OR due_date >= period_start", name="ck_bills_due_after_start"),
         UniqueConstraint("home_id", "period_start", "period_end", name="uq_bills_home_period"),
         Index("ix_bills_home_period", "home_id", "period_start"),
+        Index("ix_bills_home_recent", "home_id", "period_end", "id"),
+        ExcludeConstraint(("home_id", "="), (literal_column("daterange(period_start, period_end, '[]')"), "&&"),
+                          name="ex_bills_home_period_overlap", using="gist"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -38,9 +43,14 @@ class Bill(Base):
     days: Mapped[int] = mapped_column(Integer, nullable=False)
     reading_previous: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     reading_current: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    # ERD-ALERT-02: fecha límite de pago (opcional) y cuándo se marcó pagada; sin fecha límite no hay alerta de pago.
+    due_date: Mapped[date | None] = mapped_column(Date)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # manual = introducida por el usuario; seed = dato demo de los pilotos.
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual", server_default="manual")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                               onupdate=func.now(), nullable=False)
 
     home = relationship("Home", back_populates="bills")
-    alerts = relationship("Alert", back_populates="bill")
+    alerts = relationship("Alert", back_populates="bill", foreign_keys="Alert.bill_id", passive_deletes=True)

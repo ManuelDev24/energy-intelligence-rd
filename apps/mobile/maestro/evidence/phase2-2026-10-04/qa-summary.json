@@ -1,0 +1,417 @@
+{
+  "android-run1": {
+    "assertions": {
+      "COMPLETED": 2
+    },
+    "wait_assertions": 2,
+    "commands": {
+      "COMPLETED": 17,
+      "SKIPPED": 3,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (2m 5s) (Element not found: Id matching regex: auth-home-create)"
+  },
+  "android-run10-repeat-final": {
+    "assertions": {
+      "COMPLETED": 28
+    },
+    "wait_assertions": 15,
+    "commands": {
+      "COMPLETED": 118,
+      "SKIPPED": 6,
+      "WARNED": 4
+    },
+    "screenshots": [
+      "android-run10-repeat-final/2026-10-04_153045/phase2-flow/takeScreenshot/evidence/p2-00-reading-keyboard.png",
+      "android-run10-repeat-final/2026-10-04_153045/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "android-run10-repeat-final/2026-10-04_153045/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "android-run10-repeat-final/2026-10-04_153045/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "android-run10-repeat-final/2026-10-04_153045/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (3m 27s)"
+  },
+  "android-run2": {
+    "assertions": {
+      "COMPLETED": 1,
+      "FAILED": 1
+    },
+    "wait_assertions": 2,
+    "commands": {
+      "COMPLETED": 8,
+      "SKIPPED": 4,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (1m 15s) (Assertion is false: id: auth-mode is visible)"
+  },
+  "android-run3": {
+    "assertions": {
+      "COMPLETED": 22
+    },
+    "wait_assertions": 12,
+    "commands": {
+      "COMPLETED": 98,
+      "SKIPPED": 4,
+      "WARNED": 4
+    },
+    "screenshots": [
+      "android-run3/2026-10-04_143219/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "android-run3/2026-10-04_143219/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "android-run3/2026-10-04_143219/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "android-run3/2026-10-04_143219/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (6m 2s)"
+  },
+  "android-run4-final": {
+    "assertions": {
+      "FAILED": 1
+    },
+    "wait_assertions": 1,
+    "commands": {
+      "COMPLETED": 5,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (2m 11s) (Assertion is false: \"(Crear una cuenta nueva|This is the developer menu.*|Cerrar sesi\u00f3n|Vivienda:.*)\" is visible)"
+  },
+  "android-run5-final": {
+    "assertions": {
+      "COMPLETED": 22
+    },
+    "wait_assertions": 12,
+    "commands": {
+      "COMPLETED": 102,
+      "SKIPPED": 6,
+      "WARNED": 4
+    },
+    "screenshots": [
+      "android-run5-final/2026-10-04_145718/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "android-run5-final/2026-10-04_145718/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "android-run5-final/2026-10-04_145718/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "android-run5-final/2026-10-04_145718/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (4m 4s)"
+  },
+  "android-run6-repeat": {
+    "assertions": {
+      "COMPLETED": 22
+    },
+    "wait_assertions": 12,
+    "commands": {
+      "COMPLETED": 102,
+      "SKIPPED": 6,
+      "WARNED": 4
+    },
+    "screenshots": [
+      "android-run6-repeat/2026-10-04_150400/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "android-run6-repeat/2026-10-04_150400/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "android-run6-repeat/2026-10-04_150400/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "android-run6-repeat/2026-10-04_150400/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (4m 10s)"
+  },
+  "android-run7-evidence-guard": {
+    "assertions": {
+      "COMPLETED": 2,
+      "FAILED": 1
+    },
+    "wait_assertions": 3,
+    "commands": {
+      "COMPLETED": 20,
+      "SKIPPED": 5,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (1m 4s) (Assertion is false: id: auth-add-home is visible)"
+  },
+  "android-run8-evidence-guard": {
+    "assertions": {
+      "COMPLETED": 22
+    },
+    "wait_assertions": 10,
+    "commands": {
+      "COMPLETED": 102,
+      "SKIPPED": 7,
+      "WARNED": 4,
+      "FAILED": 1
+    },
+    "screenshots": [
+      "android-run8-evidence-guard/2026-10-04_151553/phase2-flow/takeScreenshot/evidence/p2-00-reading-keyboard.png",
+      "android-run8-evidence-guard/2026-10-04_151553/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "android-run8-evidence-guard/2026-10-04_151553/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "android-run8-evidence-guard/2026-10-04_151553/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "android-run8-evidence-guard/2026-10-04_151553/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (4m 34s) (No visible element found: id: open-readings)"
+  },
+  "android-run9-final": {
+    "assertions": {
+      "COMPLETED": 28
+    },
+    "wait_assertions": 15,
+    "commands": {
+      "COMPLETED": 118,
+      "SKIPPED": 6,
+      "WARNED": 4
+    },
+    "screenshots": [
+      "android-run9-final/2026-10-04_152402/phase2-flow/takeScreenshot/evidence/p2-00-reading-keyboard.png",
+      "android-run9-final/2026-10-04_152402/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "android-run9-final/2026-10-04_152402/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "android-run9-final/2026-10-04_152402/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "android-run9-final/2026-10-04_152402/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (4m 16s)"
+  },
+  "ios-run1": {
+    "assertions": {
+      "FAILED": 1
+    },
+    "wait_assertions": 1,
+    "commands": {
+      "COMPLETED": 5,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (2m 7s) (Assertion is false: \"(Crear una cuenta nueva|This is the developer menu.*)\" is visible)"
+  },
+  "ios-run10-evidence-guard": {
+    "assertions": {
+      "COMPLETED": 8,
+      "FAILED": 1
+    },
+    "wait_assertions": 5,
+    "commands": {
+      "COMPLETED": 51,
+      "SKIPPED": 9,
+      "FAILED": 1
+    },
+    "screenshots": [
+      "ios-run10-evidence-guard/2026-10-04_150925/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png"
+    ],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (1m 12s) (Assertion is false: id: f-reading-kwh-error is visible)"
+  },
+  "ios-run11-evidence-guard": {
+    "assertions": {
+      "COMPLETED": 25
+    },
+    "wait_assertions": 13,
+    "commands": {
+      "COMPLETED": 106,
+      "SKIPPED": 11
+    },
+    "screenshots": [
+      "ios-run11-evidence-guard/2026-10-04_151355/phase2-flow/takeScreenshot/evidence/p2-00-reading-keyboard.png",
+      "ios-run11-evidence-guard/2026-10-04_151355/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "ios-run11-evidence-guard/2026-10-04_151355/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "ios-run11-evidence-guard/2026-10-04_151355/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "ios-run11-evidence-guard/2026-10-04_151355/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (1m 43s)"
+  },
+  "ios-run12-final": {
+    "assertions": {
+      "COMPLETED": 28
+    },
+    "wait_assertions": 15,
+    "commands": {
+      "COMPLETED": 112,
+      "SKIPPED": 11
+    },
+    "screenshots": [
+      "ios-run12-final/2026-10-04_152207/phase2-flow/takeScreenshot/evidence/p2-00-reading-keyboard.png",
+      "ios-run12-final/2026-10-04_152207/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "ios-run12-final/2026-10-04_152207/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "ios-run12-final/2026-10-04_152207/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "ios-run12-final/2026-10-04_152207/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (1m 40s)"
+  },
+  "ios-run13-repeat-final": {
+    "assertions": {
+      "COMPLETED": 28
+    },
+    "wait_assertions": 15,
+    "commands": {
+      "COMPLETED": 112,
+      "SKIPPED": 11
+    },
+    "screenshots": [
+      "ios-run13-repeat-final/2026-10-04_152852/phase2-flow/takeScreenshot/evidence/p2-00-reading-keyboard.png",
+      "ios-run13-repeat-final/2026-10-04_152852/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "ios-run13-repeat-final/2026-10-04_152852/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "ios-run13-repeat-final/2026-10-04_152852/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "ios-run13-repeat-final/2026-10-04_152852/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (1m 40s)"
+  },
+  "ios-run2": {
+    "assertions": {
+      "COMPLETED": 1,
+      "FAILED": 1
+    },
+    "wait_assertions": 2,
+    "commands": {
+      "COMPLETED": 12,
+      "SKIPPED": 3,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (45s) (Assertion is false: id: auth-add-home is visible)"
+  },
+  "ios-run3": {
+    "assertions": {
+      "COMPLETED": 2,
+      "FAILED": 1
+    },
+    "wait_assertions": 3,
+    "commands": {
+      "COMPLETED": 15,
+      "SKIPPED": 5,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (49s) (Assertion is false: id: auth-add-home is visible)"
+  },
+  "ios-run4": {
+    "assertions": {
+      "COMPLETED": 2
+    },
+    "wait_assertions": 2,
+    "commands": {
+      "COMPLETED": 12,
+      "SKIPPED": 5,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (27s) (Couldn't hide the keyboard. This can happen if the app uses a custom input or doesn't expose a standard dismiss action.)"
+  },
+  "ios-run5": {
+    "assertions": {
+      "COMPLETED": 22
+    },
+    "wait_assertions": 12,
+    "commands": {
+      "COMPLETED": 88,
+      "SKIPPED": 11,
+      "WARNED": 2
+    },
+    "screenshots": [
+      "ios-run5/2026-10-04_144553/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "ios-run5/2026-10-04_144553/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "ios-run5/2026-10-04_144553/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "ios-run5/2026-10-04_144553/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (1m 39s)"
+  },
+  "ios-run6-old-content-type": {
+    "assertions": {
+      "COMPLETED": 2,
+      "FAILED": 1
+    },
+    "wait_assertions": 3,
+    "commands": {
+      "COMPLETED": 17,
+      "SKIPPED": 5,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (45s) (Assertion is false: id: auth-add-home is visible)"
+  },
+  "ios-run7-final": {
+    "assertions": {
+      "COMPLETED": 3,
+      "FAILED": 1
+    },
+    "wait_assertions": 4,
+    "commands": {
+      "COMPLETED": 21,
+      "SKIPPED": 7,
+      "FAILED": 1
+    },
+    "screenshots": [],
+    "junit_passed": false,
+    "junit_testcases": 1,
+    "console_result": "[Failed] phase2-flow (51s) (Assertion is false: id: goal-card is visible)"
+  },
+  "ios-run8-final": {
+    "assertions": {
+      "COMPLETED": 22
+    },
+    "wait_assertions": 12,
+    "commands": {
+      "COMPLETED": 96,
+      "SKIPPED": 11
+    },
+    "screenshots": [
+      "ios-run8-final/2026-10-04_145530/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "ios-run8-final/2026-10-04_145530/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "ios-run8-final/2026-10-04_145530/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "ios-run8-final/2026-10-04_145530/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (1m 33s)"
+  },
+  "ios-run9-repeat": {
+    "assertions": {
+      "COMPLETED": 22
+    },
+    "wait_assertions": 12,
+    "commands": {
+      "COMPLETED": 93,
+      "SKIPPED": 11,
+      "WARNED": 3
+    },
+    "screenshots": [
+      "ios-run9-repeat/2026-10-04_150202/phase2-flow/takeScreenshot/evidence/p2-01-meta-sin-datos.png",
+      "ios-run9-repeat/2026-10-04_150202/phase2-flow/takeScreenshot/evidence/p2-02-consumo-30d.png",
+      "ios-run9-repeat/2026-10-04_150202/phase2-flow/takeScreenshot/evidence/p2-03-consumo-12m.png",
+      "ios-run9-repeat/2026-10-04_150202/phase2-flow/takeScreenshot/evidence/p2-04-meta-progreso.png"
+    ],
+    "junit_passed": true,
+    "junit_testcases": 1,
+    "console_result": "[Passed] phase2-flow (1m 46s)"
+  }
+}

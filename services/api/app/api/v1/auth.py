@@ -1,0 +1,169 @@
+import uuid
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+
+from app.api.auth_deps import auth_required, current_session, current_user
+from app.api.auth_abuse import forgot_budget, login_budget, register_budget, refresh_budget, reset_budget
+from app.database import get_db
+from app.config import settings
+from app.schemas.auth import (AccountDeletionIn, Credentials, DeviceIn, EmailVerificationRequestOut, EmailVerifyIn, DeviceRemoveIn, NotificationPreferencesIn, NotificationPreferencesOut,
+                              PasswordChangeIn, PasswordForgotAccepted, PasswordForgotIn, PasswordResetIn, RefreshIn,
+                              RegisterIn, SessionOut, TokensOut, UserOut)
+from app.services import account, account_settings, auth, data_export, email, email_verification, password_recovery
+
+router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(auth_required)])
+
+
+@router.post("/register", response_model=TokensOut, status_code=201, dependencies=[Depends(register_budget)])
+def register(payload: RegisterIn, response: Response, background: BackgroundTasks, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    tokens = auth.register(db, payload)
+    # Auditoría C-10: el enlace de verificación sale en segundo plano, después de responder (su latencia o fallo no afecta al registro).
+    message = email_verification.issue(db, auth.user_id_of(tokens))
+    if message is not None:
+        background.add_task(email.deliver, message)
+    return tokens
+
+
+@router.post("/login", response_model=TokensOut, dependencies=[Depends(login_budget)])
+def login(payload: Credentials, response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return auth.login(db, payload)
+
+
+@router.post("/refresh", response_model=TokensOut, dependencies=[Depends(refresh_budget)])
+def refresh(payload: RefreshIn, response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return auth.refresh_or_logout(db, payload.refresh_token)
+
+
+@router.post("/logout", status_code=204)
+def logout(payload: RefreshIn, db: Session = Depends(get_db)):
+    auth.refresh_or_logout(db, payload.refresh_token, logout=True)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/me", response_model=UserOut)
+def me(response: Response, user=Depends(current_user)):
+    response.headers["Cache-Control"] = "no-store"
+    return user
+
+
+# Reautenticación con contraseña; los intentos consumen el mismo presupuesto que /login, pero solo
+# después de validar el token: una petición sin sesión no puede agotar el /login de esa IP.
+def _authenticated_login_budget(user=Depends(current_user), _=Depends(login_budget)):
+    return user
+
+
+@router.delete("/me", status_code=204)
+def delete_me(payload: AccountDeletionIn, user=Depends(_authenticated_login_budget), db: Session = Depends(get_db)):
+    account.delete_account(db, user, payload.password.get_secret_value())
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+# ERD-PROF-01: preferencias de aviso y sesiones activas (solo con sesión válida; siempre no-store).
+@router.get("/me/preferences", response_model=NotificationPreferencesOut)
+def get_preferences(response: Response, user=Depends(current_user), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return account_settings.get_preferences(db, user)
+
+
+@router.put("/me/preferences", response_model=NotificationPreferencesOut)
+def put_preferences(payload: NotificationPreferencesIn, response: Response, user=Depends(current_user),
+                    db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return account_settings.save_preferences(db, user, payload.alerts_email, payload.alerts_push)
+
+
+@router.put("/devices", status_code=204)
+def put_device(payload: DeviceIn, user=Depends(current_user), db: Session = Depends(get_db)):
+    """Registra (o renueva) el dispositivo para recibir avisos push. Idempotente."""
+    account_settings.register_device(db, user, payload.token, payload.platform, max_devices=settings.MAX_DEVICES_PER_USER)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/devices/remove", status_code=204)
+def remove_device(payload: DeviceRemoveIn, user=Depends(current_user), db: Session = Depends(get_db)):
+    """Quita el dispositivo (al cerrar sesión). POST con cuerpo porque el token no debe viajar en la URL."""
+    account_settings.remove_device(db, user, payload.token)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/sessions", response_model=list[SessionOut])
+def list_sessions(response: Response, auth_ctx=Depends(current_session), db: Session = Depends(get_db)):
+    user, session = auth_ctx
+    response.headers["Cache-Control"] = "no-store"
+    return account_settings.list_sessions(db, user, session.id)
+
+
+@router.post("/sessions/revoke-others", status_code=204)
+def revoke_other_sessions(auth_ctx=Depends(current_session), db: Session = Depends(get_db)):
+    user, session = auth_ctx
+    account_settings.revoke_other_sessions(db, user, session.id)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def revoke_session(session_id: uuid.UUID, user=Depends(current_user), db: Session = Depends(get_db)):
+    account_settings.revoke_session(db, user, session_id)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+# ERD-LEGAL-FINAL: derecho de acceso/portabilidad. Comparte el presupuesto de /login (es una lectura pesada y sensible).
+@router.get("/me/export")
+def export_me(user=Depends(_authenticated_login_budget), db: Session = Depends(get_db)):
+    data = data_export.export_user_data(db, user)
+    stamp = data["generated_at"][:10]
+    return JSONResponse(data, headers={"Cache-Control": "no-store",
+                                       "Content-Disposition": f'attachment; filename="energyrd-datos-{stamp}.json"'})
+
+
+# ERD-AUTH-05: recuperación de contraseña. Respuesta 202 idéntica exista o no la cuenta; el correo se
+# entrega en segundo plano DESPUÉS de enviar la respuesta, así su latencia o fallo no la delata.
+@router.post("/password/forgot", status_code=202, response_model=PasswordForgotAccepted,
+             dependencies=[Depends(forgot_budget)])
+def forgot_password(payload: PasswordForgotIn, request: Request, background: BackgroundTasks, response: Response,
+                    db: Session = Depends(get_db)):
+    peer = request.client.host if request.client else "unknown-peer"
+    message = password_recovery.request_reset(db, payload.email, peer)
+    if message is not None:
+        background.add_task(email.deliver, message)
+    response.headers["Cache-Control"] = "no-store"
+    return PasswordForgotAccepted(status="accepted")
+
+
+# ERD-AUTH-06: cambio con sesión iniciada. Los intentos fallidos gastan el presupuesto de /login.
+@router.post("/password/change", response_model=TokensOut)
+def change_password(payload: PasswordChangeIn, response: Response, user=Depends(_authenticated_login_budget),
+                    db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return account.change_password(db, user, payload.current_password.get_secret_value(),
+                                   payload.new_password.get_secret_value())
+
+
+@router.post("/password/reset", status_code=204, dependencies=[Depends(reset_budget)])
+def reset_password(payload: PasswordResetIn, db: Session = Depends(get_db)):
+    password_recovery.reset_password(db, payload.token, payload.new_password.get_secret_value())
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+# Auditoría C-10: verificación de correo. Pedir (re)envío exige sesión; canjear el enlace no (se abre desde el correo).
+@router.post("/email/verification", status_code=202, response_model=EmailVerificationRequestOut,
+             dependencies=[Depends(forgot_budget)])
+def request_email_verification(response: Response, background: BackgroundTasks, user=Depends(current_user),
+                               db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    if email_verification.is_verified(db, user.id):
+        return EmailVerificationRequestOut(status="already_verified")
+    message = email_verification.issue(db, user.id)
+    if message is not None:
+        background.add_task(email.deliver, message)
+    return EmailVerificationRequestOut(status="accepted")
+
+
+@router.post("/email/verify", status_code=204, dependencies=[Depends(reset_budget)])
+def verify_email(payload: EmailVerifyIn, db: Session = Depends(get_db)):
+    email_verification.verify(db, payload.token)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
