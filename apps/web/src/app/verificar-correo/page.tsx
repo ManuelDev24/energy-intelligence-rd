@@ -4,9 +4,10 @@ import Link from "next/link";
 import { Logo } from "@/components/app-shell";
 import { Card, CardDescription } from "@/components/ui/card";
 import { parseResetToken, recoveryError, verifyEmail } from "@/lib/auth/recovery";
+import { textLinkClass } from "@/components/ui/text-link";
 
 type State = "reading" | "working" | "done" | "invalid" | "error";
-const linkClass = "text-primary underline focus-visible:ring-2 focus-visible:ring-primary";
+const linkClass = textLinkClass;
 
 /** Auditoría C-10: canjea el enlace del correo. El token se lee del fragmento, se borra de la URL de inmediato y solo vive en memoria. */
 export default function VerifyEmailPage() {
