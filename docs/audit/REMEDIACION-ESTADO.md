@@ -22,7 +22,7 @@ Informes originales: `AUDIT-00-RESULTADO-CONSOLIDADO.md` y `AUDIT-01…08`. Cada
 | C-17 | Hecho (cobertura 97 %, umbral 92 %) | ruff, mypy gradual y `pytest-cov` en CI. |
 | C-18 | **Cerrado** | El job `e2e web (Playwright vs PostgreSQL + API + worker reales)` pasó en GitHub Actions (CI #59, commit `6aed471`, 4/4 jobs verdes: api con cobertura, web+core, recorridos vs API real y e2e web). |
 | C-19 | **Externo** | Plan de staging y RTO/RPO. |
-| C-20 | **Parcial** | `parse_bill_text` partido en pasos; `bff.ts` 549→389 líneas (rutas/esquemas a `bff-routes.ts`). **Sin hacer:** unificar fechas RD web/móvil en `core`, partir la interfaz `Api` monolítica, ciclo `equipment↔recommendations`. |
+| C-20 | **Parcial** | `parse_bill_text` partido en pasos; `bff.ts` 549→389 líneas (rutas/esquemas a `bff-routes.ts`). Fechas RD unificadas en `packages/core/src/rdTime.ts` (2026-10-13; antes había tres copias). **Sin hacer:** partir la interfaz `Api` monolítica, ciclo `equipment↔recommendations`. |
 | C-21 | Hecho (parcial) | `limit/offset` en documentos, `extra="forbid"` en las entradas restantes, modelo de roles documentado (`services/api/README.md`). **Sin hacer:** reflejar límites decimales en OpenAPI (F06-08). |
 | C-22 | Hecho | `safeHttpUrl` para `source_url`. |
 | C-23 | **Sin hacer** | Cookie `Path=/` (exigido por `__Host-`), clave única JWT/HMAC (el bucket anti-abuso ya separa dominio por prefijo), enumeración en registro, IP tras proxy en el despliegue. |
