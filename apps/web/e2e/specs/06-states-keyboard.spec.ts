@@ -5,13 +5,18 @@ test.describe("estados de carga, vacío y error", () => {
   test("loading: mientras llega la respuesta se muestra «Cargando…» y luego el contenido", async ({ page, context }) => {
     const { homeId, pick } = await freshHome(page, context, "Casa Cargando", "EDESUR", false);
     await addBill(page, homeId, "2026-07-01", "2026-07-31", "300", "3900", 31);
+    // La respuesta se retiene hasta que la prueba ha visto «Cargando…»: determinista, sin depender de la velocidad de la máquina
+    // (con un retraso fijo, un equipo lento terminaba la consulta del panel antes de abrir «Facturas» y ya no había estado de carga).
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
     await page.route("**/api/bff/homes/*/bills*", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await gate;
       await route.continue();
     });
     await pick();
     await openSection(page, "Facturas", "/bills");
     await expect(page.getByText(/^Cargando/).first()).toBeVisible();
+    release();
     await expect(page.getByRole("main").getByRole("link", { name: /1–31 jul 2026|1 – 31 jul 2026/ })).toBeVisible();
     await expect(page.getByText(/^Cargando/)).toHaveCount(0);
   });
