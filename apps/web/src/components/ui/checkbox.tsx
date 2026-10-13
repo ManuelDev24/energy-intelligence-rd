@@ -9,7 +9,7 @@ interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "typ
 export function Checkbox({ className, children, ...props }: CheckboxProps) {
   return (
     <label className={cn("flex min-h-9 w-fit items-center gap-2 text-sm pointer-coarse:min-h-11", className)}>
-      <input type="checkbox" className="h-4 w-4 shrink-0 accent-primary" {...props} />
+      <input type="checkbox" className="h-6 w-6 shrink-0 accent-primary" {...props} />
       <span>{children}</span>
     </label>
   );

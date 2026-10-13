@@ -51,7 +51,7 @@ export function ShareHomeScreen() {
     else run.mutate({ action: () => api.transferOwnership(homeId, current.member.user_id, password), message: 'Propiedad transferida. Ahora usted es integrante.', after: done });
   };
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <ScrollView style={s.screen} contentContainerStyle={s.content} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
       {members.isLoading ? <Loading label="Cargando integrantes…" /> : null}
       {members.isError && !isMember ? <ErrorView error={members.error} onRetry={() => void members.refetch()} /> : null}
       {run.isError ? <Text testID="share-error" accessibilityRole="alert" accessibilityLiveRegion="assertive" style={formStyles.serverErr}>{describeError(run.error).message}</Text> : null}

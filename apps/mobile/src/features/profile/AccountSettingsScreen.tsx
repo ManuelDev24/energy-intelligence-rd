@@ -21,7 +21,7 @@ import {
  */
 export function AccountSettingsScreen() {
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <ScrollView style={s.screen} contentContainerStyle={s.content} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
       <EmailVerificationSection />
       <PasswordSection />
       <NotificationsSection />

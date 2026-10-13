@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { MetricCard } from "@/components/metric-card";
 import { QueryState } from "@/components/query-state";
 import { Card, CardTitle } from "@/components/ui/card";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 import { useBills, useDashboard } from "@/lib/api/hooks";
 import type { Metric } from "@/lib/api/schemas";
 import { formatDop, formatMetric, formatPeriod } from "@/lib/format";
@@ -88,7 +89,7 @@ export function BillsConsumption() {
               </div>
             </Card>
             <Card className="p-0">
-              <div className="overflow-x-auto">
+              <ScrollRegion label="Tabla de consumo por factura">
                 <table className="w-full text-left text-sm">
                   <caption className="sr-only">Consumo y monto por factura</caption>
                   <thead>
@@ -114,7 +115,7 @@ export function BillsConsumption() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollRegion>
             </Card>
           </>
         )}

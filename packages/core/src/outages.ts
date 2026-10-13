@@ -1,5 +1,6 @@
 import type { OutageOut } from '@energyrd/api-contracts';
 import { isIsoDate } from './range';
+import { localToIso, rdParts } from './rdTime';
 
 /**
  * ERD-INT-01: lógica compartida (web y móvil) del registro manual de interrupciones del servicio eléctrico.
@@ -17,8 +18,6 @@ export const OUTAGE_CAUSES: Record<OutageCause, string> = {
 export const OUTAGE_CAUSE_ORDER = Object.keys(OUTAGE_CAUSES) as OutageCause[];
 export const MAX_OUTAGE_DAYS = 30;
 export const MAX_NOTE = 255;
-const RD_OFFSET = '-04:00';
-const RD_OFFSET_MS = -4 * 3_600_000;
 const FUTURE_TOLERANCE_MS = 5 * 60_000;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -41,13 +40,13 @@ export interface OutageInput {
 }
 export type OutageFormResult = { ok: true; value: OutageInput } | { ok: false; errors: OutageFormErrors };
 
-const toIso = (date: string, time: string) => `${date}T${time}:00${RD_OFFSET}`;
-
 /** Fecha y hora de RD de un instante, para precargar el formulario al editar. */
 export function outageToForm(o: Pick<OutageOut, 'started_at' | 'ended_at' | 'cause' | 'note'>): OutageFormValues {
+  // Los instantes llegan de la API (válidos); `null` solo ocurriría con un contrato roto y se trata como error.
   const parts = (iso: string) => {
-    const local = new Date(Date.parse(iso) + RD_OFFSET_MS).toISOString();
-    return { date: local.slice(0, 10), time: local.slice(11, 16) };
+    const p = rdParts(iso);
+    if (!p) throw new RangeError(`Instante inválido: ${iso}`);
+    return p;
   };
   const start = parts(o.started_at);
   const end = o.ended_at ? parts(o.ended_at) : { date: start.date, time: start.time };
@@ -64,7 +63,7 @@ export function validateOutageForm(v: OutageFormValues, now: Date = new Date()):
   if (note.length > MAX_NOTE) errors.note = `Máximo ${MAX_NOTE} caracteres.`;
   let start = NaN;
   if (!errors.startDate && !errors.startTime) {
-    start = Date.parse(toIso(v.startDate, v.startTime));
+    start = Date.parse(localToIso(v.startDate, v.startTime));
     if (start > limit) errors.startDate = 'El apagón no puede empezar en el futuro.';
   }
   let end: number | null = null;
@@ -72,7 +71,7 @@ export function validateOutageForm(v: OutageFormValues, now: Date = new Date()):
     if (!isIsoDate(v.endDate)) errors.endDate = 'Elige el día en que volvió la luz.';
     if (!TIME.test(v.endTime)) errors.endTime = 'Indica la hora (HH:MM).';
     if (!errors.endDate && !errors.endTime) {
-      end = Date.parse(toIso(v.endDate, v.endTime));
+      end = Date.parse(localToIso(v.endDate, v.endTime));
       if (end > limit) errors.endDate = 'La luz no puede haber vuelto en el futuro. Si sigue sin luz, marca «Todavía sin luz».';
       else if (Number.isFinite(start) && end <= start) errors.endTime = 'Debe ser después de la hora en que se fue.';
       else if (Number.isFinite(start) && end - start > MAX_OUTAGE_DAYS * 86_400_000) errors.endDate = `Un apagón no puede durar más de ${MAX_OUTAGE_DAYS} días.`;
@@ -81,7 +80,7 @@ export function validateOutageForm(v: OutageFormValues, now: Date = new Date()):
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return {
     ok: true,
-    value: { started_at: toIso(v.startDate, v.startTime), ended_at: v.ongoing ? null : toIso(v.endDate, v.endTime), cause: v.cause, note: note === '' ? null : note },
+    value: { started_at: localToIso(v.startDate, v.startTime), ended_at: v.ongoing ? null : localToIso(v.endDate, v.endTime), cause: v.cause, note: note === '' ? null : note },
   };
 }
 

@@ -210,7 +210,7 @@ function Result({ data, showComparison }: { data: Consumption; showComparison: b
       ) : null}
       {Object.keys(data.quality_legend).length ? (
         <details className="rounded-xl border border-border bg-background p-4 text-sm">
-          <summary className="cursor-pointer font-semibold">Qué significa cada etiqueta</summary>
+          <summary className="cursor-pointer py-1 font-semibold">Qué significa cada etiqueta</summary>
           <dl className="mt-3 grid gap-2 text-xs text-muted-foreground">
             {Object.entries(data.quality_legend).map(([k, v]) => (
               <div key={k} className="flex items-start gap-2">

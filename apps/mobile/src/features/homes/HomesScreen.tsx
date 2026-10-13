@@ -29,6 +29,8 @@ export function HomeList({ onPicked }: { onPicked?: (home: Home) => void }) {
 
   return (
     <FlatList
+      automaticallyAdjustKeyboardInsets
+      keyboardShouldPersistTaps="handled"
       data={data}
       keyExtractor={(h) => h.id}
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}

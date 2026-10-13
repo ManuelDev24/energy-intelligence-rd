@@ -23,6 +23,28 @@ const NAV = [
   { href: "/profile", label: "Perfil", icon: UserRound, sideOnly: true },
 ] as const;
 
+/** Destinos que la barra inferior (móvil) no muestra. En <768 px solo se llega a ellos desde aquí (Perfil). */
+export const MOBILE_EXTRA_SECTIONS = NAV.filter((item) => "sideOnly" in item && item.href !== "/profile");
+
+/** Enlaces a Meta, Ahorro y Apagones para pantallas estrechas; en escritorio ya están en la barra lateral. */
+export function MoreSections() {
+  return (
+    <nav aria-label="Más secciones" className="md:hidden">
+      <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Más secciones</h2>
+      <ul className="flex flex-col gap-1">
+        {MOBILE_EXTRA_SECTIONS.map(({ href, label, icon: Icon }) => (
+          <li key={href}>
+            <Link href={href} className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-background px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <Icon className="h-4 w-4" aria-hidden />
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 export function Logo({ size = 32 }: { size?: number }) {
   return (
     <span className="flex items-center gap-2">
@@ -141,7 +163,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {authEnabled ? <Link href="/account" className="text-sm text-primary underline">Cuenta</Link> : null}
       </header>
 
-      <main id="contenido" tabIndex={-1} className="flex-1 p-4 pb-24 focus:outline-none md:p-8 md:pb-8">
+      <main id="contenido" tabIndex={-1} className="min-w-0 flex-1 p-4 pb-24 focus:outline-none md:p-8 md:pb-8">
         <div className="mx-auto max-w-5xl"><EmailVerificationNotice className="mb-4" />{children}</div>
       </main>
 

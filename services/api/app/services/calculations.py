@@ -6,7 +6,7 @@ Reglas de datos:
 - La proyección es lineal (mínimos cuadrados) sobre los totales por factura.
 """
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP
 from typing import Protocol, Sequence
 
 PROJECTION_WINDOW = 6          # máximo de facturas recientes usadas
@@ -107,6 +107,22 @@ def equipment_monthly_kwh(power_w: Decimal, hours_per_day: Decimal) -> Decimal:
 # ---------- Metas mensuales (Fase 2) ----------
 MIN_RUN_RATE_DAYS = Decimal(1)
 GOAL_STATUS_PRIORITY = ("exceeded", "at_risk", "insufficient_data", "on_track")
+
+
+def shares_pct(raw: list[Decimal]) -> list[Decimal]:
+    """Reparto en % con 2 decimales que suma exactamente 100,00 (método del mayor resto). Sin consumo: todo 0."""
+    total = sum(raw, Decimal(0))
+    if total <= 0:
+        return [Decimal("0.00")] * len(raw)
+    cents = Decimal("0.01")
+    exact = [value / total * 100 for value in raw]
+    floors = [x.quantize(cents, rounding=ROUND_DOWN) for x in exact]
+    missing = int(((Decimal(100) - sum(floors, Decimal(0))) / cents).to_integral_value())
+    # Quien más resto tiene recibe el centésimo que falta; a igualdad, el de menor índice (resultado estable).
+    order = sorted(range(len(raw)), key=lambda i: (-(exact[i] - floors[i]), i))
+    for i in order[:missing]:
+        floors[i] += cents
+    return floors
 
 
 def goal_status(so_far: Decimal | None, projected: Decimal | None, target: Decimal) -> str:

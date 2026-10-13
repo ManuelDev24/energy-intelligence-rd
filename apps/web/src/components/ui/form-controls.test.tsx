@@ -5,6 +5,7 @@ import { Card } from "./card";
 import { Checkbox } from "./checkbox";
 import { controlWidthClass } from "./control";
 import { Field } from "./field";
+import { ScrollRegion } from "./scroll-region";
 import { Select } from "./select";
 
 describe("Field: ancho semántico y compacto por defecto", () => {
@@ -81,6 +82,10 @@ describe("Checkbox", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("checkbox", { name: "Avisos por correo" }).closest("label")).toHaveClass("pointer-coarse:min-h-11");
   });
+  it("la casilla mide 24 px (WCAG 2.5.8: objetivo mínimo) y la fila 44 px en táctil", () => {
+    render(<Checkbox>Aviso</Checkbox>);
+    expect(screen.getByRole("checkbox")).toHaveClass("h-6", "w-6");
+  });
 });
 
 describe("Button: variantes, tamaños y carga", () => {
@@ -120,5 +125,14 @@ describe("Card: densidad", () => {
     rerender(<Card data-testid="c" className="p-0" />);
     expect(screen.getByTestId("c")).toHaveClass("p-0");
     expect(screen.getByTestId("c")).not.toHaveClass("p-4");
+  });
+});
+
+describe("ScrollRegion", () => {
+  it("es una región con nombre y enfocable por teclado (WCAG 2.1.1)", () => {
+    render(<ScrollRegion label="Resumen por mes"><table><tbody><tr><td>x</td></tr></tbody></table></ScrollRegion>);
+    const region = screen.getByRole("region", { name: "Resumen por mes" });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toHaveClass("overflow-x-auto");
   });
 });
