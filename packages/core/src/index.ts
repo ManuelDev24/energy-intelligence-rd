@@ -5,6 +5,7 @@ export * from './insights';
 export * from './validation';
 export * from './anomaly';
 export * from './range';
+export * from './rdTime';
 export * from './trend';
 export * from './alerts';
 export * from './equipmentCatalog';
