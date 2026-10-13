@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { bucketLabel } from "@/features/consumption/range";
 import type { Consumption, ConsumptionBucketItem, Granularity } from "@/lib/api/schemas";
 import { formatMetric } from "@/lib/format";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 const chart = tokens.color.chart;
@@ -186,7 +187,7 @@ export function ReadingsConsumptionChart({ data, height = 240 }: { data: Consump
           <Table2 className="mr-1 h-4 w-4" aria-hidden />
           {showTable ? "Ocultar tabla de datos" : "Ver tabla de datos"}
         </Button>
-        <div id={tableId} hidden={!showTable} className="overflow-x-auto">
+        <ScrollRegion id={tableId} hidden={!showTable} label="Tabla de consumo por lecturas">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">Consumo por período según lecturas</caption>
             <thead>
@@ -211,7 +212,7 @@ export function ReadingsConsumptionChart({ data, height = 240 }: { data: Consump
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       </div>
     </figure>
   );

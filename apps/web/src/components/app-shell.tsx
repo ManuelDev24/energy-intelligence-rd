@@ -163,7 +163,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {authEnabled ? <Link href="/account" className="text-sm text-primary underline">Cuenta</Link> : null}
       </header>
 
-      <main id="contenido" tabIndex={-1} className="flex-1 p-4 pb-24 focus:outline-none md:p-8 md:pb-8">
+      <main id="contenido" tabIndex={-1} className="min-w-0 flex-1 p-4 pb-24 focus:outline-none md:p-8 md:pb-8">
         <div className="mx-auto max-w-5xl"><EmailVerificationNotice className="mb-4" />{children}</div>
       </main>
 

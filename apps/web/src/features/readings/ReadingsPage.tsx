@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/empty-state";
 import { QueryState } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 import { Field } from "@/components/ui/field";
 import { neighbours, validateReadingForm, type ReadingFormErrors, type ReadingFormValues } from "@/features/readings/form";
 import { useCreateReading, useDeleteReading, useReadings } from "@/lib/api/hooks";
@@ -164,7 +165,7 @@ export default function ReadingsPage() {
           <EmptyState icon={NotebookPen} title="Aún no hay lecturas" hint="Registra la primera lectura de tu medidor con el formulario de arriba." />
         ) : rows.length ? (
           <Card className="p-0">
-            <div className="overflow-x-auto">
+            <ScrollRegion label="Lecturas registradas">
               <table className="w-full text-left text-sm">
                 <caption className="px-4 pt-4 text-left text-base font-semibold sm:px-6">
                   {rows.length === 1 ? "1 lectura registrada" : `${rows.length} lecturas registradas`}
@@ -183,7 +184,7 @@ export default function ReadingsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           </Card>
         ) : null}
       </QueryState>

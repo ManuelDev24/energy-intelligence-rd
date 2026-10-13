@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateOutage, useDeleteOutage, useOutages, useOutageSummary, useUpdateOutage } from "@/lib/api/hooks";
 import { userMessage } from "@/lib/api/errors";
@@ -140,7 +141,7 @@ function MonthlySummary({ homeId }: { homeId: string }) {
     <Card className="p-0">
       <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()}>
         {data ? (
-          <div className="overflow-x-auto">
+          <ScrollRegion label="Resumen de apagones por mes">
             <table className="w-full text-left text-sm" data-testid="outage-months">
               <caption className="px-4 pt-4 text-left text-base font-semibold sm:px-6">
                 Resumen por mes · {data.totals.count === 0 ? "sin apagones registrados" : `${data.totals.count} ${data.totals.count === 1 ? "apagón" : "apagones"}, ${formatDuration(data.totals.total_minutes)} sin luz`}
@@ -167,7 +168,7 @@ function MonthlySummary({ homeId }: { homeId: string }) {
               </tbody>
             </table>
             <p className="px-4 pb-4 pt-2 text-xs text-muted-foreground sm:px-6">{data.note}</p>
-          </div>
+          </ScrollRegion>
         ) : null}
       </QueryState>
     </Card>

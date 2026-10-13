@@ -53,9 +53,9 @@ export function DeviceCard({
           <Icon className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 id={`dev-${item.id}`} className="truncate font-semibold" title={item.name}>
+          <h2 id={`dev-${item.id}`} className="truncate font-semibold" title={item.name}>
             {item.name}
-          </h3>
+          </h2>
           <p className="text-sm text-muted-foreground">{subtitle}</p>
           {makeModel ? (
             <p className="text-sm text-muted-foreground" data-testid="device-make-model">

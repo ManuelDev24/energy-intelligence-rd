@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { DataStatusBadge } from "@/components/data-status-badge";
 import { Button } from "@/components/ui/button";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 const chart = tokens.color.chart;
@@ -175,7 +176,7 @@ export function ConsumptionChart({ series, height = 220 }: ConsumptionChartProps
           <Table2 className="mr-1 h-4 w-4" aria-hidden />
           {showTable ? "Ocultar tabla de datos" : "Ver tabla de datos"}
         </Button>
-        <div id={tableId} hidden={!showTable} className="overflow-x-auto">
+        <ScrollRegion id={tableId} hidden={!showTable} label="Tabla de consumo por período">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">Consumo y monto por mes</caption>
             <thead>
@@ -203,7 +204,7 @@ export function ConsumptionChart({ series, height = 220 }: ConsumptionChartProps
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       </div>
     </figure>
   );
