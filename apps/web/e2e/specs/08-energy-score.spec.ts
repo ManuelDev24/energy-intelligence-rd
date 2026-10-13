@@ -59,7 +59,7 @@ test.describe("Energy Score", () => {
 
     await openSection(page, "Ahorro", "/savings");
     await loaded(page);
-    await page.getByRole("button", { name: /Marcar como aplicada/ }).click();
+    await page.getByRole("button", { name: /Ya la apliqué/ }).click();
     await expect(page.getByRole("list", { name: "Recomendaciones vigentes" })).not.toContainText("aire acondicionado");   // queda la de la meta
 
     await openSection(page, "Inicio", "/dashboard");

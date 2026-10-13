@@ -34,7 +34,7 @@ test.describe("recomendaciones de ahorro", () => {
     await expect(item.getByText("Regla: ac-one-hour v1")).toBeVisible();
 
     // Aplicarla la saca de las vigentes y la deja en «Aplicadas y descartadas».
-    await item.getByRole("button", { name: /Marcar como aplicada/ }).click();
+    await item.getByRole("button", { name: /Ya la apliqué/ }).click();
     await expect(page.getByText("Sin recomendaciones por ahora")).toBeVisible();
     await page.getByText(/Aplicadas y descartadas \(1\)/).click();
     await page.getByRole("button", { name: /Volver a activar/ }).click();
