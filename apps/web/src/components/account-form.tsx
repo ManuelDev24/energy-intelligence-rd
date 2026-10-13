@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { Field } from "./ui/field";
 import { Card, CardTitle, CardDescription } from "./ui/card";
 import { useSession } from "@/lib/session";
+import { inlineLinkClass, textLinkClass } from "@/components/ui/text-link";
 export function AccountForm({ mode, suppressSessionError = false }: { mode: "login" | "register"; suppressSessionError?: boolean }) {
   const { authenticate, error: sessionError } = useSession();
   const effectiveSessionError = suppressSessionError ? null : sessionError;
@@ -40,7 +41,7 @@ export function AccountForm({ mode, suppressSessionError = false }: { mode: "log
             <input id="accept-terms" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={acceptTerms} onChange={event => setAcceptTerms(event.target.checked)} disabled={pending} required />
             <label htmlFor="accept-terms">
               He leído y acepto los{" "}
-              <Link href="/legal" className="text-primary underline focus-visible:ring-2 focus-visible:ring-primary">Términos y la Política de Privacidad</Link>
+              <Link href="/legal" className={inlineLinkClass}>Términos y la Política de Privacidad</Link>
               {" "}(documentos en borrador, pendientes de revisión legal).
             </label>
           </div>
@@ -48,8 +49,8 @@ export function AccountForm({ mode, suppressSessionError = false }: { mode: "log
         {error || effectiveSessionError ? <p role="alert" className="text-sm text-danger">{error || effectiveSessionError} Revisa tus datos o inicia sesión de nuevo.</p> : null}
         <Button type="submit" disabled={pending || blocked}>{pending ? `${label} · Verificando…` : label}</Button>
       </form>
-      {mode === "login" ? <p className="mt-4 text-sm"><Link className="text-primary underline focus-visible:ring-2 focus-visible:ring-primary" href="/olvide-contrasena">Olvidé mi contraseña</Link></p> : null}
-      <p className="mt-4 text-sm"><Link className="text-primary underline focus-visible:ring-2 focus-visible:ring-primary" href={mode === "login" ? "/register" : "/login"}>{mode === "login" ? "¿Sin cuenta? Crear cuenta" : "Ya tengo cuenta"}</Link></p>
+      {mode === "login" ? <p className="mt-4 text-sm"><Link className={textLinkClass} href="/olvide-contrasena">Olvidé mi contraseña</Link></p> : null}
+      <p className="mt-4 text-sm"><Link className={textLinkClass} href={mode === "login" ? "/register" : "/login"}>{mode === "login" ? "¿Sin cuenta? Crear cuenta" : "Ya tengo cuenta"}</Link></p>
     </Card>
     <Card><CardTitle>Antes de continuar</CardTitle><p className="mt-2 text-sm text-muted-foreground">Guarda tu contraseña de forma segura. No verificamos la propiedad del correo electrónico al crear una cuenta.</p></Card>
   </main>;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { authEnabled, fetchLegal } from "@/lib/auth/client";
 import type { LegalOut } from "@energyrd/api-contracts";
 import { Card } from "@/components/ui/card";
+import { textLinkClass } from "@/components/ui/text-link";
 
 export default function LegalPage() {
   const [legal, setLegal] = useState<LegalOut | null>(null);
@@ -44,7 +45,7 @@ export default function LegalPage() {
             </p>
           </>
         )}
-        <p className="mt-6 text-sm"><Link href="/register" className="text-primary underline">Volver al registro</Link></p>
+        <p className="mt-6 text-sm"><Link href="/register" className={textLinkClass}>Volver al registro</Link></p>
       </Card>
     </main>
   );

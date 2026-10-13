@@ -1,5 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
+import { controlStyle } from "@/lib/controls";
 
 export function Loading() {
   return <p role="status" style={{ padding: 24 }}>Cargando…</p>;
@@ -13,16 +14,17 @@ export function ErrorView({ message, onRetry }: { message: string; onRetry: () =
   return (
     <div role="alert" style={{ padding: 24 }}>
       <p style={{ color: "#b00020" }}>{message}</p>
-      <button onClick={onRetry}>Reintentar</button>
+      <button style={controlStyle} onClick={onRetry}>Reintentar</button>
     </div>
   );
 }
 
-export function Forbidden({ onRetry }: { onRetry: () => void }) {
+export function Forbidden({ onRetry, heading }: { onRetry: () => void; heading?: string }) {
   return (
     <div role="alert" style={{ padding: 24 }}>
+      {heading ? <h1>{heading}</h1> : null}
       <p>No tienes permiso para ver esta sección (403).</p>
-      <button onClick={onRetry}>Reintentar</button>
+      <button style={controlStyle} onClick={onRetry}>Reintentar</button>
     </div>
   );
 }

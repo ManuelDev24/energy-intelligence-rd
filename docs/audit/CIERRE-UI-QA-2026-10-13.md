@@ -15,8 +15,8 @@ prueba figura como no verificado, no como hecho.
 | 05 | Android (Material) | Auditoría estática hecha; **sin dispositivo** | `RECORD_AUDIO` bloqueado, `allowBackup` apagado, mismos controles accesibles. Sin dispositivo: edge-to-edge con teclado, botón atrás y TalkBack sin comprobar (ver UI-06). |
 | 06 | Código compartido | Hecho | `DEPENDENCY_MAP.md`; fechas RD unificadas en `core`; sin ciclos ni imports cruzados. |
 | 07 | Seguridad y go-live | Parcial: estático, dependencias y pruebas contra API real | Escaneo estático y dependencias (abajo). Con PostgreSQL real: suite de la API completa (incluye `test_auth_abuse`, `test_auth_security` y `test_rls`) y su segunda pasada con el rol restringido `erd_app` bajo RLS y E2E de autorización entre personas, rutas sin sesión, origen en peticiones que cambian datos y cabeceras de seguridad. **No ejecutado:** pruebas de intrusión externas y de carga. C-23 sigue abierto. |
-| 08 | QA visual y accesibilidad | Parcial | axe sobre 7 páginas públicas (28 combinaciones) y 11 pantallas con sesión (44 combinaciones), ambas con 0 violaciones tras las correcciones; recorrido con teclado de 4 páginas. Sin regresión visual automatizada ni VoiceOver/TalkBack. |
-| 09 | Rendimiento | Parcial: bundles y laboratorio web | Bundles y LCP/CLS de laboratorio (abajo). **No medido:** latencias p95/p99 de la API, consultas N+1, arranque en móvil, datos de campo. |
+| 08 | QA visual y accesibilidad | Parcial | axe sobre 7 páginas públicas (28 combinaciones), 11 pantallas con sesión (44 combinaciones) el login del admin (4 anchos) y sus 4 páginas protegidas (10 combinaciones), todas con 0 violaciones tras las correcciones; recorrido con teclado de 4 páginas. Sin regresión visual automatizada ni VoiceOver/TalkBack. |
+| 09 | Rendimiento | Hecho en lo medible en local | Bundles web, LCP/CLS de laboratorio, latencia y SQL por petición de la API, concurrencia y **presupuesto automatizado** (`test_performance_budget.py`, cierra F08-02). **No medido:** arranque en frío en móvil, memoria/batería, datos de campo y producción. |
 | 10 | Orquestación y cierre | Este informe | La decisión final es de Manuel. |
 
 ## Evidencia medida
@@ -58,6 +58,26 @@ foco visible en todas las paradas, sin trampas de teclado.
 Referencia «bueno» de Core Web Vitals: LCP ≤ 2,5 s y CLS ≤ 0,1. Con el servidor en el mismo equipo el TTFB (12–18 ms) no es
 representativo de producción.
 
+**Rendimiento de la API (PostgreSQL 16 local, datos sintéticos de la auditoría anterior: 27 facturas y 400 lecturas):**
+
+| Endpoint (GET) | SQL | p50 ahora | p50 en AUDIT-08 (antes de C-13) |
+|---|---:|---:|---:|
+| `/dashboard` | 3 | 13,7 ms | 7,0 ms |
+| `/bills?limit=100` | 2 | 11,6 ms | 5,3 ms |
+| `/readings?limit=100` | 2 | 13,4 ms | 6,3 ms |
+| `/energy-score` | 10 | 19,2 ms | 14,1 ms |
+| `/consumption` mensual, 12 meses | 10 | **42,1 ms** | **599,9 ms** |
+| `/consumption` diario, 90 días | 10 | 26,4 ms | 70,3 ms |
+| `/consumption` diario, 12 meses | 10 | **52,7 ms** | **853,3 ms** |
+
+El arreglo C-13 baja el consumo a 12 meses de 600–850 ms a 42–53 ms (14 a 16 veces más rápido). Las demás cifras salen entre 1,2 y 2 veces más altas que en AUDIT-08 (p. ej. `/dashboard` 7,0 → 13,7 ms): no es comparable al milisegundo, porque cambian el equipo y el método (aquí, `TestClient` en proceso con 400 lecturas por hogar; allí, otro script con 730), y las sentencias SQL son las mismas (2–10); no se investigó la causa de la diferencia. **Sin N+1:** con 3
+facturas y 20 lecturas el número de sentencias es idéntico al de 27 facturas y 400 lecturas.
+
+Concurrencia (`/dashboard`, 300 peticiones por nivel, un solo proceso, `scripts/load_pilot.py`): 1 cliente p95 9,6 ms ·
+4 clientes 45,9 ms · 8 clientes 99,6 ms · 16 clientes 180 ms · **32 clientes 542 ms**; saturación de ~110–127 peticiones/s.
+El objetivo de `OBSERVABILITY.md` (p95 de lecturas < 500 ms) se cumple hasta 16 clientes simultáneos y se supera a 32 con un
+solo proceso: es el punto en que habría que añadir procesos o réplicas, no un defecto de la consulta.
+
 **Seguridad estática y dependencias (2026-10-13):**
 
 | Comprobación | Resultado |
@@ -77,6 +97,8 @@ incumplidas y 1 desborde horizontal**; tras corregir, **0 violaciones y 0 desbor
 miden 320, 220 y 140 px por 36 px según el dato, como define `UI_DENSITY.md`. A 360 y 390 px se llega a Meta, Ahorro y
 Apagones desde «Más secciones» (antes no había ningún enlace a Apagones).
 
+**Admin con sesión administrativa:** el stack E2E del propio admin (`npm run e2e` en `apps/admin`: base desechable, API y consola reales, un admin promovido con `app.cli_bootstrap_admin`) pasa sus 2 pruebas RBAC, que **el CI no ejecuta** (solo corre pruebas unitarias, `e2e:safety` y el build del admin). Conviene añadirlo al CI.
+
 **Pruebas locales:** core 102, api-contracts 17, api-client 65, web 858, móvil 549, admin 23; typecheck y lint de todos
 los workspaces; arquitectura y contratos. **API contra PostgreSQL 16 real: 1287 aprobadas, 9 omitidas (exigían `tesseract`,
 que no estaba instalado) y 96,23 % de cobertura** (umbral 92 %); migraciones subida/bajada/subida y seed idempotente
@@ -88,23 +110,34 @@ OCR con foto real, que había fallado solo por la ausencia de `tesseract`, aprob
 | ID | Sev. | Plataforma | Hallazgo | Estado |
 |---|---|---|---|---|
 | UI-01 | P3 | Web | `/dashboard`, `/consumption` y `/bills` cargan ~100 kB más que el resto porque `recharts` va incluido de forma estática. No se cambió: son gráficas del contenido principal y diferirlas sin medir el efecto en usuarios puede empeorar el salto de diseño. | Abierto: medir LCP antes de decidir. |
-| UI-02 | P3 | Web | Los enlaces de texto de las páginas públicas miden ~17 px de alto. axe no lo marca (probablemente por las excepciones de enlace en línea y de espaciado de WCAG 2.5.8; no se comprobó cuál aplica), pero quedan por debajo de los 44 px recomendados en táctil. | Abierto. |
+| UI-02 | P3 | Web | Los enlaces de texto independientes de las páginas públicas medían ~17 px de alto (axe no lo marcaba; no se comprobó qué excepción de WCAG 2.5.8 aplicaba). | **Corregido** (`textLinkClass`, `py-2`, ~36 px; los enlaces dentro de una frase usan `inlineLinkClass` sin padding). La primera versión partía en tres líneas el enlace de «Términos» del registro; se detectó en una captura y se corrigió. |
 | UI-03 | P2 | Móvil | `Button` con `loading` y `Field` con altura mínima no se han visto renderizados; las pruebas son de estructura. | Abierto: requiere simulador. |
 | UI-04 | P3 | Web | Los tamaños 36/44 px dependen de `pointer: coarse`. Un portátil táctil con ratón puede mostrar 44 px; es aceptable. | Aceptado. |
 | UI-05 | Info | Web | `/api/bff/auth/me` responde 401 sin sesión: es la sonda de sesión, no un error. | Cerrado. |
-| UI-06 | P2 | Android | Los formularios usan `KeyboardAvoidingView` con `behavior` solo en iOS (en Android se confía en que el sistema redimensione la ventana). Con *edge-to-edge* obligatorio en Android 15+ eso puede no ocurrir y el teclado taparía campos. No se puede comprobar sin dispositivo. | Abierto: probar en Android 15 antes de publicar. |
+| UI-06 | P2 | Android | Los formularios usan `KeyboardAvoidingView` con `behavior` solo en iOS (`undefined` en Android, 10 pantallas). **Evidencia del código instalado:** Expo 57 trata *edge-to-edge* como obligatorio en Android (el plugin `withEdgeToEdge` avisa de que `edgeToEdgeEnabled` ya no es configurable) y deja `windowSoftInputMode="adjustResize"`; con edge-to-edge el sistema ya no redimensiona la ventana para el teclado, y `ReactRootView` (RN 0.87) solo usa los *insets* del teclado para emitir eventos a JS, no para rellenar el contenido. Hipótesis: en Android 15+ el teclado puede tapar los campos inferiores. **No verificado en dispositivo.** | Abierto: probar en Android 15+. Cambio a probar: `behavior={Platform.OS === 'ios' ? 'padding' : 'height'}` en las 10 pantallas (lo que recomienda la documentación de React Native para Android) y un flujo Maestro que escriba en el último campo de Perfil y de Lectura. |
 | UI-07 | P2 | Móvil | 5 pantallas con campos (Perfil con la contraseña de eliminar cuenta, Ajustes, Compartir, Lectura OCR, Viviendas con invitación) no ajustaban el área visible al teclado; Perfil además podía perder el primer toque (sin `keyboardShouldPersistTaps`; no reproducido en dispositivo). | **Corregido** (`automaticallyAdjustKeyboardInsets` + `keyboardShouldPersistTaps="handled"`) y protegido con `keyboardGuard.test.ts` (verificado que falla si se quita). En iOS; Android: ver UI-06. |
 | UI-08 | P2 | Web | A 768 px la tabla de Apagones ensanchaba `<main>` (hijo flex sin `min-w-0`) a 798 px: scroll horizontal global. | **Corregido** (`min-w-0`); 0 desbordes en las 44 combinaciones. |
 | UI-09 | P2 | Web | Sin ningún enlace a Apagones y con Ahorro solo dentro de una nota, en pantallas menores de 768 px (la barra lateral se oculta y la inferior omite esos destinos). | **Corregido** (`MoreSections` en Perfil, 44 px, solo en pantallas estrechas); comprobado en 360 y 390 px. |
 | UI-10 | P2 | Web | Casilla de `Checkbox` de 16 px (WCAG 2.5.8, `target-size`) y `<summary>` de 20 px de alto en Consumo. | **Corregido** (24 px y `py-1`). |
 | UI-11 | P3 | Web | `DeviceCard` usaba `h3` bajo un `h1` (`heading-order`). | **Corregido** (`h2`). |
 | UI-12 | P2 | Web | Las 5 tablas con `overflow-x-auto` no eran accesibles por teclado (`scrollable-region-focusable`); axe lo detectó al corregir UI-08. | **Corregido** (`ScrollRegion`: rol `region`, nombre y foco). |
+| UI-13 | P2 | Admin | `apps/admin` (consola mínima sin estilos): campos y botón del login de 21 px de alto, incumplimiento serio de `target-size` en axe. | **Corregido** (`lib/controls.ts`, 32 px en los 10 controles). Login: 0 violaciones y 0 desbordes a 4 anchos. Las páginas protegidas se auditaron después (UI-14). |
+| UI-14 | P2 | Admin | Primer barrido de axe sobre las páginas **protegidas** del admin con una sesión administrativa real (Mi acceso, Roles, Auditoría y la vista 403, a 360/768/1280 px): `select-name` **crítico** (selector de rol sin nombre accesible), cabecera de tabla vacía, vista 403 sin `h1` y desbordes horizontales de hasta 720 px (menú fijo de 220 px y tablas anchas). | **Corregido** (aria-labels, cabecera «Acciones» para lectores, `h1` en la vista 403, layout que se apila, `ScrollRegion` en las tablas). 10 combinaciones: 0 violaciones y 0 desbordes. Durante la corrección, mi texto oculto con `position: absolute` sobresalía de la región con scroll (+8…15 px); se contuvo con `position: relative`. |
+| REM-2 | Info | E2E | La prueba «loading» de `06-states-keyboard` retrasaba 1,5 s la respuesta y fallaba en un equipo lento (también en un árbol limpio): la consulta del panel, con la misma clave de caché, terminaba antes de abrir «Facturas». | **Corregido**: la respuesta se retiene hasta ver «Cargando…». 20/20 en las especificaciones 01, 06 y 11. En el CI nunca había fallado. |
 | REM-1 | Info | Repo | Se retiró un falso hallazgo propio: `npm ci` falla con npm 10 pero el CI usa Node 24 y pasa. El lockfile no se tocó. | Cerrado. |
+
+## CI de GitHub Actions
+
+Run [38331407723](https://github.com/ManuelDev24/energy-intelligence-rd/actions/runs/38331407723) sobre `a65c55a` (2026-10-13):
+**4 de 4 jobs en verde.** `api (pytest + migrations)` (ruff, mypy, contratos, arquitectura, migraciones, seed, pytest con
+cobertura en 12 min y segunda pasada con el rol restringido en 4 min; incluye `test_performance_budget.py`, que pasó en el
+runner sin cambiar presupuestos), `web + mobile + core`, `web + mobile (recorridos vs API real)` y `e2e web`
+(Playwright contra PostgreSQL, API y worker reales, 4 min). Los commits posteriores son solo documentación (`[skip ci]`).
 
 ## Recomendación (la decisión es de Manuel)
 
-- **Promover `Dev` → `QA`: GO condicionado** a que el CI de `Dev` quede en verde sobre el commit final y a la revisión
-  visual manual de «Mi cuenta», Perfil, Apagones, factura y Onboarding en 360, 390, 768 y 1280 px.
+- **Promover `Dev` → `QA`: GO condicionado** a la revisión visual manual de «Mi cuenta», Perfil, Apagones, factura y
+  Onboarding en 360, 390, 768 y 1280 px. La condición del CI en verde ya se cumple (ver arriba).
 - **Producción: NO-GO todavía.** Siguen abiertos puntos que este trabajo no puede cerrar: roles de Neon y RLS en
   producción (C-01), revisión legal (C-04), Sentry y simulacro de restauración (C-05), staging y RTO/RPO (C-19), pruebas en
   dispositivos reales y lectores de pantalla (C-25), C-23 y la revisión de `braces`/`node-forge` antes del **2026-11-04**

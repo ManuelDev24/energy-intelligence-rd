@@ -8,11 +8,12 @@ import { Field } from "@/components/ui/field";
 import { ACCOUNT_CHANGE_KEY, accountGeneration, authEnabled } from "@/lib/auth/client";
 import { parseResetToken, recoveryError, resetPassword } from "@/lib/auth/recovery";
 import { hardNavigate } from "@/lib/navigation";
+import { textLinkClass } from "@/components/ui/text-link";
 
 function accountMarker() {
   try { return window.localStorage.getItem(ACCOUNT_CHANGE_KEY); } catch { return null; }
 }
-const linkClass = "text-primary underline focus-visible:ring-2 focus-visible:ring-primary";
+const linkClass = textLinkClass;
 type LinkState = "reading" | "valid" | "invalid" | "expired";
 
 export default function ResetPasswordPage() {

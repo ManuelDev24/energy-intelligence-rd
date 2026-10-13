@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Empty, ErrorView, Forbidden, Loading } from "@/components/StateViews";
+import { controlStyle } from "@/lib/controls";
+import { ScrollRegion } from "@/components/ScrollRegion";
 
 type AuditEvent = {
   id: string; actor_user_id: string | null; action: string; resource: string;
@@ -34,17 +36,17 @@ export default function AuditoriaPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  if (state.status === "forbidden") return <Forbidden onRetry={load} />;
+  if (state.status === "forbidden") return <Forbidden heading="Auditoría" onRetry={load} />;
   if (state.status === "loading") return <Loading />;
   if (state.status === "error") return <ErrorView message={state.message} onRetry={load} />;
 
   return (
     <section>
       <h1>Auditoría</h1>
-      <input placeholder="Filtrar por acción (p.ej. role.assign)" value={actionFilter}
+      <input style={controlStyle} aria-label="Filtrar por acción" placeholder="Filtrar por acción (p.ej. role.assign)" value={actionFilter}
              onChange={(e) => setActionFilter(e.target.value)} />
       {state.status === "empty" ? <Empty>No hay eventos de auditoría todavía.</Empty> : (
-        <table>
+        <ScrollRegion label="Eventos de auditoría"><table>
           <thead>
             <tr><th>Fecha</th><th>Actor</th><th>Acción</th><th>Recurso</th><th>Scope</th><th>Resultado</th><th>Motivo</th></tr>
           </thead>
@@ -61,7 +63,7 @@ export default function AuditoriaPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></ScrollRegion>
       )}
     </section>
   );

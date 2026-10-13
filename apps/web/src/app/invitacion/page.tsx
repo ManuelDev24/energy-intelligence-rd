@@ -9,8 +9,9 @@ import { Card, CardDescription } from "@/components/ui/card";
 import { keys } from "@/lib/api/hooks";
 import { acceptInvitation, parseInvitationToken, sharingMessage } from "@/lib/auth/sharing";
 import { useSession } from "@/lib/session";
+import { textLinkClass } from "@/components/ui/text-link";
 
-const linkClass = "text-primary underline focus-visible:ring-2 focus-visible:ring-primary";
+const linkClass = textLinkClass;
 
 /**
  * ERD-SHARE-01: aceptar una invitación. El token llega en el fragmento (`#token=…`): se lee en el PRIMER efecto de

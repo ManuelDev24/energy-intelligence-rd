@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useSession } from "@/lib/session";
 import { visibleNavItems } from "@/lib/access";
 import { Loading } from "@/components/StateViews";
+import { controlStyle } from "@/lib/controls";
 
 /** Shared protected shell: redirects to /login when there is no session at all. Per-page
  * 403s (missing scope) are handled by each page itself, via the API's real response —
@@ -22,8 +23,8 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   if (!access) return <Loading />;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <nav style={{ width: 220, borderRight: "1px solid #ddd", padding: 16 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", minHeight: "100vh" }}>
+      <nav style={{ flex: "0 0 220px", borderRight: "1px solid #ddd", padding: 16 }}>
         <p style={{ fontWeight: 600 }}>{access.email}</p>
         <ul style={{ listStyle: "none", padding: 0 }}>
           {visibleNavItems(access).map((item) => (
@@ -34,7 +35,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
         </ul>
         <LogoutButton />
       </nav>
-      <main style={{ flex: 1, padding: 24 }}>{children}</main>
+      <main style={{ flex: "1 1 320px", minWidth: 0, padding: 24 }}>{children}</main>
     </div>
   );
 }
@@ -43,7 +44,7 @@ function LogoutButton() {
   const { logout } = useSession();
   const router = useRouter();
   return (
-    <button onClick={() => { logout(); router.replace("/login"); }}>
+    <button style={controlStyle} onClick={() => { logout(); router.replace("/login"); }}>
       Cerrar sesión
     </button>
   );

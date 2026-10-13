@@ -4,6 +4,8 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { hasScope } from "@/lib/access";
 import { Empty, ErrorView, Forbidden, Loading } from "@/components/StateViews";
+import { controlStyle, fillStyle, visuallyHidden } from "@/lib/controls";
+import { ScrollRegion } from "@/components/ScrollRegion";
 
 type Role = { id: string; name: string; description: string; scopes: string[] };
 type Assignment = {
@@ -73,7 +75,7 @@ export default function RolesPage() {
     }
   }
 
-  if (roles.status === "forbidden") return <Forbidden onRetry={load} />;
+  if (roles.status === "forbidden") return <Forbidden heading="Roles y asignaciones" onRetry={load} />;
   if (roles.status === "loading") return <Loading />;
   if (roles.status === "error") return <ErrorView message={roles.message ?? "Error"} onRetry={load} />;
 
@@ -92,14 +94,14 @@ export default function RolesPage() {
       {canManage ? (
         <>
           <h2>Asignar rol</h2>
-          <div style={{ display: "grid", gap: 8, maxWidth: 420 }}>
-            <input placeholder="user_id (UUID)" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} />
-            <select value={roleName} onChange={(e) => setRoleName(e.target.value)}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 8, maxWidth: 420 }}>
+            <input style={fillStyle} aria-label="user_id del usuario" placeholder="user_id (UUID)" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} />
+            <select style={fillStyle} aria-label="Rol a asignar" value={roleName} onChange={(e) => setRoleName(e.target.value)}>
               <option value="">— elige un rol —</option>
               {roles.data?.map((r) => <option key={r.id} value={r.name}>{r.name}</option>)}
             </select>
-            <input placeholder="Motivo (obligatorio)" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <button onClick={onAssign} disabled={!targetUserId || !roleName || !reason}>Asignar</button>
+            <input style={fillStyle} aria-label="Motivo de la asignación" placeholder="Motivo (obligatorio)" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <button style={controlStyle} onClick={onAssign} disabled={!targetUserId || !roleName || !reason}>Asignar</button>
             {formError ? <p role="alert" style={{ color: "#b00020" }}>{formError}</p> : null}
           </div>
         </>
@@ -111,8 +113,8 @@ export default function RolesPage() {
       {assignments.status === "error" ? <ErrorView message={assignments.message ?? "Error"} onRetry={load} /> : null}
       {assignments.status === "empty" ? <Empty>No hay asignaciones todavía.</Empty> : null}
       {assignments.status === "ok" ? (
-        <table>
-          <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Motivo</th><th></th></tr></thead>
+        <ScrollRegion label="Asignaciones de roles"><table>
+          <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Motivo</th><th><span style={visuallyHidden}>Acciones</span></th></tr></thead>
           <tbody>
             {assignments.data!.map((a) => (
               <tr key={a.id}>
@@ -122,13 +124,13 @@ export default function RolesPage() {
                 <td>{a.reason}</td>
                 <td>
                   {canManage && a.status === "active" ? (
-                    <button onClick={() => onRevoke(a.id)}>Revocar</button>
+                    <button style={controlStyle} onClick={() => onRevoke(a.id)}>Revocar</button>
                   ) : null}
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></ScrollRegion>
       ) : null}
     </section>
   );

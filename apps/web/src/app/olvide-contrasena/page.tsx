@@ -7,11 +7,12 @@ import { Card, CardDescription } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { authEnabled } from "@/lib/auth/client";
 import { recoveryError, requestPasswordReset } from "@/lib/auth/recovery";
+import { textLinkClass } from "@/components/ui/text-link";
 
 // ERD-AUTH-05: la confirmación es SIEMPRE la misma, exista o no la cuenta (la API responde 202
 // en ambos casos), y nunca repite el correo escrito.
 const CONFIRMATION = "Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña. Consulta la caducidad en el correo. Revisa también la carpeta de correo no deseado.";
-const linkClass = "text-primary underline focus-visible:ring-2 focus-visible:ring-primary";
+const linkClass = textLinkClass;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");

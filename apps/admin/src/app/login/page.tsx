@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
+import { controlStyle, fieldStyle } from "@/lib/controls";
 
 export default function LoginPage() {
   const { login, loading } = useSession();
@@ -30,10 +31,10 @@ export default function LoginPage() {
       <h1>Acceso administrativo</h1>
       <form onSubmit={onSubmit}>
         <label htmlFor="email">Correo</label>
-        <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input style={fieldStyle} id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         <label htmlFor="password">Contraseña</label>
-        <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-        <button type="submit" disabled={submitting || loading}>{submitting ? "Entrando…" : "Entrar"}</button>
+        <input style={fieldStyle} id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <button style={controlStyle} type="submit" disabled={submitting || loading}>{submitting ? "Entrando…" : "Entrar"}</button>
       </form>
       {error ? <p role="alert" style={{ color: "#b00020" }}>{error}</p> : null}
     </main>
