@@ -8,6 +8,7 @@ import { accountGeneration, assertAccountGeneration } from "@/lib/auth/client";
 import { useSession } from "@/lib/session";
 import { keys, invalidateHome } from "@/lib/api/hooks";
 import { userMessage } from "@/lib/api/errors";
+import { MoreSections } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
@@ -99,7 +100,7 @@ export default function ProfilePage() {
   const home = useQuery({ queryKey: [...scope, "home"], queryFn: () => readProfileHome(homeId!), enabled: ready && authEnabled && !!user && !!homeId, retry: false });
   const contract = useQuery({ queryKey: [...scope, "contract"], queryFn: () => readProfileContract(homeId!), enabled: ready && authEnabled && !!user && !!homeId && home.isSuccess, retry: false });
   const missingContract = contract.error instanceof ApiError && contract.error.status === 404;
-  return <div className="flex flex-col gap-6"><h1 className="text-2xl font-bold">Perfil</h1>
+  return <div className="flex flex-col gap-6"><h1 className="text-2xl font-bold">Perfil</h1><MoreSections />
     <Card><h2 className="text-xl font-semibold">Mi cuenta</h2><p className="mt-3 break-words">{user?.email ?? "Cuenta no disponible en el piloto."}</p><p className="mt-3 text-sm text-muted-foreground">Preferencias de notificación no disponibles: todavía no existe un servicio para consultarlas o guardarlas.</p></Card>
     {!authEnabled ? <p role="status">La edición de vivienda y servicio requiere una cuenta autenticada. No está disponible en el piloto.</p> : home.isPending ? <p role="status">Cargando vivienda…</p> : home.isError ? <Card><p role="alert">{userMessage(home.error, "load")}</p><Button variant="outline" onClick={() => void home.refetch()}>Reintentar lectura de vivienda</Button></Card> : home.data ? <HomeForm key={scope.join(":")} home={home.data} reload={() => home.refetch({ throwOnError: true })} /> : null}
     {authEnabled && home.isSuccess ? <Card><h2 className="text-xl font-semibold">Mi servicio</h2><p className="mt-3 text-sm">Distribuidora: {home.data.distributor}</p>
