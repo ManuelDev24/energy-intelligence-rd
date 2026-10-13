@@ -15,7 +15,7 @@ Informes originales: `AUDIT-00-RESULTADO-CONSOLIDADO.md` y `AUDIT-01…08`. Cada
 | C-08 | Hecho | Topes de cuerpo (413), timeouts de BD, pool agotado → 503 `service_busy`, Argon2 acotado. |
 | C-10 | Hecho | Verificación de correo (0029); sin verificar no se envían avisos; web, móvil y E2E. |
 | C-11 / C-12 | Hecho y **verificado en GitHub** (2026-10-12, commit `6aed471`) | Permisos mínimos, acciones por SHA, CodeQL (python y js/ts), gitleaks, Trivy + SBOM, Dependabot, CODEOWNERS, SECURITY.md, imagen. Security #1: 4/4 jobs verdes. |
-| C-13 | Hecho | Consumo O(n+m): «12 meses» 600→39 ms (p50). |
+| C-13 | Hecho | Consumo O(n+m): «12 meses» 600→39 ms (p50). Re-medido el 2026-10-13: 42 ms mensual y 53 ms diario a 12 meses. **F08-02 cerrado:** `tests/test_performance_budget.py` fija presupuestos de SQL por petición (guarda contra N+1) y de latencia (guarda contra el O(n²)) con datos sintéticos. |
 | C-14 | Hecho (config) | Sin `RECORD_AUDIO`, textos iOS en español, `allowBackup` apagado. Falta probarlo en dispositivo. |
 | C-15 | Hecho; decisión pendiente | Auditoría con autor y sin PII, retención escrita (`docs/security/DATA_RETENTION.md`). **Pendiente:** decidir cifrado de columna de `account_number`/dirección (DB-03). |
 | C-16 | Hecho | `UNIQUE (lower(email))` (0026). |

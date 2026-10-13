@@ -16,7 +16,7 @@ prueba figura como no verificado, no como hecho.
 | 06 | Código compartido | Hecho | `DEPENDENCY_MAP.md`; fechas RD unificadas en `core`; sin ciclos ni imports cruzados. |
 | 07 | Seguridad y go-live | Parcial: estático, dependencias y pruebas contra API real | Escaneo estático y dependencias (abajo). Con PostgreSQL real: suite de la API completa (incluye `test_auth_abuse`, `test_auth_security` y `test_rls`) y su segunda pasada con el rol restringido `erd_app` bajo RLS y E2E de autorización entre personas, rutas sin sesión, origen en peticiones que cambian datos y cabeceras de seguridad. **No ejecutado:** pruebas de intrusión externas y de carga. C-23 sigue abierto. |
 | 08 | QA visual y accesibilidad | Parcial | axe sobre 7 páginas públicas (28 combinaciones) y 11 pantallas con sesión (44 combinaciones), ambas con 0 violaciones tras las correcciones; recorrido con teclado de 4 páginas. Sin regresión visual automatizada ni VoiceOver/TalkBack. |
-| 09 | Rendimiento | Parcial: bundles y laboratorio web | Bundles y LCP/CLS de laboratorio (abajo). **No medido:** latencias p95/p99 de la API, consultas N+1, arranque en móvil, datos de campo. |
+| 09 | Rendimiento | Hecho en lo medible en local | Bundles web, LCP/CLS de laboratorio, latencia y SQL por petición de la API, concurrencia y **presupuesto automatizado** (`test_performance_budget.py`, cierra F08-02). **No medido:** arranque en frío en móvil, memoria/batería, datos de campo y producción. |
 | 10 | Orquestación y cierre | Este informe | La decisión final es de Manuel. |
 
 ## Evidencia medida
@@ -57,6 +57,26 @@ foco visible en todas las paradas, sin trampas de teclado.
 
 Referencia «bueno» de Core Web Vitals: LCP ≤ 2,5 s y CLS ≤ 0,1. Con el servidor en el mismo equipo el TTFB (12–18 ms) no es
 representativo de producción.
+
+**Rendimiento de la API (PostgreSQL 16 local, datos sintéticos de la auditoría anterior: 27 facturas y 400 lecturas):**
+
+| Endpoint (GET) | SQL | p50 ahora | p50 en AUDIT-08 (antes de C-13) |
+|---|---:|---:|---:|
+| `/dashboard` | 3 | 13,7 ms | 7,0 ms |
+| `/bills?limit=100` | 2 | 11,6 ms | 5,3 ms |
+| `/readings?limit=100` | 2 | 13,4 ms | 6,3 ms |
+| `/energy-score` | 10 | 19,2 ms | 14,1 ms |
+| `/consumption` mensual, 12 meses | 10 | **42,1 ms** | **599,9 ms** |
+| `/consumption` diario, 90 días | 10 | 26,4 ms | 70,3 ms |
+| `/consumption` diario, 12 meses | 10 | **52,7 ms** | **853,3 ms** |
+
+El arreglo C-13 baja el consumo a 12 meses de 600–850 ms a 42–53 ms (14 a 16 veces más rápido). Las demás cifras salen entre 1,2 y 2 veces más altas que en AUDIT-08 (p. ej. `/dashboard` 7,0 → 13,7 ms): no es comparable al milisegundo, porque cambian el equipo y el método (aquí, `TestClient` en proceso con 400 lecturas por hogar; allí, otro script con 730), y las sentencias SQL son las mismas (2–10); no se investigó la causa de la diferencia. **Sin N+1:** con 3
+facturas y 20 lecturas el número de sentencias es idéntico al de 27 facturas y 400 lecturas.
+
+Concurrencia (`/dashboard`, 300 peticiones por nivel, un solo proceso, `scripts/load_pilot.py`): 1 cliente p95 9,6 ms ·
+4 clientes 45,9 ms · 8 clientes 99,6 ms · 16 clientes 180 ms · **32 clientes 542 ms**; saturación de ~110–127 peticiones/s.
+El objetivo de `OBSERVABILITY.md` (p95 de lecturas < 500 ms) se cumple hasta 16 clientes simultáneos y se supera a 32 con un
+solo proceso: es el punto en que habría que añadir procesos o réplicas, no un defecto de la consulta.
 
 **Seguridad estática y dependencias (2026-10-13):**
 
