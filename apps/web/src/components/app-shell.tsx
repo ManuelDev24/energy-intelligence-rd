@@ -113,7 +113,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           key={href}
           href={href}
           aria-current={active ? "page" : undefined}
-          aria-label={badge ? `${label}, ${badge} sin leer` : undefined}
           className={cn(
             "relative flex items-center rounded-lg font-medium transition-colors",
             variant === "side"
@@ -124,15 +123,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <Icon className={variant === "side" ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
           {label}
+          {/* El nombre accesible sale del contenido («Alertas 1 sin leer») y contiene el texto visible («Alertas 1»): WCAG 2.5.3. */}
           {badge ? (
-            <span
-              className={cn(
-                "rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white",
-                variant === "side" ? "ml-auto" : "absolute right-[calc(50%-18px)] top-1.5",
-              )}
-            >
-              {badge}
-            </span>
+            <>
+              {" "}
+              <span
+                className={cn(
+                  "rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white",
+                  variant === "side" ? "ml-auto" : "absolute right-[calc(50%-18px)] top-1.5",
+                )}
+              >
+                {badge}
+              </span>
+              <span className="sr-only"> sin leer</span>
+            </>
           ) : null}
         </Link>
       );

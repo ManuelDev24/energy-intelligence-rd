@@ -66,7 +66,7 @@ describe("SavingsPage", () => {
     vi.spyOn(api, "refreshRecommendations").mockResolvedValue(list([rec(), rec({ id: "c1000000-0000-4000-8000-000000000002", title: "Dos horas menos de TV (Sala)" })]) as never);
     const update = vi.spyOn(api, "updateRecommendation").mockResolvedValue(rec({ status: "applied" }) as never);
     renderWithApp(<SavingsPage />, HOME_A);
-    fireEvent.click(await screen.findByRole("button", { name: /Marcar como aplicada: Una hora menos/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Ya la apliqué: Una hora menos/ }));
     await waitFor(() => expect(update).toHaveBeenCalledWith(HOME_A, "c1000000-0000-4000-8000-000000000001", "applied"));
     fireEvent.click(screen.getByRole("button", { name: /Descartar: Dos horas menos de TV/ }));
     await waitFor(() => expect(update).toHaveBeenCalledWith(HOME_A, "c1000000-0000-4000-8000-000000000002", "dismissed"));
@@ -101,7 +101,7 @@ describe("SavingsPage", () => {
     vi.spyOn(api, "refreshRecommendations").mockResolvedValue(list([rec()]) as never);
     vi.spyOn(api, "updateRecommendation").mockRejectedValue(new Error("TEXTO-INTERNO"));
     renderWithApp(<SavingsPage />, HOME_A);
-    fireEvent.click(await screen.findByRole("button", { name: /Marcar como aplicada/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Ya la apliqué/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo actualizar la recomendación");
     expect(screen.queryByText(/TEXTO-INTERNO/)).not.toBeInTheDocument();
   });

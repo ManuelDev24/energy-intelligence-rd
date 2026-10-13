@@ -19,6 +19,12 @@ describe("shared API transport", () => {
     await expect(createApiClient("http://api.test", fetcher).getDashboard(HOME, undefined, bill)).rejects.toBeInstanceOf(ContractError);
     expect(fetcher.mock.calls[0][0]).toBe(`http://api.test/api/v1/homes/${HOME}/dashboard?bill_id=${bill}`);
   });
+  it("constructs a client from an adversarial base URL without polynomial scanning", () => {
+    const baseUrl = `http://api.test/${"/".repeat(100_000)}x`;
+    const started = performance.now();
+    createApiClient(baseUrl, vi.fn());
+    expect(performance.now() - started).toBeLessThan(500);
+  });
   it("loads all pages without silently cutting off after 100 records", async () => {
     const fetcher = vi.fn().mockResolvedValueOnce(json(Array.from({ length: 100 }, (_, n) => home(n))))
       .mockResolvedValueOnce(json([home(100)]));

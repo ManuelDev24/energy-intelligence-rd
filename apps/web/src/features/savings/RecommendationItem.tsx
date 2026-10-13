@@ -34,7 +34,7 @@ export function RecommendationItem({ item, pending = false, onApply, onDismiss, 
         <div className="flex flex-wrap items-center gap-x-3">
           <Link href={HREF[target.kind]} aria-label={`${target.label}: ${view.title}`} className={linkClass}>{target.label}</Link>
           {onApply && item.category === "equipment" ? (
-            <Button type="button" variant="outline" disabled={pending} onClick={() => onApply(item)} aria-label={`Marcar como aplicada: ${view.title}`}>Ya la apliqué</Button>
+            <Button type="button" variant="outline" disabled={pending} onClick={() => onApply(item)} aria-label={`Ya la apliqué: ${view.title}`}>Ya la apliqué</Button>
           ) : null}
           {onDismiss ? (
             <Button type="button" variant="outline" disabled={pending} onClick={() => onDismiss(item)} aria-label={`Descartar: ${view.title}`}>Descartar</Button>

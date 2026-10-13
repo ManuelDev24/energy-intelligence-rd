@@ -80,6 +80,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint --workspace apps/web
       - run: npm test
+      - run: npm run test:scripts
       - run: npm run test --workspace apps/admin
       - run: npm run e2e:safety --workspace apps/admin
       - run: npm run build --workspace apps/admin
@@ -88,11 +89,14 @@ jobs:
           ADMIN_ORIGIN: https://admin.example.invalid
       # Producción exige auth activa y orígenes HTTPS (next.config.mjs falla cerrado sin ellos).
       # Valores de marcador solo para compilar; no apuntan a ningún servicio real.
-      - run: npm run build --workspace apps/web
+      - run: npm run build --workspace apps/web 2>&1 | tee /tmp/web-build.log
         env:
           NEXT_PUBLIC_AUTH_ENABLED: "true"
           API_BASE_URL: https://api.example.invalid
           WEB_ORIGIN: https://app.example.invalid
+      # ERD-QA-PERF: presupuesto de JS de primera carga (compartido ≤ 125 kB, cada ruta ≤ 340 kB; medido: 103 y 297 kB).
+      - run: node --test scripts/bundle-budget.test.mjs
+      - run: node scripts/bundle-budget.mjs /tmp/web-build.log
 
   e2e-web:
     name: e2e web (Playwright vs PostgreSQL + API + worker reales)
@@ -146,6 +150,42 @@ jobs:
             apps/web/e2e/.tmp/*.log
           retention-days: 7
           if-no-files-found: ignore
+
+  e2e-admin:
+    name: e2e admin (RBAC y accesibilidad vs PostgreSQL + API + consola reales)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: energy_rd
+          POSTGRES_USER: energy
+          POSTGRES_PASSWORD: change_me_local_only
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U energy -d energy_rd"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CI: "true"
+      # Base EXCLUSIVA del admin: el ejecutor (apps/admin/e2e/run.mjs) la crea desde cero, la migra y la elimina al terminar.
+      ADMIN_E2E_DATABASE_URL: postgresql+psycopg://energy:change_me_local_only@127.0.0.1:5433/energy_rd_admin_e2e_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: uv sync --frozen
+        working-directory: services/api
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      # Pruebas de permisos (403 reales, asignar y revocar roles, auditoría, sin tokens en el navegador) y de accesibilidad con axe.
+      # Salida sin trazas ni capturas (podrían contener cookies o datos personales); el ejecutor descarta la salida de los servidores.
+      - name: Playwright del admin (base, API y consola se levantan y se apagan solas)
+        run: npm run e2e --workspace apps/admin
 
   mobile-e2e:
     name: web + mobile (recorridos vs API real)
