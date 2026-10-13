@@ -14,7 +14,7 @@ prueba figura como no verificado, no como hecho.
 | 04 | iOS (HIG) | Auditoría estática hecha; **sin dispositivo** | Safe areas vía `SafeAreaProvider`; 21 `Pressable` con `accessibilityRole`; imágenes sin etiqueta: ninguna; sin `allowFontScaling={false}`; teclado: corregidas 5 pantallas. Sin simulador: VoiceOver, Dynamic Type y gestos sin comprobar. |
 | 05 | Android (Material) | Auditoría estática hecha; **sin dispositivo** | `RECORD_AUDIO` bloqueado, `allowBackup` apagado, mismos controles accesibles. Sin dispositivo: edge-to-edge con teclado, botón atrás y TalkBack sin comprobar (ver UI-06). |
 | 06 | Código compartido | Hecho | `DEPENDENCY_MAP.md`; fechas RD unificadas en `core`; sin ciclos ni imports cruzados. |
-| 07 | Seguridad y go-live | Parcial: estático, dependencias y pruebas contra API real | Escaneo estático y dependencias (abajo). Con PostgreSQL real: suite de la API completa (incluye `test_auth_abuse`, `test_auth_security` y `test_rls`) y E2E de autorización entre personas, rutas sin sesión, origen en peticiones que cambian datos y cabeceras de seguridad. **No ejecutado:** pruebas de intrusión externas y de carga. C-23 sigue abierto. |
+| 07 | Seguridad y go-live | Parcial: estático, dependencias y pruebas contra API real | Escaneo estático y dependencias (abajo). Con PostgreSQL real: suite de la API completa (incluye `test_auth_abuse`, `test_auth_security` y `test_rls`) y su segunda pasada con el rol restringido `erd_app` bajo RLS y E2E de autorización entre personas, rutas sin sesión, origen en peticiones que cambian datos y cabeceras de seguridad. **No ejecutado:** pruebas de intrusión externas y de carga. C-23 sigue abierto. |
 | 08 | QA visual y accesibilidad | Parcial | axe sobre 7 páginas públicas (28 combinaciones) y 11 pantallas con sesión (44 combinaciones), ambas con 0 violaciones tras las correcciones; recorrido con teclado de 4 páginas. Sin regresión visual automatizada ni VoiceOver/TalkBack. |
 | 09 | Rendimiento | Parcial: bundles y laboratorio web | Bundles y LCP/CLS de laboratorio (abajo). **No medido:** latencias p95/p99 de la API, consultas N+1, arranque en móvil, datos de campo. |
 | 10 | Orquestación y cierre | Este informe | La decisión final es de Manuel. |
@@ -80,7 +80,7 @@ Apagones desde «Más secciones» (antes no había ningún enlace a Apagones).
 **Pruebas locales:** core 102, api-contracts 17, api-client 65, web 858, móvil 549, admin 23; typecheck y lint de todos
 los workspaces; arquitectura y contratos. **API contra PostgreSQL 16 real: 1287 aprobadas, 9 omitidas (exigían `tesseract`,
 que no estaba instalado) y 96,23 % de cobertura** (umbral 92 %); migraciones subida/bajada/subida y seed idempotente
-correctos. **E2E Playwright completo contra API, worker y web reales: 67 de 67** (66 en la corrida completa y la prueba de
+correctos. **Segunda pasada con la API conectada como `erd_app` (rol sin privilegios sujeto a RLS, `TEST_RLS_ROLE=1`): 328 aprobadas, 0 fallos y 968 omitidas por diseño** (en ese modo solo corren las pruebas con autenticación). **E2E Playwright completo contra API, worker y web reales: 67 de 67** (66 en la corrida completa y la prueba de
 OCR con foto real, que había fallado solo por la ausencia de `tesseract`, aprobada al instalarlo).
 
 ## Hallazgos
