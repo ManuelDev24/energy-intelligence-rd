@@ -10,7 +10,7 @@ import { colors, spacing } from '../../theme';
 export function ProfileScreen({ onHome, onService, onHomes, onAccountSettings, onShare, onOutages }: { onHome: () => void; onService: () => void; onHomes: () => void; onAccountSettings: () => void; onShare: () => void; onOutages?: () => void }) {
   const homeId = useSession(state => state.selectedHomeId);
   const home = useHomes().data?.find(item => item.id === homeId);
-  return <ScrollView style={s.screen} contentContainerStyle={s.content}>
+  return <ScrollView style={s.screen} contentContainerStyle={s.content} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
     <Text style={s.title} accessibilityRole="header">Perfil</Text>
     {AUTH_ENABLED ? <AccountSummary /> : <Text style={s.hint}>Modo piloto: sin cuenta personal. La edición del perfil no está habilitada.</Text>}
     <View style={s.card}>

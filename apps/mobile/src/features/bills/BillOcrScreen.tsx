@@ -94,7 +94,7 @@ export function BillOcrScreen({ onManual, onDone, pickImage = unavailableImagePi
 
   if (phase !== 'done' || !job?.draft || !values) {
     const working = phase === 'working' || phase === 'slow';
-    return <ScrollView contentContainerStyle={s.container}>
+    return <ScrollView contentContainerStyle={s.container} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
       <Text style={s.title}>Leer factura desde una foto o PDF</Text>
       <Text style={s.note}>La lectura automática genera un borrador. Revise todos los campos antes de confirmar; no se guarda ninguna factura durante la lectura. El archivo se guarda cifrado y se asocia a la factura que confirme; si no la confirma, se elimina automáticamente.</Text>
       {working ? <View accessible accessibilityLiveRegion="polite" accessibilityRole="progressbar" accessibilityLabel="Analizando la factura" testID="ocr-working">
@@ -115,7 +115,7 @@ export function BillOcrScreen({ onManual, onDone, pickImage = unavailableImagePi
 
   const draft = job.draft;
   const field = (key: 'period_start' | 'period_end' | 'days' | 'kwh' | 'amount_dop' | 'reading_previous' | 'reading_current' | 'due_date', formKey: keyof BillFormValues, label: string, testID: string) => <Field label={label} value={values[formKey]} onChangeText={update(formKey)} confidence={confidenceText(draft[key].confidence)} testID={testID} />;
-  return <ScrollView contentContainerStyle={s.container}>
+  return <ScrollView contentContainerStyle={s.container} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
     <Text style={s.title}>Revisar borrador de factura</Text>
     <Text style={s.note}>La lectura es solo un borrador. Corrija lo necesario y confirme explícitamente para crear la factura. {ocrSourceText(job)}</Text>
     {draft.warnings.map((warning) => <Text key={warning} style={s.warning} accessibilityRole="alert">⚠ {warning}</Text>)}
