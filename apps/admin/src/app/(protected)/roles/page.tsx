@@ -4,6 +4,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { hasScope } from "@/lib/access";
 import { Empty, ErrorView, Forbidden, Loading } from "@/components/StateViews";
+import { controlStyle } from "@/lib/controls";
 
 type Role = { id: string; name: string; description: string; scopes: string[] };
 type Assignment = {
@@ -93,13 +94,13 @@ export default function RolesPage() {
         <>
           <h2>Asignar rol</h2>
           <div style={{ display: "grid", gap: 8, maxWidth: 420 }}>
-            <input placeholder="user_id (UUID)" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} />
-            <select value={roleName} onChange={(e) => setRoleName(e.target.value)}>
+            <input style={controlStyle} placeholder="user_id (UUID)" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} />
+            <select style={controlStyle} value={roleName} onChange={(e) => setRoleName(e.target.value)}>
               <option value="">— elige un rol —</option>
               {roles.data?.map((r) => <option key={r.id} value={r.name}>{r.name}</option>)}
             </select>
-            <input placeholder="Motivo (obligatorio)" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <button onClick={onAssign} disabled={!targetUserId || !roleName || !reason}>Asignar</button>
+            <input style={controlStyle} placeholder="Motivo (obligatorio)" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <button style={controlStyle} onClick={onAssign} disabled={!targetUserId || !roleName || !reason}>Asignar</button>
             {formError ? <p role="alert" style={{ color: "#b00020" }}>{formError}</p> : null}
           </div>
         </>
@@ -122,7 +123,7 @@ export default function RolesPage() {
                 <td>{a.reason}</td>
                 <td>
                   {canManage && a.status === "active" ? (
-                    <button onClick={() => onRevoke(a.id)}>Revocar</button>
+                    <button style={controlStyle} onClick={() => onRevoke(a.id)}>Revocar</button>
                   ) : null}
                 </td>
               </tr>

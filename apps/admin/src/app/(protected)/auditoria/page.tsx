@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Empty, ErrorView, Forbidden, Loading } from "@/components/StateViews";
+import { controlStyle } from "@/lib/controls";
 
 type AuditEvent = {
   id: string; actor_user_id: string | null; action: string; resource: string;
@@ -41,7 +42,7 @@ export default function AuditoriaPage() {
   return (
     <section>
       <h1>Auditoría</h1>
-      <input placeholder="Filtrar por acción (p.ej. role.assign)" value={actionFilter}
+      <input style={controlStyle} placeholder="Filtrar por acción (p.ej. role.assign)" value={actionFilter}
              onChange={(e) => setActionFilter(e.target.value)} />
       {state.status === "empty" ? <Empty>No hay eventos de auditoría todavía.</Empty> : (
         <table>
