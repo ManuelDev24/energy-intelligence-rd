@@ -1,11 +1,14 @@
 // Ejecuta axe (WCAG 2.0/2.1/2.2 A y AA + buenas prácticas) y mide el desborde horizontal de la página actual.
 import fs from "node:fs";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 const AXE = fs.readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
 interface Violation { id: string; impact: string | null; help: string; nodes: Array<{ target: string[] }> }
 
 export async function axeProblems(page: Page, name: string): Promise<string[]> {
+  // Next puede pintar el contenido antes de restaurar el <title> tras navegación cliente.
+  // Un título que nunca aparece sigue fallando; no se omite ninguna regla de axe.
+  await expect(page).toHaveTitle(/\S/);
   await page.evaluate(AXE);
   const result = await page.evaluate(async () => {
     // @ts-expect-error axe lo inyecta la propia prueba
