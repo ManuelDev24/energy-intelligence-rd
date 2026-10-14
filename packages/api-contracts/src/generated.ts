@@ -790,6 +790,72 @@ export const DeviceRemoveInSchema = z.object({
 });
 export type DeviceRemoveIn = z.infer<typeof DeviceRemoveInSchema>;
 
+export const OverviewCopilotSchema = z.object({
+  "provider": z.enum(["disabled", "anthropic", "fake"]),
+  "messages_today": z.number().finite().int(),
+  "tokens_today": z.number().finite().int(),
+  "people_today": z.number().finite().int()
+});
+export type OverviewCopilot = z.infer<typeof OverviewCopilotSchema>;
+
+export const OverviewHealthSchema = z.object({
+  "database": z.literal("ok"),
+  "storage": z.string(),
+  "email": z.string(),
+  "error_tracking": z.enum(["configured", "not_configured"]),
+  "environment": z.string()
+});
+export type OverviewHealth = z.infer<typeof OverviewHealthSchema>;
+
+export const OverviewJobsSchema = z.object({
+  "queued": z.number().finite().int(),
+  "running": z.number().finite().int(),
+  "dead": z.number().finite().int(),
+  "oldest_wait_minutes": z.number().finite().int(),
+  "last_finished_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "worker_state": z.enum(["ok", "stalled"]),
+  "ocr_queued": z.number().finite().int(),
+  "ocr_running": z.number().finite().int(),
+  "ocr_dead": z.number().finite().int()
+});
+export type OverviewJobs = z.infer<typeof OverviewJobsSchema>;
+
+export const TrendPointSchema = z.object({
+  "day": z.string().date(),
+  "value": z.number().finite().int()
+});
+export type TrendPoint = z.infer<typeof TrendPointSchema>;
+
+export const OverviewTrendsSchema = z.object({
+  "new_users": z.array(TrendPointSchema),
+  "new_bills": z.array(TrendPointSchema),
+  "copilot_messages": z.array(TrendPointSchema)
+});
+export type OverviewTrends = z.infer<typeof OverviewTrendsSchema>;
+
+export const OverviewUsersSchema = z.object({
+  "total": z.number().finite().int(),
+  "verified": z.number().finite().int(),
+  "new_recent": z.number().finite().int(),
+  "active_sessions": z.number().finite().int()
+});
+export type OverviewUsers = z.infer<typeof OverviewUsersSchema>;
+
+export const AdminOverviewOutSchema = z.object({
+  "generated_at": z.string().datetime({ offset: true }),
+  "window_days": z.number().finite().int(),
+  "users": OverviewUsersSchema,
+  "homes": z.record(z.string(), z.number().finite().int()),
+  "bills": z.record(z.string(), z.number().finite().int()),
+  "alerts": z.record(z.string(), z.number().finite().int()),
+  "outages": z.record(z.string(), z.number().finite().int()),
+  "jobs": OverviewJobsSchema,
+  "copilot": OverviewCopilotSchema,
+  "health": OverviewHealthSchema,
+  "trends": OverviewTrendsSchema
+});
+export type AdminOverviewOut = z.infer<typeof AdminOverviewOutSchema>;
+
 export const AdminOcrJobOutSchema = z.object({
   "id": z.number().finite().int(),
   "document_id": z.string().uuid(),

@@ -2,18 +2,25 @@ from datetime import datetime
 from typing import Literal
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.api.admin_deps import current_admin, require_scope
 from app.database import get_db
-from app.schemas.admin import (AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
+from app.schemas.admin import (AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentsPage,
                                RoleAssignmentCreate, RoleAssignmentOut, RoleAssignmentRevoke, RoleOut, ScopeOut)
 from app.services import admin as admin_service
-from app.services import admin_ocr
+from app.services import admin_ocr, admin_overview
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get('/overview', response_model=AdminOverviewOut, dependencies=[Depends(require_scope('admin.system.read'))])
+def overview(response: Response, db: Session = Depends(get_db)):
+    """Resumen operativo: solo agregados (números y series diarias), nunca datos de un hogar concreto."""
+    response.headers["Cache-Control"] = "no-store"
+    return admin_overview.build(db)
 
 
 @router.get('/ocr/jobs', response_model=AdminOcrJobsPage,

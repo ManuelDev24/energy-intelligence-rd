@@ -386,3 +386,31 @@ def test_admin_endpoints_ignore_pilot_no_auth_mode(client, migrated):
     """Admin routes always require a real bearer token, even when AUTH_ENABLED=False
     (the household pilot's no-auth mode must never leak into the admin surface)."""
     assert client.get(f'{ADMIN}/me').status_code == 401
+
+
+def test_overview_requires_system_scope_and_returns_only_aggregates(auth_client, migrated):
+    from tests.test_auth import bearer, register
+    ops = bearer(register(auth_client, 'ops-overview@example.com'))
+    reviewer = bearer(register(auth_client, 'rev-overview@example.com'))
+    household = bearer(register(auth_client, 'casa-overview@example.com'))
+    _grant(migrated, 'ops-overview@example.com', 'operations_admin')
+    _grant(migrated, 'rev-overview@example.com', 'ocr_reviewer')
+    home = auth_client.post('/api/v1/homes', headers=household, json={'name': 'Casa Secreta Overview', 'distributor': 'EDESUR'}).json()['id']
+    assert auth_client.post(f'/api/v1/homes/{home}/bills', headers=household, json={
+        'period_start': '2026-09-01', 'period_end': '2026-09-30', 'kwh': '300', 'amount_dop': '3900', 'days': 30}).status_code == 201
+    assert auth_client.get('/api/v1/admin/overview').status_code == 401
+    assert auth_client.get('/api/v1/admin/overview', headers=household).status_code == 403
+    assert auth_client.get('/api/v1/admin/overview', headers=reviewer).status_code == 403  # tiene OCR pero no admin.system.read
+    r = auth_client.get('/api/v1/admin/overview', headers=ops)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert r.headers['cache-control'] == 'no-store'
+    assert body['homes']['total'] == 1 and body['bills']['total'] == 1 and body['bills']['recent'] == 1
+    assert body['users']['total'] == 3 and body['users']['active_sessions'] >= 3
+    assert len(body['trends']['new_bills']) == 14 and sum(p['value'] for p in body['trends']['new_bills']) == 1
+    assert body['jobs']['worker_state'] in ('ok', 'stalled') and body['health']['database'] == 'ok'
+    for forbidden in ('Casa Secreta', 'casa-overview@example.com', 'EDESUR', 'ops-overview@example.com', home):
+        assert forbidden not in r.text
+    # Consultar el resumen deja constancia en la auditoría (como cualquier ruta administrativa).
+    with migrated.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM admin_audit_events WHERE scope_used='admin.system.read' AND result='success'")).scalar_one() >= 1
