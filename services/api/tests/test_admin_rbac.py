@@ -414,3 +414,40 @@ def test_overview_requires_system_scope_and_returns_only_aggregates(auth_client,
     # Consultar el resumen deja constancia en la auditoría (como cualquier ruta administrativa).
     with migrated.connect() as c:
         assert c.execute(text("SELECT count(*) FROM admin_audit_events WHERE scope_used='admin.system.read' AND result='success'")).scalar_one() >= 1
+
+
+def test_admin_users_read_only_search_audit_and_no_secrets(auth_client, migrated):
+    from tests.test_auth import bearer, register
+    support = bearer(register(auth_client, 'soporte-users@example.com'))
+    reviewer = bearer(register(auth_client, 'rev-users@example.com'))
+    alice = bearer(register(auth_client, 'alicia.busqueda@example.com'))
+    register(auth_client, 'bruno.otro@example.com')
+    _grant(migrated, 'soporte-users@example.com', 'support_readonly')
+    _grant(migrated, 'rev-users@example.com', 'ocr_reviewer')
+    auth_client.post('/api/v1/homes', headers=alice, json={'name': 'Casa Secreta Users', 'distributor': 'EDESUR'})
+    assert auth_client.get('/api/v1/admin/users').status_code == 401
+    assert auth_client.get('/api/v1/admin/users', headers=alice).status_code == 403
+    assert auth_client.get('/api/v1/admin/users', headers=reviewer).status_code == 403
+    assert auth_client.get('/api/v1/admin/users?q=ab', headers=support).status_code == 422  # demasiado corto
+    r = auth_client.get('/api/v1/admin/users?q=busqueda', headers=support)
+    assert r.status_code == 200, r.text
+    page = r.json()
+    assert page['total'] == 1 and page['items'][0]['email'] == 'alicia.busqueda@example.com'
+    assert page['items'][0]['homes'] == 1 and page['items'][0]['active_sessions'] >= 1 and page['items'][0]['email_verified'] is False
+    assert r.headers['cache-control'] == 'no-store'
+    assert auth_client.get('/api/v1/admin/users?q=%25%25%25', headers=support).json()['total'] == 0  # el comodín se escapa
+    assert auth_client.get('/api/v1/admin/users?verified=true', headers=support).json()['total'] == 0
+    assert auth_client.get('/api/v1/admin/users?limit=2', headers=support).json()['total'] == 4
+    detail = auth_client.get(f"/api/v1/admin/users/{page['items'][0]['id']}", headers=support)
+    assert detail.status_code == 200 and detail.json()['terms_version'] and detail.json()['role'] == 'user'
+    assert auth_client.get('/api/v1/admin/users/00000000-0000-4000-8000-000000000000', headers=support).status_code == 404
+    for body in (r.text, detail.text):
+        for forbidden in ('password', 'hash', 'token', 'casa secreta', 'edesur', 'argon2'):
+            assert forbidden not in body.lower(), forbidden
+    for method in ('post', 'put', 'patch', 'delete'):
+        assert getattr(auth_client, method)(f"/api/v1/admin/users/{page['items'][0]['id']}", headers=support).status_code in (404, 405)
+    with migrated.connect() as c:
+        events = c.execute(text("SELECT action, resource, metadata::text FROM admin_audit_events WHERE action IN ('users.search','users.view')")).all()
+    assert {e[0] for e in events} == {'users.search', 'users.view'}
+    assert any(e[0] == 'users.view' and e[1] == f"users:{page['items'][0]['id']}" for e in events)
+    assert all('busqueda' not in (e[2] or '') and 'alicia' not in (e[2] or '') for e in events)  # el término buscado no se guarda

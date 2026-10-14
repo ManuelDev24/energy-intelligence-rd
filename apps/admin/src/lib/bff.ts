@@ -55,12 +55,14 @@ function route(path: string, method: string, search: URLSearchParams) {
     '/role-assignments': ['GET', 'POST'], '/audit-events': ['GET'],
   };
   const ocrJobs = '/ocr/jobs';
-  const methods = simple[path] || (path === ocrJobs || /^\/ocr\/jobs\/[1-9][0-9]{0,18}$/.test(path) ? ['GET']
+  const users = '/users';
+  const methods = simple[path] || (path === users || new RegExp(`^/users/${uuid}$`).test(path) || path === ocrJobs || /^\/ocr\/jobs\/[1-9][0-9]{0,18}$/.test(path) ? ['GET']
     : new RegExp(`^/role-assignments/${uuid}/revoke$`).test(path) || /^\/ocr\/jobs\/[1-9][0-9]{0,18}\/(retry|cancel)$/.test(path)
       ? ['POST'] : []);
   if (!methods.includes(method)) return false;
   const allowed = path === '/audit-events' ? ['action', 'actor_user_id', 'result', 'limit', 'offset']
     : path === '/role-assignments' && method === 'GET' ? ['user_id', 'role_name', 'status', 'limit', 'offset']
+      : path === users ? ['q', 'verified', 'limit', 'offset']
       : path === ocrJobs ? ['status', 'error_code', 'min_attempts', 'created_from', 'created_to', 'limit', 'offset'] : [];
   return [...search.keys()].every(key => allowed.includes(key) && search.getAll(key).length === 1 && (search.get(key)?.length || 0) <= 120);
 }

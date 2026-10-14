@@ -790,6 +790,41 @@ export const DeviceRemoveInSchema = z.object({
 });
 export type DeviceRemoveIn = z.infer<typeof DeviceRemoveInSchema>;
 
+export const AdminUserDetailOutSchema = z.object({
+  "id": z.string().uuid(),
+  "email": z.string(),
+  "email_verified": z.boolean(),
+  "active": z.boolean(),
+  "created_at": z.string().datetime({ offset: true }),
+  "active_sessions": z.number().finite().int(),
+  "homes": z.number().finite().int(),
+  "admin_roles": z.array(z.string()),
+  "role": z.string(),
+  "terms_version": z.union([z.string(), z.null()]),
+  "terms_accepted_at": z.union([z.string().datetime({ offset: true }), z.null()])
+});
+export type AdminUserDetailOut = z.infer<typeof AdminUserDetailOutSchema>;
+
+export const AdminUserOutSchema = z.object({
+  "id": z.string().uuid(),
+  "email": z.string(),
+  "email_verified": z.boolean(),
+  "active": z.boolean(),
+  "created_at": z.string().datetime({ offset: true }),
+  "active_sessions": z.number().finite().int(),
+  "homes": z.number().finite().int(),
+  "admin_roles": z.array(z.string())
+});
+export type AdminUserOut = z.infer<typeof AdminUserOutSchema>;
+
+export const AdminUsersPageSchema = z.object({
+  "items": z.array(AdminUserOutSchema),
+  "total": z.number().finite().int(),
+  "limit": z.number().finite().int(),
+  "offset": z.number().finite().int()
+});
+export type AdminUsersPage = z.infer<typeof AdminUsersPageSchema>;
+
 export const OverviewCopilotSchema = z.object({
   "provider": z.enum(["disabled", "anthropic", "fake"]),
   "messages_today": z.number().finite().int(),

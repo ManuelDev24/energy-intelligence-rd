@@ -216,3 +216,28 @@ class AdminOverviewOut(BaseModel):
     copilot: OverviewCopilot
     health: OverviewHealth
     trends: OverviewTrends
+
+
+class AdminUserOut(BaseModel):
+    """Solo lectura. Sin contraseña, hash, tokens ni documentos; las viviendas son un conteo, no una lista."""
+    id: uuid.UUID
+    email: str
+    email_verified: bool
+    active: bool
+    created_at: datetime
+    active_sessions: int
+    homes: int
+    admin_roles: list[str]
+
+
+class AdminUserDetailOut(AdminUserOut):
+    role: str
+    terms_version: str | None
+    terms_accepted_at: datetime | None
+
+
+class AdminUsersPage(BaseModel):
+    items: list[AdminUserOut]
+    total: int
+    limit: int
+    offset: int

@@ -149,4 +149,19 @@ describe("admin BFF", () => {
     }
     expect(upstream).toHaveBeenCalledTimes(1);
   });
+
+  it("proxies only read-only user lookups with the declared filters", async () => {
+    cookies(await call("/session"));
+    cookies(await call("/auth/login", "POST", { email: "a@example.com", password: "secret" }));
+    upstream.mockClear();
+    upstream.mockImplementation(async () => Response.json({ items: [], total: 0, limit: 25, offset: 0 }));
+    expect((await call("/proxy/users?q=alicia&verified=true&limit=25&offset=0")).status).toBe(200);
+    expect((await call("/proxy/users/11111111-1111-4111-8111-111111111111")).status).toBe(200);
+    expect(upstream).toHaveBeenCalledTimes(2);
+    for (const [path, method] of [["/proxy/users?password=x", "GET"], ["/proxy/users?q=a&q=b", "GET"], ["/proxy/users/abc", "GET"],
+      ["/proxy/users", "POST"], ["/proxy/users/11111111-1111-4111-8111-111111111111", "DELETE"], ["/proxy/users/11111111-1111-4111-8111-111111111111/sessions", "GET"]] as const) {
+      expect((await call(path, method, method === "GET" ? undefined : {})).status, `${method} ${path}`).toBe(404);
+    }
+    expect(upstream).toHaveBeenCalledTimes(2);
+  });
 });
