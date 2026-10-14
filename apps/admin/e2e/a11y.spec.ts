@@ -32,16 +32,21 @@ async function problems(page: Page, name: string, width: number): Promise<string
 }
 
 test('páginas protegidas del admin: sin violaciones de axe ni desborde a 360, 768 y 1280 px', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   await login(page, admin);
   const found: string[] = [];
   for (const [width, height] of WIDTHS) {
     await page.setViewportSize({ width, height });
-    for (const [name, path, heading] of [['mi-acceso', '/mi-acceso', 'Mi acceso'], ['roles', '/roles', 'Roles y asignaciones'], ['auditoria', '/auditoria', 'Auditoría']] as const) {
+    for (const [name, path, heading] of [['mi-acceso', '/mi-acceso', 'Mi acceso'], ['roles', '/roles', 'Roles y asignaciones'],
+      ['auditoria', '/auditoria', 'Auditoría'], ['ocr', '/ocr', 'Trabajos OCR']] as const) {
       await page.goto(path);
       await expect(page.getByRole('heading', { name: new RegExp(heading) }).first()).toBeVisible();
       found.push(...(await problems(page, name, width)));
     }
+    // Detalle con el formulario de cancelación visible (trabajo en cola sembrado por e2e/db.py).
+    await page.getByRole('row').filter({ hasText: 'En cola' }).getByRole('link').click();
+    await expect(page.getByRole('form', { name: 'Cancelar trabajo' })).toBeVisible();
+    found.push(...(await problems(page, 'ocr-detalle', width)));
   }
   expect(found, found.join('\n')).toEqual([]);
 });

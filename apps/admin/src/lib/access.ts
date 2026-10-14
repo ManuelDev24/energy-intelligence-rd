@@ -15,6 +15,7 @@ export function isAdmin(access: MyAccess | null): boolean {
 export const NAV_ITEMS = [
   { href: "/mi-acceso", label: "Mi acceso", scope: null as string | null },
   { href: "/roles", label: "Roles y asignaciones", scope: "admin.roles.read" },
+  { href: "/ocr", label: "OCR", scope: "admin.ocr.read" },
   { href: "/auditoria", label: "Auditoría", scope: "admin.audit.read" },
 ] as const;
 

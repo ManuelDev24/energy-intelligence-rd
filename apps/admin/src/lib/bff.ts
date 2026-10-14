@@ -37,7 +37,7 @@ function reply(body: unknown, status = 200) {
 function fail(status: number) {
   const messages: Record<number, string> = {
     400: 'Solicitud inválida.', 401: 'Sesión no válida.', 403: 'No tienes permiso para esta operación.',
-    404: 'Ruta no disponible.', 413: 'Solicitud demasiado grande.', 415: 'Se requiere JSON.',
+    404: 'Ruta no disponible.', 409: 'La operación no es válida en el estado actual.', 413: 'Solicitud demasiado grande.', 415: 'Se requiere JSON.',
     422: 'Revisa los datos enviados.', 429: 'Demasiadas solicitudes.', 502: 'Servicio no disponible.',
   };
   return reply({ error: messages[status] || 'No se pudo completar la operación.' }, status);
@@ -54,10 +54,14 @@ function route(path: string, method: string, search: URLSearchParams) {
     '/me': ['GET'], '/roles': ['GET'], '/scopes': ['GET'],
     '/role-assignments': ['GET', 'POST'], '/audit-events': ['GET'],
   };
-  const methods = simple[path] || (new RegExp(`^/role-assignments/${uuid}/revoke$`).test(path) ? ['POST'] : []);
+  const ocrJobs = '/ocr/jobs';
+  const methods = simple[path] || (path === ocrJobs || /^\/ocr\/jobs\/[1-9][0-9]{0,18}$/.test(path) ? ['GET']
+    : new RegExp(`^/role-assignments/${uuid}/revoke$`).test(path) || /^\/ocr\/jobs\/[1-9][0-9]{0,18}\/(retry|cancel)$/.test(path)
+      ? ['POST'] : []);
   if (!methods.includes(method)) return false;
   const allowed = path === '/audit-events' ? ['action', 'actor_user_id', 'result', 'limit', 'offset']
-    : path === '/role-assignments' && method === 'GET' ? ['user_id', 'role_name', 'status', 'limit', 'offset'] : [];
+    : path === '/role-assignments' && method === 'GET' ? ['user_id', 'role_name', 'status', 'limit', 'offset']
+      : path === ocrJobs ? ['status', 'error_code', 'min_attempts', 'created_from', 'created_to', 'limit', 'offset'] : [];
   return [...search.keys()].every(key => allowed.includes(key) && search.getAll(key).length === 1 && (search.get(key)?.length || 0) <= 120);
 }
 function setTokens(response: NextResponse, config: AdminBffConfig, epoch: string, body: unknown) {
@@ -132,7 +136,7 @@ export async function handleAdminBff(request: Request, config: AdminBffConfig): 
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   if (!result) return fail(502);
-  if (!result.ok) return fail([400, 401, 403, 404, 422, 429].includes(result.status) ? result.status : 502);
+  if (!result.ok) return fail([400, 401, 403, 404, 409, 422, 429].includes(result.status) ? result.status : 502);
   if (result.status === 204) return new NextResponse(null, { status: 204, headers: { 'Cache-Control': 'private, no-store', Vary: 'Cookie' } });
   try { return reply(await result.json()); } catch { return fail(502); }
 }

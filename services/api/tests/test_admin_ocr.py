@@ -241,3 +241,50 @@ def test_late_completion_fenced_after_retry(auth_client, migrated, monkeypatch):
         assert ocr_jobs.process(db, doc, attempt=1, max_attempts=3, generation=0) == 'skipped'
         state = db.execute(text('SELECT status,generation FROM document_ocr WHERE document_id=:d'), {'d':doc}).one()
         assert state == ('pending',1)
+
+
+def test_filters_by_error_attempts_and_dates(auth_client, migrated):
+    a = actors(auth_client, migrated)
+    _, engine = seeded(migrated, state='failed', job_status='dead', error_code='engine_error')
+    _, unreadable = seeded(migrated, state='failed', job_status='succeeded', error_code='unreadable')
+    _, queued = seeded(migrated, state='pending', job_status='queued')
+    with migrated.begin() as c:
+        c.execute(text("UPDATE jobs SET attempts=3 WHERE id=:i"), {'i': engine})
+        c.execute(text("UPDATE jobs SET created_at=now()-interval '10 days' WHERE id=:i"), {'i': queued})
+
+    def ids(query):
+        r = auth_client.get(ROOT + '/jobs' + query, headers=a['ocr_reviewer'])
+        assert r.status_code == 200, r.text
+        return {item['id'] for item in r.json()['items']}, r.json()['total']
+
+    assert ids('?error_code=engine_error') == ({engine}, 1)
+    assert ids('?error_code=unreadable') == ({unreadable}, 1)
+    assert ids('?min_attempts=2') == ({engine}, 1)
+    since = (now() - timedelta(days=2)).isoformat().replace('+00:00', 'Z')
+    assert ids(f'?created_from={since}') == ({engine, unreadable}, 2)
+    assert ids(f'?created_to={since}') == ({queued}, 1)
+    assert ids('?status=dead_letter&min_attempts=3') == ({engine}, 1)
+    for bad in ('?error_code=private', '?min_attempts=-1', '?created_from=ayer'):
+        assert auth_client.get(ROOT + '/jobs' + bad, headers=a['ocr_reviewer']).status_code == 422
+
+
+def test_detail_metadata_and_operation_history_without_content(auth_client, migrated):
+    a = actors(auth_client, migrated)
+    _, jid = seeded(migrated, state='failed', job_status='dead', error_code='engine_error')
+    r = auth_client.get(f'{ROOT}/jobs/{jid}', headers=a['ocr_reviewer'])
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body['document_kind'] == 'bill_photo' and body['document_content_type'] == 'image/jpeg'
+    assert body['document_size_bytes'] == 100 and body['uploaded_via'] == 'api'
+    assert body['attached_to_bill'] is False and body['history'] == []
+    retry = auth_client.post(f'{ROOT}/jobs/{jid}/retry', headers=a['operations_admin'], json={'reason': 'Revisar motor'})
+    assert retry.status_code == 200 and retry.json()['generation'] == 1
+    assert [h['action'] for h in retry.json()['history']] == ['ocr.retry']
+    cancel = auth_client.post(f'{ROOT}/jobs/{jid}/cancel', headers=a['ocr_reviewer'], json={'reason': 'Detener operación'})
+    assert cancel.status_code == 200, cancel.text
+    history = cancel.json()['history']
+    assert [h['action'] for h in history] == ['ocr.cancel', 'ocr.retry']
+    assert [h['reason'] for h in history] == ['Detener operación', 'Revisar motor']
+    assert all(h['result'] == 'success' for h in history)
+    for forbidden in ('private', 'storage_key', 'draft', 'last_error', 'email', 'home_id', 'sha256', 'actor_user_id'):
+        assert forbidden not in cancel.text

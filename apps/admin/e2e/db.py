@@ -7,6 +7,28 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
 NAME = "energy_rd_admin_e2e_test"
+OCR_KIND = "ocr.process"  # app/services/ocr/jobs.py
+# Synthetic OCR queue for the console: (document_ocr status, error, job status, attempts, max_attempts).
+OCR_CASES = [("failed", "engine_error", "dead", 3, 3), ("pending", None, "queued", 0, 3),
+             ("failed", "unreadable", "succeeded", 1, 3)]
+
+
+def seed_ocr(conn):
+    """Never real data: one synthetic home and documents that only exist as rows (storage is disabled here)."""
+    home = conn.scalar(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'Vivienda sintética E2E','EDESUR') RETURNING id"))
+    for index, (state, error, job_status, attempts, max_attempts) in enumerate(OCR_CASES):
+        doc = conn.scalar(text(
+            "INSERT INTO documents(id,home_id,kind,content_type,size_bytes,sha256,storage_key,uploaded_via,retention_until) "
+            "VALUES(gen_random_uuid(),:home,'bill_photo','image/jpeg',2048,:sha,gen_random_uuid()::text,'web',now()+interval '7 days') RETURNING id"),
+            {"home": home, "sha": f"{index:x}" * 64})
+        conn.execute(text("INSERT INTO document_ocr(document_id,status,error_code,draft) VALUES(:d,:s,:e,NULL)"),
+                     {"d": doc, "s": state, "e": error})
+        conn.execute(text(
+            "INSERT INTO jobs(kind,payload,idempotency_key,status,attempts,max_attempts,last_error,finished_at) "
+            "VALUES(:kind,jsonb_build_object('document_id',CAST(:d AS text)),CAST(:d AS text),:status,:attempts,:max,"
+            "'synthetic engine failure',CASE WHEN CAST(:finished AS boolean) THEN now() END)"),
+            {"kind": OCR_KIND, "d": str(doc), "status": job_status, "attempts": attempts, "max": max_attempts,
+             "finished": job_status in ("succeeded", "dead")})
 
 
 def guarded_url():
@@ -37,6 +59,9 @@ def main(action):
                 cfg = Config(str(api_dir / "alembic.ini"))
                 cfg.set_main_option("sqlalchemy.url", url.render_as_string(hide_password=False).replace("%", "%%"))
                 command.upgrade(cfg, "head")
+            elif action == "seed-ocr":
+                with create_engine(url).begin() as db:
+                    seed_ocr(db)
             else:
                 raise RuntimeError("Unknown action")
     finally:
@@ -44,6 +69,6 @@ def main(action):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2 or sys.argv[1] not in ("create", "migrate", "drop"):
-        raise SystemExit("Expected create, migrate or drop")
+    if len(sys.argv) != 2 or sys.argv[1] not in ("create", "migrate", "seed-ocr", "drop"):
+        raise SystemExit("Expected create, migrate, seed-ocr or drop")
     main(sys.argv[1])

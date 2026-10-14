@@ -89,6 +89,7 @@ try {
   await portFree(apiPort); await portFree(adminPort);
   db('create'); databaseCreated = true;
   db('migrate');
+  db('seed-ocr');
   const api = start('uv', ['run', '--frozen', 'uvicorn', 'app.main:app', '--host', '127.0.0.1',
     '--port', String(apiPort), '--no-proxy-headers'], apiDir);
   await ready(`${apiUrl}/health`, api);
@@ -106,7 +107,7 @@ try {
   await ready(`${adminUrl}/login`, web);
   // Next dev compiles each route lazily on first hit; pre-warm every route the spec visits
   // so the FIRST real request in a test isn't also paying first-compile latency.
-  for (const route of ['/', '/mi-acceso', '/roles', '/auditoria']) {
+  for (const route of ['/', '/mi-acceso', '/roles', '/auditoria', '/ocr', '/ocr/1']) {
     await fetch(`${adminUrl}${route}`, { redirect: 'manual' }).catch(() => undefined);
   }
   await fetch(`${adminUrl}/api/admin/session`).catch(() => undefined);

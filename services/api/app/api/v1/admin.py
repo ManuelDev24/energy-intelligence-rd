@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 import uuid
 
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.admin_deps import current_admin, require_scope
 from app.database import get_db
-from app.schemas.admin import (AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
+from app.schemas.admin import (AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentsPage,
                                RoleAssignmentCreate, RoleAssignmentOut, RoleAssignmentRevoke, RoleOut, ScopeOut)
 from app.services import admin as admin_service
@@ -19,19 +20,23 @@ router = APIRouter(prefix="/admin", tags=["admin"])
             dependencies=[Depends(require_scope('admin.ocr.read'))])
 def list_ocr_jobs(status: Literal['queued', 'processing', 'completed', 'failed_retryable',
                                   'failed_permanent', 'dead_letter', 'cancelled'] | None = None,
+                  error_code: Literal['unreadable', 'protected_pdf', 'file_missing', 'engine_error'] | None = None,
+                  min_attempts: int | None = Query(None, ge=0, le=100),
+                  created_from: datetime | None = None, created_to: datetime | None = None,
                   limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0),
                   db: Session = Depends(get_db)):
-    items, total = admin_ocr.list_jobs(db, status=status, limit=limit, offset=offset)
+    items, total = admin_ocr.list_jobs(db, status=status, error_code=error_code, min_attempts=min_attempts,
+                                       created_from=created_from, created_to=created_to, limit=limit, offset=offset)
     return AdminOcrJobsPage(items=items, total=total, limit=limit, offset=offset)
 
 
-@router.get('/ocr/jobs/{job_id}', response_model=AdminOcrJobOut,
+@router.get('/ocr/jobs/{job_id}', response_model=AdminOcrJobDetailOut,
             dependencies=[Depends(require_scope('admin.ocr.read'))])
 def detail_ocr_job(job_id: int, db: Session = Depends(get_db)):
     return admin_ocr.detail(db, job_id)
 
 
-@router.post('/ocr/jobs/{job_id}/retry', response_model=AdminOcrJobOut,
+@router.post('/ocr/jobs/{job_id}/retry', response_model=AdminOcrJobDetailOut,
              dependencies=[Depends(require_scope('admin.ocr.retry'))])
 def retry_ocr_job(job_id: int, payload: OcrOperationReason, request: Request,
                   user=Depends(current_admin), db: Session = Depends(get_db)):
@@ -39,7 +44,7 @@ def retry_ocr_job(job_id: int, payload: OcrOperationReason, request: Request,
                            request_id=getattr(request.state, 'request_id', None))
 
 
-@router.post('/ocr/jobs/{job_id}/cancel', response_model=AdminOcrJobOut,
+@router.post('/ocr/jobs/{job_id}/cancel', response_model=AdminOcrJobDetailOut,
              dependencies=[Depends(require_scope('admin.ocr.review'))])
 def cancel_ocr_job(job_id: int, payload: OcrOperationReason, request: Request,
                    user=Depends(current_admin), db: Session = Depends(get_db)):

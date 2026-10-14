@@ -9,7 +9,7 @@ apps/web ──────┬──► @energyrd/core            (35)
 apps/mobile ───┬──► @energyrd/core            (40)
                ├──► @energyrd/api-client      (20)
                └──► @energyrd/api-contracts   (25)
-apps/admin  ──► (ningún paquete compartido: consola mínima y aislada a propósito)
+apps/admin  ──► @energyrd/core            (1: vocabulario OCR; sin cliente HTTP ni contratos, habla solo con su BFF)
 
 @energyrd/core          ──► @energyrd/api-contracts  (5, solo tipos)
 @energyrd/api-client    ──► @energyrd/api-contracts  (1)
@@ -33,6 +33,7 @@ el 2026-10-13 (`shares_pct` → `calculations.py`).
 | Tokens de marca (`tokens.ts`) | Una paleta: Tailwind (web) y `theme.ts` (móvil) la derivan de aquí. |
 | Formato, calidad del dato, tendencias, gráficas | Lógica sin DOM ni React Native. |
 | Hora de República Dominicana (`rdTime.ts`) | Antes había tres copias (web, móvil, apagones). |
+| Vocabulario OCR (`ocr.ts`) | Nació en el móvil; método/páginas, confianza y qué error se reintenta, para móvil, web y admin. |
 | Reglas de validación de entrada y de rango | La API sigue siendo la autoridad; esto da feedback inmediato. |
 | Cliente HTTP, errores y paginación (`api-client`), contratos (`api-contracts`) | Una sola forma de hablar con la API. |
 
@@ -43,7 +44,7 @@ el 2026-10-13 (`shares_pct` → `calculations.py`).
 | Componentes visuales web (DOM + Tailwind) y móvil (React Native + `StyleSheet`) | No son compartibles. `UI_KIT.md` descartó `packages/ui`. La paridad se mantiene por nombres, props y pruebas. |
 | Tamaños de control (36/44 px web, 44 pt móvil) | Cada plataforma sigue su convención táctil (ver `UI_DENSITY.md`). |
 | Navegación, almacenamiento seguro, permisos y notificaciones | Capacidades nativas distintas. |
-| `apps/admin` sin kit | Consola provisional; adoptará el kit con el Módulo 4. |
+| `apps/admin` sin kit visual | Consola provisional con estilos en línea; adoptará un kit con el Módulo 4. Ya comparte el vocabulario OCR de `core`. |
 
 ## Objetivos del prompt que NO se adoptaron, y por qué
 

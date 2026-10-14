@@ -112,4 +112,28 @@ describe("admin BFF", () => {
     expect(denied.headers.get("cache-control")).toContain("no-store");
     expect(upstream).toHaveBeenLastCalledWith(`${config.apiBase}/api/v1/admin/roles`, expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer access.token" }) }));
   });
+
+  it("proxies only the OCR routes and filters the API defines, and keeps 409 as a 409", async () => {
+    cookies(await call("/session"));
+    cookies(await call("/auth/login", "POST", { email: "a@example.com", password: "secret" }));
+    upstream.mockClear();
+    upstream.mockImplementation(async () => Response.json({ items: [], total: 0, limit: 25, offset: 0 }));
+    expect((await call("/proxy/ocr/jobs?status=dead_letter&error_code=engine_error&min_attempts=2&created_from=2026-10-01T04%3A00%3A00.000Z&limit=25&offset=0")).status).toBe(200);
+    expect((await call("/proxy/ocr/jobs/42")).status).toBe(200);
+    expect(upstream).toHaveBeenCalledTimes(2);
+    for (const [path, method] of [["/proxy/ocr/jobs?home_id=x", "GET"], ["/proxy/ocr/jobs?status=a&status=b", "GET"],
+      ["/proxy/ocr/jobs/0", "GET"], ["/proxy/ocr/jobs/abc", "GET"], ["/proxy/ocr/jobs/42/content", "GET"],
+      ["/proxy/ocr/jobs/42/retry", "GET"], ["/proxy/ocr/jobs/42/confirm", "POST"], ["/proxy/ocr/jobs", "POST"]] as const) {
+      expect((await call(path, method, method === "POST" ? { reason: "x" } : undefined)).status, path).toBe(404);
+    }
+    expect(upstream).toHaveBeenCalledTimes(2);
+    upstream.mockResolvedValueOnce(Response.json({ detail: "El trabajo no admite reintento manual" }, { status: 409 }));
+    const conflict = await call("/proxy/ocr/jobs/42/retry", "POST", { reason: "Revisar motor" });
+    expect(conflict.status).toBe(409);
+    expect(await conflict.json()).toEqual({ error: "La operación no es válida en el estado actual." });
+    expect(upstream).toHaveBeenLastCalledWith(`${config.apiBase}/api/v1/admin/ocr/jobs/42/retry`,
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ reason: "Revisar motor" }) }));
+    upstream.mockResolvedValueOnce(Response.json({}, { status: 200 }));
+    expect((await call("/proxy/ocr/jobs/42/cancel", "POST", { reason: "Detener" })).status).toBe(200);
+  });
 });
