@@ -4,7 +4,7 @@ export class ApiError extends Error {
 }
 const messages: Record<number, string> = {
   400: "Solicitud inválida.", 401: "Sesión no válida.", 403: "No tienes permiso para esta operación.",
-  404: "Ruta no disponible.", 422: "Revisa los datos enviados.", 429: "Demasiadas solicitudes.",
+  404: "Ruta no disponible.", 409: "La operación no es válida en el estado actual.", 422: "Revisa los datos enviados.", 429: "Demasiadas solicitudes.",
 };
 export async function bffFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);

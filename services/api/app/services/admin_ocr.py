@@ -1,10 +1,11 @@
 """Admin OCR operations over the existing queue; never return OCR content or raw errors."""
 from datetime import timedelta
 
-from sqlalchemy import cast, func, select, String
+from sqlalchemy import case, cast, func, select, String
 from sqlalchemy.orm import Session
 
 from app import rls
+from app.models.admin import AdminAuditEvent
 from app.models.document import Document, DocumentOcr
 from app.models.job import Job
 from app.services import admin
@@ -14,6 +15,9 @@ from app.services.ocr.jobs import KIND
 from app.services.transactions import write_transaction
 
 PERMANENT = frozenset({'unreadable', 'protected_pdf', 'file_missing'})
+PUBLIC_ERRORS = PERMANENT | {'engine_error'}
+HISTORY_ACTIONS = ('ocr.retry', 'ocr.cancel')
+HISTORY_LIMIT = 50
 
 
 def _status(job, state):
@@ -40,7 +44,21 @@ def _projection(job, state):
     return {'id': job.id, 'document_id': state.document_id, 'status': _status(job, state),
             'attempts': job.attempts, 'max_attempts': job.max_attempts, 'run_at': job.run_at,
             'created_at': job.created_at, 'finished_at': job.finished_at,
-            'error_code': state.error_code if state.error_code in PERMANENT | {'engine_error'} else None}
+            'error_code': state.error_code if state.error_code in PUBLIC_ERRORS else None}
+
+
+def _detail(db, job, state, document):
+    """Metadatos operativos del trabajo y del archivo; nunca el borrador, el texto ni el error crudo."""
+    history = db.scalars(select(AdminAuditEvent).where(AdminAuditEvent.resource == f'jobs:{job.id}',
+                                                      AdminAuditEvent.action.in_(HISTORY_ACTIONS))
+                         .order_by(AdminAuditEvent.created_at.desc()).limit(HISTORY_LIMIT)).all()
+    return {**_projection(job, state), 'generation': job.generation, 'started_at': job.started_at,
+            'engine': state.engine, 'method': state.method, 'pages_read': state.pages_read,
+            'pages_total': state.pages_total, 'document_kind': document.kind,
+            'document_content_type': document.content_type, 'document_size_bytes': document.size_bytes,
+            'uploaded_via': document.uploaded_via, 'attached_to_bill': document.bill_id is not None,
+            'history': [{'action': e.action, 'result': e.result, 'reason': e.reason, 'created_at': e.created_at}
+                        for e in history]}
 
 
 def _query():
@@ -48,12 +66,20 @@ def _query():
             .join(Document, Document.id == DocumentOcr.document_id).where(Job.kind == KIND))
 
 
-def list_jobs(db: Session, *, status=None, limit=50, offset=0):
+def list_jobs(db: Session, *, status=None, error_code=None, min_attempts=None, created_from=None,
+              created_to=None, limit=50, offset=0):
     rls.enable_admin_ocr(db)
     query = _query()
     # Filtering the projection BEFORE limit/count is necessary for stable pagination.
+    if error_code is not None:
+        query = query.where(DocumentOcr.error_code == error_code)
+    if min_attempts is not None:
+        query = query.where(Job.attempts >= min_attempts)
+    if created_from is not None:
+        query = query.where(Job.created_at >= created_from)
+    if created_to is not None:
+        query = query.where(Job.created_at < created_to)
     if status is not None:
-        from sqlalchemy import case
         effective = case(
             ((Job.status == 'cancelled') | (DocumentOcr.status == 'cancelled'), 'cancelled'),
             (DocumentOcr.status == 'done', 'completed'),
@@ -72,10 +98,10 @@ def list_jobs(db: Session, *, status=None, limit=50, offset=0):
 
 def detail(db: Session, job_id):
     rls.enable_admin_ocr(db)
-    row = db.execute(_query().where(Job.id == job_id)).first()
+    row = db.execute(_query().add_columns(Document).where(Job.id == job_id)).first()
     if row is None:
         raise NotFound('Trabajo OCR no encontrado')
-    return _projection(*row)
+    return _detail(db, *row)
 
 
 def _locked(db, job_id):
@@ -111,7 +137,7 @@ def retry(db: Session, job_id, *, reason, actor_user_id, request_id):
         admin.record_audit(db, actor_user_id=actor_user_id, action='ocr.retry', resource=f'jobs:{job.id}',
                            scope_used='admin.ocr.retry', reason=reason, result='success', request_id=request_id,
                            metadata={'job_id': job.id, 'generation': generation})
-    return _projection(job, state)
+    return detail(db, job_id)
 
 
 def cancel(db: Session, job_id, *, reason, actor_user_id, request_id):
@@ -128,4 +154,4 @@ def cancel(db: Session, job_id, *, reason, actor_user_id, request_id):
         admin.record_audit(db, actor_user_id=actor_user_id, action='ocr.cancel', resource=f'jobs:{job.id}',
                            scope_used='admin.ocr.review', reason=reason, result='success', request_id=request_id,
                            metadata={'job_id': job.id, 'generation': job.generation})
-    return _projection(job, state)
+    return detail(db, job_id)

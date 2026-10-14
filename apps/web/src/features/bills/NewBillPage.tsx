@@ -1,6 +1,6 @@
 "use client";
 
-import { suggestNextPeriod } from "@energyrd/core";
+import { isTransientOcrError, ocrSourceText, suggestNextPeriod } from "@energyrd/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { isOcrActive } from "@energyrd/api-contracts";
@@ -15,7 +15,6 @@ import { userMessage } from "@/lib/api/errors";
 import { useSession } from "@/lib/session";
 
 const confidenceLabel = { high: "Alta", inferred: "Inferida", none: "No detectada" } as const;
-const methodLabel = { text_layer: "Leído del texto del PDF", ocr: "Leído con reconocimiento óptico (OCR)", mixed: "Leído del texto del PDF y con OCR" } as const;
 
 export default function NewBillPage() {
   const router = useRouter();
@@ -88,7 +87,7 @@ export default function NewBillPage() {
           <div role="alert" className="mt-3 text-sm text-danger">
             <p>{ocrErrorText(job?.error_code)}</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {job?.error_code === "engine_error" ? (
+              {isTransientOcrError(job?.error_code) ? (
                 <Button type="button" variant="outline" onClick={() => ocr.retry.mutate()} disabled={ocr.retry.isPending}>Reintentar</Button>
               ) : null}
               <Button type="button" variant="outline" onClick={() => setManual(true)}>Registrar manualmente</Button>
@@ -102,7 +101,7 @@ export default function NewBillPage() {
           <CardTitle>Revisa la sugerencia</CardTitle>
           <CardDescription>
             La lectura es una sugerencia. Revisa y corrige todos los campos antes de guardar la factura.
-            {job.method ? ` ${methodLabel[job.method]}${job.pages_total && job.pages_total > 1 ? ` (${job.pages_read} de ${job.pages_total} páginas)` : ""}.` : ""}
+            {job.method ? ` ${ocrSourceText(job)}` : ""}
           </CardDescription>
           {draft.warnings.length > 0 ? (
             <div role="alert" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
