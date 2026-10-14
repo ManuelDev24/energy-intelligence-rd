@@ -51,7 +51,7 @@ async function jsonBody(request: Request) {
 }
 function route(path: string, method: string, search: URLSearchParams) {
   const simple: Record<string, string[]> = {
-    '/me': ['GET'], '/roles': ['GET'], '/scopes': ['GET'],
+    '/me': ['GET'], '/roles': ['GET'], '/scopes': ['GET'], '/overview': ['GET'],
     '/role-assignments': ['GET', 'POST'], '/audit-events': ['GET'],
   };
   const ocrJobs = '/ocr/jobs';

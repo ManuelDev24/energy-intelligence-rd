@@ -329,6 +329,78 @@
         "title": "AdminOcrJobsPage",
         "type": "object"
       },
+      "AdminOverviewOut": {
+        "description": "Solo agregados: ning\u00fan correo, vivienda ni documento de ninguna persona.",
+        "properties": {
+          "alerts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Alerts",
+            "type": "object"
+          },
+          "bills": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Bills",
+            "type": "object"
+          },
+          "copilot": {
+            "$ref": "#/components/schemas/OverviewCopilot"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "health": {
+            "$ref": "#/components/schemas/OverviewHealth"
+          },
+          "homes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Homes",
+            "type": "object"
+          },
+          "jobs": {
+            "$ref": "#/components/schemas/OverviewJobs"
+          },
+          "outages": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Outages",
+            "type": "object"
+          },
+          "trends": {
+            "$ref": "#/components/schemas/OverviewTrends"
+          },
+          "users": {
+            "$ref": "#/components/schemas/OverviewUsers"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generated_at",
+          "window_days",
+          "users",
+          "homes",
+          "bills",
+          "alerts",
+          "outages",
+          "jobs",
+          "copilot",
+          "health",
+          "trends"
+        ],
+        "title": "AdminOverviewOut",
+        "type": "object"
+      },
       "AlertRecord": {
         "properties": {
           "anomaly_id": {
@@ -4889,6 +4961,202 @@
         "title": "OutageTotals",
         "type": "object"
       },
+      "OverviewCopilot": {
+        "properties": {
+          "messages_today": {
+            "title": "Messages Today",
+            "type": "integer"
+          },
+          "people_today": {
+            "title": "People Today",
+            "type": "integer"
+          },
+          "provider": {
+            "enum": [
+              "disabled",
+              "anthropic",
+              "fake"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "tokens_today": {
+            "title": "Tokens Today",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "messages_today",
+          "tokens_today",
+          "people_today"
+        ],
+        "title": "OverviewCopilot",
+        "type": "object"
+      },
+      "OverviewHealth": {
+        "properties": {
+          "database": {
+            "const": "ok",
+            "title": "Database",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "error_tracking": {
+            "enum": [
+              "configured",
+              "not_configured"
+            ],
+            "title": "Error Tracking",
+            "type": "string"
+          },
+          "storage": {
+            "title": "Storage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "database",
+          "storage",
+          "email",
+          "error_tracking",
+          "environment"
+        ],
+        "title": "OverviewHealth",
+        "type": "object"
+      },
+      "OverviewJobs": {
+        "properties": {
+          "dead": {
+            "title": "Dead",
+            "type": "integer"
+          },
+          "last_finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Finished At"
+          },
+          "ocr_dead": {
+            "title": "Ocr Dead",
+            "type": "integer"
+          },
+          "ocr_queued": {
+            "title": "Ocr Queued",
+            "type": "integer"
+          },
+          "ocr_running": {
+            "title": "Ocr Running",
+            "type": "integer"
+          },
+          "oldest_wait_minutes": {
+            "title": "Oldest Wait Minutes",
+            "type": "integer"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "running": {
+            "title": "Running",
+            "type": "integer"
+          },
+          "worker_state": {
+            "enum": [
+              "ok",
+              "stalled"
+            ],
+            "title": "Worker State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "queued",
+          "running",
+          "dead",
+          "oldest_wait_minutes",
+          "last_finished_at",
+          "worker_state",
+          "ocr_queued",
+          "ocr_running",
+          "ocr_dead"
+        ],
+        "title": "OverviewJobs",
+        "type": "object"
+      },
+      "OverviewTrends": {
+        "properties": {
+          "copilot_messages": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPoint"
+            },
+            "title": "Copilot Messages",
+            "type": "array"
+          },
+          "new_bills": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPoint"
+            },
+            "title": "New Bills",
+            "type": "array"
+          },
+          "new_users": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPoint"
+            },
+            "title": "New Users",
+            "type": "array"
+          }
+        },
+        "required": [
+          "new_users",
+          "new_bills",
+          "copilot_messages"
+        ],
+        "title": "OverviewTrends",
+        "type": "object"
+      },
+      "OverviewUsers": {
+        "properties": {
+          "active_sessions": {
+            "title": "Active Sessions",
+            "type": "integer"
+          },
+          "new_recent": {
+            "title": "New Recent",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "verified",
+          "new_recent",
+          "active_sessions"
+        ],
+        "title": "OverviewUsers",
+        "type": "object"
+      },
       "OwnershipTransferIn": {
         "additionalProperties": false,
         "description": "Reautentica con la contrase\u00f1a actual: ceder la propiedad es una acci\u00f3n de alto impacto.",
@@ -6099,6 +6367,25 @@
         "title": "TokensOut",
         "type": "object"
       },
+      "TrendPoint": {
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "value"
+        ],
+        "title": "TrendPoint",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "created_at": {
@@ -6694,6 +6981,33 @@
           }
         ],
         "summary": "Retry Ocr Job",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/overview": {
+      "get": {
+        "description": "Resumen operativo: solo agregados (n\u00fameros y series diarias), nunca datos de un hogar concreto.",
+        "operationId": "overview_api_v1_admin_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOverviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Overview",
         "tags": [
           "admin"
         ]
