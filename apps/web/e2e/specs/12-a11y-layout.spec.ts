@@ -1,28 +1,12 @@
 // ERD-QA-A11Y: accesibilidad (axe: WCAG 2.0/2.1/2.2 A y AA + buenas prácticas) y desborde horizontal en las páginas públicas
-// y en las 11 pantallas con sesión, a 360, 768 y 1280 px. Convierte en prueba permanente el barrido manual del cierre de UI/QA:
+// y en las 12 pantallas con sesión, a 360, 768 y 1280 px. Convierte en prueba permanente el barrido manual del cierre de UI/QA:
 // hallazgos como el desborde de Apagones a 768 px, las casillas de 16 px o las tablas con scroll sin teclado se habrían atrapado aquí.
-import fs from "node:fs";
-import type { Page } from "@playwright/test";
+import { axeProblems } from "../support/axe";
 import { addBill, addReading, bff, createHomeViaApi, expect, pickHome, registerViaApi, test } from "../support/test";
 
-const AXE = fs.readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
 const WIDTHS: Array<[number, number]> = [[360, 740], [768, 1024], [1280, 800]];
 const PUBLIC = ["login", "register", "olvide-contrasena", "restablecer-contrasena", "verificar-correo", "invitacion", "legal"];
-
-interface Violation { id: string; impact: string | null; help: string; nodes: Array<{ target: string[] }> }
-
-/** Ejecuta axe y mide el desborde horizontal; devuelve un texto por problema (vacío = sin problemas). */
-async function problems(page: Page, name: string): Promise<string[]> {
-  await page.evaluate(AXE);
-  const result = await page.evaluate(async () => {
-    // @ts-expect-error axe lo inyecta la propia prueba
-    const res = await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"] } });
-    return { violations: res.violations as Violation[], overflow: document.documentElement.scrollWidth - window.innerWidth };
-  });
-  const found = result.violations.map((v) => `${name}: ${v.id} (${v.impact}) ${v.help} → ${v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(" | ")}`);
-  if (result.overflow > 0) found.push(`${name}: desborde horizontal de ${result.overflow}px`);
-  return found;
-}
+const problems = axeProblems;
 
 test.describe("accesibilidad y desbordes: páginas públicas", () => {
   for (const [width, height] of WIDTHS) {
@@ -41,7 +25,7 @@ test.describe("accesibilidad y desbordes: páginas públicas", () => {
 
 test.describe("accesibilidad y desbordes: pantallas con sesión", () => {
   for (const [width, height] of WIDTHS) {
-    test(`11 pantallas sin violaciones de axe ni desborde a ${width}px`, async ({ page, context }) => {
+    test(`12 pantallas sin violaciones de axe ni desborde a ${width}px`, async ({ page, context }) => {
       test.setTimeout(240_000);
       await page.setViewportSize({ width, height });
       await registerViaApi(context);
@@ -82,17 +66,20 @@ test.describe("accesibilidad y desbordes: pantallas con sesión", () => {
       await visit("equipment", "/equipment", "nav", "Equipos");
       await visit("alerts", "/alerts", "nav", "Alertas");
       if (narrow) {
-        // En pantallas estrechas Meta, Ahorro y Apagones solo se alcanzan desde «Más secciones» (en Perfil).
+        // En pantallas estrechas Meta, Ahorro, Apagones y Copilot solo se alcanzan desde «Más secciones» (en Perfil).
         await visit("profile", "/profile", "header", "Perfil");
         await visit("savings", "/savings", "more", "Ahorro");
         await visit("profile", "/profile", "header", "Perfil");
         await visit("outages", "/outages", "more", "Apagones");
         await visit("profile", "/profile", "header", "Perfil");
         await visit("goal", "/goal", "more", "Meta");
+        await visit("profile", "/profile", "header", "Perfil");
+        await visit("copilot", "/copilot", "more", "Copilot");
       } else {
         await visit("savings", "/savings", "nav", "Ahorro");
         await visit("outages", "/outages", "nav", "Apagones");
         await visit("goal", "/goal", "nav", "Meta");
+        await visit("copilot", "/copilot", "nav", "Copilot");
         await visit("profile", "/profile", "nav", "Perfil");
       }
       await page.getByRole("link", { name: /^(Mi cuenta|Cuenta)$/ }).filter({ visible: true }).first().click();

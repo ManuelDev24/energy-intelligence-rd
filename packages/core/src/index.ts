@@ -15,3 +15,4 @@ export * from './energyScore';
 export * from './outages';
 export * from './url';
 export * from './ocr';
+export * from './copilot';

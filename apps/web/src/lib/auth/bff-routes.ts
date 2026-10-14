@@ -1,6 +1,6 @@
 // Auditoría C-20: rutas y esquemas estrictos de las peticiones que el BFF acepta (extraído de bff.ts sin cambios de comportamiento).
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, EmailVerificationRequestOutSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, EmailVerificationRequestOutSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema, ConversationInSchema, ConversationOutSchema, ConversationRenameSchema, CopilotMessageOutSchema, CopilotUsageOutSchema, FeedbackInSchema, MessageInSchema } from "@energyrd/api-contracts";
 // Cada ruta declara método, patrón, respuesta, cuerpo y consulta EXACTOS: un parámetro no declarado,
 // repetido o mal formado es 400 y un cuerpo no estricto es 422, siempre antes de contactar la API.
 export const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
@@ -71,7 +71,31 @@ function accountSettingsRoute(path: string, method: string): Phase2Route | null 
   if (new RegExp(`^/auth/sessions/${UUID}$`).test(path)) return method === "DELETE" ? { response: none, body: z.object({}).strict(), query: {} } : null;
   return null;
 }
+/** ERD-AI-CHAT: Energy Copilot. Las conversaciones devueltas deben ser de la vivienda de la ruta (se comprueba en bff.ts). El envío de
+ * mensajes (`POST …/messages`) es streaming y se resuelve aparte con `copilotStreamBody`. */
+const CopilotPage: Record<string, QueryRule> = {
+  limit: { pattern: v => /^\d{1,3}$/.test(v) && Number(v) >= 1 && Number(v) <= 100 }, offset: { pattern: v => /^\d{1,5}$/.test(v) },
+};
+export const COPILOT_STREAM = new RegExp(`^/homes/${UUID}/copilot/conversations/${UUID}/messages$`);
+export const copilotStreamBody = MessageInSchema.strict().refine(m => (m.period_from == null) === (m.period_to == null), { path: ["period_to"] })
+  .refine(m => !m.period_from || !m.period_to || m.period_from <= m.period_to, { path: ["period_to"] })
+  .refine(m => m.content.trim().length > 0, { path: ["content"] });
+function copilotRoute(path: string, method: string): Phase2Route | null {
+  const none = z.undefined();
+  if (new RegExp(`^/homes/${UUID}/copilot/usage$`).test(path)) return method === "GET" ? { response: CopilotUsageOutSchema, query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/copilot/conversations$`).test(path)) return method === "GET" ? { response: ConversationOutSchema.array(), query: CopilotPage }
+    : method === "POST" ? { response: ConversationOutSchema, body: ConversationInSchema.strict(), query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/copilot/conversations/${UUID}$`).test(path)) return method === "PATCH"
+    ? { response: ConversationOutSchema, body: ConversationRenameSchema.strict(), query: {} }
+    : method === "DELETE" ? { response: none, body: z.object({}).strict(), query: {} } : null;
+  if (COPILOT_STREAM.test(path)) return method === "GET" ? { response: CopilotMessageOutSchema.array(), query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/copilot/conversations/${UUID}/messages/${UUID}/feedback$`).test(path)) return method === "PUT"
+    ? { response: CopilotMessageOutSchema, body: FeedbackInSchema.strict(), query: {} } : null;
+  return null;
+}
 export function phase2Route(path: string, method: string): Phase2Route | null {
+  const copilot = copilotRoute(path, method);
+  if (copilot || /\/copilot(\/|$)/.test(path)) return copilot;
   const account = accountSettingsRoute(path, method);
   if (account || /^\/auth\/(sessions|me\/preferences|me\/export)(\/|$)/.test(path)) return account;
   const sharing = sharingRoute(path, method);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronsUpDown, Gauge, Home as HomeIcon, NotebookPen, PiggyBank, Plug, Zap, Receipt, BarChart3, Target, UserRound } from "lucide-react";
+import { Bell, ChevronsUpDown, Gauge, Home as HomeIcon, NotebookPen, PiggyBank, Plug, Sparkles, Zap, Receipt, BarChart3, Target, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -20,13 +20,14 @@ const NAV = [
   { href: "/alerts", label: "Alertas", icon: Bell },
   { href: "/savings", label: "Ahorro", icon: PiggyBank, sideOnly: true },
   { href: "/outages", label: "Apagones", icon: Zap, sideOnly: true },
+  { href: "/copilot", label: "Copilot", icon: Sparkles, sideOnly: true },
   { href: "/profile", label: "Perfil", icon: UserRound, sideOnly: true },
 ] as const;
 
 /** Destinos que la barra inferior (móvil) no muestra. En <768 px solo se llega a ellos desde aquí (Perfil). */
 export const MOBILE_EXTRA_SECTIONS = NAV.filter((item) => "sideOnly" in item && item.href !== "/profile");
 
-/** Enlaces a Meta, Ahorro y Apagones para pantallas estrechas; en escritorio ya están en la barra lateral. */
+/** Enlaces a Meta, Ahorro, Apagones y Copilot para pantallas estrechas; en escritorio ya están en la barra lateral. */
 export function MoreSections() {
   return (
     <nav aria-label="Más secciones" className="md:hidden">
