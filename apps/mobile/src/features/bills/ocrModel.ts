@@ -1,4 +1,5 @@
 import { isOcrActive, type OcrDraft, type OcrJob } from '@energyrd/api-contracts';
+import { isTransientOcrError, ocrConfidenceText, ocrSourceText as sharedOcrSourceText } from '@energyrd/core';
 import type { BillInput } from '../../api/types';
 import { validateBill, type BillFormValues } from './form';
 
@@ -18,9 +19,7 @@ export function ocrDraftToBillInput(values: BillFormValues): BillInput {
   return result.input;
 }
 
-export function confidenceText(confidence: OcrDraft['kwh']['confidence']): string {
-  return confidence === 'high' ? 'Alta confianza' : confidence === 'inferred' ? 'Inferido: revise' : 'No detectado';
-}
+export const confidenceText = (confidence: OcrDraft['kwh']['confidence']): string => ocrConfidenceText(confidence);
 
 /** ERD-OCR-PROD: la factura que se guarda desde un borrador lleva el id del original para ligarlo. */
 export function ocrJobBillInput(values: BillFormValues, documentId: string): BillInput {
@@ -38,14 +37,9 @@ export function ocrPhase(job: OcrJob | null, busy: boolean, elapsedMs: number, s
 }
 
 /** Solo un fallo temporal del motor merece «Reintentar»; un archivo ilegible no mejora repitiéndolo. */
-export const canRetryOcr = (job: OcrJob | null) => job?.status === 'failed' && job.error_code === 'engine_error';
+export const canRetryOcr = (job: OcrJob | null) => job?.status === 'failed' && isTransientOcrError(job.error_code);
 
-const METHOD_TEXT = { text_layer: 'Leído del texto del PDF', ocr: 'Leído con reconocimiento óptico (OCR)', mixed: 'Leído del texto del PDF y con OCR' } as const;
-export function ocrSourceText(job: OcrJob): string {
-  if (!job.method) return '';
-  const pages = job.pages_total && job.pages_total > 1 ? ` (${job.pages_read} de ${job.pages_total} páginas)` : '';
-  return `${METHOD_TEXT[job.method]}${pages}.`;
-}
+export const ocrSourceText = (job: OcrJob): string => sharedOcrSourceText(job);
 
 /** Texto local por código: la pantalla nunca muestra texto que venga del servidor. */
 const ERROR_TEXT: Record<string, string> = {

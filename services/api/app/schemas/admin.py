@@ -100,6 +100,29 @@ class AdminOcrJobOut(BaseModel):
     error_code: str | None
 
 
+class AdminOcrHistoryOut(BaseModel):
+    action: str
+    result: str
+    reason: str | None
+    created_at: datetime
+
+
+class AdminOcrJobDetailOut(AdminOcrJobOut):
+    """Solo metadatos: el borrador OCR, el texto y el error crudo nunca salen por esta vía."""
+    generation: int
+    started_at: datetime | None
+    engine: str | None
+    method: str | None
+    pages_read: int | None
+    pages_total: int | None
+    document_kind: str
+    document_content_type: str
+    document_size_bytes: int
+    uploaded_via: str
+    attached_to_bill: bool
+    history: list[AdminOcrHistoryOut]
+
+
 class AdminOcrJobsPage(BaseModel):
     items: list[AdminOcrJobOut]
     total: int

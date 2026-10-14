@@ -29,4 +29,10 @@ describe("access", () => {
     const supportReadonly: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.users.read"] };
     expect(visibleNavItems(supportReadonly).map((i) => i.href)).toEqual(["/mi-acceso"]);
   });
+
+  it("shows the OCR console only with admin.ocr.read", () => {
+    const reviewer: MyAccess = { ...NONE, roles: ["ocr_reviewer"], scopes: ["admin.ocr.read", "admin.ocr.review"] };
+    expect(visibleNavItems(reviewer).map((i) => i.href)).toEqual(["/mi-acceso", "/ocr"]);
+    expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/ocr");
+  });
 });

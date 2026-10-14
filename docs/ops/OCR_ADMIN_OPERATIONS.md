@@ -15,6 +15,12 @@ Guía operativa para `admin.ocr.*`. Asume el backend desplegado con migración
 Roles con estos scopes de fábrica (migración 0024): `super_admin`,
 `operations_admin` (read+retry+review), `ocr_reviewer` (read+review, sin retry).
 
+## Consola web
+
+`apps/admin` → **OCR** (`/ocr`): filtros por estado, error, intentos mínimos y fechas (días de RD), detalle por trabajo con
+historial y los botones de reintento/cancelación (motivo obligatorio; cancelar pide confirmación). La consola no muestra el
+documento ni lo leído, y no confirma facturas.
+
 ## Consultar la cola
 
 ```bash
@@ -24,7 +30,8 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 `status` acepta: `queued`, `processing`, `completed`, `failed_retryable`,
 `failed_permanent`, `dead_letter`, `cancelled`. Sin `status` devuelve todos,
-paginados por `limit`/`offset` (máx. `limit=200`).
+paginados por `limit`/`offset` (máx. `limit=200`). Filtros adicionales: `error_code` (`engine_error`, `unreadable`,
+`protected_pdf`, `file_missing`), `min_attempts` (0–100), `created_from` y `created_to` (ISO 8601; `created_to` exclusivo).
 
 Cada elemento trae: `id` (id del `Job`), `document_id`, `status`, `attempts`,
 `max_attempts`, `run_at`, `created_at`, `finished_at`, `error_code`. **Nunca**

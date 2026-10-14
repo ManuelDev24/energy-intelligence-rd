@@ -128,3 +128,32 @@ Esos casos no tocan el código nuevo de ERD-OCR-03.
    de estado dos veces (en memoria para la proyección, en SQL para filtrar). Si se
    agregan más estados derivados conviene extraer una sola fuente de verdad (p.ej.
    una vista SQL) para evitar que ambas copias diverjan.
+
+## ERD-OCR-03-WEB — Consola en `apps/admin` (2026-10-14)
+
+**Construido:** `/ocr` (tabla con filtros por estado, error, intentos mínimos y rango de fechas en hora de RD; paginación de 25)
+y `/ocr/[id]` (metadatos del trabajo y del archivo, método y páginas leídas, historial de operaciones manuales, reintento con
+motivo obligatorio y cancelación con motivo + confirmación). Las acciones solo se muestran con el scope y el estado que la API
+también aceptaría; la API sigue decidiendo (403/409). El BFF solo deja pasar esas rutas y esos parámetros, y ahora conserva
+el 409 («La operación no es válida en el estado actual») en vez de convertirlo en 502.
+
+**API ampliada (mismos scopes):** `GET /jobs` acepta `error_code`, `min_attempts`, `created_from`, `created_to`. El detalle
+(`AdminOcrJobDetailOut`) añade `generation`, `started_at`, `engine`, `method`, `pages_read/total`, tipo, MIME y tamaño del
+archivo, origen de la subida, `attached_to_bill` e `history` (eventos `ocr.retry`/`ocr.cancel` de `admin_audit_events`, sin
+actor). Reintento y cancelación devuelven ese detalle.
+
+**Reutilizado de la app móvil:** el texto de método/páginas, la confianza y la regla «solo `engine_error` se reintenta» de
+`apps/mobile/src/features/bills/ocrModel.ts` pasaron a `packages/core/src/ocr.ts`; los usan el móvil, la web
+(`NewBillPage`) y el admin. Los mensajes para la persona usuaria siguen en cada app (usted / tú).
+
+**Pruebas:** `test_admin_ocr.py` 14 (2 nuevas: filtros; detalle + historial sin contenido privado), `apps/admin` 31 unitarias
+(`ocr.test.ts`, BFF, navegación), `packages/core` `ocr.test.ts`, Playwright del admin 7/7 contra PostgreSQL + API reales con la cola
+sembrada por `e2e/db.py seed-ocr` (`e2e/ocr.spec.ts`: 403 real, filtros, motivo vacío y motivo con correo rechazado por la API,
+reintento, cancelación con confirmación, historial, auditoría, trabajo inexistente; `a11y.spec.ts` añade `/ocr` y el detalle a
+360/768/1280 px sin violaciones de axe).
+
+**Pendiente, por decisión (no implementado):** ver la imagen del documento con URL firmada, los campos extraídos con su
+confianza y la «auditoría de visualización». Hoy la API no expone contenido de facturas a administradores por diseño
+(`admin_ocr.py`, migración 0031). Abrirlo cambia la política de privacidad: requiere un scope propio, motivo por consulta,
+auditoría de cada visualización, una ruta del BFF que transmita el archivo sin exponer el enlace firmado, y reflejarlo en el
+texto legal. La distribuidora tampoco se puede filtrar sin ampliar la RLS a `homes`.

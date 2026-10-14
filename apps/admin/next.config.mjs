@@ -32,6 +32,7 @@ if (process.env.NODE_ENV === "production") {
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  transpilePackages: ["@energyrd/core"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
