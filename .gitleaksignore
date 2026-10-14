@@ -1,0 +1,6 @@
+# Fixtures truncados de pruebas, revisados contra el escaneo programado 2026-10-13.
+# Fingerprints exactos: commit:ruta:regla:línea. Una credencial nueva en esos
+# archivos sigue generando una alerta; no se excluyen rutas de pruebas enteras.
+d86b65cf70b4c9215cad3e53113807b8b17d5b1b:packages/core/src/telemetry.test.ts:jwt:6
+3f2dcff444aca54b0ec46ec4527750210bf92670:services/api/tests/test_e2e_scrub.py:jwt:11
+cf13505df67e0be031efd5b79d441446c1decdc5:services/api/tests/test_telemetry.py:generic-api-key:12

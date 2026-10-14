@@ -1,24 +1,24 @@
-# Config de gitleaks para energy-intelligence-rd.
-#
-# [[allowlist]] abajo: 2 falsos positivos individualmente verificados, NO secretos reales
-# (ver docs/qa/ERD-RELEASE-QA.md § "Secret scan" y el hallazgo original del 2026-10-11/12):
-#   - packages/core/src/telemetry.test.ts: `const JWT = 'eyJhbG...-123'` es un placeholder
-#     truncado a propósito (tiene "..." literal) para probar que el scrubber de Sentry redacta
-#     texto con forma de JWT; no decodifica ni autentica nada.
-#   - docs/qa/evidence/dev-recovery-2026-10-11/native-ios-auth.json: los valores de
-#     `latest_source_sha256` son hashes SHA-256 de archivos fuente, guardados como metadato de
-#     evidencia de QA, no credenciales.
-#
-# El alcance queda limitado a esas dos rutas exactas; no ampliar sin volver a verificar cada hallazgo
-# con la misma evidencia concreta (no "parece sintético").
+# Config compatible con gitleaks 8.24.3 (versión fijada por gitleaks-action v3.0.0).
+# Escaneo programado 2026-10-13: los valores siguientes se verificaron en su contexto;
+# son fixtures estáticos/truncados o el nombre de un script, no credenciales.
+# La allowlist singular combina paths y regexes con OR: SOLO valores literales inocuos
+# en regexes. No excluir por ruta los archivos de tests: futuros secretos allí deben alertar.
 title = "energy-intelligence-rd"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Falsos positivos verificados: JWT placeholder truncado en una prueba y hashes SHA-256 de evidencia de QA (no secretos reales)"
+description = "Fixtures verificados, nombre de script y archivo de hashes SHA-256 de evidencia QA"
 paths = [
-  '''^packages/core/src/telemetry\.test\.ts$''',
+  # Solo hashes SHA-256 de fuentes, no credenciales; ver docs/qa/ERD-RELEASE-QA.md.
   '''^docs/qa/evidence/dev-recovery-2026-10-11/native-ios-auth\.json$''',
 ]
+regexes = [
+  # Token alfabético de prueba en páginas de invitación/verificación/recuperación.
+  '''abcdefghijklmnopqrstuvwxyzABCDEFGHIJ_-01234''',
+  # Nombre del script de verificación BFF, no un token (task_plan.md).
+  '''verify_phase2_bff''',
+]
+# Las tres alertas restantes son fixtures JWT de pruebas; se suprimen solo en los
+# commits y líneas exactos mediante .gitleaksignore (no excluye futuras credenciales).
