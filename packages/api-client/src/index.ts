@@ -4,6 +4,7 @@ import {
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
   PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, EmailVerificationRequestOutSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema, EnergyScoreSchema, OutageSchema, OutageSummarySchema,
+  ConversationOutSchema, CopilotMessageOutSchema, CopilotUsageOutSchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
   type Distributor, type OutageInput, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
@@ -253,6 +254,31 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
     updateRecommendation: (id: string, recommendation: string, status: "active" | "applied" | "dismissed") =>
       request(`${homePath(id)}/recommendations/${idPath(recommendation)}`, RecommendationSchema, write("PATCH", { status })).then(updated => {
         if (updated.id !== recommendation) throw new ContractError();
+        return updated;
+      }),
+    // ERD-AI-CHAT: Energy Copilot (conversaciones privadas de la persona en esta vivienda). El envío de mensajes es streaming y vive en
+    // cada app (la web lo lee con ReadableStream); aquí solo las operaciones JSON, iguales en web y móvil.
+    getCopilotUsage: (id: string, signal?: AbortSignal) => request(`${homePath(id)}/copilot/usage`, CopilotUsageOutSchema, { signal }),
+    listCopilotConversations: (id: string, signal?: AbortSignal) =>
+      request(`${homePath(id)}/copilot/conversations?limit=100`, ConversationOutSchema.array(), { signal }),
+    createCopilotConversation: (id: string, title?: string) =>
+      request(`${homePath(id)}/copilot/conversations`, ConversationOutSchema, write("POST", title ? { title } : {}), 201),
+    renameCopilotConversation: (id: string, conversation: string, title: string) =>
+      request(`${homePath(id)}/copilot/conversations/${idPath(conversation)}`, ConversationOutSchema, write("PATCH", { title })).then(updated => {
+        if (updated.id !== conversation) throw new ContractError();
+        return updated;
+      }),
+    deleteCopilotConversation: (id: string, conversation: string) =>
+      request(`${homePath(id)}/copilot/conversations/${idPath(conversation)}`, z.undefined(), write("DELETE")),
+    listCopilotMessages: (id: string, conversation: string, signal?: AbortSignal) =>
+      request(`${homePath(id)}/copilot/conversations/${idPath(conversation)}/messages`, CopilotMessageOutSchema.array(), { signal }).then(rows => {
+        if (rows.some(row => row.conversation_id !== conversation)) throw new ContractError();
+        return rows;
+      }),
+    setCopilotFeedback: (id: string, conversation: string, message: string, value: 1 | -1 | null) =>
+      request(`${homePath(id)}/copilot/conversations/${idPath(conversation)}/messages/${idPath(message)}/feedback`, CopilotMessageOutSchema,
+        write("PUT", { value })).then(updated => {
+        if (updated.id !== message || updated.conversation_id !== conversation) throw new ContractError();
         return updated;
       }),
     listEquipment: (id: string, signal?: AbortSignal) => list(`${homePath(id)}/equipment`, EquipmentSchema, signal),

@@ -22,6 +22,7 @@ Convenciones:
 | `AUTH_SIGNING_KEY` (≥43 caracteres, ≥16 distintos) | `python3 -c 'import secrets;print(secrets.token_urlsafe(48))'` (64 caracteres) |
 | Contraseña de rol Neon | La genera Neon al crear el rol (Console → *Roles* → *Add role*) |
 | `RESEND_API_KEY` | Resend → *API Keys* → *Create API key* → permiso **Sending access**, dominio del entorno |
+| `ANTHROPIC_API_KEY` (solo si `COPILOT_PROVIDER=anthropic`) | Anthropic Console → *API keys*; una por entorno. Por defecto el Copilot está apagado (`COPILOT_PROVIDER=disabled`). Ver `docs/architecture/COPILOT.md` |
 
 Genera **una clave distinta por entorno**. Pégala directamente en el Dashboard de Render; no la guardes en
 archivos del repo. Cambiar `AUTH_SIGNING_KEY` cierra todas las sesiones (y reinicia los contadores anti-abuso).

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { z } from "zod";
-import { UUID, domainRoute, ownsBill, phase2QueryOk, phase2Route, writeSchema } from "./bff-routes";
+import { COPILOT_STREAM, UUID, copilotStreamBody, domainRoute, ownsBill, phase2QueryOk, phase2Route, writeSchema } from "./bff-routes";
 import { DashboardSchema, UserOutSchema, TokensOutSchema, RegisterInSchema, AccountDeletionInSchema, LegalOutSchema, PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, OcrJobSchema, PasswordChangeInSchema} from "@energyrd/api-contracts";
 
 export interface BffConfig { enabled: boolean; apiBase: string; origin: string; secure: boolean; bffApiSharedSecret?: string }
@@ -140,8 +140,12 @@ const FIELD_MESSAGES: Record<string, string> = {
   accept_terms: "Debes aceptar los términos y la política de privacidad.",
   token: "El enlace de recuperación no es válido o caducó. Solicita uno nuevo.",
   new_password: "La contraseña debe tener entre 12 y 128 caracteres.",
+  content: "Escribe una pregunta (máximo 4000 caracteres).",
+  title: "Revisa el título (obligatorio, máximo 120 caracteres).",
+  period_to: "Revisa el período: inicio y fin, con el fin igual o posterior al inicio.",
+  value: "Valoración no válida.",
 };
-const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|verification_token_invalid|email_not_verified|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|http_[1-5]\d\d)$/;
+const SAFE_CODE = /^(?:validation_error|conflict|not_found|invalid_input|reset_token_invalid|verification_token_invalid|email_not_verified|invitation_invalid|invitation_limit_reached|invitation_rate_limited|invitation_pending|already_member|ownership_transfer_required|reauthentication_failed|document_quota_exceeded|storage_unavailable|copilot_disabled|copilot_limit|http_[1-5]\d\d)$/;
 const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 function statusMessage(status: number, path: string, code?: unknown) {
   // ERD-AUTH-03: eliminación de cuenta (contraseña incorrecta / propiedad compartida pendiente).
@@ -160,6 +164,10 @@ function statusMessage(status: number, path: string, code?: unknown) {
   if (status === 429 && code === "invitation_rate_limited") return "Has enviado demasiadas invitaciones hoy. Inténtalo mañana.";
   if (status === 422 && /\/invitations$/.test(path)) return "Indica un correo válido que no sea el tuyo.";
   if (status === 403 && /\/(members|invitations|transfer-ownership)/.test(path) && code !== "reauthentication_failed") return "Solo el propietario de la vivienda puede hacer esto.";
+  // ERD-AI-CHAT
+  if (status === 429 && code === "copilot_limit") return "Alcanzaste el límite diario del Copilot. Vuelve a intentarlo mañana.";
+  if (status === 503 && code === "copilot_disabled") return "El Copilot no está disponible en este momento.";
+  if (status === 409 && /\/copilot\/conversations$/.test(path)) return "Alcanzaste el máximo de conversaciones; borra alguna para crear otra.";
   // ERD-OCR-PROD
   if (status === 409 && code === "document_quota_exceeded") return "Ya hay varias facturas en proceso o sin confirmar en esta vivienda. Espera a que terminen o confirma o elimina alguna.";
   if (status === 503 && code === "storage_unavailable") return "La lectura de facturas no está disponible en este momento. Puedes registrar la factura manualmente.";
@@ -226,6 +234,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       if (!MULTIPART.test(request.headers.get("content-type") || "")) return reply({ detail: "Se requiere una foto o un PDF." }, 415);
     } else if (!(request.headers.get("content-type") || "").match(/^application\/json(?:;|$)/i)) return reply({ detail: "Se requiere JSON." }, 415);
   }
+  if (method === "POST" && COPILOT_STREAM.test(path)) return copilotStream(request, config, path, url, fetchImpl);
   const auth = ["/auth/login", "/auth/register", "/auth/logout"].includes(path) && method === "POST" || path === "/auth/me" && (method === "GET" || method === "DELETE");
   const legal = path === "/legal" && method === "GET";
   const recovery = method === "POST" && (path === FORGOT || path === RESET || path === VERIFY_EMAIL);
@@ -364,6 +373,16 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id?: string }[];
       if (rows.some(row => row.home_id !== home) || (child && child !== "summary" && rows[0]?.id !== child)) throw new Error("Mismatched outage");
     }
+    if (parsed !== undefined && /\/copilot\/conversations(\/[0-9a-f-]{36})?$/.test(path)) {
+      const [, , home, , , child] = path.split("/");
+      const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id: string }[];
+      if (rows.some(row => row.home_id !== home) || (child && rows[0]?.id !== child)) throw new Error("Mismatched conversation");
+    }
+    if (parsed !== undefined && /\/copilot\/conversations\/[0-9a-f-]{36}\/messages(\/[0-9a-f-]{36}\/feedback)?$/.test(path)) {
+      const [, , , , , conversation, , message] = path.split("/");
+      const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { conversation_id: string; id: string }[];
+      if (rows.some(row => row.conversation_id !== conversation) || (message && rows[0]?.id !== message)) throw new Error("Mismatched message");
+    }
     if (parsed !== undefined && /\/energy-score$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched energy score");
     if (parsed !== undefined && /\/recommendations(\/refresh|\/[0-9a-f-]{36})?$/.test(path)) {
       const [, , home, , child] = path.split("/");
@@ -387,4 +406,56 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
     const response = reply({ detail: "No se pudo confirmar la respuesta de la API. No se reintentó la operación." }, 502);
     return logout ? setEpoch(clear(response, config), config) : response;
   }
+}
+
+// ERD-AI-CHAT: respuesta del Copilot en streaming (Server-Sent Events). Mismas reglas que el resto (origen, JSON estricto, sesión ligada a la
+// época) y además: el cuerpo de la API se reenvía SOLO si es `text/event-stream` y con un tope de bytes; si la persona cancela, se aborta
+// también la petición a la API. Los eventos los genera nuestra API; el navegador los valida con Zod antes de usarlos.
+const COPILOT_TIMEOUT_MS = 180_000;
+const COPILOT_MAX_STREAM_BYTES = 512 * 1024;
+async function copilotStream(request: Request, config: BffConfig, path: string, url: URL, fetchImpl: typeof fetch): Promise<NextResponse> {
+  if (url.search) return reply({ detail: "Consulta no permitida." }, 400);
+  let body: string;
+  try {
+    const text = await request.text();
+    if (text.length > 16_384) return reply({ detail: "Solicitud demasiado grande." }, 413);
+    const parsed = copilotStreamBody.safeParse(JSON.parse(text || "{}"));
+    if (!parsed.success) return invalid(parsed.error.issues);
+    body = JSON.stringify(parsed.data);
+  } catch { return reply({ detail: "JSON inválido." }, 400); }
+  const epoch = cookie(request, epochName(config));
+  const access = bound(request, accessName(config));
+  if (!access || !epoch || access.epoch !== epoch) return reply({ detail: "La sesión venció. Inicia sesión de nuevo.", code: "http_401" }, 401);
+  const headers: Record<string, string> = { Accept: "text/event-stream", "Content-Type": "application/json", Authorization: `Bearer ${access.token}` };
+  const forwardedIp = firstForwardedIp(request);
+  if (config.bffApiSharedSecret && forwardedIp) headers["X-Forwarded-Client-Ip"] = signClientIp(forwardedIp, config.bffApiSharedSecret);
+  const signal = AbortSignal.any([request.signal, AbortSignal.timeout(COPILOT_TIMEOUT_MS)]);
+  let upstream: Response;
+  try {
+    upstream = await fetchImpl(`${config.apiBase}/api/v1${path}`, { method: "POST", headers, body, redirect: "manual", cache: "no-store", signal });
+  } catch { return reply({ detail: "El Copilot no respondió. Inténtalo de nuevo." }, 502); }
+  if (!upstream.ok) {
+    let data: unknown;
+    try { data = await upstream.json(); } catch { data = undefined; }
+    const response = reply(safeError(data, upstream.status, path), upstream.status >= 300 && upstream.status < 400 ? 502 : upstream.status);
+    const retryAfter = upstream.headers.get("Retry-After");
+    if (upstream.status === 429 && retryAfter && /^[1-9]\d{0,4}$/.test(retryAfter) && Number(retryAfter) <= 86400) response.headers.set("Retry-After", retryAfter);
+    return response;
+  }
+  if (!(upstream.headers.get("content-type") || "").startsWith("text/event-stream") || !upstream.body) {
+    await upstream.body?.cancel().catch(() => undefined);
+    return reply({ detail: "No se pudo confirmar la respuesta de la API. No se reintentó la operación." }, 502);
+  }
+  let sent = 0;
+  const capped = upstream.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      sent += chunk.byteLength;
+      if (sent > COPILOT_MAX_STREAM_BYTES) { controller.terminate(); return; }
+      controller.enqueue(chunk);
+    },
+  }));
+  return new NextResponse(capped, { status: 200, headers: {
+    "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-store, private", "Vary": "Cookie",
+    "X-Content-Type-Options": "nosniff", "X-Accel-Buffering": "no",
+  } });
 }

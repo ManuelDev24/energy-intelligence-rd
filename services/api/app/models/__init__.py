@@ -9,6 +9,7 @@ from app.models.bill_detail import BillItem, BillSnapshot
 from app.models.equipment import AlertSettings, Equipment
 from app.models.home import DISTRIBUTORS, Home
 from app.models.contract import Contract
+from app.models.copilot import CopilotConversation, CopilotMessage, CopilotUsage
 from app.models.document import Document, DocumentOcr, StorageDeletion
 from app.models.goal import HomeGoal
 from app.models.job import Job
@@ -20,4 +21,5 @@ from app.models.tariff import TARIFF_DISTRIBUTORS, Tariff, TariffBlock, TariffFi
 
 __all__ = ["Alert", "Anomaly", "AlertSettings", "Bill", "Equipment", "Home", "Contract", "DISTRIBUTORS", "DeviceToken", "EmailVerificationToken", "Document", "DocumentOcr", "Notification", "StorageDeletion", "HomeGoal", "Job", "MeterReading", "PowerOutage", "Recommendation",
            "TARIFF_DISTRIBUTORS", "Tariff", "TariffBlock", "TariffFixedCharge",
-           "AdminRole", "AdminScope", "AdminRoleScope", "AdminRoleAssignment", "AdminAuditEvent"]
+           "AdminRole", "AdminScope", "AdminRoleScope", "AdminRoleAssignment", "AdminAuditEvent",
+           "CopilotConversation", "CopilotMessage", "CopilotUsage"]

@@ -67,8 +67,8 @@ async def application_error(request: Request, exc: ApplicationError):
     headers = {"WWW-Authenticate": "Bearer"} if exc.status_code == 401 else {}
     if exc.status_code in {429, 503} or getattr(exc, "no_store", False):
         headers["Cache-Control"] = "no-store"
-    if isinstance(exc, (RateLimited, ServiceBusy)):
-        headers["Retry-After"] = str(exc.retry_after)
+    if isinstance(exc, (RateLimited, ServiceBusy)) or getattr(exc, "retry_after", None):
+        headers["Retry-After"] = str(exc.retry_after)  # type: ignore[attr-defined]
     return JSONResponse({"detail": str(exc), "code": exc.code,
                          "request_id": getattr(request.state, "request_id", None)},
                         status_code=exc.status_code, headers=headers)

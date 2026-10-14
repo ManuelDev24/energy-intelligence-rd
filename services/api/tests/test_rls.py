@@ -280,7 +280,7 @@ def test_migration_downgrade_and_upgrade_roundtrip(migrated, alembic_cfg):
         assert c.execute(text("SELECT count(*) FROM pg_proc WHERE proname IN ('app_user','app_home')")).scalar() == 0
     command.upgrade(alembic_cfg, "head")
     with migrated.connect() as c:
-        assert c.execute(text("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relrowsecurity")).scalar() == 16
+        assert c.execute(text("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relrowsecurity")).scalar() == 18
 
 
 def test_an_owner_can_still_manage_the_members_of_the_current_home_only(world):
@@ -402,3 +402,42 @@ def test_without_the_admin_flag_no_document_is_visible_without_a_home(world):
         assert count(connection, "documents") == 0
     finally:
         transaction.rollback(); connection.close()
+
+
+# ---------- ERD-AI-CHAT: conversaciones del Copilot, privadas por vivienda Y por persona (migración 0032) ----------
+def test_copilot_conversations_are_private_to_their_owner_even_inside_the_same_home(world):
+    migrated, engine, a, b = world
+    roommate = str(uuid.uuid4())
+    with migrated.begin() as c:
+        c.execute(text("INSERT INTO users(id,email,password_hash) VALUES(:u,'companero@example.com','x')"), {"u": roommate})
+        c.execute(text("INSERT INTO home_members(home_id,user_id,role) VALUES(:h,:u,'member')"), {"h": a["home"], "u": roommate})
+        conv = c.execute(text("INSERT INTO copilot_conversations(id,home_id,user_id,title) VALUES(gen_random_uuid(),:h,:u,'privada') "
+                              "RETURNING id"), {"h": a["home"], "u": a["user"]}).scalar_one()
+        c.execute(text("INSERT INTO copilot_messages(id,conversation_id,role,content,status) VALUES(gen_random_uuid(),:c,'user','hola','complete')"),
+                  {"c": conv})
+    for user, home, visible in ((a["user"], a["home"], 1), (roommate, a["home"], 0), (b["user"], b["home"], 0), (a["user"], b["home"], 0),
+                                (None, None, 0)):
+        connection, transaction = as_app(engine, user=user, home=home)
+        try:
+            assert count(connection, "copilot_conversations") == visible, (user, home)
+            assert count(connection, "copilot_messages") == visible, (user, home)
+            assert connection.execute(text("UPDATE copilot_conversations SET title='x'")).rowcount == visible
+        finally:
+            transaction.rollback()
+            connection.close()
+    connection, transaction = as_app(engine, user=roommate, home=a["home"])
+    try:
+        with pytest.raises(DBAPIError):  # nadie crea conversaciones a nombre de otra persona
+            connection.execute(text("INSERT INTO copilot_conversations(id,home_id,user_id,title) VALUES(gen_random_uuid(),:h,:u,'x')"),
+                               {"h": a["home"], "u": a["user"]})
+    finally:
+        transaction.rollback()
+        connection.close()
+    connection, transaction = as_app(engine, user=roommate, home=a["home"])
+    try:
+        with pytest.raises(DBAPIError):  # ni añade mensajes a una conversación ajena
+            connection.execute(text("INSERT INTO copilot_messages(id,conversation_id,role,content,status) "
+                                    "VALUES(gen_random_uuid(),:c,'user','x','complete')"), {"c": str(conv)})
+    finally:
+        transaction.rollback()
+        connection.close()
