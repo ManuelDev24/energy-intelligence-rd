@@ -17,6 +17,9 @@ async function login(page: Page, account: { email: string; password: string }) {
 }
 
 async function problems(page: Page, name: string, width: number): Promise<string[]> {
+  // La navegación cliente puede mostrar el contenido antes de que Next restaure el <title>.
+  // Esperar el título real (sin saltar axe): si nunca aparece, la prueba sigue fallando.
+  await expect(page).toHaveTitle('Energy RD · Admin');
   await page.evaluate(AXE);
   const result = await page.evaluate(async () => {
     // @ts-expect-error axe lo inyecta la propia prueba
