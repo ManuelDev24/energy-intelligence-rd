@@ -217,7 +217,35 @@ export function createMockApi(): Api {
     if (clash) throw new ApiError(409, "El período se solapa con otra factura de esta vivienda");
   };
 
+  // ERD-AI-CHAT: conversaciones en memoria (el streaming se prueba aparte con su propio fetch simulado).
+  const conversations: Array<{ id: string; home_id: string; title: string; created_at: string; updated_at: string }> = [];
+  const copilotMessages: Array<{ id: string; conversation_id: string; role: "user" | "assistant"; content: string; status: "complete"; sources: []; tools: string[]; feedback: 1 | -1 | null; created_at: string }> = [];
+  const requireConversation = (homeId: string, id: string) => {
+    const found = conversations.find(c => c.id === id && c.home_id === homeId);
+    if (!found) throw new ApiError(404, "Conversación no encontrada");
+    return found;
+  };
+
   return {
+    getCopilotUsage: async (homeId) => { requireHome(homeId); return { day: "2026-10-14", enabled: true, limited: false, messages_used: 0, messages_limit: 40, tokens_used: 0, tokens_limit: 400000 }; },
+    listCopilotConversations: async (homeId) => { requireHome(homeId); return conversations.filter(c => c.home_id === homeId); },
+    createCopilotConversation: async (homeId, title) => {
+      requireHome(homeId);
+      counter += 1;
+      const created = { id: `cccccccc-0000-4000-8000-${String(counter).padStart(12, "0")}`, home_id: homeId, title: title ?? "Nueva conversación", created_at: "2026-10-14T10:00:00Z", updated_at: "2026-10-14T10:00:00Z" };
+      conversations.unshift(created);
+      return created;
+    },
+    renameCopilotConversation: async (homeId, id, title) => Object.assign(requireConversation(homeId, id), { title }),
+    deleteCopilotConversation: async (homeId, id) => { requireConversation(homeId, id); conversations.splice(conversations.findIndex(c => c.id === id), 1); },
+    listCopilotMessages: async (homeId, id) => { requireConversation(homeId, id); return copilotMessages.filter(m => m.conversation_id === id); },
+    setCopilotFeedback: async (homeId, id, messageId, value) => {
+      requireConversation(homeId, id);
+      const found = copilotMessages.find(m => m.id === messageId && m.conversation_id === id);
+      if (!found) throw new ApiError(404, "Respuesta no encontrada");
+      found.feedback = value;
+      return found;
+    },
     listHomes: async () => homes,
     listBills: async (homeId) => {
       requireHome(homeId);

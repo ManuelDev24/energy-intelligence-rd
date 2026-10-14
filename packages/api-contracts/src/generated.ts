@@ -894,3 +894,66 @@ export const ScopeOutSchema = z.object({
   "description": z.string()
 });
 export type ScopeOut = z.infer<typeof ScopeOutSchema>;
+
+export const ConversationInSchema = z.object({
+  "title": z.union([z.string().max(120), z.null()]).default(null)
+});
+export type ConversationIn = z.infer<typeof ConversationInSchema>;
+
+export const ConversationRenameSchema = z.object({
+  "title": z.string().min(1).max(120)
+});
+export type ConversationRename = z.infer<typeof ConversationRenameSchema>;
+
+export const ConversationOutSchema = z.object({
+  "id": z.string().uuid(),
+  "home_id": z.string().uuid(),
+  "title": z.string(),
+  "created_at": z.string().datetime({ offset: true }),
+  "updated_at": z.string().datetime({ offset: true })
+});
+export type ConversationOut = z.infer<typeof ConversationOutSchema>;
+
+export const SourceOutSchema = z.object({
+  "kind": z.string(),
+  "label": z.string(),
+  "quality": z.enum(["REAL", "ESTIMATED", "PROJECTED", "INFERRED"]),
+  "href": z.union([z.string(), z.null()])
+});
+export type SourceOut = z.infer<typeof SourceOutSchema>;
+
+export const CopilotMessageOutSchema = z.object({
+  "id": z.string().uuid(),
+  "conversation_id": z.string().uuid(),
+  "role": z.enum(["user", "assistant"]),
+  "content": z.string(),
+  "status": z.enum(["complete", "cancelled", "error", "refused", "limited"]),
+  "sources": z.array(SourceOutSchema),
+  "tools": z.array(z.string()),
+  "feedback": z.union([z.union([z.literal(-1), z.literal(1)]), z.null()]),
+  "created_at": z.string().datetime({ offset: true })
+});
+export type CopilotMessageOut = z.infer<typeof CopilotMessageOutSchema>;
+
+export const MessageInSchema = z.object({
+  "content": z.string().min(1).max(4000),
+  "period_from": z.union([z.string().date(), z.null()]).default(null),
+  "period_to": z.union([z.string().date(), z.null()]).default(null)
+});
+export type MessageIn = z.infer<typeof MessageInSchema>;
+
+export const FeedbackInSchema = z.object({
+  "value": z.union([z.union([z.literal(-1), z.literal(1)]), z.null()])
+});
+export type FeedbackIn = z.infer<typeof FeedbackInSchema>;
+
+export const CopilotUsageOutSchema = z.object({
+  "day": z.string().date(),
+  "enabled": z.boolean(),
+  "limited": z.boolean(),
+  "messages_used": z.number().finite().int(),
+  "messages_limit": z.number().finite().int(),
+  "tokens_used": z.number().finite().int(),
+  "tokens_limit": z.number().finite().int()
+});
+export type CopilotUsageOut = z.infer<typeof CopilotUsageOutSchema>;

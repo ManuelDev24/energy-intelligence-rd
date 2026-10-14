@@ -33,7 +33,7 @@ def setup_homes(client):
     return a, b, homes, bill, eq, alert, reading
 
 
-def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID, anomaly=OTHER_ID, recommendation=OTHER_ID, outage=OTHER_ID):
+def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID, anomaly=OTHER_ID, recommendation=OTHER_ID, outage=OTHER_ID, conversation=OTHER_ID, message=OTHER_ID):
     u = f'/api/v1/homes/{h}'
     return [('GET',u,None),('PATCH',u,{'name':'changed'}),('DELETE',u,None),
             ('GET',u+'/contract',None),('PUT',u+'/contract',{'account_number':'123'}),
@@ -67,7 +67,13 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('POST',u+'/bills/ocr-jobs',MULTIPART),('GET',u+'/bills/ocr-jobs/'+document,None),
             ('POST',u+'/bills/ocr-jobs/'+document+'/retry',None),
             ('GET',u+'/documents',None),('POST',u+'/documents',MULTIPART),('GET',u+'/documents/'+document,None),
-            ('POST',u+'/documents/'+document+'/download-url',None),('DELETE',u+'/documents/'+document,None)]
+            ('POST',u+'/documents/'+document+'/download-url',None),('DELETE',u+'/documents/'+document,None),
+            # ERD-AI-CHAT
+            ('GET',u+'/copilot/usage',None),('GET',u+'/copilot/conversations',None),('POST',u+'/copilot/conversations',{}),
+            ('PATCH',u+'/copilot/conversations/'+conversation,{'title':'x'}),('DELETE',u+'/copilot/conversations/'+conversation,None),
+            ('GET',u+'/copilot/conversations/'+conversation+'/messages',None),
+            ('POST',u+'/copilot/conversations/'+conversation+'/messages',{'content':'hola'}),
+            ('PUT',u+'/copilot/conversations/'+conversation+'/messages/'+message+'/feedback',{'value':1})]
 
 
 def _call(client, method, url, body, headers=None):
@@ -103,7 +109,7 @@ def test_all_private_routes_require_membership_and_token(auth_client, migrated, 
 
 def test_private_route_inventory_remains_covered(auth_client):
     paths = auth_client.get('/openapi.json').json()['paths']
-    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}', '{anomaly_id}', '{recommendation_id}', '{outage_id}')
+    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}', '{anomaly_id}', '{recommendation_id}', '{outage_id}', '{conversation_id}', '{message_id}')
     actual = {(method.upper(), path) for path, operations in paths.items()
               if path.startswith('/api/v1/homes/') for method in operations if method != 'parameters'}
     assert actual == {(method, path.split('?')[0]) for method, path, _ in tested}

@@ -161,6 +161,18 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = Field(default="", repr=False)
     SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.05, ge=0.0, le=1.0)
 
+    # ERD-AI-CHAT: Energy Copilot. `disabled` (por defecto) apaga las rutas con 503; `anthropic` usa Claude API con ANTHROPIC_API_KEY
+    # (secreto del entorno, nunca en el repositorio); `fake` es un proveedor determinista solo para desarrollo y pruebas E2E.
+    COPILOT_PROVIDER: Literal["disabled", "anthropic", "fake"] = "disabled"
+    ANTHROPIC_API_KEY: str = Field(default="", repr=False)
+    COPILOT_MODEL: str = "claude-opus-5-5"
+    COPILOT_EFFORT: Literal["low", "medium", "high"] = "medium"
+    COPILOT_MAX_OUTPUT_TOKENS: int = Field(default=8000, ge=512, le=64000)
+    COPILOT_MAX_TOOL_ROUNDS: int = Field(default=6, ge=1, le=12)
+    COPILOT_DAILY_MESSAGES_PER_USER: int = Field(default=40, ge=1, le=1000)
+    COPILOT_DAILY_TOKENS_PER_USER: int = Field(default=400_000, ge=1000, le=20_000_000)
+    COPILOT_MAX_CONVERSATIONS_PER_USER: int = Field(default=200, ge=1, le=5000)
+
     @property
     def max_upload_request_bytes(self) -> int:
         return max(self.DOCUMENT_MAX_PDF_BYTES, self.DOCUMENT_MAX_PHOTO_BYTES) + self.UPLOAD_BODY_OVERHEAD_BYTES
@@ -173,6 +185,10 @@ class Settings(BaseSettings):
     def validate_environment(self) -> Self:
         if self.ENVIRONMENT.lower() not in ENVIRONMENTS:
             raise ValueError("ENVIRONMENT must be one of: development, staging, production")
+        if self.COPILOT_PROVIDER == "fake" and self.ENVIRONMENT.lower() != "development":
+            raise ValueError("COPILOT_PROVIDER=fake is development-only")
+        if self.COPILOT_PROVIDER == "anthropic" and not self.ANTHROPIC_API_KEY.strip():
+            raise ValueError("COPILOT_PROVIDER=anthropic requires ANTHROPIC_API_KEY")
         if "ENVIRONMENT" not in self.model_fields_set:
             database_host = make_url(self.DATABASE_URL).host
             if any(os.environ.get(name) for name in PLATFORM_ENV_VARS) or (database_host and database_host not in LOCAL_DATABASE_HOSTS):

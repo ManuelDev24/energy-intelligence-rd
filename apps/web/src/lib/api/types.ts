@@ -24,6 +24,9 @@ import type {
 } from "./schemas";
 
 export { ApiError } from "@energyrd/api-client";
+export type CopilotConversation = import("@energyrd/api-contracts").ConversationOut;
+export type CopilotMessage = import("@energyrd/api-contracts").CopilotMessageOut;
+export type CopilotUsage = import("@energyrd/api-contracts").CopilotUsageOut;
 
 // ISP: cada pantalla y cada prueba puede depender solo del recurso que usa. `Api` es la unión que implementan
 // el cliente real (live.ts) y el simulado de las pruebas (test/mock-api.ts).
@@ -118,8 +121,20 @@ export interface TariffsApi {
   listTariffs(opts?: { distributor?: Distributor; on?: string }, signal?: AbortSignal): Promise<Tariff[]>;
 }
 
+/** Energy Copilot (ERD-AI-CHAT): operaciones JSON; el streaming de respuestas vive en `features/copilot/stream.ts`. */
+export interface CopilotApi {
+  getCopilotUsage(homeId: string, signal?: AbortSignal): Promise<CopilotUsage>;
+  listCopilotConversations(homeId: string, signal?: AbortSignal): Promise<CopilotConversation[]>;
+  createCopilotConversation(homeId: string, title?: string): Promise<CopilotConversation>;
+  renameCopilotConversation(homeId: string, conversationId: string, title: string): Promise<CopilotConversation>;
+  deleteCopilotConversation(homeId: string, conversationId: string): Promise<void>;
+  listCopilotMessages(homeId: string, conversationId: string, signal?: AbortSignal): Promise<CopilotMessage[]>;
+  setCopilotFeedback(homeId: string, conversationId: string, messageId: string, value: 1 | -1 | null): Promise<CopilotMessage>;
+}
+
 export interface Api
   extends HomesApi,
+    CopilotApi,
     BillsApi,
     DashboardApi,
     AnomaliesApi,

@@ -28,6 +28,8 @@ function apiEnv(): NodeJS.ProcessEnv {
     STORAGE_URL_SIGNING_KEY: crypto.randomBytes(48).toString("base64url"),
     AUTH_REGISTER_LIMIT: high, AUTH_LOGIN_LIMIT: high, AUTH_REFRESH_LIMIT: high, AUTH_FORGOT_LIMIT: high, AUTH_RESET_LIMIT: high,
     WORKER_POLL_SECONDS: "0.5", PYTHONUNBUFFERED: "1",
+    // ERD-AI-CHAT: proveedor determinista sin red (la configuración lo prohíbe fuera de development). Nunca se llama a Claude en E2E.
+    COPILOT_PROVIDER: "fake", ANTHROPIC_API_KEY: "",
   };
 }
 
@@ -91,7 +93,7 @@ export default async function globalSetup() {
   await waitFor(`${WEB_URL}/login`, "La web");
   // Next compila cada ruta la primera vez que se pide: se precalientan para que ninguna prueba pague ese tiempo.
   for (const route of ["/register", "/olvide-contrasena", "/restablecer-contrasena", "/homes", "/dashboard", "/bills", "/bills/new",
-    "/consumption", "/readings", "/goal", "/equipment", "/alerts", "/profile", "/account", "/legal", "/invitacion", "/api/bff/auth/me"]) {
+    "/consumption", "/readings", "/goal", "/equipment", "/alerts", "/copilot", "/profile", "/account", "/legal", "/invitacion", "/api/bff/auth/me"]) {
     await fetch(`${WEB_URL}${route}`, { redirect: "manual" }).catch(() => undefined);
   }
 }

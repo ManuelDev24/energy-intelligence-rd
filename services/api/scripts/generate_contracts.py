@@ -40,6 +40,8 @@ from app.schemas.recommendation import RecommendationListOut, RecommendationReco
 from app.schemas.admin import (AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate,
                                RoleAssignmentOut, RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut)
+from app.schemas.copilot import (ConversationIn, ConversationOut, ConversationRename, CopilotMessageOut, CopilotUsageOut, FeedbackIn,
+                                 MessageIn)
 
 ROOT = Path(__file__).resolve().parents[3]
 MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, AlertRecord,
@@ -51,7 +53,8 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn,
           AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
           AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate, RoleAssignmentOut,
-          RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut]
+          RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut,
+          ConversationIn, ConversationRename, ConversationOut, CopilotMessageOut, MessageIn, FeedbackIn, CopilotUsageOut]
 
 
 def _is_decimal_annotation(annotation) -> bool:
@@ -108,7 +111,13 @@ def generate():
         if "const" in schema:
             return f'z.literal({json.dumps(schema["const"])})'
         if "enum" in schema:
-            return f'z.enum({json.dumps(schema["enum"])})'
+            values = schema["enum"]
+            if all(isinstance(v, str) for v in values):
+                return f'z.enum({json.dumps(values)})'
+            if all(isinstance(v, int) and not isinstance(v, bool) for v in values):  # z.enum solo admite texto
+                literals = [f"z.literal({v})" for v in values]
+                return literals[0] if len(literals) == 1 else f"z.union([{', '.join(literals)}])"
+            raise ValueError(f"Unsupported enum values: {values}")
         if "anyOf" in schema:
             return "z.union([" + ", ".join(render(s) for s in schema["anyOf"]) + "])"
         kind = schema.get("type")
