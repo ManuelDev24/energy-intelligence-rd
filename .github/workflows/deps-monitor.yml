@@ -7,8 +7,10 @@ on:
     - cron: '17 11 * * 1'   # lunes, 11:17 UTC
   workflow_dispatch:
   pull_request:
-    paths: ['package-lock.json', 'package.json', 'services/api/uv.lock', 'services/api/pyproject.toml',
-            'docs/security/accepted-advisories.json', 'scripts/audit-monitor*']
+    paths: ['.github/workflows/deps-monitor.yml', 'package-lock.json', 'package.json',
+            'services/api/uv.lock', 'services/api/pyproject.toml',
+            'docs/security/accepted-advisories.json', 'scripts/audit-monitor*',
+            'docs/qa/evidence/web-quality-2026-10-07/simulated-api*']
 
 permissions:
   contents: read
