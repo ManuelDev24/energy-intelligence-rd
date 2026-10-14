@@ -35,4 +35,10 @@ describe("access", () => {
     expect(visibleNavItems(reviewer).map((i) => i.href)).toEqual(["/mi-acceso", "/ocr"]);
     expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/ocr");
   });
+
+  it("shows the overview only with admin.system.read", () => {
+    const ops: MyAccess = { ...NONE, roles: ["operations_admin"], scopes: ["admin.system.read", "admin.ocr.read"] };
+    expect(visibleNavItems(ops).map((i) => i.href)).toEqual(["/mi-acceso", "/resumen", "/ocr"]);
+    expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/resumen");
+  });
 });

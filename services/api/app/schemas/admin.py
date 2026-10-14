@@ -1,6 +1,7 @@
 import re
 import uuid
-from datetime import datetime
+from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -155,3 +156,63 @@ class AuditEventsPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class OverviewUsers(BaseModel):
+    total: int
+    verified: int
+    new_recent: int
+    active_sessions: int
+
+
+class OverviewJobs(BaseModel):
+    queued: int
+    running: int
+    dead: int
+    oldest_wait_minutes: int
+    last_finished_at: datetime | None
+    worker_state: Literal["ok", "stalled"]  # INFERIDO: no hay latido del worker
+    ocr_queued: int
+    ocr_running: int
+    ocr_dead: int
+
+
+class OverviewCopilot(BaseModel):
+    provider: Literal["disabled", "anthropic", "fake"]
+    messages_today: int
+    tokens_today: int
+    people_today: int
+
+
+class OverviewHealth(BaseModel):
+    database: Literal["ok"]
+    storage: str
+    email: str
+    error_tracking: Literal["configured", "not_configured"]
+    environment: str
+
+
+class TrendPoint(BaseModel):
+    day: date
+    value: int
+
+
+class OverviewTrends(BaseModel):
+    new_users: list[TrendPoint]
+    new_bills: list[TrendPoint]
+    copilot_messages: list[TrendPoint]
+
+
+class AdminOverviewOut(BaseModel):
+    """Solo agregados: ningún correo, vivienda ni documento de ninguna persona."""
+    generated_at: datetime
+    window_days: int
+    users: OverviewUsers
+    homes: dict[str, int]
+    bills: dict[str, int]
+    alerts: dict[str, int]
+    outages: dict[str, int]
+    jobs: OverviewJobs
+    copilot: OverviewCopilot
+    health: OverviewHealth
+    trends: OverviewTrends

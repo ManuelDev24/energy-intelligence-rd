@@ -37,7 +37,7 @@ from app.schemas.anomaly import AnomalyRecord, AnomalyStatusIn
 from app.schemas.outage import OutageIn, OutageOut, OutageSummaryOut
 from app.schemas.energy_score import EnergyScoreOut
 from app.schemas.recommendation import RecommendationListOut, RecommendationRecord, RecommendationStatusIn
-from app.schemas.admin import (AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
+from app.schemas.admin import (AdminOverviewOut, AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate,
                                RoleAssignmentOut, RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut)
 from app.schemas.copilot import (ConversationIn, ConversationOut, ConversationRename, CopilotMessageOut, CopilotUsageOut, FeedbackIn,
@@ -51,7 +51,7 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
           PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
           NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn,
-          AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
+          AdminOverviewOut, AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
           AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate, RoleAssignmentOut,
           RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut,
           ConversationIn, ConversationRename, ConversationOut, CopilotMessageOut, MessageIn, FeedbackIn, CopilotUsageOut]

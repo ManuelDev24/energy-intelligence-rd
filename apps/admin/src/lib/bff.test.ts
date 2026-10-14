@@ -136,4 +136,17 @@ describe("admin BFF", () => {
     upstream.mockResolvedValueOnce(Response.json({}, { status: 200 }));
     expect((await call("/proxy/ocr/jobs/42/cancel", "POST", { reason: "Detener" })).status).toBe(200);
   });
+
+  it("proxies the aggregate overview as read-only and refuses writes or parameters", async () => {
+    cookies(await call("/session"));
+    cookies(await call("/auth/login", "POST", { email: "a@example.com", password: "secret" }));
+    upstream.mockClear();
+    upstream.mockImplementation(async () => Response.json({ users: { total: 1 } }));
+    expect((await call("/proxy/overview")).status).toBe(200);
+    expect(upstream).toHaveBeenLastCalledWith(`${config.apiBase}/api/v1/admin/overview`, expect.objectContaining({ method: "GET" }));
+    for (const [path, method] of [["/proxy/overview?home_id=x", "GET"], ["/proxy/overview", "POST"], ["/proxy/overview/x", "GET"]] as const) {
+      expect((await call(path, method, method === "POST" ? {} : undefined)).status, `${method} ${path}`).toBe(404);
+    }
+    expect(upstream).toHaveBeenCalledTimes(1);
+  });
 });
