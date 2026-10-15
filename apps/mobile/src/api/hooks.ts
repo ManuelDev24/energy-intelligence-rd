@@ -32,6 +32,14 @@ export const keys = {
   get phase2() { return phase2Keys(scope()); },
 };
 
+/** ERD-AI-CHAT-MOBILE: claves del Copilot por cuenta y vivienda (invalidar `root` refresca conversaciones, mensajes y uso). */
+export const copilotKeys = {
+  root: (homeId: string) => [...scope(), 'copilot', homeId] as const,
+  usage: (homeId: string) => [...scope(), 'copilot', homeId, 'usage'] as const,
+  conversations: (homeId: string) => [...scope(), 'copilot', homeId, 'conversations'] as const,
+  messages: (homeId: string, conversationId: string) => [...scope(), 'copilot', homeId, 'messages', conversationId] as const,
+};
+
 const perHome = <T,>(key: readonly unknown[], homeId: string | null, fn: (id: string, signal?: AbortSignal) => Promise<T>) => ({
   queryKey: key,
   queryFn: ({ signal }: { signal: AbortSignal }) => fn(homeId as string, signal),

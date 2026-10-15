@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, type ComponentProps } from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useAlerts, useHomes } from '../api/hooks';
 import { Loading } from '../components/ui';
@@ -19,6 +19,8 @@ import { BillOcrScreen } from '../features/bills/BillOcrScreen';
 import { BillsScreen } from '../features/bills/BillsScreen';
 import { BillDetailScreen } from '../features/bills/detail/BillDetailScreen';
 import { BillItemsEditorScreen } from '../features/bills/detail/BillItemsEditorScreen';
+import { CopilotScreen } from '../features/copilot/CopilotScreen';
+import type { LinkTarget } from '../features/copilot/model';
 import { ConsumptionScreen } from '../features/consumption/ConsumptionScreen';
 import { initialRangeFromParams } from '../features/consumption/range';
 import { DashboardScreen } from '../features/dashboard/DashboardScreen';
@@ -58,6 +60,7 @@ export type RootStackParams = {
   ShareHome: undefined;
   Savings: undefined;
   Outages: undefined;
+  Copilot: undefined;
   OutageForm: { outageId?: string } | undefined;
 };
 // 5 pestañas: cambiar de vivienda es poco frecuente y vive en el encabezado (hoja "Homes").
@@ -120,7 +123,7 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParams, 'Tabs'>) {
           <Ionicons name={TAB_ICONS[route.name][focused ? 0 : 1]} size={size} color={color} />
         ),
         headerTitle: () => <HomeSwitcherButton onPress={openHomes} />,
-        headerRight: route.name === 'Dashboard' ? () => <Pressable testID="profile-entry" accessibilityRole="button" accessibilityLabel="Abrir Perfil" onPress={() => navigation.navigate('Profile')} style={{ minHeight: TOUCH, minWidth: TOUCH, justifyContent: 'center', paddingHorizontal: 12 }}><Ionicons name="person-circle-outline" size={26} color={colors.primary} /></Pressable> : undefined,
+        headerRight: route.name === 'Dashboard' ? () => <View style={{ flexDirection: 'row' }}><Pressable testID="copilot-entry" accessibilityRole="button" accessibilityLabel="Abrir Energy Copilot" onPress={() => navigation.navigate('Copilot')} style={{ minHeight: TOUCH, minWidth: TOUCH, justifyContent: 'center', alignItems: 'center' }}><Ionicons name="sparkles-outline" size={24} color={colors.primary} /></Pressable><Pressable testID="profile-entry" accessibilityRole="button" accessibilityLabel="Abrir Perfil" onPress={() => navigation.navigate('Profile')} style={{ minHeight: TOUCH, minWidth: TOUCH, justifyContent: 'center', paddingHorizontal: 12 }}><Ionicons name="person-circle-outline" size={26} color={colors.primary} /></Pressable></View> : undefined,
       })}
     >
       <Tab.Screen name="Dashboard" options={{ title: 'Inicio' }}>
@@ -264,6 +267,13 @@ function DomainNavigator() {
               onAlerts={() => navigation.navigate('Tabs', { screen: 'Alerts' } as never)}
             />
           )}
+        </Stack.Screen>
+        <Stack.Screen name="Copilot" options={{ title: 'Energy Copilot' }}>
+          {({ navigation }) => <CopilotScreen onLink={(target: LinkTarget) => {
+            if (target.kind === 'tab') navigation.navigate('Tabs', { screen: target.tab } as never);
+            else if (target.kind === 'screen') navigation.navigate(target.name as never);
+            else { const homeId = useSession.getState().selectedHomeId; if (homeId) navigation.navigate('BillDetail', { homeId, billId: target.billId }); }
+          }} />}
         </Stack.Screen>
         <Stack.Screen name="Outages" options={{ title: 'Apagones' }}>
           {({ navigation }) => <OutagesScreen onAdd={() => navigation.navigate('OutageForm')} onEdit={(outageId) => navigation.navigate('OutageForm', { outageId })} />}
