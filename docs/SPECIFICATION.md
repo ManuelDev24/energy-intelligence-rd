@@ -1079,7 +1079,7 @@ Timeseries DB
 ### Backend Structure
 
 ```text
-services/api/
+backend/api/
 ├── app/
 │   ├── main.py
 │   ├── core/

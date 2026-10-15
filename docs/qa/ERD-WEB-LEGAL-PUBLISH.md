@@ -9,7 +9,7 @@ Estado: **parcial — la parte técnica está hecha; publicar el texto final dep
 | La aceptación del riesgo no puede ocultarse en la configuración del repositorio | ✅ | `infrastructure/deploy/check_deploy_config.py` rechaza `ALLOW_DRAFT_LEGAL` en `render.yaml` |
 | Versión de los documentos aceptada por cada persona | ✅ | `users.terms_version` / `terms_accepted_at` (migración 0012) |
 | El estado legal es visible para operaciones | ✅ nuevo | `/sistema` muestra «Términos y política de privacidad»: **Bien** solo con textos finales; **Atención** si son borrador (o si el riesgo se aceptó con `ALLOW_DRAFT_LEGAL`); **Falta** si producción sirviera en borrador sin aceptarlo. `test_legal_texts_in_draft_are_never_reported_as_ok` |
-| La web dice que el texto es un borrador | ✅ | `apps/web/src/app/legal/page.tsx` («Documento en BORRADOR, pendiente de revisión legal») |
+| La web dice que el texto es un borrador | ✅ | `frontend-web/app/src/app/legal/page.tsx` («Documento en BORRADOR, pendiente de revisión legal») |
 
 ## Pendiente — necesita a la persona responsable (no es trabajo de código)
 1. **Texto aprobado** de términos y de privacidad (hoy `docs/legal/*_DRAFT.md`), revisado según la Ley 172-13 RD.

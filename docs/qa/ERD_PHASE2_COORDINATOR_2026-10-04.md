@@ -7,7 +7,7 @@ Fecha: 2026-10-04. Rama comprobada: `Dev`. Sin commit ni push. API auth dedicada
 Todos bajo Node 24, exit 0:
 - `npm test`: core 29, contratos 7, cliente API 12, web 193 aprobadas / 5 omitidas, móvil 245 aprobadas / 11 omitidas. Omisiones de integración por variables ausentes, no equivalen a pruebas aprobadas.
 - `npm run typecheck`: todos los workspaces sin errores.
-- `npm run lint --workspace apps/web`: sin errores.
+- `npm run lint --workspace frontend-web/app`: sin errores.
 - Build web con `NEXT_PUBLIC_AUTH_ENABLED=true`, `API_BASE_URL=https://api.example.invalid`, `WEB_ORIGIN=https://app.example.invalid`, telemetría deshabilitada: compilación y generación de 18 páginas correctas. Incluye consumo, lecturas y meta.
 
 ## Integración real reejecutada

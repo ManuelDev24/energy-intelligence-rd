@@ -11,7 +11,7 @@
   (Playwright) con `prefers-reduced-motion`. El piloto de `:8000` no se tocó.
 - Script reproducible: `docs/qa/evidence/rel-verify-2026-10-10/web-qa/qa.py`; resultado completo en
   `results.json` y capturas `web-*.jpg` de la misma carpeta. **90 comprobaciones, 0 fallos.**
-- `LIVE_API_URL=http://127.0.0.1:18001 npm run test --workspace apps/web` → **530/530, 0 omitidas**.
+- `LIVE_API_URL=http://127.0.0.1:18001 npm run test --workspace frontend-web/app` → **530/530, 0 omitidas**.
 
 | Criterio | Resultado | Evidencia |
 |---|---|---|
@@ -20,8 +20,8 @@
 | Estados loading / error / vacío / Reintentar | ✅ esqueleto con `role=status`; 500 en `/dashboard` → mensaje local + Reintentar que recupera; API **apagada de verdad** (`docker stop`) → error en 1.3 s y Reintentar recupera al volver | `web-state-*.jpg` |
 | Accesibilidad de pantallas internas | ✅ axe-core 4.10 (WCAG 2.0/2.1 A/AA + best-practice) en `/login` y 10 pantallas internas: **0 violaciones** | `results.json` → `axe` |
 | H2 "Saltar al contenido" | ✅ corregido: primer Tab, visible al enfocar, Enter lleva el foco a `<main>` | `web-skip-link.jpg` |
-| H3 título por pantalla | ✅ corregido: "Facturas · Energy RD", etc. (17 rutas con prueba) | `apps/web/src/app/titles.test.ts` |
-| H4 foco con errores de formulario | ✅ corregido en facturas, lecturas, equipos y meta: foco al primer campo `aria-invalid` | `apps/web/src/components/a11y.test.tsx` |
+| H3 título por pantalla | ✅ corregido: "Facturas · Energy RD", etc. (17 rutas con prueba) | `frontend-web/app/src/app/titles.test.ts` |
+| H4 foco con errores de formulario | ✅ corregido en facturas, lecturas, equipos y meta: foco al primer campo `aria-invalid` | `frontend-web/app/src/components/a11y.test.tsx` |
 | Responsive 375 px | ✅ `scrollWidth` = 375 | `web-dashboard-375.jpg` |
 
 Hallazgos nuevos de esta revisión, corregidos (TDD, RED → GREEN):
@@ -60,10 +60,10 @@ Los cinco checks pasan; la aceptación con API real permanece bloqueada. La evid
 | Responsive móvil y escritorio | ✅ | 375 / 768 / 1280 px, sin desbordes (§4) |
 | Accesibilidad básica y teclado | ✅ con 4 observaciones | §5, hallazgos H2–H5 |
 | Estados loading, empty, error y reintento | ✅ | §3.2, capturas 05–07 |
-| `npm run test --workspace apps/web` | ✅ | 485 pasan, 5 omitidos (integración contra API real) |
-| `npm run lint --workspace apps/web` | ✅ | sin avisos |
-| `npm run typecheck --workspace apps/web` | ✅ | |
-| `npm run build --workspace apps/web` | ✅ | con `NEXT_PUBLIC_AUTH_ENABLED=true`, `API_BASE_URL` y `WEB_ORIGIN` HTTPS, como el CI |
+| `npm run test --workspace frontend-web/app` | ✅ | 485 pasan, 5 omitidos (integración contra API real) |
+| `npm run lint --workspace frontend-web/app` | ✅ | sin avisos |
+| `npm run typecheck --workspace frontend-web/app` | ✅ | |
+| `npm run build --workspace frontend-web/app` | ✅ | con `NEXT_PUBLIC_AUTH_ENABLED=true`, `API_BASE_URL` y `WEB_ORIGIN` HTTPS, como el CI |
 | Evidencia en `docs/qa/` | ✅ | este documento + `evidence/web-quality-2026-10-07/` |
 
 Los cuatro comandos se ejecutaron desde cero (`npm ci`) en una copia limpia fuera de OneDrive.
@@ -90,7 +90,7 @@ aviso) y SIM-03 (sin facturas).
 
 ```bash
 node docs/qa/evidence/web-quality-2026-10-07/simulated-api.mjs        # API en :8000
-NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev --workspace apps/web   # web en :3000
+NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev --workspace frontend-web/app   # web en :3000
 ```
 
 ## 3. Recorrido
@@ -146,7 +146,7 @@ ahorrar tabulaciones; los campos del formulario tienen etiqueta y `inputmode` ad
 
 | # | Severidad | Hallazgo | Sugerencia |
 |---|---|---|---|
-| H1 | Media | La web **calcula** un porcentaje: el "+15.87 % vs. la última factura" de la tarjeta de próxima factura sale de `projectionDeltaPct` (`@energyrd/core`, usado en `apps/web/src/features/dashboard/DashboardPage.tsx:69`); la API no lo envía. Choca con la regla "no calcular métricas energéticas en la web" y no lleva etiqueta de calidad. | Que la API lo exponga como `Metric` (con calidad `PROJECTED`) o retirarlo. |
+| H1 | Media | La web **calcula** un porcentaje: el "+15.87 % vs. la última factura" de la tarjeta de próxima factura sale de `projectionDeltaPct` (`@energyrd/core`, usado en `frontend-web/app/src/features/dashboard/DashboardPage.tsx:69`); la API no lo envía. Choca con la regla "no calcular métricas energéticas en la web" y no lleva etiqueta de calidad. | Que la API lo exponga como `Metric` (con calidad `PROJECTED`) o retirarlo. |
 | H2 | Media | No hay enlace "saltar al contenido": en escritorio hay **9 paradas de tabulador** (selector + 8 enlaces) antes de `main` (WCAG 2.4.1). | Añadir un skip link visible al recibir foco. |
 | H3 | Baja | El `<title>` es "Energy RD" en todas las rutas (WCAG 2.4.2). | Título por pantalla ("Facturas · Energy RD"). |
 | H4 | Baja | Tras enviar el formulario de factura con errores, el foco **se queda en el botón** en lugar de ir al primer campo inválido. Los errores sí se anuncian por `role="alert"`. | Mover el foco al primer campo con error o a un resumen. |
@@ -162,8 +162,8 @@ Con Docker funcionando (o en el job "recorridos vs API real" del CI):
 
 ```bash
 docker compose up -d --build postgres api         # migraciones + seed PILOT-01..05
-LIVE_API_URL=http://localhost:8000 npm run test --workspace apps/web   # 5 pruebas de integración
-NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev --workspace apps/web
+LIVE_API_URL=http://localhost:8000 npm run test --workspace frontend-web/app   # 5 pruebas de integración
+NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev --workspace frontend-web/app
 ```
 
 Repetir §3.1 y §3.2 (con latencia/fallo reales: `docker compose stop api` para el estado de error) y

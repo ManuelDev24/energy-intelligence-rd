@@ -4,11 +4,11 @@
 - Repositorio: `/Users/macbookpro/Desktop/energy-intelligence-rd`, rama `main`, rastrea `origin/main`.
 - Últimos commits: `da7feb7 feat: initial project setup`; `f44359d feat: initial project structure for Energy RD Platform`.
 - Árbol no limpio antes de esta planificación: `docs/SPECIFICATION.md` modificado; `.agents/`, `.claude/`, `docs/architecture/`, `skills-lock.json` y cachés Python sin seguimiento.
-- Estructura observada: `apps/mobile` (Expo/TypeScript), `services/api` (FastAPI/Python), documentación en `docs/`, y `docker-compose.yml`.
+- Estructura observada: `frontend-mobile/app` (Expo/TypeScript), `backend/api` (FastAPI/Python), documentación en `docs/`, y `docker-compose.yml`.
 
 ## Estado verificado tras la inspección
 - Mobile y API son esqueletos: el móvil conserva la pantalla plantilla y la API solo tiene `/` y `/health`.
-- La web no está implementada: `apps/web` no contiene un workspace funcional, aunque el script raíz la referencia.
+- La web no está implementada: `frontend-web/app` no contiene un workspace funcional, aunque el script raíz la referencia.
 - No hay modelos, routers, migraciones, seeds ni pruebas funcionales para el dominio energético.
 - El MVP viable es factura manual → historial mensual → dashboard → proyección lineal/reglas, para cinco viviendas piloto.
 - El backend debe ser la única fuente de cálculos; UI móvil/web solo consumen contratos versionados.
@@ -25,7 +25,7 @@
 - Baseline real: `origin/Dev` `92d39f5`, CI `38082199280` verde y ningún PR abierto.
 - El piloto está bloqueado únicamente para promoción a QA por la aceptación OCR con fotos reales anonimizadas de EDESUR, EDENORTE y EDEESTE.
 - El producto completo del plan no está próximo al 100%: quedan 59 paquetes finitos, 19 parciales y 40 no construidos.
-- No existen implementaciones rastreadas en `apps/admin`, `mcp/energy-rd-mcp` ni `packages/ui`; las carpetas están vacías.
+- No existen implementaciones rastreadas en `frontend-web/admin`, `mcp/energy-rd-mcp` ni `packages/ui`; las carpetas están vacías.
 - Fases 4–8 (Copilot/MCP, admin, IoT, solar, segmentos y plataforma nacional) son principalmente visión/documentación, no producto implementado.
 - `npm audit` actual confirma 20 avisos altos y 0 críticos; Manuel aceptó temporalmente el riesgo, pero la vigilancia/actualización sigue pendiente.
 - Backlog y dependencias: `docs/COMPLETE_PROJECT_GAP_ANALYSIS_2026-10-10.md`.
@@ -42,7 +42,7 @@
 - **Contenedor efímero**: los commits del módulo viven solo en este contenedor hasta que se empujen.
 
 ## ERD-ADM-RBAC + ERD-OCR-03 (Módulo 2, 2026-10-11)
-- `apps/admin` nuevo: Next.js con BFF de mismo origen, cookies `HttpOnly`/`SameSite=Strict`, nunca tokens en `localStorage`.
+- `frontend-web/admin` nuevo: Next.js con BFF de mismo origen, cookies `HttpOnly`/`SameSite=Strict`, nunca tokens en `localStorage`.
 - **Quirk real de Next dev**: `request.url` puede reportar hostname `localhost` aunque el servidor escuche en otro host (`-H 127.0.0.1`); el chequeo de mismo origen del BFF debe confiar en el header `Host`, no en `url.origin`. Detectado y corregido ejecutando el E2E real contra el stack vivo — no lo habría encontrado ninguna prueba unitaria con mocks.
 - Carrera de revocación del último `super_admin`: dos revocaciones concurrentes pueden contar cada una a la otra como activa y dejar cero; se serializa con `SELECT ... FOR UPDATE` sobre la fila del rol compartido dentro de la misma transacción, antes de contar.
 - El borrado de cuenta (ERD-AUTH-03) puede chocar con la inmutabilidad de `admin_audit_events` si la FK de `actor_user_id` usa `ON DELETE SET NULL`: el trigger `BEFORE UPDATE` lo rechaza con 500. Se retiró la FK; el UUID queda como identificador seudónimo (pendiente de revisión legal de retención).

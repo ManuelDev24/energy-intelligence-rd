@@ -6,7 +6,7 @@ de las 5 viviendas piloto **sin ayuda**. Tiempo estimado: 20–30 min la primera
 > Alcance del piloto: facturas mensuales (manuales o sugeridas por foto), comparación, proyección lineal,
 > alertas por variación, desviaciones explicables y estimación por equipos declarados.
 > **Foto de factura (OCR):** la API lee la imagen con Tesseract y devuelve un **borrador editable** con la
-> confianza de cada campo; nunca crea la factura sola: la persona revisa y confirma (`services/api/OCR_BILL_UPLOAD.md`).
+> confianza de cada campo; nunca crea la factura sola: la persona revisa y confirma (`backend/api/OCR_BILL_UPLOAD.md`).
 > La imagen no se guarda. Aún no se ha validado con fotos reales de EDESUR/EDENORTE/EDEESTE.
 > **No** hay IA generativa, medidores inteligentes, solar ni datos horarios.
 > Todos los datos del seed son **demo**: no son facturas reales de clientes.
@@ -43,7 +43,7 @@ cd energy-intelligence-rd
 git checkout Dev            # o main, según lo que se vaya a demostrar
 
 cp .env.example .env        # valores locales de desarrollo, sin secretos reales
-cp apps/web/.env.example apps/web/.env.local
+cp frontend-web/app/.env.example frontend-web/app/.env.local
 
 # Base de datos + API; el seed demo es una opción explícita
 SEED_PILOT=true docker compose up -d --build --wait postgres api
@@ -156,7 +156,7 @@ Con la API levantada:
 
 ```bash
 npm ci                                   # si no se hizo antes
-npm run test:e2e -w apps/mobile          # recorrido vivienda → factura → dashboard → alerta: 8 passed
+npm run test:e2e -w frontend-mobile/app          # recorrido vivienda → factura → dashboard → alerta: 8 passed
 ```
 
 Smoke test de UI en simulador/emulador (requiere Maestro): ver `docs/qa/ERD-MOB-QUALITY.md`.
@@ -170,7 +170,7 @@ Smoke test de UI en simulador/emulador (requiere Maestro): ver `docs/qa/ERD-MOB-
 | `password authentication failed` desde la máquina | Te conectas al PostgreSQL nativo del Mac (5432) | Usar el puerto **5433** (`.env.example` ya lo trae) |
 | `port is already allocated` (5433/8000/3000/8081) | Otro proceso usa el puerto | Cerrarlo, o cambiar `POSTGRES_PORT` / `API_PORT` en `.env` |
 | La API no llega a *healthy* | La base aún arranca o falló la migración | `docker compose logs api` |
-| Web: “No se pudo conectar con la API” | API apagada o URL distinta | `curl localhost:8000/health`; revisar `apps/web/.env.local` |
+| Web: “No se pudo conectar con la API” | API apagada o URL distinta | `curl localhost:8000/health`; revisar `frontend-web/app/.env.local` |
 | Teléfono: error de red | Teléfono en otra red, o firewall | Misma Wi-Fi; o `EXPO_PUBLIC_API_URL=http://<IP>:8000` |
 | Números distintos a la tabla §3 | Quedaron facturas/equipos de una demo anterior | Reinicio limpio (borra datos locales): `docker compose down -v && SEED_PILOT=true docker compose up -d --build --wait postgres api` |
 | Container name `energy-postgres` already in use | Hay otra copia del proyecto levantada | `docker compose down` en la otra copia |

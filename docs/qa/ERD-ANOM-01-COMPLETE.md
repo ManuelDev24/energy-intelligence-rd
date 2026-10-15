@@ -1,6 +1,6 @@
 # ERD-ANOM-01-COMPLETE — Anomalías persistidas, confianza, picos, nocturno, caídas, job y deduplicación
 
-Detalle técnico y reglas: `services/api/ANOMALIES.md`.
+Detalle técnico y reglas: `backend/api/ANOMALIES.md`.
 
 | Criterio | Evidencia |
 |---|---|

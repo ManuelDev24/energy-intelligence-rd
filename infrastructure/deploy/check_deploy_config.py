@@ -3,11 +3,11 @@
 
 Verifica que:
   * cada variable de render.yaml existe en el código que la consume (API: campos de Settings en
-    services/api/app/config.py; web: referencias en apps/web) o es una variable de plataforma conocida;
+    backend/api/app/config.py; web: referencias en frontend-web/app) o es una variable de plataforma conocida;
   * los secretos usan `sync: false` y no hay valores secretos escritos en el Blueprint;
   * producción: rama main, auto-deploy apagado, migración como preDeployCommand, sin seed/migrate-on-start;
   * staging: rama Dev; todas las instancias en la región virginia;
-  * apps/mobile/eas.json: cada EXPO_PUBLIC_* se usa en apps/mobile/src y las URLs pasan la misma regla
+  * frontend-mobile/app/eas.json: cada EXPO_PUBLIC_* se usa en frontend-mobile/app/src y las URLs pasan la misma regla
     HTTPS que src/config.ts aplica en compilaciones release.
 
 Uso (desde la raíz del repo):  python3 infrastructure/deploy/check_deploy_config.py
@@ -33,7 +33,7 @@ SECRET_VARS = {"DATABASE_URL", "MIGRATION_DATABASE_URL", "AUTH_SIGNING_KEY", "RE
 SHARED_API_WORKER = {"DATABASE_URL", "AUTH_SIGNING_KEY", "CORS_ORIGINS", "RESEND_API_KEY", "EMAIL_FROM",
                      "PASSWORD_RESET_URL", "STORAGE_S3_BUCKET", "STORAGE_S3_ENDPOINT_URL", "STORAGE_S3_ACCESS_KEY_ID",
                      "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_ENCRYPTION_KEYS", "STORAGE_URL_SIGNING_KEY"}
-# Copia de HTTPS_ORIGIN en apps/mobile/src/config.ts.
+# Copia de HTTPS_ORIGIN en frontend-mobile/app/src/config.ts.
 HTTPS_ORIGIN = re.compile(
     r"^https://(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*|\[[0-9a-f:.]+\])(?::\d{1,5})?/?$",
     re.I,
@@ -57,7 +57,7 @@ def load_yaml(path: Path):
 
 
 def settings_fields() -> set[str]:
-    text = (ROOT / "services/api/app/config.py").read_text()
+    text = (ROOT / "backend/api/app/config.py").read_text()
     body = text.split("class Settings", 1)[1]
     return set(re.findall(r"^    ([A-Z][A-Z0-9_]*)\s*:", body, re.M))
 
@@ -111,7 +111,7 @@ def check_render() -> None:
                     if key in PENDING_API_VARS:
                         warnings.append(f"{name}: {key} aún no existe en config.py (recuperación de contraseña en curso)")
                     else:
-                        errors.append(f"{name}: {key} no es un campo de Settings (services/api/app/config.py)")
+                        errors.append(f"{name}: {key} no es un campo de Settings (backend/api/app/config.py)")
                 for required in ("DATABASE_URL", "AUTH_SIGNING_KEY", "CORS_ORIGINS", "ENVIRONMENT", "AUTH_ENABLED", "DB_REQUIRE_RESTRICTED_ROLE"):
                     if required not in keys:
                         errors.append(f"{name}: falta {required}")
@@ -145,8 +145,8 @@ def check_render() -> None:
                 for key in keys:
                     if key in PLATFORM_VARS:
                         continue
-                    if not referenced("apps/web", key):
-                        errors.append(f"{name}: {key} no se usa en apps/web")
+                    if not referenced("frontend-web/app", key):
+                        errors.append(f"{name}: {key} no se usa en frontend-web/app")
                 for required in ("NEXT_PUBLIC_AUTH_ENABLED", "API_BASE_URL", "WEB_ORIGIN"):
                     if required not in keys:
                         errors.append(f"{name}: falta {required}")
@@ -173,15 +173,15 @@ def check_render() -> None:
 
 
 def check_eas() -> None:
-    doc = json.loads((ROOT / "apps/mobile/eas.json").read_text())
+    doc = json.loads((ROOT / "frontend-mobile/app/eas.json").read_text())
     profiles = doc["build"]
     for required in ("development", "preview", "production"):
         if required not in profiles:
             errors.append(f"eas.json: falta el perfil {required}")
     for name, profile in profiles.items():
         for key, value in profile.get("env", {}).items():
-            if not referenced("apps/mobile/src", key):
-                errors.append(f"eas.json/{name}: {key} no se usa en apps/mobile/src")
+            if not referenced("frontend-mobile/app/src", key):
+                errors.append(f"eas.json/{name}: {key} no se usa en frontend-mobile/app/src")
             if key == "EXPO_PUBLIC_API_URL" and not HTTPS_ORIGIN.match(value):
                 errors.append(f"eas.json/{name}: EXPO_PUBLIC_API_URL no es un origen HTTPS válido")
         print(f"  eas.json · perfil {name:<12} env={sorted(profile.get('env', {}))}")

@@ -1,6 +1,6 @@
 # ERD-SAVE-01 — Recomendaciones de ahorro explicables, versionadas e idempotentes
 
-Diseño y reglas: `services/api/RECOMMENDATIONS.md`.
+Diseño y reglas: `backend/api/RECOMMENDATIONS.md`.
 
 | Criterio | Evidencia |
 |---|---|

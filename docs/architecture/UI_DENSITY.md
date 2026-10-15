@@ -3,7 +3,7 @@
 Un solo contrato visual para formularios, que cada plataforma implementa con su propio componente
 (la decisión de [UI_KIT.md](UI_KIT.md) de no crear `packages/ui` se mantiene).
 
-## Web (`apps/web/src/components/ui/`)
+## Web (`frontend-web/app/src/components/ui/`)
 
 | Pieza | Regla |
 |---|---|
@@ -20,7 +20,7 @@ Un solo contrato visual para formularios, que cada plataforma implementa con su 
 
 Cómo elegir el ancho: depende del **tipo de dato**, no del contenedor. Si dudas, deja el defecto `md`.
 
-## Móvil (`apps/mobile/src/components/`)
+## Móvil (`frontend-mobile/app/src/components/`)
 
 - No se trasladan las medidas de escritorio. `Field` y `Button` mantienen **44 pt** mínimos (`TOUCH`) y fuente de 16 pt.
 - `Button`: `primary`, `secondary`, `tertiary`, `danger`, y `loading` (`accessibilityState.busy`).
@@ -30,7 +30,7 @@ Cómo elegir el ancho: depende del **tipo de dato**, no del contenedor. Si dudas
 
 ## Lo que NO se hizo, y por qué
 
-- **`apps/admin`** conserva su HTML mínimo: es una consola provisional (ver su `package.json`), y añadirle Tailwind
+- **`frontend-web/admin`** conserva su HTML mínimo: es una consola provisional (ver su `package.json`), y añadirle Tailwind
   alteraría su CSP y sus pruebas de seguridad. Adoptará el kit cuando empiece el Módulo 4.
 - **Tablas de ítems de factura** (`BillItemsSection`) siguen con `<input>` y `<select>` propios: son celdas densas de
   tabla, no formularios. Migrarlas requiere un `Input` de tabla con su propia variante.

@@ -1,7 +1,7 @@
 # Guía de despliegue — Energy RD (ERD-DEPLOY-01)
 
 Para: el dueño del proyecto. Todo lo de esta guía lo hace **una persona con acceso a las cuentas**; el repo
-ya trae la configuración (`render.yaml`, `apps/mobile/eas.json`) y nada se ha desplegado todavía.
+ya trae la configuración (`render.yaml`, `frontend-mobile/app/eas.json`) y nada se ha desplegado todavía.
 
 Stack aprobado: **Render** (región *Virginia*) para API (Docker) y web (Node) · **Neon** Postgres (proyecto
 existente en `us-east`) · **Expo EAS** para la app móvil · **Resend** para correo · **Sentry Free** más adelante.
@@ -63,10 +63,10 @@ Proyecto Neon existente (región AWS `us-east-1`, la más cercana a Render *Virg
 ## 2. Primera migración de **staging** (desde tu Mac)
 
 Render Free no ejecuta *pre-deploy*, así que staging se migra a mano, ahora y cada vez que `Dev` traiga una
-migración nueva (archivo nuevo en `services/api/app/alembic/versions/`), **antes** de que llegue el deploy.
+migración nueva (archivo nuevo en `backend/api/app/alembic/versions/`), **antes** de que llegue el deploy.
 
 ```bash
-cd services/api
+cd backend/api
 read -rs MIGRATION_DATABASE_URL   # URL del rol DUEÑO de staging (no queda en el historial) y Enter
 export MIGRATION_DATABASE_URL
 export DATABASE_URL="$MIGRATION_DATABASE_URL"   # la configuración exige DATABASE_URL; las migraciones usan MIGRATION_DATABASE_URL
@@ -76,7 +76,7 @@ unset MIGRATION_DATABASE_URL DATABASE_URL
 ```
 
 Alternativa con la imagen Docker (sin entorno Python local):
-`docker build -t erd-api services/api && docker run --rm -e DATABASE_URL -e MIGRATION_DATABASE_URL erd-api alembic upgrade head`
+`docker build -t erd-api backend/api && docker run --rm -e DATABASE_URL -e MIGRATION_DATABASE_URL erd-api alembic upgrade head`
 (con las dos variables exportadas como arriba). **No** uses `MIGRATE_ON_START` ni `SEED_PILOT`: la API los
 rechaza en staging/production.
 
@@ -125,7 +125,7 @@ Producción **no** necesita este paso: su primer deploy ejecuta `alembic upgrade
    auto-deploy apagado). Desde ese momento los servicios Starter facturan.
 7. **Confirmar las URLs reales** (cabecera de cada servicio). Si alguna tiene sufijo (p. ej.
    `energyrd-api-staging-x1y2.onrender.com`), corrige en *Environment* las variables que la usan
-   (`CORS_ORIGINS`, `API_BASE_URL`, `WEB_ORIGIN`, `PASSWORD_RESET_URL`) y `apps/mobile/eas.json`; luego
+   (`CORS_ORIGINS`, `API_BASE_URL`, `WEB_ORIGIN`, `PASSWORD_RESET_URL`) y `frontend-mobile/app/eas.json`; luego
    *Manual Deploy* → *Deploy latest commit* (la web incrusta valores en el build).
 8. Dominio propio (opcional): servicio → *Settings* → *Custom Domains* → añadir `app.TU-DOMINIO` (web) y
    `api.TU-DOMINIO` (API), crear los CNAME que indica Render y esperar el certificado. Después actualizar las
@@ -148,7 +148,7 @@ programadas, las alertas por tiempo y los avisos por correo/push los ejecuta el 
 1. **Bucket S3-compatible PRIVADO** (uno por entorno; p. ej. Cloudflare R2 o AWS S3): sin acceso público, sin listado público,
    región/endpoint anotados. Crear una clave de acceso limitada **solo a ese bucket** (lectura, escritura y borrado de objetos).
 2. **Claves de cifrado** (por entorno, distintas): `STORAGE_ENCRYPTION_KEYS` = `k1:<base64url de 32 bytes>` y
-   `STORAGE_URL_SIGNING_KEY` (≥ 43 caracteres). Generación y rotación: `services/api/STORAGE.md`.
+   `STORAGE_URL_SIGNING_KEY` (≥ 43 caracteres). Generación y rotación: `backend/api/STORAGE.md`.
    ```bash
    python3 -c 'import os,base64;print("k1:"+base64.urlsafe_b64encode(os.urandom(32)).decode())'
    python3 -c 'import secrets;print(secrets.token_urlsafe(48))'
@@ -201,9 +201,9 @@ Requisitos: cuenta Expo (expo.dev), y para tiendas **Apple Developer Program** (
 Console** (USD 25 pago único). Identificador de la app: `do.energyrd.app` (iOS y Android, ya en `app.json`).
 
 1. Instalar la CLI y entrar: `npm install -g eas-cli` → `eas login`.
-2. Vincular el proyecto (una vez): `cd apps/mobile && eas init`. Escribe `extra.eas.projectId` en
+2. Vincular el proyecto (una vez): `cd frontend-mobile/app && eas init`. Escribe `extra.eas.projectId` en
    `app.json`: hacer commit de ese cambio en `Dev`.
-3. Revisar `apps/mobile/eas.json`: `EXPO_PUBLIC_API_URL` de `development`/`preview` apunta a la API de
+3. Revisar `frontend-mobile/app/eas.json`: `EXPO_PUBLIC_API_URL` de `development`/`preview` apunta a la API de
    staging y la de `production` a la API de producción. Si cambiaron las URLs (sufijo o dominio propio),
    editarlas antes de compilar.
 4. Build interno para probar contra staging:
@@ -211,7 +211,7 @@ Console** (USD 25 pago único). Identificador de la app: `do.energyrd.app` (iOS 
    registrar dispositivos con `eas device:create`).
 5. Perfil `development` (cliente de desarrollo): antes hay que añadir la dependencia `expo-dev-client`
    siguiendo el procedimiento del repo (versión con `npx expo install`, instalación desde la raíz con
-   `npm install expo-dev-client@<versión> -w apps/mobile`). Sin ella, usar `preview`.
+   `npm install expo-dev-client@<versión> -w frontend-mobile/app`). Sin ella, usar `preview`.
 6. Producción: `eas build --profile production --platform all`. EAS gestiona firmas y numeración
    (`appVersionSource: remote` + `autoIncrement`). La primera vez pedirá crear/descargar credenciales: deja
    que EAS las genere y guarde.
@@ -284,7 +284,7 @@ filesystem efímero (la API no escribe en disco); no apto para producción.
 
 ## 10. Lista final de pasos manuales del dueño
 
-1. Promover a `main` los archivos de despliegue (`render.yaml`, `apps/mobile/eas.json`, `docs/deploy/`,
+1. Promover a `main` los archivos de despliegue (`render.yaml`, `frontend-mobile/app/eas.json`, `docs/deploy/`,
    `infrastructure/deploy/`, Dockerfile/entrypoint).
 2. Neon: crear rama `staging`, roles `erd_staging`/`erd_prod`, bases `energyrd`; copiar las dos URLs; decidir
    plan (Free o Launch) para producción.
@@ -313,13 +313,13 @@ filesystem efímero (la API no escribe en disco); no apto para producción.
 - Los accesos directos a la base (scripts de soporte/importación) deben pasar por los servicios de la API: las reglas de negocio
   (monotonía de lecturas, `days` vs. período, «siempre hay un propietario») viven en la aplicación (DB-09, decisión aceptada).
 
-## Consola de administración (`apps/admin`): NO está en `render.yaml`
+## Consola de administración (`frontend-web/admin`): NO está en `render.yaml`
 
 Decisión pendiente de Manuel (re-auditoría N-1/N-2): hoy la consola no se despliega con el blueprint. Hasta decidirlo, **no se publica
 por otra vía**. Para añadirla como servicio web de Node (mismo patrón que `energyrd-web-*`) se exige:
 - `ADMIN_API_BASE_URL` (origen HTTPS del API, sin ruta ni credenciales) y `ADMIN_ORIGIN` (su propio origen HTTPS): `next.config.mjs` aborta
   el arranque de producción sin ellos. El BFF solo atiende peticiones cuyo `Host` y `Origin` coincidan con `ADMIN_ORIGIN`.
-- Build `npm ci --include=dev && npm run build --workspace apps/admin`, arranque `npm run start --workspace apps/admin`, `NODE_VERSION` 24.
+- Build `npm ci --include=dev && npm run build --workspace frontend-web/admin`, arranque `npm run start --workspace frontend-web/admin`, `NODE_VERSION` 24.
 - Cabeceras de seguridad y CSP con nonce ya implementadas (`src/middleware.ts`, `next.config.mjs`) y probadas; comprobar con `curl -I`
   en el entorno real.
 - El API debe tener asignado el primer `super_admin` mediante el CLI de arranque (`app.cli_bootstrap_admin`), nunca por HTTP, y el acceso

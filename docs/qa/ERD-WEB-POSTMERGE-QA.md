@@ -28,12 +28,12 @@
 el dashboard pintaba "SECRET-UPSTREAM". En el piloto (sin BFF) `QueryState` usaba `error.message`, que el
 cliente copia del `detail` de la API. Corregido: `QueryState` usa `userMessage(error, "load")` (texto local por
 estado HTTP) y lo mismo en alta/edición/borrado de facturas, OCR, equipos y alertas. Prueba:
-`apps/web/src/test/error-text.test.tsx` (RED → GREEN). Tras el cambio: "Error del servidor. Inténtalo de nuevo más tarde."
+`frontend-web/app/src/test/error-text.test.tsx` (RED → GREEN). Tras el cambio: "Error del servidor. Inténtalo de nuevo más tarde."
 
 ## Observaciones sin corregir (no bloquean)
 - H1 quedó resuelto posteriormente en `ERD-PROJECTION-METRIC-API`: la variación procede de `projection.kwh_pct_vs_latest`, con calidad PROJECTED; el cliente solo la formatea.
 - Con la API apagada se ven dos tarjetas de error (períodos y dashboard), cada una con su Reintentar.
 
 ## Puertas
-`npm run typecheck` 0 errores · `npm run lint -w apps/web` OK · web 525 pasan / 5 omitidas (530/530 con
+`npm run typecheck` 0 errores · `npm run lint -w frontend-web/app` OK · web 525 pasan / 5 omitidas (530/530 con
 `LIVE_API_URL`) · core 29 · contratos 16 · api-client 39 · móvil 372.

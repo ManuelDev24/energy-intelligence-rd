@@ -1,6 +1,6 @@
 # Usuarios y acceso en el panel (ERD-ADM-USERS-WEB, 2026-10-14)
 
-`apps/admin` → **Usuarios** (`/usuarios`, `/usuarios/[id]`), scope `admin.users.read` (`support_readonly`, `operations_admin`, `super_admin`).
+`frontend-web/admin` → **Usuarios** (`/usuarios`, `/usuarios/[id]`), scope `admin.users.read` (`support_readonly`, `operations_admin`, `super_admin`).
 API: `GET /api/v1/admin/users` (búsqueda y página) y `GET /api/v1/admin/users/{id}` (ficha). **Solo lectura**: el BFF solo deja pasar esos GET.
 
 ## Qué se ve

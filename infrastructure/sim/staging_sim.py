@@ -6,7 +6,7 @@ ejercitar el CÓDIGO de extremo a extremo (configuración tipo producción de al
 recuperación de un objeto perdido). Datos sintéticos.
 
 Requisitos: PostgreSQL local (usuario `energy`), `moto_server` en 127.0.0.1:5555 (`uvx --from 'moto[server]' moto_server -p 5555`),
-Tesseract, y las dependencias de services/api. Uso:  python3 infrastructure/sim/staging_sim.py <dir-salida>
+Tesseract, y las dependencias de backend/api. Uso:  python3 infrastructure/sim/staging_sim.py <dir-salida>
 """
 import base64, json, os, secrets, signal, subprocess, sys, time, uuid
 from datetime import date, timedelta
@@ -16,7 +16,7 @@ import boto3
 import httpx
 
 ROOT = Path(__file__).resolve().parents[2]
-API_DIR = ROOT / "services/api"
+API_DIR = ROOT / "backend/api"
 OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(API_DIR))
 from tests import synthetic_bills as sb  # noqa: E402

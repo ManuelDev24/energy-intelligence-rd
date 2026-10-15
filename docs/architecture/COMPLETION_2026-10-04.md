@@ -35,7 +35,7 @@ Los errores de aplicación no dependen de FastAPI. Las escrituras y su auditorí
   Vitest: core **27/27**, contratos **2/2**, cliente **4/4**, web **44 pasadas + 5 skipped**,
   móvil **39 pasadas + 8 skipped** (47 pruebas declaradas). Recorrido móvil real **8/8**.
 - `npm ci` en la raíz: completó correctamente desde el lockfile del monorepo.
-- `npm run build --workspace apps/web`: build de producción Next 15.5.27 pasa.
+- `npm run build --workspace frontend-web/app`: build de producción Next 15.5.27 pasa.
 - Contratos generados (`uv run python -m scripts.generate_contracts --check`), límites de
   arquitectura (`python scripts/check_architecture.py`) y `git diff --check`: pasan.
 - Exportación Expo de bundles iOS y Android: pasa. Una exportación no prueba interacción nativa.

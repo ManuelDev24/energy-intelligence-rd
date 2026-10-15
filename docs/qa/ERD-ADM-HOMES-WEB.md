@@ -1,6 +1,6 @@
 # ERD-ADM-HOMES-WEB — consulta administrativa de viviendas (solo lectura)
 
-Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (15/15 en `apps/admin`, axe sin violaciones a 360/768/1280 px).
+Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (15/15 en `frontend-web/admin`, axe sin violaciones a 360/768/1280 px).
 
 ## Qué hay
 - **Scope nuevo `admin.homes.read`** (migración 0038, dato y no constante): super_admin, operations_admin y support_readonly. Auditor y revisor OCR no lo tienen.

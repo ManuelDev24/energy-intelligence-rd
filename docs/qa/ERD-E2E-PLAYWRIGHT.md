@@ -1,6 +1,6 @@
 # ERD-E2E-PLAYWRIGHT — E2E web contra PostgreSQL, API y worker reales
 
-Suite en `apps/web/e2e/` (Playwright 1.63, Chromium). **Nada se simula**: cada corrida crea una base PostgreSQL exclusiva
+Suite en `frontend-web/app/e2e/` (Playwright 1.63, Chromium). **Nada se simula**: cada corrida crea una base PostgreSQL exclusiva
 (`energy_rd_e2e`), aplica **todas las migraciones desde vacío**, levanta la API (`uvicorn`), el worker de trabajos y la
 web (`next dev`), ejecuta las pruebas y lo apaga todo, borrando la base.
 
@@ -10,7 +10,7 @@ web (`next dev`), ejecuta las pruebas y lo apaga todo, borrando la base.
 |---|---|
 | Todo (regresión) | `npm run e2e` |
 | Solo humo (`@smoke`, 4 recorridos) | `npm run e2e:smoke` |
-| Instalar el navegador | `npm run e2e:install --workspace apps/web` |
+| Instalar el navegador | `npm run e2e:install --workspace frontend-web/app` |
 | Chromium propio (entornos sin descarga) | `E2E_CHROMIUM_PATH=/ruta/chrome npm run e2e` |
 | Otra base / puertos | `E2E_DATABASE_URL`, `E2E_API_PORT`, `E2E_WEB_PORT` (el nombre de la base debe terminar en `_e2e` y ser local) |
 

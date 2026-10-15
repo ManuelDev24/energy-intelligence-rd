@@ -1,6 +1,6 @@
 # ERD-ADM-OPS-WEB — estado de los trabajos en segundo plano (solo lectura)
 
-Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (22/22 en `apps/admin`, axe sin violaciones a 360/768/1280 px).
+Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (22/22 en `frontend-web/admin`, axe sin violaciones a 360/768/1280 px).
 
 ## Qué hay
 - **`GET /api/v1/admin/jobs/summary`** — una fila por tipo de trabajo (correos, OCR, anomalías, alertas, mantenimiento…): en cola, en curso, muertos, terminados y muertos en 24 h, atrasados (en cola y vencidos hace más de 10 min), espera del más antiguo, último terminado y último exitoso.

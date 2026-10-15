@@ -24,7 +24,7 @@ canónico ni se hizo commit/push/merge.
   `GET /admin/audit-events` (filtros + paginación).
 - CLI de bootstrap `app/cli_bootstrap_admin.py` (`python -m app.cli_bootstrap_admin <email>`),
   sin endpoint HTTP equivalente.
-- `apps/admin` (Next.js, mínima): login, verificación de sesión, nav protegida por scope real,
+- `frontend-web/admin` (Next.js, mínima): login, verificación de sesión, nav protegida por scope real,
   "Mi acceso", gestión de roles/asignaciones (solo con `admin.roles.manage`), visor de
   auditoría con filtro por acción, estados loading/empty/error/forbidden+Retry, logout.
 
@@ -36,10 +36,10 @@ Postgres local existente (puerto 5433, mismo servidor que el piloto pero base *d
 validada por `tests/db_safety.py::validate_test_database_url`, que ya rechaza nombres que no
 terminen en `_test` o que coincidan con la base de aplicación). Nunca se usó la base piloto.
 
-## Resultados de pruebas — backend (`services/api`)
+## Resultados de pruebas — backend (`backend/api`)
 
 ```
-cd services/api && uv run pytest -q
+cd backend/api && uv run pytest -q
 598 passed, 1 warning in 138.46s
 ```
 
@@ -95,7 +95,7 @@ Architecture boundaries passed
 (el commit/rollback vive en `app/services/transactions.write_transaction`, igual que el resto
 del código existente).
 
-## Frontend (`apps/admin`)
+## Frontend (`frontend-web/admin`)
 
 - `npx vitest run` → 4/4 (lógica pura de control de acceso: deny-by-default, visibilidad de
   navegación por scope).
@@ -108,7 +108,7 @@ del código existente).
 
 ## Pendiente / decisiones para el coordinador
 
-- **apps/admin es intencionalmente mínima** (como pide el spec): no incluye gestión de
+- **frontend-web/admin es intencionalmente mínima** (como pide el spec): no incluye gestión de
   usuarios/viviendas/tarifas. Estilo visual es básico (sin Tailwind ni design system) — se
   priorizó correctitud funcional y de permisos sobre pulido visual, dado el alcance ya grande
   de la tarea.
@@ -118,7 +118,7 @@ del código existente).
 - **Rotación/expiración de sesión del admin**: reutiliza el mismo mecanismo de
   `/api/v1/auth/login` y `/refresh` que el resto de la app (no se creó un login administrativo
   separado); es intencional para no duplicar lógica de autenticación, pero significa que un
-  usuario doméstico normal también puede loguearse en `apps/admin` — simplemente no verá nada
+  usuario doméstico normal también puede loguearse en `frontend-web/admin` — simplemente no verá nada
   (ver "Mi acceso" vacío) porque la autorización vive 100% en el backend, no en el login.
 - **Ningún endpoint nuevo para convertir usuarios en admin**: cumplido a propósito; el único
   camino es el CLI de bootstrap (solo para el primer `super_admin`) o `POST

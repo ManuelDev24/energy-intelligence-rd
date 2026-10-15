@@ -1,6 +1,6 @@
 # ERD-ADM-TARIFFS-WEB — cobertura y versiones de tarifas (solo lectura)
 
-Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (20/20 en `apps/admin`, axe sin violaciones a 360/768/1280 px).
+Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (20/20 en `frontend-web/admin`, axe sin violaciones a 360/768/1280 px).
 
 ## Por qué existe
 `resolve_tariff` **nunca reutiliza una versión vencida**: si ninguna versión cubre «hoy», los costos en RD$ pasan a «tarifa no disponible». La tarifa BTS-1 cargada (migración 0008, SIE-121-2026-TF) vence el **31/12/2026** y no hay versión siguiente cargada. Esta vista lo hace visible con tiempo.

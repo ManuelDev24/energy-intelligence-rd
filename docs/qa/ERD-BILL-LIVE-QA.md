@@ -8,7 +8,7 @@ anonimizadas (las aporta Manuel; ver `OCR_REAL_QA.md`) y (b) el recorrido móvil
 ## Defecto encontrado y corregido: el OCR no funcionaba en web con cuentas autenticadas
 Con `NEXT_PUBLIC_AUTH_ENABLED=true` (la configuración de producción) el BFF respondía `415 Se requiere JSON` a
 `POST /homes/{id}/bills/ocr`, porque solo aceptaba cuerpos JSON. Ningún QA anterior lo vio: se hicieron en modo piloto
-(sin BFF) o con pruebas unitarias contra el cliente. Corrección (TDD, `apps/web/src/lib/auth/bff-ocr.test.ts`, 14 pruebas):
+(sin BFF) o con pruebas unitarias contra el cliente. Corrección (TDD, `frontend-web/app/src/lib/auth/bff-ocr.test.ts`, 14 pruebas):
 multipart permitido **solo** en esa ruta, con `multipart/form-data` + boundary obligatorio (si no, 415), tope de 10 MiB
 + sobre (413, también por `Content-Length` antes de leer), sin parámetros de consulta, mismo origen y sesión
 obligatorios, respuesta validada con `OcrDraftSchema` (si no cumple el contrato, 502) y errores sin texto de la API.

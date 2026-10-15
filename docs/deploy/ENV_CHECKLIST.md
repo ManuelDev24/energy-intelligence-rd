@@ -1,7 +1,7 @@
 # Checklist de variables de entorno — Energy RD (ERD-DEPLOY-01)
 
-Fuente de verdad: `services/api/app/config.py` (API), `apps/web/next.config.mjs` + `apps/web/src/lib/auth/bff.ts`
-+ `apps/web/src/middleware.ts` (web), `apps/mobile/src/config.ts` (móvil). Blueprint: `render.yaml`.
+Fuente de verdad: `backend/api/app/config.py` (API), `frontend-web/app/next.config.mjs` + `frontend-web/app/src/lib/auth/bff.ts`
++ `frontend-web/app/src/middleware.ts` (web), `frontend-mobile/app/src/config.ts` (móvil). Blueprint: `render.yaml`.
 Comprobación automática (sin red): `python3 infrastructure/deploy/check_deploy_config.py`.
 
 Convenciones:
@@ -76,7 +76,7 @@ Opcionales (tienen default seguro en `config.py`; solo definirlas si se decide c
 `docs/ops/OBSERVABILITY.md`), `SENTRY_TRACES_SAMPLE_RATE` (0.05), `WORKER_POLL_SECONDS` (2), `JOB_*` (reintentos, backoff y retención de la cola), `OCR_*` (páginas, tiempo y trabajos activos), `ANOMALY_*` (umbrales de detección, **sin calibrar con datos reales**), `NOTIFY_DAILY_CAP` (10 avisos por persona y día), `MAX_DEVICES_PER_USER` (10).
 
 > ⚠️ Límites anti-abuso detrás de Render: la API cuenta intentos **por IP de transporte** y arranca con
-> `--no-proxy-headers` (decisión documentada en `services/api/AUTH_ABUSE_PROTECTION.md`). Detrás del proxy de
+> `--no-proxy-headers` (decisión documentada en `backend/api/AUTH_ABUSE_PROTECTION.md`). Detrás del proxy de
 > Render todos los clientes comparten ese presupuesto (y toda la web llega desde el BFF). Antes de abrir
 > producción a usuarios reales hay que decidir: subir `AUTH_*_LIMIT` (mitigación inmediata, sin código) o
 > implementar en la API una IP de cliente confiable (tarea de código aparte). No se activó `--proxy-headers`
@@ -94,10 +94,10 @@ Opcionales (tienen default seguro en `config.py`; solo definirlas si se decide c
 | `NODE_ENV` | — | **no definir** | **no definir** | Si vale `production` durante el build, `npm ci` omite devDependencies (Tailwind/TypeScript) y el build falla. `next build/start` la fijan solos. |
 | `PORT` | — | (Render) | (Render) | `next start` la lee automáticamente. |
 
-`NEXT_PUBLIC_API_URL` (`apps/web/src/lib/env.ts`) solo se usa en el modo piloto sin auth; con auth activa la web
+`NEXT_PUBLIC_API_URL` (`frontend-web/app/src/lib/env.ts`) solo se usa en el modo piloto sin auth; con auth activa la web
 habla con la API únicamente a través del BFF (`API_BASE_URL`). No definirla.
 
-## Móvil — `apps/mobile/eas.json` (EAS Build)
+## Móvil — `frontend-mobile/app/eas.json` (EAS Build)
 
 | Variable | Secreto | development | preview | production | Notas |
 |---|---|---|---|---|---|

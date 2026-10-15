@@ -11,7 +11,7 @@ es evidencia en dispositivo. Esta guía convierte cada ítem en una corrida con 
    documento `ERD-*` del ítem, con fecha, plataforma, versión de SO y commit probado.
 2. Solo cuentas sintéticas (`@example.com`) salvo en los ítems que exigen correo/datos reales (5, 10, 4). Capturas,
    facturas, tokens y trazas privadas **no entran a git**; se publica un JSON/MD con resultados por campo, sin valores
-   personales (patrón de `apps/mobile/maestro/evidence/dev-recovery-2026-10-11/native-ios-auth.json`).
+   personales (patrón de `frontend-mobile/app/maestro/evidence/dev-recovery-2026-10-11/native-ios-auth.json`).
 3. Cada recorrido se repite **dos veces seguidas** por plataforma (criterio de `ERD-E2E-MAESTRO-AUTH`).
 4. Base y API propias (no la del piloto `:8000/:5433`), `AUTH_ENABLED=true`, base vacía, proveedor de correo de
    desarrollo salvo indicación contraria.
@@ -23,17 +23,17 @@ es evidencia en dispositivo. Esta guía convierte cada ítem en una corrida con 
 |---|---|
 | Android | Emulador API 34+ (o teléfono con depuración USB), Expo Go o development build (`eas build -p android --profile development`) |
 | iOS | Simulador iOS 17+ (Mac) o TestFlight/development build para dispositivo físico |
-| Maestro | `curl -Ls https://get.maestro.mobile.dev \| bash`; flujos en `apps/mobile/maestro/` |
+| Maestro | `curl -Ls https://get.maestro.mobile.dev \| bash`; flujos en `frontend-mobile/app/maestro/` |
 | API | `AUTH_ENABLED=true ENVIRONMENT=development docker compose up -d --wait postgres api` en una base nueva; `COPILOT_PROVIDER=fake` para el Copilot |
 | Metro | `EXPO_PUBLIC_AUTH_ENABLED=true EXPO_PUBLIC_API_URL=<url de esa API> npx expo start --port 8081` |
-| Build instalable | `apps/mobile/eas.json` ya define `development`, `preview` (APK) y producción; requiere cuenta EAS y `projectId` |
+| Build instalable | `frontend-mobile/app/eas.json` ya define `development`, `preview` (APK) y producción; requiere cuenta EAS y `projectId` |
 
 ---
 
 ## 1. `ERD-E2E-MAESTRO-AUTH` — dos recorridos Android + recuperación por correo
 
 - **Estado:** iOS: dos corridas verdes (132.5 s / 135.0 s). Android: sin ejecutar.
-- **Pasos:** `apps/mobile/maestro/run-auth.sh android` dos veces seguidas (emulador con Expo Go; `APP_ID=host.exp.exponent`).
+- **Pasos:** `frontend-mobile/app/maestro/run-auth.sh android` dos veces seguidas (emulador con Expo Go; `APP_ID=host.exp.exponent`).
   Recuperación: con un buzón controlado (p. ej. Mailpit/Resend en sandbox), pedir recuperación, **abrir el enlace del correo**
   en el dispositivo, fijar contraseña nueva, iniciar sesión con ella; el enlace usado una vez no debe funcionar de nuevo.
 - **Pasa si:** 2/2 corridas exit 0; las 7 capturas muestran vacío (no ceros), meta persistida tras reingresar; recuperación

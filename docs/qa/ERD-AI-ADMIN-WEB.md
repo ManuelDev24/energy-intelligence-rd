@@ -1,6 +1,6 @@
 # ERD-AI-ADMIN-WEB — supervisión del Copilot (solo agregados)
 
-Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (24/24 en `apps/admin`, axe sin violaciones a 360/768/1280 px).
+Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (24/24 en `frontend-web/admin`, axe sin violaciones a 360/768/1280 px).
 
 ## Qué hay
 - **Scope `admin.ai.read`** (migración 0040): super_admin y operations_admin. Soporte, auditor y revisor OCR no lo tienen.

@@ -55,13 +55,13 @@ projects:
             plan: free
             region: virginia
             branch: Dev
-            dockerfilePath: ./services/api/Dockerfile
-            dockerContext: ./services/api
+            dockerfilePath: ./backend/api/Dockerfile
+            dockerContext: ./backend/api
             healthCheckPath: /health
             autoDeployTrigger: commit
             buildFilter:
               paths:
-                - services/api/**
+                - backend/api/**
             envVars:
               - fromGroup: energyrd-api-staging-config
               - key: DATABASE_URL # Neon, rama `staging`, rol **erd_app** (no el dueño): postgresql+psycopg://erd_app:…@…?sslmode=require
@@ -86,7 +86,7 @@ projects:
                 sync: false
               - key: STORAGE_S3_SECRET_ACCESS_KEY
                 sync: false
-              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver services/api/STORAGE.md
+              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver backend/api/STORAGE.md
                 sync: false
               - key: STORAGE_URL_SIGNING_KEY # ≥43 caracteres aleatorios
                 sync: false
@@ -98,13 +98,13 @@ projects:
             region: virginia
             branch: Dev
             # Monorepo npm workspaces: se instala desde la raíz con el único package-lock.json.
-            buildCommand: npm ci --include=dev && npm run build --workspace apps/web
-            startCommand: npm run start --workspace apps/web
+            buildCommand: npm ci --include=dev && npm run build --workspace frontend-web/app
+            startCommand: npm run start --workspace frontend-web/app
             healthCheckPath: /login
             autoDeployTrigger: commit
             buildFilter:
               paths:
-                - apps/web/**
+                - frontend-web/app/**
                 - packages/**
                 - package.json
                 - package-lock.json
@@ -130,8 +130,8 @@ projects:
             plan: starter
             region: virginia
             branch: Dev
-            dockerfilePath: ./services/api/Dockerfile
-            dockerContext: ./services/api
+            dockerfilePath: ./backend/api/Dockerfile
+            dockerContext: ./backend/api
             dockerCommand: python -m app.worker
             autoDeployTrigger: commit
             envVars:
@@ -158,7 +158,7 @@ projects:
                 sync: false
               - key: STORAGE_S3_SECRET_ACCESS_KEY
                 sync: false
-              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver services/api/STORAGE.md
+              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver backend/api/STORAGE.md
                 sync: false
               - key: STORAGE_URL_SIGNING_KEY # ≥43 caracteres aleatorios
                 sync: false
@@ -199,8 +199,8 @@ projects:
             plan: starter
             region: virginia
             branch: main
-            dockerfilePath: ./services/api/Dockerfile
-            dockerContext: ./services/api
+            dockerfilePath: ./backend/api/Dockerfile
+            dockerContext: ./backend/api
             healthCheckPath: /health
             # Paso único de release: corre en una instancia aparte ANTES de enrutar tráfico a la
             # versión nueva. Si falla, el deploy se cancela y la versión anterior sigue sirviendo.
@@ -231,7 +231,7 @@ projects:
                 sync: false
               - key: STORAGE_S3_SECRET_ACCESS_KEY
                 sync: false
-              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver services/api/STORAGE.md
+              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver backend/api/STORAGE.md
                 sync: false
               - key: STORAGE_URL_SIGNING_KEY # ≥43 caracteres aleatorios
                 sync: false
@@ -242,8 +242,8 @@ projects:
             plan: starter
             region: virginia
             branch: main
-            buildCommand: npm ci --include=dev && npm run build --workspace apps/web
-            startCommand: npm run start --workspace apps/web
+            buildCommand: npm ci --include=dev && npm run build --workspace frontend-web/app
+            startCommand: npm run start --workspace frontend-web/app
             healthCheckPath: /login
             autoDeployTrigger: "off"
             envVars:
@@ -266,8 +266,8 @@ projects:
             plan: starter
             region: virginia
             branch: main
-            dockerfilePath: ./services/api/Dockerfile
-            dockerContext: ./services/api
+            dockerfilePath: ./backend/api/Dockerfile
+            dockerContext: ./backend/api
             dockerCommand: python -m app.worker
             autoDeployTrigger: "off"
             envVars:
@@ -294,7 +294,7 @@ projects:
                 sync: false
               - key: STORAGE_S3_SECRET_ACCESS_KEY
                 sync: false
-              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver services/api/STORAGE.md
+              - key: STORAGE_ENCRYPTION_KEYS # "id:clave" (base64url de 32 bytes); ver backend/api/STORAGE.md
                 sync: false
               - key: STORAGE_URL_SIGNING_KEY # ≥43 caracteres aleatorios
                 sync: false

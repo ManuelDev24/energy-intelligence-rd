@@ -1,5 +1,5 @@
 // ERD-DEV-02: catálogo cerrado de tipos e iconos de equipo. Debe coincidir con `EQUIPMENT_KINDS` / `EQUIPMENT_ICONS` de
-// `services/api/app/models/equipment.py`; un test en `@energyrd/api-contracts` compara ambos con el contrato generado.
+// `backend/api/app/models/equipment.py`; un test en `@energyrd/api-contracts` compara ambos con el contrato generado.
 
 export const EQUIPMENT_KINDS = [
   'air_conditioner', 'refrigerator', 'water_heater', 'washing_machine', 'tv', 'fan',

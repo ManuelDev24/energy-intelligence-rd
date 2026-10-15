@@ -1,6 +1,6 @@
 # ERD-SHARE-01 — compartir vivienda
 
-Fecha: 2026-10-10 · Rama `claude/elegant-ptolemy-sdr69r`. Diseño y reglas: `services/api/HOME_SHARING.md`.
+Fecha: 2026-10-10 · Rama `claude/elegant-ptolemy-sdr69r`. Diseño y reglas: `backend/api/HOME_SHARING.md`.
 
 ## Resultados
 | Criterio | Resultado | Evidencia |

@@ -1,6 +1,6 @@
 # ERD-SCORE-01 — Energy Score explicable, versionado y calculado por el backend
 
-Diseño, fórmulas y límites: `services/api/ENERGY_SCORE.md`. Depende de SAVE-01 (recomendaciones → Eficiencia),
+Diseño, fórmulas y límites: `backend/api/ENERGY_SCORE.md`. Depende de SAVE-01 (recomendaciones → Eficiencia),
 ANOM-01-COMPLETE (anomalías → Consistencia) y DEV-02 (equipos con consumo estimado → Eficiencia).
 
 | Criterio | Evidencia |

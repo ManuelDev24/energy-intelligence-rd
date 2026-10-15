@@ -21,7 +21,7 @@ updates:
         update-types: [minor, patch]
     commit-message: { prefix: "deps" }
   - package-ecosystem: uv
-    directory: /services/api
+    directory: /backend/api
     schedule: { interval: weekly, day: monday }
     open-pull-requests-limit: 5
     groups:
@@ -29,7 +29,7 @@ updates:
         update-types: [minor, patch]
     commit-message: { prefix: "deps" }
   - package-ecosystem: docker
-    directory: /services/api
+    directory: /backend/api
     schedule: { interval: weekly, day: monday }
     open-pull-requests-limit: 3
     commit-message: { prefix: "deps" }

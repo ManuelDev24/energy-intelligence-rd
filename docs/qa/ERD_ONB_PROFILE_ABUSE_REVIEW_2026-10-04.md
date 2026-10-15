@@ -4,17 +4,17 @@
 
 **REQUEST CHANGES: 4 hallazgos Required reproducidos; ninguno Critical identificado en el alcance revisado.** No se requieren reescrituras integrales. El limitador backend no presentó un defecto bloqueante en las pruebas ejecutadas; la integración BFF sí pierde `Retry-After`.
 
-Revisión read-only de producto, sobre `Dev` en `/Users/macbookpro/Desktop/energy-intelligence-rd`. Se leyeron primero documentación y tests de las últimas entregas, después sus implementaciones y dependencias necesarias. No se revisó ni se atribuyó a esta entrega el diff mezclado completo. Bases de alcance: `apps/web/ONBOARDING_PROFILE.md`, `apps/mobile/ONBOARDING_PROFILE.md`, `services/api/AUTH_ABUSE_PROTECTION.md`.
+Revisión read-only de producto, sobre `Dev` en `/Users/macbookpro/Desktop/energy-intelligence-rd`. Se leyeron primero documentación y tests de las últimas entregas, después sus implementaciones y dependencias necesarias. No se revisó ni se atribuyó a esta entrega el diff mezclado completo. Bases de alcance: `frontend-web/app/ONBOARDING_PROFILE.md`, `frontend-mobile/app/ONBOARDING_PROFILE.md`, `backend/api/AUTH_ABUSE_PROTECTION.md`.
 
 ## Hallazgos accionables
 
 ### R1 — Required / P1: Mi vivienda móvil vuelve a enviar campos obsoletos que el usuario no modificó
 
 **Referencias:**
-- `apps/mobile/src/features/profile/HomeProfileScreen.tsx:27-30`: key por epoch/vivienda; el borrador solo se hidrata al montar.
-- `apps/mobile/src/features/profile/HomeProfileScreen.tsx:39-44`: guardar serializa todo el borrador.
-- `apps/mobile/src/features/profile/model.ts:32-35` y `apps/mobile/src/features/homes/onboardingModel.ts:37-43`: el PATCH contiene también opcionales/flags no editados.
-- `services/api/app/services/homes.py:27-36`: el backend aplica todos los campos presentes, incluidos null explícitos.
+- `frontend-mobile/app/src/features/profile/HomeProfileScreen.tsx:27-30`: key por epoch/vivienda; el borrador solo se hidrata al montar.
+- `frontend-mobile/app/src/features/profile/HomeProfileScreen.tsx:39-44`: guardar serializa todo el borrador.
+- `frontend-mobile/app/src/features/profile/model.ts:32-35` y `frontend-mobile/app/src/features/homes/onboardingModel.ts:37-43`: el PATCH contiene también opcionales/flags no editados.
+- `backend/api/app/services/homes.py:27-36`: el backend aplica todos los campos presentes, incluidos null explícitos.
 
 **Escenario/evidencia:** vivienda compartida o actualizada en otro cliente; la query de perfil recibe la misma vivienda con `sector=Norte, has_ac=true`, después de que el editor se montara con `sector=Centro, has_ac=null`. La key no cambia. Editar solamente el nombre llama la mutación con `sector=Centro, has_ac=null`: restaura datos anteriores y borra una respuesta conocida aunque esos controles no se tocaron.
 
@@ -30,7 +30,7 @@ No es una conversión general null→false: los triestados están bien; aquí el
 
 ### R2 — Required / P2: «Consultar contrato de nuevo» no actualiza el número visible y puede restaurar el contrato antiguo
 
-**Referencias:** `apps/mobile/src/features/profile/ServiceProfileScreen.tsx:27-30,37-42,53-58`.
+**Referencias:** `frontend-mobile/app/src/features/profile/ServiceProfileScreen.tsx:27-30,37-42,53-58`.
 
 `ContractEditor` mantiene `useState(initial)` y la key es solo epoch/home. La consulta manual actualiza la query, pero no el estado del input. La acción Guardar permanece habilitada aunque no haya edición.
 
@@ -45,8 +45,8 @@ PROBE_CONTRACT: GET NEW-456 -> visible OLD-123 -> mutation OLD-123
 ### R3 — Required / P2: el BFF descarta Retry-After del nuevo 429 de autenticación
 
 **Referencias:**
-- `apps/web/src/lib/auth/bff.ts:47-49,260-266`: reconstruye la respuesta de error sin copiar la cabecera.
-- `services/api/app/main.py:36-45`: la API sí emite `Retry-After` y `no-store`.
+- `frontend-web/app/src/lib/auth/bff.ts:47-49,260-266`: reconstruye la respuesta de error sin copiar la cabecera.
+- `backend/api/app/main.py:36-45`: la API sí emite `Retry-After` y `no-store`.
 
 **Evidencia:** `handleBff` real recibe un upstream controlado 429 de login con `Retry-After: 57`, `Cache-Control: no-store` y detalle privado. Devuelve 429, oculta el detalle, conserva `Cache-Control: no-store, private`, pero `headers.get('retry-after') === null`. Test temporal `reproduce: BFF loses Retry-After but retains no-store on an auth 429`: **pasa caracterizando el defecto**.
 
@@ -61,11 +61,11 @@ El navegador pierde el plazo exacto para respetar el presupuesto; no se afirma p
 ### R4 — Required / P2: cambiar distribuidora en el perfil móvil no invalida el progreso monetario de la meta
 
 **Referencias:**
-- `apps/mobile/src/features/profile/keys.ts:7-8` y `hooks.ts:35-40`: invalidan perfil/lista/dashboard, no goal-progress.
-- `apps/mobile/src/api/phase2Keys.ts:13`: progreso tiene clave independiente.
-- `apps/mobile/src/api/queryClient.ts:2-3`: caché fresca durante 30 s.
-- `apps/mobile/src/features/dashboard/DashboardScreen.tsx:269-271,307-312`: dashboard y tarjeta de meta se leen por queries distintas.
-- `services/api/app/services/goals.py:140-165,184-185`: el monto/proyección desde lecturas depende de `home.distributor` y su tarifa; cambiar a Otra también puede cambiar disponibilidad.
+- `frontend-mobile/app/src/features/profile/keys.ts:7-8` y `hooks.ts:35-40`: invalidan perfil/lista/dashboard, no goal-progress.
+- `frontend-mobile/app/src/api/phase2Keys.ts:13`: progreso tiene clave independiente.
+- `frontend-mobile/app/src/api/queryClient.ts:2-3`: caché fresca durante 30 s.
+- `frontend-mobile/app/src/features/dashboard/DashboardScreen.tsx:269-271,307-312`: dashboard y tarjeta de meta se leen por queries distintas.
+- `backend/api/app/services/goals.py:140-165,184-185`: el monto/proyección desde lecturas depende de `home.distributor` y su tarifa; cambiar a Otra también puede cambiar disponibilidad.
 
 **Evidencia:** una query goal-progress fresca, en el scope/vivienda de origen, sigue con `isInvalidated=false` tras ejecutar las invalidaciones reales de perfil. Un `fetchQuery` inmediato retorna el dato anterior sin consultar upstream. Test temporal `reproduce: home invalidations leave cached goal progress fresh after changing distributor`: **pasa caracterizando el defecto**, usando QueryClient real y datos de prueba, no cifras tarifarias inventadas.
 
@@ -106,7 +106,7 @@ Comando completo de los probes JS desde ese directorio:
 fnm exec --using=24 /Users/macbookpro/Desktop/energy-intelligence-rd/node_modules/.bin/vitest run --config /Users/macbookpro/.hermes/cache/scratch/erd-onb-profile-review-20261004/vitest.config.mts --reporter=verbose
 ```
 
-Comando completo del probe API desde `services/api`:
+Comando completo del probe API desde `backend/api`:
 
 ```sh
 .venv/bin/python tests/run_isolated.py -q -s --tb=short /Users/macbookpro/.hermes/cache/scratch/erd-onb-profile-review-20261004/test_limiter_extra.py

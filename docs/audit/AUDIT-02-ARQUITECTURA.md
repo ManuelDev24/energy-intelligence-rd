@@ -7,9 +7,9 @@ Métricas calculadas en esta auditoría (reproducibles): LOC por `git ls-files` 
 
 | Área | LOC (sin tests ni generado) | Observación |
 |---|---|---|
-| `services/api/app` | 11 337 | 527 funciones; capas `api/` → `services/` → `models/` |
-| `apps/web/src` | 8 022 | Next.js; BFF + features por dominio |
-| `apps/mobile/src` | 8 707 | Expo; features por dominio |
+| `backend/api/app` | 11 337 | 527 funciones; capas `api/` → `services/` → `models/` |
+| `frontend-web/app/src` | 8 022 | Next.js; BFF + features por dominio |
+| `frontend-mobile/app/src` | 8 707 | Expo; features por dominio |
 | `packages/core/src` | 1 041 | Lógica de dominio compartida (TypeScript puro) |
 | `packages/api-client/src` | 308 | Interfaz `Api` + cliente |
 | `packages/api-contracts` | generado | OpenAPI → Zod |
@@ -61,7 +61,7 @@ La arquitectura declarada se cumple y está **protegida por una prueba automáti
 | **S — Responsabilidad única** | Buena, con 3 excepciones | `bff.ts` (546 líneas, ~25 funciones) mezcla configuración, cookies/época, firma de IP, tabla de rutas permitidas, esquemas de escritura, mapeo de errores y proxy; `ocr/parser.py::parse_bill_text` mezcla votación entre alternativas, extracción de campos y reconciliación; pantallas `DashboardScreen/DashboardPage` combinan datos y presentación |
 | **O — Abierto/cerrado** | Buena | Motores de reglas por tipo (anomalías, recomendaciones, score) se amplían añadiendo reglas; backends de almacenamiento/email/push intercambiables por configuración. Punto débil: la lista blanca del BFF obliga a editar `bff.ts` por cada endpoint nuevo (deliberado por seguridad, pero costoso) |
 | **L — Sustitución de Liskov** | Buena | Interfaz `Api` (api-client) implementada por cliente real y simulado (`mock-api`); `ObjectStore` con implementaciones local/S3/deshabilitada |
-| **I — Segregación de interfaces** | Aceptable | La interfaz `Api` del web (`apps/web/src/lib/api/types.ts:28`, ~41 métodos) crece con cada módulo y los mocks deben implementarla entera (costó tiempo en el módulo 1: hubo que añadir métodos a `mock-api` y a la interfaz) |
+| **I — Segregación de interfaces** | Aceptable | La interfaz `Api` del web (`frontend-web/app/src/lib/api/types.ts:28`, ~41 métodos) crece con cada módulo y los mocks deben implementarla entera (costó tiempo en el módulo 1: hubo que añadir métodos a `mock-api` y a la interfaz) |
 | **D — Inversión de dependencias** | Buena | Servicios sin FastAPI; clientes web/móvil dependen de la interfaz `Api`; inyección de `fetch`/transportes en el BFF y los clientes (facilita pruebas) |
 
 ## 6. Duplicación entre web y móvil
@@ -78,10 +78,10 @@ La arquitectura declarada se cumple y está **protegida por una prueba automáti
 
 | ID | Sev. | Hallazgo | Evidencia | Recomendación |
 |---|---|---|---|---|
-| F02-01 | Media | `parse_bill_text`: 198 líneas, CC 103; es el punto de mayor riesgo de regresión del parser OCR (cualquier cambio afecta a todos los campos) | `services/api/app/services/ocr/parser.py:264` | Dividir por campo (extractores puros) + reconciliador; mantener las pruebas existentes como red de seguridad |
-| F02-02 | Media | `bff.ts` concentra 8 responsabilidades en 546 líneas | `apps/web/src/lib/auth/bff.ts` | Separar en `config`, `cookies/epoch`, `routes` (tabla declarativa), `schemas`, `errors`, `proxy`; sin cambiar el comportamiento (~20 archivos de test lo protegen) |
+| F02-01 | Media | `parse_bill_text`: 198 líneas, CC 103; es el punto de mayor riesgo de regresión del parser OCR (cualquier cambio afecta a todos los campos) | `backend/api/app/services/ocr/parser.py:264` | Dividir por campo (extractores puros) + reconciliador; mantener las pruebas existentes como red de seguridad |
+| F02-02 | Media | `bff.ts` concentra 8 responsabilidades en 546 líneas | `frontend-web/app/src/lib/auth/bff.ts` | Separar en `config`, `cookies/epoch`, `routes` (tabla declarativa), `schemas`, `errors`, `proxy`; sin cambiar el comportamiento (~20 archivos de test lo protegen) |
 | F02-03 | Media | Utilidades de fecha RD duplicadas con APIs distintas | `rd-time.ts` vs `rdTime.ts` | Mover a `@energyrd/core` con una única API y pruebas de bordes |
-| F02-04 | Baja | Interfaz `Api` del web monolítica (~41 métodos) | `apps/web/src/lib/api/types.ts:28` | Dividir por contexto (`AuthApi`, `HomesApi`, `BillsApi`, …) y componer |
+| F02-04 | Baja | Interfaz `Api` del web monolítica (~41 métodos) | `frontend-web/app/src/lib/api/types.ts:28` | Dividir por contexto (`AuthApi`, `HomesApi`, `BillsApi`, …) y componer |
 | F02-05 | Baja | Ciclo `equipment ↔ recommendations` resuelto con import diferido | `recommendation_engine`/`equipment` | Extraer `shares_pct` a un módulo común |
 | F02-06 | Baja | Parámetros excesivos (≥8) en 5 funciones; `assess_bill`/`detect_night` con CC 26–29 | ver §4 | Objetos de parámetros / dividir reglas |
 | F02-07 | Baja | Pantallas principales de 370–390 líneas mezclan datos y presentación | `DashboardScreen.tsx`, `DashboardPage.tsx` | Extraer subcomponentes por tarjeta (ya hay `EnergyScoreCard`, `SavingsCard`) |

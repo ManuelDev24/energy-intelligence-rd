@@ -10,7 +10,7 @@ Recorrido probado: **vivienda → factura → historial → dashboard → alerta
 
 | Capa | Herramienta | Qué cubre | Resultado |
 |---|---|---|---|
-| Unitarias | Vitest (`npm test -w apps/mobile`) | validación de factura y equipo, formato, config de URL, conteo de alertas | ✅ 39/39 pasadas; 8 pruebas e2e se ejecutan aparte (API real) |
+| Unitarias | Vitest (`npm test -w frontend-mobile/app`) | validación de factura y equipo, formato, config de URL, conteo de alertas | ✅ 39/39 pasadas; 8 pruebas e2e se ejecutan aparte (API real) |
 | Recorrido vs API real | Vitest (`src/e2e/pilotFlow.e2e.test.ts`) | mismo cliente HTTP que la app: 5 viviendas, 422 por kWh negativo, alta de factura, historial, dashboard con REAL/ESTIMATED/PROJECTED, alerta crítica unread→read→dismissed, equipos ESTIMATED, limpieza | ✅ 8/8 en local; job `mobile-e2e` de CI |
 | UI en Android | Maestro (`maestro/pilot-flow.yaml`) | Expo Go: onboarding, PILOT-05, validación, registro, dashboard, alerta, equipos y limpieza | ✅ 75/75 pasos, verificado en Android 16 |
 | UI en iOS | Maestro (mismo flujo) | mismo recorrido en iPhone 18 Pro | ✅ 75/75 pasos, iOS 27 |
@@ -24,12 +24,12 @@ Todas las corridas dejan la base como estaba (PILOT-05 vuelve a 2 facturas y 0 a
 | Fecha | 2026-10-04 |
 | Android | Emulador `EnergyRD_Pixel` (Pixel 8, Android 16 / API 36, arm64) — API en `http://10.0.2.2:8000` |
 | iOS | Simulador iPhone 18 Pro, iOS 27.0 (Xcode 27) — API en `http://localhost:8000` |
-| App | Expo Go (SDK 57), bundle de Metro de `apps/mobile` |
+| App | Expo Go (SDK 57), bundle de Metro de `frontend-mobile/app` |
 | API | Docker `energy-api`, migración `0005`, seed piloto |
 
 ## 3. Evidencia manual (capturas de la corrida)
 
-Capturas por plataforma en `apps/mobile/maestro/evidence/android/` y `.../ios/` (mismos nombres).
+Capturas por plataforma en `frontend-mobile/app/maestro/evidence/android/` y `.../ios/` (mismos nombres).
 
 | Paso | Captura | Verificado |
 |---|---|---|
@@ -57,15 +57,15 @@ Capturas por plataforma en `apps/mobile/maestro/evidence/android/` y `.../ios/` 
 
 ```bash
 SEED_PILOT=true docker compose up -d --wait postgres api  # demo local explícita
-npm run test:e2e -w apps/mobile                   # recorrido vs API real (8 pruebas)
+npm run test:e2e -w frontend-mobile/app                   # recorrido vs API real (8 pruebas)
 
 # Smoke test de UI — Android
-cd apps/mobile && EXPO_PUBLIC_API_URL=http://10.0.2.2:8000 npx expo start --android --port 8081
-apps/mobile/maestro/run-smoke.sh android          # en otra terminal
+cd frontend-mobile/app && EXPO_PUBLIC_API_URL=http://10.0.2.2:8000 npx expo start --android --port 8081
+frontend-mobile/app/maestro/run-smoke.sh android          # en otra terminal
 
 # Smoke test de UI — iOS (simulador encendido)
-cd apps/mobile && NODE_OPTIONS=--dns-result-order=ipv4first npx expo start --ios --localhost --port 8081
-apps/mobile/maestro/run-smoke.sh ios
+cd frontend-mobile/app && NODE_OPTIONS=--dns-result-order=ipv4first npx expo start --ios --localhost --port 8081
+frontend-mobile/app/maestro/run-smoke.sh ios
 ```
 
 Checklist manual rápido (sin Maestro), en Expo Go:

@@ -13,7 +13,7 @@ Justificación (bloqueantes sin resolver, según el criterio del Prompt 10):
 1. **Recuperación no demostrada (C-05/C-13-ley):** no hay respaldo programado, PITR ni simulacro real en Neon+bucket; las autopruebas de respaldo no corren en CI; no hay alertas ni DSN de Sentry; el worker (OCR, avisos, retención, purga de archivos) no tiene monitorización y si cae falla en silencio.
 2. **Textos legales en borrador (C-04)** y nada impide arrancar en producción con `status: draft`; plazos de retención sin aprobación; faltan URL de privacidad y etiquetas de datos para las tiendas.
 3. **Roles de BD de mínimo privilegio (C-01) sin crear en Neon:** el API se niega a arrancar sin ellos (correcto), pero el despliegue real no está probado.
-4. **`apps/admin` sin CSP ni cabeceras de seguridad** (verificado: no hay middleware ni `headers()`); gestiona asignación de roles → clickjacking. Además no está en `render.yaml` ni en la CI de seguridad.
+4. **`frontend-web/admin` sin CSP ni cabeceras de seguridad** (verificado: no hay middleware ni `headers()`); gestiona asignación de roles → clickjacking. Además no está en `render.yaml` ni en la CI de seguridad.
 5. **Evasión de límites anti-abuso** si el origen del API es alcanzable sin pasar por Cloudflare (`CF-Connecting-IP` se acepta sin firma, `auth_abuse.py:46-51`). Depende de la topología real, no verificable aquí.
 
 Camino a **GO CON CONDICIONES** (piloto acotado): cerrar 1–5 con responsable y fecha; hasta entonces, solo staging/QA con datos sintéticos.
@@ -50,7 +50,7 @@ Camino a **GO CON CONDICIONES** (piloto acotado): cerrar 1–5 con responsable y
 ## Hallazgos nuevos de la re-auditoría
 | ID | Sev. | Hallazgo | Verificado por mí |
 |---|---|---|---|
-| N-1 | Alta | `apps/admin` sin CSP/cabeceras (clickjacking sobre asignación de roles); fuera de `render.yaml` y de la CI de seguridad | Sí (sin middleware ni `headers()`) |
+| N-1 | Alta | `frontend-web/admin` sin CSP/cabeceras (clickjacking sobre asignación de roles); fuera de `render.yaml` y de la CI de seguridad | Sí (sin middleware ni `headers()`) |
 | N-2 | Alta (no verificable) | `CF-Connecting-IP` aceptado sin firma → evasión de límites si el origen es accesible; el BFF admin comparte un único cubo de IP | Código sí; topología no |
 | N-3 | Media | Cuentas sin verificar pueden invitar y aceptar invitaciones (retransmisor de correo con la marca del dominio) | Sí (`sharing.py` no consulta `email_verified_at`) |
 | N-4 | Alta (doc) | `DEPLOY_GUIDE.md` (política expand/contract, escrita por mí) cita `scripts/backup_pilot.sh`, que respalda el Postgres **local**, sin cifrar; no respalda Neon | Sí |
@@ -93,7 +93,7 @@ Camino a **GO CON CONDICIONES** (piloto acotado): cerrar 1–5 con responsable y
 2. Respaldo programado y cifrado hacia bucket externo con ciclo de vida, PITR, **simulacro real** de restauración con procedimiento de re-borrado; mover `backup_pilot.sh` fuera de la política de despliegue.
 3. Sentry con DSN, alertas (5xx, latido del worker, cola de jobs), runbook probado.
 4. Revisión legal; guarda técnica que impida producción con `status: draft`; URL de privacidad y etiquetas de tiendas.
-5. Cabeceras/CSP en `apps/admin`, servicio admin en `render.yaml`, bloqueo del origen directo del API o verificación firmada de IP.
+5. Cabeceras/CSP en `frontend-web/admin`, servicio admin en `render.yaml`, bloqueo del origen directo del API o verificación firmada de IP.
 6. Exigir correo verificado para invitar/aceptar; decidir cifrado de `account_number`/dirección; ampliar retención y redacción.
 7. QA en dispositivos (Maestro, TalkBack/VoiceOver, OCR con facturas reales); `aapt dump permissions` del APK.
 8. Ampliar mypy a auth/RLS/documentos/OCR/worker; cobertura TS.

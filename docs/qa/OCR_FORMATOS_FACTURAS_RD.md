@@ -3,7 +3,7 @@
 - Investigación: 2026-10-10 (Manuel, ERD-REL-VERIFY). Fuentes públicas en internet; **ninguna foto real de
   factura entra al repo**. Las facturas de terceros publicadas en Scribd/Studocu se usaron **solo** para leer
   etiquetas y formatos; no se copió ningún nombre, dirección, NIC, contrato ni monto.
-- Parser: `services/api/app/services/ocr/parser.py`. Pruebas: `services/api/tests/test_ocr_parser_rd_layouts.py`.
+- Parser: `backend/api/app/services/ocr/parser.py`. Pruebas: `backend/api/tests/test_ocr_parser_rd_layouts.py`.
 
 ## Base legal común (las tres distribuidoras)
 Reglamento de Aplicación de la Ley General de Electricidad 125-01 (Decreto 555-02): la factura debe indicar,
@@ -106,7 +106,7 @@ no se guardó ninguna credencial y **no hay ninguna factura real, PDF ni captura
 ### Para cerrar la tarea (lo único que falta)
 Mínimo 1 factura real por distribuidora —idealmente 3, una de ellas foto de celular— con nombre, dirección, NIC/contrato y medidor
 tapados (no tapar fechas, lecturas, consumo, total ni fecha límite), guardadas en `qa-private/` (ignorado por git) con su
-`expected.json`, y correr `cd services/api && uv run python -m scripts.ocr_qa ../../qa-private/<carpeta> --json informe.json`
+`expected.json`, y correr `cd backend/api && uv run python -m scripts.ocr_qa ../../qa-private/<carpeta> --json informe.json`
 (criterio: 0 errores silenciosos). Instrucciones completas en `docs/qa/OCR_REAL_QA.md`.
 
 ---

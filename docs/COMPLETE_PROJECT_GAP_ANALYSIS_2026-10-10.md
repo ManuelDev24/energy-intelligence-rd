@@ -12,9 +12,9 @@ Rama de trabajo: `Dev` (local, 4 commits nuevos sin publicar sobre `5c5d42d`). N
 | Orden | ID | Estado | Commit | Evidencia |
 |---:|---|---|---|---|
 | 1 | ERD-E2E-PLAYWRIGHT | **Hecha** (con límites, §4) | `[ERD-E2E-PLAYWRIGHT] implementa E2E web contra API y PostgreSQL reales` | `docs/qa/ERD-E2E-PLAYWRIGHT.md` |
-| 2 | ERD-SAVE-01 | **Hecha** (parcial frente al plan, §3) | `[ERD-SAVE-01] implementa recomendaciones energéticas explicables` | `docs/qa/ERD-SAVE-01.md`, `services/api/RECOMMENDATIONS.md` |
-| 3 | ERD-SCORE-01 | **Hecha** | `[ERD-SCORE-01] implementa Energy Score explicable y versionado` | `docs/qa/ERD-SCORE-01.md`, `services/api/ENERGY_SCORE.md` |
-| 4 | ERD-INT-01 | **Hecha** | `[ERD-INT-01] implementa registro e historial de interrupciones` | `docs/qa/ERD-INT-01.md`, `services/api/OUTAGES.md` |
+| 2 | ERD-SAVE-01 | **Hecha** (parcial frente al plan, §3) | `[ERD-SAVE-01] implementa recomendaciones energéticas explicables` | `docs/qa/ERD-SAVE-01.md`, `backend/api/RECOMMENDATIONS.md` |
+| 3 | ERD-SCORE-01 | **Hecha** | `[ERD-SCORE-01] implementa Energy Score explicable y versionado` | `docs/qa/ERD-SCORE-01.md`, `backend/api/ENERGY_SCORE.md` |
+| 4 | ERD-INT-01 | **Hecha** | `[ERD-INT-01] implementa registro e historial de interrupciones` | `docs/qa/ERD-INT-01.md`, `backend/api/OUTAGES.md` |
 
 Verificación final del módulo (sobre el árbol con los 4 commits):
 

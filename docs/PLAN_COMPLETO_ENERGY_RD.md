@@ -48,7 +48,7 @@ Anomalías (11) · Consumo por equipo (13) · Interrupciones (14) · Historial d
 | shadcn/ui | Estilo propio | Adoptar al construir admin |
 | Redis + workers | Opcional (perfil `jobs`) | Obligatorio desde OCR |
 | Storage de facturas | ⛔ | Cloudflare R2 / S3 compatible (MinIO local) |
-| `apps/admin`, `services/energy-engine`, `ai`, `ingestion`, `workers`, `mcp/energy-rd-mcp`, `packages/ui`, `database/` | `apps/admin` vacío; resto no existe | Crear en la fase que corresponda |
+| `frontend-web/admin`, `services/energy-engine`, `ai`, `ingestion`, `workers`, `mcp/energy-rd-mcp`, `packages/ui`, `database/` | `frontend-web/admin` vacío; resto no existe | Crear en la fase que corresponda |
 | TimescaleDB + pgvector | ⛔ (Postgres 16 plano) | Fase 5 (telemetría) y Fase 3 (Copilot/RAG) |
 | Playwright / Jest-RNTL | Vitest + Maestro | Añadir Playwright en web |
 | Neon (prod) / Vercel / Expo EAS / Render o Fly | Todo local | Fase 1 (despliegue piloto) |
@@ -96,9 +96,9 @@ Anomalías (11) · Consumo por equipo (13) · Interrupciones (14) · Historial d
 
 Estado: ✅ `QualityBadge`(≈DataStatusBadge), `AlertBanner`(≈AlertCard parcial), `QueryState`(≈Empty/Error/Loading parcial), `MonthlyChart`.
 ⛔ `MetricCard`, `ConsumptionChart`, `BillCard`, `DeviceCard`, `EnergyGauge`, `AlertCard` (con severidad), `RecommendationCard`, `DateRangePicker`, `EmptyState`, `ErrorState` (con reintentar), `LoadingSkeleton`, `BottomSheet`, `Modal`, `Button/Card/Input` unificados.
-Se crean en `packages/ui` (web) y `apps/mobile/src/components` con la **misma API** y los mismos tokens.
+Se crean en `packages/ui` (web) y `frontend-mobile/app/src/components` con la **misma API** y los mismos tokens.
 
-**Avance ERD-UI-KIT (2026-10-04, sin commit):** ✅ `MetricCard`, `DataStatusBadge` (+`INFERRED`), `AlertCard` (4 tonos 🔴🟠🟡🟢), `EmptyState`, `ErrorState` (Reintentar + sin conexión), `LoadingSkeleton` (respeta reducir movimiento), `ConsumptionChart`, `EquipmentBreakdown`, `EnergyGauge` en web (`apps/web/src/components`) y móvil (`apps/mobile/src/components`). ⛔ `DateRangePicker`, `BottomSheet`, `Modal`, `RecommendationCard`, `DeviceCard`, `BillCard` (llegan con sus módulos). Pendiente: mover la lógica de gráficos compartida (`chartMath`, `deltaTone`, iconos por tono) a `@energyrd/core`.
+**Avance ERD-UI-KIT (2026-10-04, sin commit):** ✅ `MetricCard`, `DataStatusBadge` (+`INFERRED`), `AlertCard` (4 tonos 🔴🟠🟡🟢), `EmptyState`, `ErrorState` (Reintentar + sin conexión), `LoadingSkeleton` (respeta reducir movimiento), `ConsumptionChart`, `EquipmentBreakdown`, `EnergyGauge` en web (`frontend-web/app/src/components`) y móvil (`frontend-mobile/app/src/components`). ⛔ `DateRangePicker`, `BottomSheet`, `Modal`, `RecommendationCard`, `DeviceCard`, `BillCard` (llegan con sus módulos). Pendiente: mover la lógica de gráficos compartida (`chartMath`, `deltaTone`, iconos por tono) a `@energyrd/core`.
 
 **Cierre ERD-UI-KIT (2026-10-10):** `packages/ui` se elimina del diseño y no se construyen componentes sin consumidor; ver `docs/architecture/UI_KIT.md` (Modal/ConfirmDialog, BillCard, RecommendationCard, DateRangePicker, BottomSheet hechos; DeviceCard hecho con ERD-DEV-02 (2026-10-11, ver `docs/qa/ERD-DEV-02.md`); el rango de fechas ya vive en `@energyrd/core`).
 
@@ -178,7 +178,7 @@ Se crean en `packages/ui` (web) y `apps/mobile/src/components` con la **misma AP
 | ERD-ONB-01 | **Implementación local:** onboarding web/móvil reutilizado, ubicación/distribuidora/perfil/contrato/meta, migración0009, triestados y reintentos parciales. Correcciones revisión R1–R4 con pruebas; **pendiente aceptación live/visual/nativa de estas pantallas** | M01 |
 | ERD-CONS-01 | `meter_readings` + `POST /consumption/readings` + `GET /consumption` con agregación día/semana/mes/año | M03 · CH-02, CH-03 |
 | ERD-TARIFF-01 | `tariffs` versionadas por distribuidora (EDESUR/EDENORTE/EDEESTE, SIE) y cálculo de costo | cálculo de tarifas |
-| ERD-BILL-02 | **Implementado y revisado localmente:** `bill_items` manual (cargos/descuentos), `POST /validate` de solo lectura (nunca aprueba), snapshot original inmutable con legado marcado "origen desconocido", UI web/móvil; revisión independiente con 3 Required corregidos. Pendiente live/visual/nativo. Ver `services/api/BILL_DETAIL_VALIDATION.md` | M04 |
+| ERD-BILL-02 | **Implementado y revisado localmente:** `bill_items` manual (cargos/descuentos), `POST /validate` de solo lectura (nunca aprueba), snapshot original inmutable con legado marcado "origen desconocido", UI web/móvil; revisión independiente con 3 Required corregidos. Pendiente live/visual/nativo. Ver `backend/api/BILL_DETAIL_VALIDATION.md` | M04 |
 | ERD-DASH-02 | **Implementado y verificado:** `GET /dashboard` con factura, comparación, proyección, alerta, recomendación y data_status; meta (GoalProgressSection/GoalCard) y gráfico de consumo integrados en la misma pantalla web/móvil. Pendiente: QA visual/nativa real | M02 · CH-06, CH-07 |
 | ERD-FCST-01 | **Implementado y verificado:** proyección lineal de próxima factura (kWh + RD$) con método documentado y calidad PROJECTED, en `/dashboard` y UI web/móvil | M05 · CH-06 |
 | ERD-GOAL-01 | **Implementado y verificado localmente:** objetivos RD$/kWh + progreso web/móvil, proyección etiquetada y costo estimado con tarifa oficial; integración real y Maestro Android/iOS 2× por plataforma. Sin publicación; QA en `docs/qa/ERD_PHASE2_NATIVE_2026-10-04.md` | M23 · CH-07 |
@@ -215,7 +215,7 @@ Se crean en `packages/ui` (web) y `apps/mobile/src/components` con la **misma AP
 ### Fase 5 — Panel administrativo, informes, reclamaciones (3 semanas)
 | ID | Tarea |
 |---|---|
-| ERD-ADM-01 | `apps/admin` (Next.js): resumen, usuarios, viviendas, contratos, facturas (validar/corregir/rechazar), OCR, consumo, tarifas, alertas, interrupciones, recomendaciones, Copilot, auditoría, configuración (14 módulos del chat) |
+| ERD-ADM-01 | `frontend-web/admin` (Next.js): resumen, usuarios, viviendas, contratos, facturas (validar/corregir/rechazar), OCR, consumo, tarifas, alertas, interrupciones, recomendaciones, Copilot, auditoría, configuración (14 módulos del chat) |
 | ERD-ADM-02 | RBAC con permisos específicos y registro de operaciones sensibles; un admin no ve datos privados sin permiso |
 | ERD-RPT-01 | `GET /reports/energy` + informe PDF descargable/imprimible (CH-23) |
 | ERD-CLAIM-01 | Reclamaciones (M29): caso con factura, consumo, historial, diferencia, documentos y seguimiento — sin acusar automáticamente a la distribuidora |
@@ -264,7 +264,7 @@ Reglas compartidas del chat: ramas `main` / `Dev` (en este repo se trabaja direc
 | Navegación móvil | Expo Router | React Navigation | **Mantener React Navigation**: ya tiene 75/75 pasos Maestro; migrar cuesta semanas sin valor para el usuario |
 | Estilos móvil | NativeWind | StyleSheet + tokens | Mantener tokens compartidos; NativeWind solo si Jonas/Anthony lo piden |
 | Barra inferior | Inicio · Consumo · Factura · Energía · Perfil (≤5) | Inicio · Facturas · Equipos · Alertas | Pasar a las 5 del chat; Copilot, Ahorro, Interrupciones dentro de Energía/Inicio |
-| Monolito modular | Sí | Sí | Mantener. `energy-engine`, `ai`, `ingestion`, `workers` empiezan como paquetes dentro de `services/api` y se separan solo si hace falta |
+| Monolito modular | Sí | Sí | Mantener. `energy-engine`, `ai`, `ingestion`, `workers` empiezan como paquetes dentro de `backend/api` y se separan solo si hace falta |
 | Neon vs. Docker local | Neon inicial | Postgres local 16 | Neon para prod/staging; local para dev y tests |
 | IA | LLM por API, tool-calling | — | Proveedor intercambiable (OpenAI/Anthropic); límite de gasto mensual |
 

@@ -1,6 +1,6 @@
 # AUDIT-06 — Backend Python / FastAPI / contratos API
 
-Modo: solo lectura. Rama `Dev` @ `5e761c6`. Servicio `services/api` (FastAPI 0.142.2, Python 3.12, SQLAlchemy 2, Alembic 0001–0023).
+Modo: solo lectura. Rama `Dev` @ `5e761c6`. Servicio `backend/api` (FastAPI 0.142.2, Python 3.12, SQLAlchemy 2, Alembic 0001–0023).
 Método: introspección real de rutas (recorrido recursivo de `_IncludedRouter`), lectura de código, y una sonda local acotada (API temporal en puerto 18224, almacenamiento en `/tmp`, ya detenida y borrada).
 
 ## 1. Inventario de endpoints (87 operaciones: 86 en OpenAPI + `GET /documents/download` oculta)

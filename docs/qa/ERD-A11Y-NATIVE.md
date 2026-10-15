@@ -2,7 +2,7 @@
 
 **Estado: PARTE ESTÁTICA VERIFICADA; PARTE CON LECTOR DE PANTALLA EN DISPOSITIVO NO EJECUTADA.** No hay iPhone, Android, VoiceOver ni TalkBack en este entorno.
 
-## Verificado (corre en CI: `apps/mobile/src/a11yStatic.test.ts`, 25 pruebas)
+## Verificado (corre en CI: `frontend-mobile/app/src/a11yStatic.test.ts`, 25 pruebas)
 | Comprobación | Resultado |
 |---|---|
 | Todo `Pressable`/`Touchable*` declara `accessibilityRole` | cumple (0 infracciones) |

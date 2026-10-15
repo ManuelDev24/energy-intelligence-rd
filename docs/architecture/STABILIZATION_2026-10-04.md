@@ -26,6 +26,6 @@ El contenedor temporal se eliminó al terminar. No se migró la base activa del 
 
 ## Aplicación al piloto y siguiente trabajo
 
-Al desplegar este código, aplicar `uv run alembic upgrade head` en `services/api` usando la URL de la base prevista; el contenedor sigue migrando al arrancar. Las pruebas únicamente migraron su base temporal.
+Al desplegar este código, aplicar `uv run alembic upgrade head` en `backend/api` usando la URL de la base prevista; el contenedor sigue migrando al arrancar. Las pruebas únicamente migraron su base temporal.
 
 Quedan para los siguientes incrementos el control de concurrencia de facturas/umbrales, extracción de servicios, contratos canónicos y optimizaciones medidas. La autenticación queda pospuesta por decisión explícita; la configuración de producción añadida no convierte la API actual en un servicio público con control de acceso.

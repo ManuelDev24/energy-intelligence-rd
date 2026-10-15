@@ -1,6 +1,6 @@
 # ERD-ADM-SYSTEM-WEB — configuración y salud del sistema (solo lectura)
 
-Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (26/26 en `apps/admin`, axe sin violaciones a 360/768/1280 px).
+Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (26/26 en `frontend-web/admin`, axe sin violaciones a 360/768/1280 px).
 
 ## Qué hay
 - **`GET /api/v1/admin/system`** (scope existente `admin.system.read`): entorno, versión de la API, commit desplegado (si la plataforma lo informa), arranque y tiempo en marcha, estado de las **migraciones** (revisión aplicada vs la más reciente del código), ~17 **comprobaciones de configuración**, **fechas declaradas** de respaldo y simulacro, y guías operativas.

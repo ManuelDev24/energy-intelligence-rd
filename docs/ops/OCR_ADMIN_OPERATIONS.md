@@ -17,7 +17,7 @@ Roles con estos scopes de fábrica (migración 0024): `super_admin`,
 
 ## Consola web
 
-`apps/admin` → **OCR** (`/ocr`): filtros por estado, error, intentos mínimos y fechas (días de RD), detalle por trabajo con
+`frontend-web/admin` → **OCR** (`/ocr`): filtros por estado, error, intentos mínimos y fechas (días de RD), detalle por trabajo con
 historial y los botones de reintento/cancelación (motivo obligatorio; cancelar pide confirmación). La consola no muestra el
 documento ni lo leído, y no confirma facturas.
 
@@ -102,7 +102,7 @@ Reglas (compartidas con ERD-ADM-RBAC, `app/schemas/admin.py::_reason`):
 ## Comandos verificados en esta sesión
 
 ```bash
-cd services/api
+cd backend/api
 export TEST_DATABASE_URL=postgresql+psycopg://energy:change_me_local_only@localhost:5433/energy_rd_ocr_admin_test
 uv run pytest tests/test_admin_ocr.py tests/test_admin_rbac.py -q      # 50 passed
 uv run pytest tests/test_migrations.py -q                              # 24 passed (incluye 0025 up/down)

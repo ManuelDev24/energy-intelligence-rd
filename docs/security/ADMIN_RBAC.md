@@ -82,7 +82,7 @@ scope explícito.
    bloqueando la fila compartida del rol para impedir la carrera entre dos revocaciones;
    el borrado de cuenta también bloquea y protege la última asignación activa. Las pruebas
    concurrentes y el flujo real de borrado cubren ambos casos.
-7. **Navegador sin tokens legibles.** `apps/admin` envía login/refresh/logout por un BFF
+7. **Navegador sin tokens legibles.** `frontend-web/admin` envía login/refresh/logout por un BFF
    de mismo origen con cookies `HttpOnly`, `SameSite=Strict`, `Secure` en producción y
    `__Host-` cuando es HTTPS. No usa `localStorage` para tokens; exige `Origin` en escrituras,
    lista blanca de rutas/métodos y errores fijos. Logout revoca el refresh en el backend
@@ -112,9 +112,9 @@ scope `admin.*`. Probado explícitamente en
 
 ## Qué NO se construyó todavía (fuera de alcance de ERD-ADM-RBAC)
 
-- Administración completa de usuarios, viviendas o tarifas desde `apps/admin` (pedido
+- Administración completa de usuarios, viviendas o tarifas desde `frontend-web/admin` (pedido
   explícitamente fuera de alcance por el spec; es trabajo de Módulo 4).
 - Gestión de roles *personalizados* más allá de los 5 fijos (se puede insertar un rol nuevo en
   `admin_roles`/`admin_role_scopes` por migración, pero no hay UI/API para crear roles al
   vuelo — intencional: los roles mínimos están fijados por spec, no son de autoservicio).
-- E2E automatizado (Playwright) del flujo completo en `apps/admin`; ver docs/qa/ERD-ADM-RBAC.md.
+- E2E automatizado (Playwright) del flujo completo en `frontend-web/admin`; ver docs/qa/ERD-ADM-RBAC.md.

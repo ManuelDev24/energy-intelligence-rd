@@ -1,6 +1,6 @@
 # ERD-ALERT-02 — Cuatro severidades, alertas de pago/anomalía/datos incompletos, push, correo y preferencias
 
-Detalle técnico: `services/api/ALERTS.md`.
+Detalle técnico: `backend/api/ALERTS.md`.
 
 | Criterio | Evidencia |
 |---|---|

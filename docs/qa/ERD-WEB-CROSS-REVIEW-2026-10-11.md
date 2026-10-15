@@ -21,6 +21,6 @@ No se modifican los resultados históricos ni el informe previo no versionado de
 
 - Dashboard, mensajes de error y accesibilidad: **19 pruebas pasan**, tres archivos, con `--maxWorkers=2`.
 - Títulos: **20 pruebas pasan** en repetición aislada con `--maxWorkers=1 --testTimeout=15000`. En la ejecución conjunta pasaron 38/39: el import de Inicio tardó 8.5 s y agotó el límite predeterminado de 5 s. No se cambió la expectativa ni la configuración versionada.
-- `npm run lint --workspace apps/web`: pasa. `npm run typecheck --workspace apps/web`: pasa. `git diff --check`: pasa.
+- `npm run lint --workspace frontend-web/app`: pasa. `npm run typecheck --workspace frontend-web/app`: pasa. `git diff --check`: pasa.
 - Node 24.21.0. El primer intento de Vitest fue bloqueado por `spawn EPERM` de esbuild dentro del sandbox; se reintentó fuera de él. La primera instalación local de la rama anterior carecía de `@sentry/browser`; `npm ci --prefer-offline` fuera del sandbox sincronizó 981 paquetes con el lockfile de Dev, sin modificarlo. El intento restringido de instalación había fallado con ENOTCACHED.
 - No se ha repetido el recorrido con API real ni QA visual en navegador. El anillo del selector de archivo se verificó en código; queda pendiente su inspección visual por teclado. No se certifica accesibilidad completa ni CI remoto.

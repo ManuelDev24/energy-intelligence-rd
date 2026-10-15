@@ -32,7 +32,7 @@ El MVP debe demostrar, para **cinco viviendas piloto**, este ciclo completo:
 | Móvil | Proyecto Expo/TypeScript existe, pero `App.tsx` sigue siendo la plantilla inicial. | Navegación, cliente API, onboarding, selector de vivienda, dashboard, facturas, historial y pruebas. |
 | API | FastAPI solo expone `/` y `/health`. | Dependencias Python reproducibles, modelos, migraciones, routers, validaciones, motor de reglas, tests y ejecución real. |
 | Base de datos | Docker Compose declara PostgreSQL 16 y Redis. | Tablas, Alembic funcional, seed de 5 viviendas, conexión/configuración validada. |
-| Web | `apps/web` no tiene aplicación implementada; el script raíz la referencia. | Bootstrap Next.js, shell, rutas, dashboard, consumo, facturas, cliente API, pruebas. |
+| Web | `frontend-web/app` no tiene aplicación implementada; el script raíz la referencia. | Bootstrap Next.js, shell, rutas, dashboard, consumo, facturas, cliente API, pruebas. |
 
 ## 3. Dependencias y acuerdos obligatorios
 
@@ -61,7 +61,7 @@ El MVP debe demostrar, para **cinco viviendas piloto**, este ciclo completo:
 
 | ID | Branch | Entregable | Depende de | Criterio de aceptación |
 |---|---|---|---|---|
-| ERD-WEB-01 | `feat/web-foundation-auth-shell` | Crear `apps/web`: Next.js App Router, TypeScript, Tailwind, UI base, TanStack Query, Zod, scripts dev/build/lint/typecheck/test. | — | El workspace es detectado; scripts pasan; no quedan dependencias globales implícitas. |
+| ERD-WEB-01 | `feat/web-foundation-auth-shell` | Crear `frontend-web/app`: Next.js App Router, TypeScript, Tailwind, UI base, TanStack Query, Zod, scripts dev/build/lint/typecheck/test. | — | El workspace es detectado; scripts pasan; no quedan dependencias globales implícitas. |
 | ERD-WEB-02 | `feat/web-app-shell-routes` | Layout responsive, navegación y rutas `/login`, `/dashboard`, `/consumption`, `/bills`; boundary de sesión sin credenciales hardcodeadas. | ERD-WEB-01 | Navegación desktop/móvil; ruta privada redirige a login sin sesión; estado de auth pendiente de API queda explícito. |
 | ERD-WEB-03 | `feat/web-api-contract-client` | Cliente API tipado, QueryClient, tipos de respuesta y fixtures marcados como demo mientras API no esté disponible. | ERD-WEB-01, contrato de ERD-API-01 | Ningún cálculo energético se duplica en la web; loading/error/empty/demo son distinguibles. |
 

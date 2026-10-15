@@ -1,8 +1,8 @@
 # ERD-OCR-03 — QA del backend de cola OCR administrativa
 
 Worktree aislado: `/Users/macbookpro/.hermes/cache/scratch/erd-adm-rbac/integrated`
-(base `origin/Dev` @ `5e761c6`). Solo backend (`services/api`); no se tocó
-`apps/admin`, `package-lock.json` de raíz ni la base de datos de producción/piloto.
+(base `origin/Dev` @ `5e761c6`). Solo backend (`backend/api`); no se tocó
+`frontend-web/admin`, `package-lock.json` de raíz ni la base de datos de producción/piloto.
 
 ## Qué se construyó
 
@@ -72,7 +72,7 @@ documento completo, PII del hogar o `last_error` crudo. Solo expone
 
 ## Pruebas (TDD RED→GREEN)
 
-`services/api/tests/test_admin_ocr.py` (19 pruebas) cubre:
+`backend/api/tests/test_admin_ocr.py` (19 pruebas) cubre:
 roles/scope por cada ruta (incluye 401 sin sesión, 403 `support_readonly`/hogar),
 proyección sin PII, los 7 estados + paginación + filtro, motivo obligatorio con
 lista de patrones inseguros, reintento repetido/concurrente, trabajos muertos,
@@ -81,7 +81,7 @@ fallos permanentes, documento borrado/confirmado, cancelación persistente con
 tras cancel, downgrade/upgrade de la migración 0025 y retención de `cancelled`
 en `jobs.purge`.
 
-`services/api/tests/test_admin_rbac.py` ganó 3 pruebas nuevas para el hallazgo
+`backend/api/tests/test_admin_rbac.py` ganó 3 pruebas nuevas para el hallazgo
 de la revisión independiente de RBAC: filtro `status=active` excluye expirados
 y `status=expired` los aísla; auditoría de autorización de scope separada de
 éxito de operación; motivo con patrones inseguros rechazado antes de auditar.
@@ -89,7 +89,7 @@ y `status=expired` los aísla; auditoría de autorización de scope separada de
 ### Comandos reales ejecutados (verificados en esta sesión)
 
 ```bash
-cd services/api
+cd backend/api
 export TEST_DATABASE_URL=postgresql+psycopg://energy:change_me_local_only@localhost:5433/energy_rd_ocr_admin_test
 uv run pytest tests/test_admin_ocr.py tests/test_admin_rbac.py tests/test_jobs.py \
   tests/test_authorization.py tests/test_migrations.py -q
@@ -129,7 +129,7 @@ Esos casos no tocan el código nuevo de ERD-OCR-03.
    agregan más estados derivados conviene extraer una sola fuente de verdad (p.ej.
    una vista SQL) para evitar que ambas copias diverjan.
 
-## ERD-OCR-03-WEB — Consola en `apps/admin` (2026-10-14)
+## ERD-OCR-03-WEB — Consola en `frontend-web/admin` (2026-10-14)
 
 **Construido:** `/ocr` (tabla con filtros por estado, error, intentos mínimos y rango de fechas en hora de RD; paginación de 25)
 y `/ocr/[id]` (metadatos del trabajo y del archivo, método y páginas leídas, historial de operaciones manuales, reintento con
@@ -143,10 +143,10 @@ archivo, origen de la subida, `attached_to_bill` e `history` (eventos `ocr.retry
 actor). Reintento y cancelación devuelven ese detalle.
 
 **Reutilizado de la app móvil:** el texto de método/páginas, la confianza y la regla «solo `engine_error` se reintenta» de
-`apps/mobile/src/features/bills/ocrModel.ts` pasaron a `packages/core/src/ocr.ts`; los usan el móvil, la web
+`frontend-mobile/app/src/features/bills/ocrModel.ts` pasaron a `packages/core/src/ocr.ts`; los usan el móvil, la web
 (`NewBillPage`) y el admin. Los mensajes para la persona usuaria siguen en cada app (usted / tú).
 
-**Pruebas:** `test_admin_ocr.py` 14 (2 nuevas: filtros; detalle + historial sin contenido privado), `apps/admin` 31 unitarias
+**Pruebas:** `test_admin_ocr.py` 14 (2 nuevas: filtros; detalle + historial sin contenido privado), `frontend-web/admin` 31 unitarias
 (`ocr.test.ts`, BFF, navegación), `packages/core` `ocr.test.ts`, Playwright del admin 7/7 contra PostgreSQL + API reales con la cola
 sembrada por `e2e/db.py seed-ocr` (`e2e/ocr.spec.ts`: 403 real, filtros, motivo vacío y motivo con correo rechazado por la API,
 reintento, cancelación con confirmación, historial, auditoría, trabajo inexistente; `a11y.spec.ts` añade `/ocr` y el detalle a

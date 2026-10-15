@@ -613,7 +613,7 @@ apps/
 **Arquitectura interna del Mobile:**
 
 ```text
-apps/mobile/
+frontend-mobile/app/
 
 src/
 ├── app/
@@ -688,7 +688,7 @@ La web está orientada a:
 
 ### Admin
 
-Se puede integrar dentro de `apps/web` inicialmente con rutas `/user` y `/admin`, y separarse posteriormente si es necesario.
+Se puede integrar dentro de `frontend-web/app` inicialmente con rutas `/user` y `/admin`, y separarse posteriormente si es necesario.
 
 ### Flujo completo de una petición
 

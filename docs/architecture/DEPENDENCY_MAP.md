@@ -3,13 +3,13 @@
 Calculado desde los `import` reales (no desde los `package.json`). Cuenta de importaciones sin pruebas ni `e2e`.
 
 ```text
-apps/web ──────┬──► @energyrd/core            (35)
+frontend-web/app ──────┬──► @energyrd/core            (35)
                ├──► @energyrd/api-client      (15)
                └──► @energyrd/api-contracts   (14)
-apps/mobile ───┬──► @energyrd/core            (40)
+frontend-mobile/app ───┬──► @energyrd/core            (40)
                ├──► @energyrd/api-client      (20)
                └──► @energyrd/api-contracts   (25)
-apps/admin  ──► @energyrd/core            (1: vocabulario OCR; sin cliente HTTP ni contratos, habla solo con su BFF)
+frontend-web/admin  ──► @energyrd/core            (1: vocabulario OCR; sin cliente HTTP ni contratos, habla solo con su BFF)
 
 @energyrd/core          ──► @energyrd/api-contracts  (5, solo tipos)
 @energyrd/api-client    ──► @energyrd/api-contracts  (1)
@@ -19,7 +19,7 @@ apps/admin  ──► @energyrd/core            (1: vocabulario OCR; sin cliente
 Comprobaciones: **sin ciclos** entre paquetes, **sin imports cruzados** entre `web`, `mobile` y `admin`, y los paquetes no
 importan aplicaciones (lo exige `scripts/check_architecture.py` en CI).
 
-## Backend (`services/api/app`)
+## Backend (`backend/api/app`)
 
 `api/v1` (20 routers) → `services` (48 módulos) → `models` (21) y `schemas` (21). Los cálculos puros viven en
 `services/calculations.py`, `consumption_calc.py` y `tariff_calc.py` y no pueden importar FastAPI, ORM ni `app.*`
@@ -44,7 +44,7 @@ el 2026-10-13 (`shares_pct` → `calculations.py`).
 | Componentes visuales web (DOM + Tailwind) y móvil (React Native + `StyleSheet`) | No son compartibles. `UI_KIT.md` descartó `packages/ui`. La paridad se mantiene por nombres, props y pruebas. |
 | Tamaños de control (36/44 px web, 44 pt móvil) | Cada plataforma sigue su convención táctil (ver `UI_DENSITY.md`). |
 | Navegación, almacenamiento seguro, permisos y notificaciones | Capacidades nativas distintas. |
-| `apps/admin` sin kit visual | Consola provisional con estilos en línea; adoptará un kit con el Módulo 4. Ya comparte el vocabulario OCR de `core`. |
+| `frontend-web/admin` sin kit visual | Consola provisional con estilos en línea; adoptará un kit con el Módulo 4. Ya comparte el vocabulario OCR de `core`. |
 
 ## Objetivos del prompt que NO se adoptaron, y por qué
 

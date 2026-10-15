@@ -24,7 +24,7 @@ y atrapa fallos reales (abajo hay tres), pero **no sustituye** el criterio real 
 ```bash
 service postgresql start
 (cd /tmp && uvx --from 'moto[server]' moto_server -p 5555 &)                    # bucket S3 de mentira
-cd services/api && uv run python ../../infrastructure/sim/staging_sim.py ../../docs/qa/evidence/sim-staging-2026-10-11
+cd backend/api && uv run python ../../infrastructure/sim/staging_sim.py ../../docs/qa/evidence/sim-staging-2026-10-11
 ADMIN_URL=postgresql://energy:change_me_local_only@localhost:5432/postgres scripts/test_db_dr.sh
 uv run pytest tests/test_ocr_synthetic_layouts.py
 ```

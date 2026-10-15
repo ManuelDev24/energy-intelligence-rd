@@ -1,5 +1,5 @@
 // ERD-OBS-01: redacción de datos personales ANTES de que un evento salga del dispositivo. Mismas reglas que
-// `services/api/app/telemetry.py` (web y móvil comparten este módulo). Puro: sin SDK, sin red.
+// `backend/api/app/telemetry.py` (web y móvil comparten este módulo). Puro: sin SDK, sin red.
 // Qué nunca sale: cuerpos, cookies, cabeceras (salvo User-Agent y X-Request-ID), query string, IP, usuario, nombre del servidor,
 // variables locales y líneas de código de los frames, correos, JWT, `Bearer …`, tokens opacos de 43 caracteres, ni valores bajo
 // claves sensibles (password, token, email, cuenta, dirección, texto OCR…).

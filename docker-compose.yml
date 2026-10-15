@@ -18,7 +18,7 @@ services:
 
   api:
     image: energy-rd-api:local
-    build: ./services/api
+    build: ./backend/api
     container_name: energy-api
     depends_on:
       postgres:
@@ -44,7 +44,7 @@ services:
 
   migrate:
     image: energy-rd-api:local
-    build: ./services/api
+    build: ./backend/api
     profiles: ["ops"]
     depends_on:
       postgres:
@@ -63,11 +63,11 @@ services:
 
   # ERD-WORKER-01: ejecuta los trabajos en segundo plano (OCR de originales, mantenimiento). La cola vive en
   # PostgreSQL (docs/ops/JOBS.md). No arranca por defecto:  docker compose --profile jobs up -d worker
-  # Sin STORAGE_* el OCR asíncrono responde 503 (el almacenamiento está deshabilitado); ver services/api/STORAGE.md.
+  # Sin STORAGE_* el OCR asíncrono responde 503 (el almacenamiento está deshabilitado); ver backend/api/STORAGE.md.
   # La sintaxis se validó con `docker compose --profile jobs config`; NO se levantó (no hay daemon de Docker en este entorno).
   worker:
     image: energy-rd-api:local
-    build: ./services/api
+    build: ./backend/api
     container_name: energy-worker
     profiles: ["jobs"]
     depends_on:

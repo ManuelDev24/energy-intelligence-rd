@@ -13,7 +13,7 @@ El repo es un monorepo npm (workspaces) con **web Next.js 15**, **móvil Expo 57
 Lo que está bien establecido (verificado):
 - Capas respetadas donde hay guardas automáticas: servicios sin FastAPI, cálculos sin ORM, routers sin transacciones y paquetes sin importar de apps (`scripts/check_architecture.py`, pasa).
 - Autorización por vivienda centralizada (`authorize_home`) y un inventario de rutas privadas que falla si una ruta nueva no se prueba.
-- Guardas de configuración de producción/staging que fallan al arrancar (`services/api/app/config.py:131-201`).
+- Guardas de configuración de producción/staging que fallan al arrancar (`backend/api/app/config.py:131-201`).
 - Contratos generados desde Pydantic (OpenAPI → Zod) con comprobación `contracts:check`.
 
 Riesgos iniciales que más urgen profundizar (detalle en §8): **no hay RLS ni roles de base de datos separados**, **FastAPI publica `/docs` y `/openapi.json` sin condición de entorno**, **el CI no declara `permissions:` ni fija acciones por SHA**, **la web no define CSP ni cabeceras de seguridad**, **`app.json` no registra el plugin de `expo-image-picker`** aunque la app usa cámara, **el README contradice la realidad** (dice que no hay autenticación, OCR ni almacenamiento) y **la autenticación está apagada por defecto**.
@@ -26,17 +26,17 @@ Estos son *riesgos iniciales a confirmar*, no vulnerabilidades demostradas: ning
 
 | Unidad | Ruta | Tecnología y versión (declarada) | Notas |
 |---|---|---|---|
-| Web | `apps/web` | Next.js `^15.1.0`, React `19.2.3`, TypeScript `^5.7.2`, Tailwind `^3.4.17`, React Query `^5.62`, Recharts `^3.10.1`, Zod `^3.24.1`, Sentry browser `10.40.0` | BFF en `src/app/api/bff/[...path]`, `src/middleware.ts`; E2E con Playwright `1.63.0` |
-| Móvil | `apps/mobile` | Expo `~57.0.27`, React Native `0.86.3`, React `19.2.3`, TypeScript `~6.0.3`, React Navigation 7, React Query `^5.104`, Zustand `^5.0.15`, `expo-secure-store 57.0.4`, `expo-notifications`, `expo-image-picker`, `expo-document-picker` | `bundleIdentifier`/`package`: `do.energyrd.app`; EAS con perfiles `development/preview/production` |
-| API | `services/api` | Python `>=3.12,<3.13` (venv 3.12.3), FastAPI `>=0.115`, SQLAlchemy `>=2.0.30,<2.1`, Alembic `>=1.13`, psycopg 3, Pydantic 2, Argon2, PyJWT, cryptography `>=50`, boto3, pytesseract, Pillow, pypdfium2, sentry-sdk | `package = false` (sin empaquetar); lock en `uv.lock` |
+| Web | `frontend-web/app` | Next.js `^15.1.0`, React `19.2.3`, TypeScript `^5.7.2`, Tailwind `^3.4.17`, React Query `^5.62`, Recharts `^3.10.1`, Zod `^3.24.1`, Sentry browser `10.40.0` | BFF en `src/app/api/bff/[...path]`, `src/middleware.ts`; E2E con Playwright `1.63.0` |
+| Móvil | `frontend-mobile/app` | Expo `~57.0.27`, React Native `0.86.3`, React `19.2.3`, TypeScript `~6.0.3`, React Navigation 7, React Query `^5.104`, Zustand `^5.0.15`, `expo-secure-store 57.0.4`, `expo-notifications`, `expo-image-picker`, `expo-document-picker` | `bundleIdentifier`/`package`: `do.energyrd.app`; EAS con perfiles `development/preview/production` |
+| API | `backend/api` | Python `>=3.12,<3.13` (venv 3.12.3), FastAPI `>=0.115`, SQLAlchemy `>=2.0.30,<2.1`, Alembic `>=1.13`, psycopg 3, Pydantic 2, Argon2, PyJWT, cryptography `>=50`, boto3, pytesseract, Pillow, pypdfium2, sentry-sdk | `package = false` (sin empaquetar); lock en `uv.lock` |
 | Paquete `core` | `packages/core` | TypeScript puro, **0 dependencias** | Formato, calidad del dato, tokens, lógica de presentación compartida |
-| Paquete `api-contracts` | `packages/api-contracts` | Zod generado (`src/generated.ts`) + `openapi.json` | Generado por `services/api/scripts/generate_contracts.py` |
+| Paquete `api-contracts` | `packages/api-contracts` | Zod generado (`src/generated.ts`) + `openapi.json` | Generado por `backend/api/scripts/generate_contracts.py` |
 | Paquete `api-client` | `packages/api-client` | Cliente tipado con validación runtime (Zod) | Depende de `api-contracts` |
 | Base de datos | — | PostgreSQL 16 (compose `postgres:16-alpine`); **31 tablas**, **24 migraciones** (`0001…0023`) | Extensión `btree_gist` (restricciones de exclusión) |
-| Infra | `docker-compose.yml`, `render.yaml`, `services/api/Dockerfile`, `infrastructure/` | Docker Compose (postgres, api, migrate, worker), Render Blueprint (staging/production) | Neon (PostgreSQL gestionado) y S3/R2 según `docs/deploy/` |
+| Infra | `docker-compose.yml`, `render.yaml`, `backend/api/Dockerfile`, `infrastructure/` | Docker Compose (postgres, api, migrate, worker), Render Blueprint (staging/production) | Neon (PostgreSQL gestionado) y S3/R2 según `docs/deploy/` |
 | CI | `.github/workflows/ci.yml`, `deps-monitor.yml` | GitHub Actions | 4 jobs en `ci.yml` + monitor semanal de dependencias |
 
-Tamaño aproximado (archivos versionados): `apps/mobile` 274, `services/api` 244, `apps/web` 239, `docs/qa` 163, `.agents/skills` 82, `packages` 48. Código: ~24 700 líneas de Python, ~32 900 de TS/TSX (sin generados ni locks).
+Tamaño aproximado (archivos versionados): `frontend-mobile/app` 274, `backend/api` 244, `frontend-web/app` 239, `docs/qa` 163, `.agents/skills` 82, `packages` 48. Código: ~24 700 líneas de Python, ~32 900 de TS/TSX (sin generados ni locks).
 
 ---
 
@@ -44,7 +44,7 @@ Tamaño aproximado (archivos versionados): `apps/mobile` 274, `services/api` 244
 
 ```
                     ┌───────────────────────────┐        ┌───────────────────────────┐
-                    │  Navegador (apps/web)      │        │  Teléfono (apps/mobile)    │
+                    │  Navegador (frontend-web/app)      │        │  Teléfono (frontend-mobile/app)    │
                     │  Next.js 15 · React 19     │        │  Expo 57 · RN 0.86         │
                     │  middleware.ts (gate)      │        │  SecureStore (tokens)      │
                     └────────────┬──────────────┘        └──────────────┬────────────┘
@@ -58,7 +58,7 @@ Tamaño aproximado (archivos versionados): `apps/mobile` 274, `services/api` 244
                                  │  HTTPS (prod) · Bearer                │
                                  ▼                                       ▼
                     ┌──────────────────────────────────────────────────────────────┐
-                    │  API  services/api  (FastAPI, Python 3.12, uvicorn)           │
+                    │  API  backend/api  (FastAPI, Python 3.12, uvicorn)           │
                     │  api/v1/*  ──▶  services/*  ──▶  models (SQLAlchemy)          │
                     │  authorize_home (membresía)   schemas (Pydantic = contrato)   │
                     │  middleware: contexto de petición + CORS                      │
@@ -82,8 +82,8 @@ Observación clave: el **BFF solo protege a la web**; el móvil habla directo co
 ## 4. Mapa de dependencias (imports reales)
 
 ```
-apps/web        ──▶ @energyrd/api-client, @energyrd/api-contracts, @energyrd/core
-apps/mobile     ──▶ @energyrd/api-client, @energyrd/api-contracts, @energyrd/core
+frontend-web/app        ──▶ @energyrd/api-client, @energyrd/api-contracts, @energyrd/core
+frontend-mobile/app     ──▶ @energyrd/api-client, @energyrd/api-contracts, @energyrd/core
 @energyrd/api-client     ──▶ @energyrd/api-contracts
 @energyrd/core           ──▶ @energyrd/api-contracts   (solo tipos)
 @energyrd/api-contracts  ──▶ (nada)
@@ -119,7 +119,7 @@ Resend (correo), Expo Push, S3/R2 (originales de factura, cifrados con AES-GCM),
 | Móvil (vitest, lógica + estructura; sin render RN) | 66 |
 | core / api-client / api-contracts | 8 / 11 / 4 |
 | E2E web (Playwright, 61 pruebas) | 9 specs |
-| Flujos nativos (Maestro) | `apps/mobile/maestro/*.yaml` (no ejecutables aquí) |
+| Flujos nativos (Maestro) | `frontend-mobile/app/maestro/*.yaml` (no ejecutables aquí) |
 
 ---
 
@@ -132,7 +132,7 @@ Resend (correo), Expo Push, S3/R2 (originales de factura, cifrados con AES-GCM),
 | `npm run contracts:check` | **OK** (exit 0) |
 | `git diff --check` | **OK** |
 
-Comandos documentados cuya ejecución **se verificó antes en esta sesión sobre el mismo contenido** (no se repitieron aquí por coste): `npm test` (core 85, contratos 17, cliente 66, web 816 + 5 omitidas, móvil 541 + 11 omitidas), `npm run lint --workspace apps/web`, `npm run build --workspace apps/web` (con `NEXT_PUBLIC_AUTH_ENABLED=true API_BASE_URL=https://… WEB_ORIGIN=https://…`), `uv run pytest` (1 082 pruebas, requiere PostgreSQL), `alembic upgrade head` / `downgrade` / `alembic check`, `npm run e2e` (61 pruebas, requiere PostgreSQL local y Chromium).
+Comandos documentados cuya ejecución **se verificó antes en esta sesión sobre el mismo contenido** (no se repitieron aquí por coste): `npm test` (core 85, contratos 17, cliente 66, web 816 + 5 omitidas, móvil 541 + 11 omitidas), `npm run lint --workspace frontend-web/app`, `npm run build --workspace frontend-web/app` (con `NEXT_PUBLIC_AUTH_ENABLED=true API_BASE_URL=https://… WEB_ORIGIN=https://…`), `uv run pytest` (1 082 pruebas, requiere PostgreSQL), `alembic upgrade head` / `downgrade` / `alembic check`, `npm run e2e` (61 pruebas, requiere PostgreSQL local y Chromium).
 **No verificables aquí:** `docker compose …` (no hay daemon), builds nativos iOS/Android, Maestro, `eas build`, despliegue en Render.
 
 Instalación/ejecución según el repo: `npm ci` · `cp .env.example .env` · `SEED_PILOT=true docker compose up -d --build --wait postgres api` · `npm run dev:web` · `npm run dev:mobile` · `npm run db:migrate`.
@@ -155,20 +155,20 @@ Instalación/ejecución según el repo: `npm ci` · `cp .env.example .env` · `S
 
 | ID | Sev. inicial | Riesgo | Evidencia | Auditoría que lo cierra |
 |---|---|---|---|---|
-| R-01 | **Alta** | **Sin RLS ni roles separados**: ninguna política `ROW LEVEL SECURITY`, `GRANT` ni `CREATE ROLE` en migraciones, scripts o docs. Todo el aislamiento entre viviendas depende de la capa de aplicación (`authorize_home`) y de filtrar por `home_id`. Un único rol de base de datos hace todo (migrar y servir). | `git grep` sin coincidencias; `services/api/app/api/auth_deps.py:42-61` | 04, 03 |
-| R-02 | **Alta** | **Autenticación apagada por defecto**: `AUTH_ENABLED=False` y `ENVIRONMENT="development"` por defecto; si un despliegue omite `ENVIRONMENT`, queda en modo piloto sin autenticación (toda la API abierta). Las guardas solo se activan cuando `ENVIRONMENT` ∈ {production, staging} o ≠ development. | `services/api/app/config.py:21-22`, `:177-178`; `auth_deps.py:25-26` | 03, 06, 07 |
-| R-03 | Media | **Documentación interactiva expuesta**: `FastAPI(...)` no deshabilita `/docs`, `/redoc` ni `/openapi.json` en ningún entorno. | `services/api/app/main.py:19-23` | 06 |
+| R-01 | **Alta** | **Sin RLS ni roles separados**: ninguna política `ROW LEVEL SECURITY`, `GRANT` ni `CREATE ROLE` en migraciones, scripts o docs. Todo el aislamiento entre viviendas depende de la capa de aplicación (`authorize_home`) y de filtrar por `home_id`. Un único rol de base de datos hace todo (migrar y servir). | `git grep` sin coincidencias; `backend/api/app/api/auth_deps.py:42-61` | 04, 03 |
+| R-02 | **Alta** | **Autenticación apagada por defecto**: `AUTH_ENABLED=False` y `ENVIRONMENT="development"` por defecto; si un despliegue omite `ENVIRONMENT`, queda en modo piloto sin autenticación (toda la API abierta). Las guardas solo se activan cuando `ENVIRONMENT` ∈ {production, staging} o ≠ development. | `backend/api/app/config.py:21-22`, `:177-178`; `auth_deps.py:25-26` | 03, 06, 07 |
+| R-03 | Media | **Documentación interactiva expuesta**: `FastAPI(...)` no deshabilita `/docs`, `/redoc` ni `/openapi.json` en ningún entorno. | `backend/api/app/main.py:19-23` | 06 |
 | R-04 | Media | **CI sin `permissions:` global ni acciones fijadas por SHA** (`@v4`, `@v6`); `GITHUB_TOKEN` hereda los permisos por defecto del repositorio. | `.github/workflows/ci.yml` (sin `permissions`; `uses:` en líneas 35, 53, 91…); `deps-monitor.yml:13` sí declara | 07 |
-| R-05 | Media | **La web no define CSP ni cabeceras de seguridad** (`Content-Security-Policy`, `X-Frame-Options`/`frame-ancestors`, HSTS, `Referrer-Policy`); `next.config.mjs` no tiene `headers()`. | `apps/web/next.config.mjs` (sin `headers`); `git grep` sin coincidencias en `apps/web/src` | 05 |
-| R-06 | Media | **Móvil: faltan los plugins de permisos** — la app usa cámara/galería/archivos pero `app.json` solo registra `expo-notifications`; puede faltar `NSCameraUsageDescription`/`NSPhotoLibraryUsageDescription` (rechazo en App Store o cierre en iOS) y permisos Android. Tampoco se fija `allowBackup`. | `apps/mobile/app.json:32`; `src/features/bills/BillOcrScreen.tsx:20-33` | 05 |
+| R-05 | Media | **La web no define CSP ni cabeceras de seguridad** (`Content-Security-Policy`, `X-Frame-Options`/`frame-ancestors`, HSTS, `Referrer-Policy`); `next.config.mjs` no tiene `headers()`. | `frontend-web/app/next.config.mjs` (sin `headers`); `git grep` sin coincidencias en `frontend-web/app/src` | 05 |
+| R-06 | Media | **Móvil: faltan los plugins de permisos** — la app usa cámara/galería/archivos pero `app.json` solo registra `expo-notifications`; puede faltar `NSCameraUsageDescription`/`NSPhotoLibraryUsageDescription` (rechazo en App Store o cierre en iOS) y permisos Android. Tampoco se fija `allowBackup`. | `frontend-mobile/app/app.json:32`; `src/features/bills/BillOcrScreen.tsx:20-33` | 05 |
 | R-07 | Media | **README desactualizado y contradictorio**: afirma que "no tiene autenticación" y que "no hay … OCR … ni almacenamiento de archivos", cuando ambos existen. `findings.md:10` conserva la descripción de "esqueletos". | `README.md:5`, `:17`; `findings.md:10` | 01 → corrección en 09 |
 | R-08 | Baja | **`workspaces` incluye `mcp/*`**, carpeta inexistente; `engines.node` exige `>=24 <25` pero el entorno local es Node 22 y `deps-monitor.yml` usa Node 22 (CI principal usa 24). Las pruebas locales corrieron en un runtime fuera de `engines`. | `package.json:28`, `:47-49`; `deps-monitor.yml:24` | 07, 08 |
-| R-09 | Baja | **Imagen base y herramienta sin fijar por digest**: `python:3.12-slim`, `ghcr.io/astral-sh/uv:0.9`; el `Dockerfile` no define `HEALTHCHECK` (sí el compose). `USER app` sí está definido. | `services/api/Dockerfile:1,3,25` | 07 |
-| R-10 | Baja | **Credencial de desarrollo en el código por defecto**: la URL de base de datos por defecto usa una contraseña local de desarrollo; las guardas de producción la rechazan, pero está en el repo. | `services/api/app/config.py:10`; `.env.example`; `docker-compose.yml:8,27` | 03 |
-| R-11 | Baja | **Lógica duplicada web ↔ móvil**: `rd-time.ts`/`rdTime.ts` (53/54 líneas), `format.ts` y funciones con el mismo nombre (`inclusiveDays`, `todayRD`, `coveragePct`, `bucketLabel`, `consumptionSummary`, `ocrErrorText`…). Candidatas a `packages/core`. | `apps/web/src/lib/rd-time.ts` ↔ `apps/mobile/src/lib/rdTime.ts` | 02 |
+| R-09 | Baja | **Imagen base y herramienta sin fijar por digest**: `python:3.12-slim`, `ghcr.io/astral-sh/uv:0.9`; el `Dockerfile` no define `HEALTHCHECK` (sí el compose). `USER app` sí está definido. | `backend/api/Dockerfile:1,3,25` | 07 |
+| R-10 | Baja | **Credencial de desarrollo en el código por defecto**: la URL de base de datos por defecto usa una contraseña local de desarrollo; las guardas de producción la rechazan, pero está en el repo. | `backend/api/app/config.py:10`; `.env.example`; `docker-compose.yml:8,27` | 03 |
+| R-11 | Baja | **Lógica duplicada web ↔ móvil**: `rd-time.ts`/`rdTime.ts` (53/54 líneas), `format.ts` y funciones con el mismo nombre (`inclusiveDays`, `todayRD`, `coveragePct`, `bucketLabel`, `consumptionSummary`, `ocrErrorText`…). Candidatas a `packages/core`. | `frontend-web/app/src/lib/rd-time.ts` ↔ `frontend-mobile/app/src/lib/rdTime.ts` | 02 |
 | R-12 | Baja | **Ruido en el repositorio**: 82 archivos de skills de agentes (`.agents/skills`) y 149 imágenes de evidencia QA versionadas dentro del repo de producto (32 MB de `.git`). Revisar si alguna captura contiene datos personales. | `git ls-files .agents`; `docs/qa/evidence/**` | 03, 04 |
-| R-13 | Baja | **`--no-proxy-headers` deliberado** en uvicorn: detrás de un proxy (Render) la IP de cliente que ve la API es la del proxy; afecta a los límites por IP si no se compensa. | `services/api/docker-entrypoint.sh` (última línea); `AUTH_ABUSE_PROTECTION.md` | 06 |
-| R-14 | Info | **Sin RLS, la prueba de aislamiento depende de pruebas**: existe el inventario `test_private_route_inventory_remains_covered` y 58 archivos de prueba API; falta una prueba que ejerza el aislamiento con un rol de base de datos distinto. | `services/api/tests/test_authorization.py` | 04 |
+| R-13 | Baja | **`--no-proxy-headers` deliberado** en uvicorn: detrás de un proxy (Render) la IP de cliente que ve la API es la del proxy; afecta a los límites por IP si no se compensa. | `backend/api/docker-entrypoint.sh` (última línea); `AUTH_ABUSE_PROTECTION.md` | 06 |
+| R-14 | Info | **Sin RLS, la prueba de aislamiento depende de pruebas**: existe el inventario `test_private_route_inventory_remains_covered` y 58 archivos de prueba API; falta una prueba que ejerza el aislamiento con un rol de base de datos distinto. | `backend/api/tests/test_authorization.py` | 04 |
 
 Búsquedas sin hallazgos (ayudan a acotar): patrones de claves de alta confianza (AWS, PEM, `sk-`, `ghp_`, JWT) **solo aparecen en archivos de prueba**; no hay `.env`, `.pem`, `.p12`, `.keystore` ni credenciales versionados (solo los dos `.env.example`); no hay `__pycache__`, `.next`, `node_modules` ni `tsbuildinfo` versionados. Alcance: **solo el árbol actual, no el historial de Git** (ver §10).
 
@@ -205,15 +205,15 @@ Búsquedas sin hallazgos (ayudan a acotar): patrones de claves de alta confianza
 
 | Prioridad | Área | Archivos |
 |---|---|---|
-| 1 | Autenticación, sesiones, recuperación, abuso | `services/api/app/services/auth.py`, `auth_abuse.py`, `password_recovery.py`, `api/v1/auth.py`, `api/auth_deps.py` |
+| 1 | Autenticación, sesiones, recuperación, abuso | `backend/api/app/services/auth.py`, `auth_abuse.py`, `password_recovery.py`, `api/v1/auth.py`, `api/auth_deps.py` |
 | 1 | Aislamiento por vivienda / BOLA | `api/auth_deps.py`, `services/transactions.py`, todos los `api/v1/*.py` y sus servicios |
 | 1 | Base de datos sin RLS | `app/models/*`, `app/alembic/versions/*`, `app/database.py`, roles de Neon |
-| 1 | BFF web | `apps/web/src/lib/auth/bff.ts` (546 líneas), `src/middleware.ts`, `next.config.mjs` |
-| 2 | Almacenamiento y OCR | `services/api/app/services/storage/*`, `document_storage.py`, `ocr/*`, `api/v1/documents.py` |
-| 2 | Móvil: sesión y permisos | `apps/mobile/src/auth/*`, `app.json`, `eas.json`, `src/notifications/push.ts`, `BillOcrScreen.tsx` |
-| 2 | CI/CD y despliegue | `.github/workflows/*`, `render.yaml`, `services/api/Dockerfile`, `docker-entrypoint.sh`, `infrastructure/deploy/check_deploy_config.py` |
+| 1 | BFF web | `frontend-web/app/src/lib/auth/bff.ts` (546 líneas), `src/middleware.ts`, `next.config.mjs` |
+| 2 | Almacenamiento y OCR | `backend/api/app/services/storage/*`, `document_storage.py`, `ocr/*`, `api/v1/documents.py` |
+| 2 | Móvil: sesión y permisos | `frontend-mobile/app/src/auth/*`, `app.json`, `eas.json`, `src/notifications/push.ts`, `BillOcrScreen.tsx` |
+| 2 | CI/CD y despliegue | `.github/workflows/*`, `render.yaml`, `backend/api/Dockerfile`, `docker-entrypoint.sh`, `infrastructure/deploy/check_deploy_config.py` |
 | 3 | Privacidad y retención | `data_export.py`, `account.py`, `audit.py`, `docs/legal/*_DRAFT.md` |
-| 3 | Telemetría y logs | `observability.py`, `packages/core/src/telemetry.ts`, `apps/web/src/lib/telemetry.ts` |
+| 3 | Telemetría y logs | `observability.py`, `packages/core/src/telemetry.ts`, `frontend-web/app/src/lib/telemetry.ts` |
 
 ---
 

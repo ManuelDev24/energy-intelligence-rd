@@ -1,6 +1,6 @@
 # ERD-ADM-BILLS-WEB — calidad de datos de facturas y facturas de una vivienda (solo lectura)
 
-Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (18/18 en `apps/admin`, axe sin violaciones a 360/768/1280 px).
+Estado: **implementado y verificado** con pruebas de API (también como `erd_app`), unitarias de la consola y Playwright contra PostgreSQL + API + consola reales (18/18 en `frontend-web/admin`, axe sin violaciones a 360/768/1280 px).
 
 ## Qué hay
 - **Scope `admin.bills.read`** (migración 0039): super_admin, operations_admin y support_readonly. Auditor y revisor OCR no lo tienen.

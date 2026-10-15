@@ -1,6 +1,6 @@
 # AUDIT-07 — DevSecOps, CI/CD, contenedores e infraestructura
 
-Modo: solo lectura. Rama `Dev` @ `5e761c6`. Alcance: `.github/workflows/*`, `services/api/Dockerfile` + `docker-entrypoint.sh`, `docker-compose.yml`, `render.yaml`, `apps/mobile/eas.json`, `scripts/`, `infrastructure/`, `docs/{deploy,ops,security}`.
+Modo: solo lectura. Rama `Dev` @ `5e761c6`. Alcance: `.github/workflows/*`, `backend/api/Dockerfile` + `docker-entrypoint.sh`, `docker-compose.yml`, `render.yaml`, `frontend-mobile/app/eas.json`, `scripts/`, `infrastructure/`, `docs/{deploy,ops,security}`.
 No se desplegó nada, no se tocaron cuentas externas, no se leyeron secretos reales.
 
 ## 1. Estado de la entrega continua (CI)

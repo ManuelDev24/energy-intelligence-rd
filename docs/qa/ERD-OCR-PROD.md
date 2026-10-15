@@ -1,6 +1,6 @@
 # ERD-OCR-PROD — OCR asíncrono, estados, reintentos, PDF multipágina, conserva el original
 
-Detalle técnico: `services/api/OCR_BILL_UPLOAD.md` (sección ERD-OCR-PROD), `services/api/STORAGE.md`, `docs/ops/JOBS.md`.
+Detalle técnico: `backend/api/OCR_BILL_UPLOAD.md` (sección ERD-OCR-PROD), `backend/api/STORAGE.md`, `docs/ops/JOBS.md`.
 
 ## Criterios de aceptación
 | Criterio | Evidencia |

@@ -53,11 +53,11 @@ La migración crea `erd_app` y `erd_worker` **sin LOGIN ni contraseña**. Las co
 ## Restaurar un respaldo
 
 `scripts/db_backup.sh` usa `--no-owner --no-acl`: los **permisos no viajan** en el respaldo (las políticas RLS sí, son parte del esquema). Tras restaurar, ejecuta con el
-rol dueño `psql "$MIGRATION_DATABASE_URL" -f services/api/scripts/db_grants.sql` (idempotente; una prueba comprueba que coincide con la migración `0027`) y repite los pasos 2–4.
+rol dueño `psql "$MIGRATION_DATABASE_URL" -f backend/api/scripts/db_grants.sql` (idempotente; una prueba comprueba que coincide con la migración `0027`) y repite los pasos 2–4.
 Los roles `erd_app` y `erd_worker` son del servidor, no de la base: si restauras en un servidor nuevo, créalos antes (`CREATE ROLE erd_app NOLOGIN; CREATE ROLE erd_worker NOLOGIN;`).
 
 ## Pruebas
 
 - `tests/test_rls.py`: matriz tabla × operación × vivienda propia/ajena/sin contexto con los roles reales, worker, privilegios y ciclo de vida del contexto.
 - `TEST_RLS_ROLE=1 uv run pytest`: ejecuta **toda** la suite con autenticación conectando el API como `erd_app` (el CI lo hace).
-- E2E web: el arnés conecta el API como `erd_app` y el worker como `erd_worker` (ver `apps/web/e2e/support/global-setup.ts`).
+- E2E web: el arnés conecta el API como `erd_app` y el worker como `erd_worker` (ver `frontend-web/app/e2e/support/global-setup.ts`).

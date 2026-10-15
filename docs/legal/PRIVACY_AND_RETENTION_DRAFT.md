@@ -6,7 +6,7 @@
 > Ninguna cifra de retención aquí está aprobada.
 
 Versiones vigentes servidas por `GET /api/v1/legal`: `terms_version = privacy_version =
-"2026-10-draft"`, `status = "draft"` (constantes en `services/api/app/services/legal.py`).
+"2026-10-draft"`, `status = "draft"` (constantes en `backend/api/app/services/legal.py`).
 El registro exige `accept_terms: true`; el servidor guarda la versión vigente y la fecha en
 `users.terms_version` / `users.terms_accepted_at` (NULL en cuentas anteriores a la migración 0012).
 
@@ -63,7 +63,7 @@ El registro exige `accept_terms: true`; el servidor guarda la versión vigente y
 ## 4. Borrado de cuenta
 
 `DELETE /api/v1/auth/me` con reautenticación por contraseña. Detalle completo, regla `409
-ownership_transfer_required` y límites en `services/api/ACCOUNT_DELETION.md`.
+ownership_transfer_required` y límites en `backend/api/ACCOUNT_DELETION.md`.
 
 ## 5. Advertencia sobre copias de seguridad
 

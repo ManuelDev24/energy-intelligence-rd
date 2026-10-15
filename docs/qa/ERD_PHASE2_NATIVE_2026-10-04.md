@@ -6,10 +6,10 @@
 
 | Exact command, from repository root | Exit | Full flows | Completed assertion/wait commands | Duration |
 |---|---:|---:|---:|---|
-| `python3 apps/mobile/scripts/run-native-phase2-qa.py ios ios-run12-final` | 0 | 1/1 | 28 | 1m 40s |
-| `python3 apps/mobile/scripts/run-native-phase2-qa.py ios ios-run13-repeat-final` | 0 | 1/1 | 28 | 1m 40s |
-| `python3 apps/mobile/scripts/run-native-phase2-qa.py android android-run9-final` | 0 | 1/1 | 28 | 4m 16s |
-| `python3 apps/mobile/scripts/run-native-phase2-qa.py android android-run10-repeat-final` | 0 | 1/1 | 28 | 3m 27s |
+| `python3 frontend-mobile/app/scripts/run-native-phase2-qa.py ios ios-run12-final` | 0 | 1/1 | 28 | 1m 40s |
+| `python3 frontend-mobile/app/scripts/run-native-phase2-qa.py ios ios-run13-repeat-final` | 0 | 1/1 | 28 | 1m 40s |
+| `python3 frontend-mobile/app/scripts/run-native-phase2-qa.py android android-run9-final` | 0 | 1/1 | 28 | 4m 16s |
+| `python3 frontend-mobile/app/scripts/run-native-phase2-qa.py android android-run10-repeat-final` | 0 | 1/1 | 28 | 3m 27s |
 
 Each run contains **13 direct assertions + 15 timed assertion/waits** (including launch/auth readiness and deletion verification), not 28 independent business test cases. Final four runs: **4/4 full flows, 112 completed assertion/wait commands**. Counts were parsed from Maestro `commands.json`, and JUnit records one passing testcase per run. Android has four expected optional `keyboard-done` tap warnings because that control exists only on iOS; no assertion was skipped or warned. iOS final runs have no warnings. Conditional platform/developer-menu branches are skipped normally.
 
@@ -17,7 +17,7 @@ Covered: disposable registration → owned home → monthly RD$3,000/300 kWh goa
 
 ## Narrow application fix and regression evidence
 
-`apps/mobile/src/features/auth/AuthScreen.tsx`: changed the iOS `textContentType` from registration `newPassword` to `password`, retaining `secureTextEntry` and the existing autocomplete policy. On this iOS 27 / Expo Go setup, `newPassword` produced a blank input-view area and failed registration; a focused native probe surfaced the password-length validation message rather than reaching owned homes.
+`frontend-mobile/app/src/features/auth/AuthScreen.tsx`: changed the iOS `textContentType` from registration `newPassword` to `password`, retaining `secureTextEntry` and the existing autocomplete policy. On this iOS 27 / Expo Go setup, `newPassword` produced a blank input-view area and failed registration; a focused native probe surfaced the password-length validation message rather than reaching owned homes.
 
 The hypothesis was tested by restoring the original content-type after a passing fixed run, clearing/restarting only the owned iOS Metro, and rerunning the same updated full flow: `ios-run6-old-content-type` failed at `auth-add-home` (exit 1). Restoring `password` allowed registration and the full native flow to pass again. This is a real native RED/GREEN regression; pure-logic Vitest does not render UIKit secure inputs, so no misleading mocked unit test was added for this OS behavior.
 
@@ -41,7 +41,7 @@ Final reviewed screenshots show: visible negative input and keyboards; insuffici
 
 Prefix for all entries below:
 
-`/Users/macbookpro/Desktop/energy-intelligence-rd/apps/mobile/maestro/evidence/phase2-2026-10-04/`
+`/Users/macbookpro/Desktop/energy-intelligence-rd/frontend-mobile/app/maestro/evidence/phase2-2026-10-04/`
 
 Visually reviewed final complete screenshot sets:
 
@@ -81,7 +81,7 @@ Targets:
 
 Xcode discovery yielded `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`; this made `xcrun simctl` available. Conventional Simulator.app paths were absent in this Xcode installation, and the optional desktop computer-use backend was unavailable; neither blocked native Maestro/simctl verification.
 
-From `apps/mobile`, the owned iOS Metro was started/restarted as:
+From `frontend-mobile/app`, the owned iOS Metro was started/restarted as:
 
 ```bash
 eval "$(fnm env --shell bash)"
@@ -99,11 +99,11 @@ Android commands (exit 0):
 /Users/macbookpro/Library/Android/sdk/platform-tools/adb -s emulator-5554 shell settings put secure stylus_handwriting_enabled 0
 ```
 
-The emulator command remained running (background start accepted; not a terminated test command). `run-native-phase2-qa.py` invokes `/opt/homebrew/bin/maestro --device <exact target above> test --no-ansi --test-output-dir <run directory> --debug-output <run directory>/debug --format JUNIT --output <run directory>/junit.xml -e APP_ID=<platform Expo Go ID> -e EXPO_URL=exp://127.0.0.1:<8083 or 8084> -e EMAIL=<subprocess-generated value> -e PASSWORD=<subprocess-generated value> <absolute apps/mobile/maestro/phase2-flow.yaml>`. Credential values are intentionally omitted; exact executable/flags are in the wrapper.
+The emulator command remained running (background start accepted; not a terminated test command). `run-native-phase2-qa.py` invokes `/opt/homebrew/bin/maestro --device <exact target above> test --no-ansi --test-output-dir <run directory> --debug-output <run directory>/debug --format JUNIT --output <run directory>/junit.xml -e APP_ID=<platform Expo Go ID> -e EXPO_URL=exp://127.0.0.1:<8083 or 8084> -e EMAIL=<subprocess-generated value> -e PASSWORD=<subprocess-generated value> <absolute frontend-mobile/app/maestro/phase2-flow.yaml>`. Credential values are intentionally omitted; exact executable/flags are in the wrapper.
 
 ## Failed/intermediate attempts (not hidden)
 
-All commands use `python3 apps/mobile/scripts/run-native-phase2-qa.py <platform> <run name>`. A failed entry exited **1**; a passed intermediate entry exited **0**. All artifacts were retained.
+All commands use `python3 frontend-mobile/app/scripts/run-native-phase2-qa.py <platform> <run name>`. A failed entry exited **1**; a passed intermediate entry exited **0**. All artifacts were retained.
 
 | Run | Result / observed failure |
 |---|---|
@@ -132,8 +132,8 @@ From repository root, under Node 24:
 
 ```bash
 eval "$(fnm env --shell bash)"
-fnm exec --using=24 npm test --workspace apps/mobile
-fnm exec --using=24 npm run typecheck --workspace apps/mobile
+fnm exec --using=24 npm test --workspace frontend-mobile/app
+fnm exec --using=24 npm run typecheck --workspace frontend-mobile/app
 ```
 
 Both checks returned clean output, exit **0**: **245 tests passed, 11 skipped**, 21 files passed / 3 skipped; TypeScript reported no errors. Tests were rerun after the final application change. Shared/web/API checks were intentionally not rerun or modified by this workspace-scoped worker.
@@ -144,4 +144,4 @@ Only the owned Metro processes on **8083/8084** were stopped. The Android emulat
 
 `a7141ac6c65e154e84119aa6cd4e2604185cbf2cb5786909b90062e8453f1126`
 
-Files changed by this worker: `apps/mobile/src/features/auth/AuthScreen.tsx`, `apps/mobile/maestro/phase2-flow.yaml`, new `apps/mobile/scripts/run-native-phase2-qa.py`, `apps/mobile/PHASE2_UI.md`, native evidence under `apps/mobile/maestro/evidence/phase2-2026-10-04/`, and this explicitly requested report. No dependency/lockfile/package/API/web/pilot-flow/.next changes, commits, pushes, gateway changes, simulator shutdowns, or export-directory deletion were performed.
+Files changed by this worker: `frontend-mobile/app/src/features/auth/AuthScreen.tsx`, `frontend-mobile/app/maestro/phase2-flow.yaml`, new `frontend-mobile/app/scripts/run-native-phase2-qa.py`, `frontend-mobile/app/PHASE2_UI.md`, native evidence under `frontend-mobile/app/maestro/evidence/phase2-2026-10-04/`, and this explicitly requested report. No dependency/lockfile/package/API/web/pilot-flow/.next changes, commits, pushes, gateway changes, simulator shutdowns, or export-directory deletion were performed.

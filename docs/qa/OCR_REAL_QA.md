@@ -29,7 +29,7 @@ Cada campo es opcional: solo se puntúan los que escribas (valores copiados de l
 
 ## Ejecutar
 ```bash
-cd services/api
+cd backend/api
 uv run python -m scripts.ocr_qa /ruta/a/mis-facturas --json /ruta/informe.json
 ```
 Requiere Tesseract con `spa` (`apt install tesseract-ocr tesseract-ocr-spa`; ya está en la imagen Docker).

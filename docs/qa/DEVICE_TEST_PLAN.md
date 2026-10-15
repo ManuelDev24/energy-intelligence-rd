@@ -9,7 +9,7 @@ marcar ambos prompts como completos. Cada punto tiene un criterio de aprobación
 (`keyboardGuard.test.ts`) y de controles (`uiKit.test.ts`) confirman que el código existe, no cómo se ve.
 
 **Preparación:** levantar a mano la API con cuentas (base vacía) y Metro, como indica la cabecera de
-`apps/mobile/maestro/run-auth.sh` (el script solo lanza el flujo, no arranca esos servicios), y abrir la app en Expo Go.
+`frontend-mobile/app/maestro/run-auth.sh` (el script solo lanza el flujo, no arranca esos servicios), y abrir la app en Expo Go.
 Datos sintéticos; no usar cuentas reales.
 
 ## A. iOS (Prompt 04) — iPhone con Dynamic Island y un iPhone SE o simulador pequeño
@@ -29,7 +29,7 @@ Datos sintéticos; no usar cuentas reales.
 | # | Qué hacer | Aprueba si |
 |---|---|---|
 | 1 | **UI-06, el más importante.** Con el teclado abierto, enfocar el **último** campo de: Lectura nueva, Factura nueva, Ajustes → «Confirmar nueva contraseña», Apagón nuevo, Equipo nuevo | El campo y el botón de guardar quedan visibles y no tapados por el teclado. |
-| 1b | Si el 1 **falla**: aplicar `behavior={Platform.OS === 'ios' ? 'padding' : 'height'}` a los `KeyboardAvoidingView` (10 pantallas; `grep -rln KeyboardAvoidingView apps/mobile/src` también lista `keyboardGuard.test.ts`, que no cuenta) y repetir el 1; comprobar además que al cerrar el teclado la pantalla recupera su altura (hay un fallo conocido de `height` en algunos dispositivos). | Pasa el 1 y la altura se restaura. Si `height` no restaura, probar `padding` o `react-native-keyboard-controller`. |
+| 1b | Si el 1 **falla**: aplicar `behavior={Platform.OS === 'ios' ? 'padding' : 'height'}` a los `KeyboardAvoidingView` (10 pantallas; `grep -rln KeyboardAvoidingView frontend-mobile/app/src` también lista `keyboardGuard.test.ts`, que no cuenta) y repetir el 1; comprobar además que al cerrar el teclado la pantalla recupera su altura (hay un fallo conocido de `height` en algunos dispositivos). | Pasa el 1 y la altura se restaura. Si `height` no restaura, probar `padding` o `react-native-keyboard-controller`. |
 | 2 | TalkBack: los mismos recorridos que iOS-1 | Mismo criterio que VoiceOver. |
 | 3 | Ajustes → Pantalla → **Tamaño de fuente al máximo** y «Tamaño de pantalla» grande | Igual que iOS-2. |
 | 4 | Botón/gesto «Atrás» en hojas inferiores (rango de fechas), formularios con cambios y la pantalla raíz | Cierra la hoja o vuelve; en la raíz sale de la app; no pierde datos escritos sin avisar. |

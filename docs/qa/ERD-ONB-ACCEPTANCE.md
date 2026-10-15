@@ -26,5 +26,5 @@ Reproducir: levantar ambos y `python web-onb.py <dir>` (requiere `playwright` y 
 sin contar contra el tope de viviendas); misma clave + contenido distinto → 409 `idempotency_key_reused`; las claves son de cada persona,
 caducan a las 24 h y caen con la vivienda o la cuenta (migración 0035, tabla `home_create_requests`). El asistente web y el onboarding
 móvil generan una clave por intento y la reutilizan al reintentar, así que ya no bloquean el reintento tras perder la respuesta.
-Pruebas: `services/api/tests/test_home_idempotency.py` (6, también con `TEST_RLS_ROLE=1`), `bff-idempotency.test.ts`, `onboarding-wizard.test.tsx`
-y `apps/mobile/src/api/idempotency.test.ts`. **Pendiente:** forzar la pérdida real de la respuesta en Android/iOS (modo avión tras el POST).
+Pruebas: `backend/api/tests/test_home_idempotency.py` (6, también con `TEST_RLS_ROLE=1`), `bff-idempotency.test.ts`, `onboarding-wizard.test.tsx`
+y `frontend-mobile/app/src/api/idempotency.test.ts`. **Pendiente:** forzar la pérdida real de la respuesta en Android/iOS (modo avión tras el POST).

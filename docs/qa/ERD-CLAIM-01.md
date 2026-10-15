@@ -28,6 +28,6 @@ neutral de **sus propios datos** y el seguimiento. La reclamación formal la pre
 4. Sin verificar en Android/iOS (formulario con teclado, lectores de pantalla).
 
 ## Pruebas
-`services/api/tests/test_claims.py` (9) + inventario de autorización + RLS, `packages/core/src/claims.test.ts`, `apps/web/src/test/claims-pages.test.tsx`,
-BFF en `bff-recommendations.test.ts`, `apps/web/e2e/specs/15-claims-help.spec.ts` (flujo completo, privacidad entre cuentas, axe a 360/768/1280) y
-`apps/mobile/src/features/claims/claims.test.ts`.
+`backend/api/tests/test_claims.py` (9) + inventario de autorización + RLS, `packages/core/src/claims.test.ts`, `frontend-web/app/src/test/claims-pages.test.tsx`,
+BFF en `bff-recommendations.test.ts`, `frontend-web/app/e2e/specs/15-claims-help.spec.ts` (flujo completo, privacidad entre cuentas, axe a 360/768/1280) y
+`frontend-mobile/app/src/features/claims/claims.test.ts`.

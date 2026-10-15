@@ -7,13 +7,13 @@ vivienda**, indicando la calidad de cada cifra. Es de solo lectura: no crea, cam
 
 | Capa | Dónde | Qué hace |
 |---|---|---|
-| Modelo y RLS | `services/api/app/models/copilot.py`, migración `0032` | `copilot_conversations` (de una vivienda **y** de una persona: otro miembro de la misma casa no la ve), `copilot_messages` (heredan la visibilidad), `copilot_usage` (cuota diaria por persona). |
+| Modelo y RLS | `backend/api/app/models/copilot.py`, migración `0032` | `copilot_conversations` (de una vivienda **y** de una persona: otro miembro de la misma casa no la ve), `copilot_messages` (heredan la visibilidad), `copilot_usage` (cuota diaria por persona). |
 | Herramientas | `app/services/copilot/tools.py` | 9 herramientas de solo lectura que **reutilizan** los servicios de dashboard, facturas, consumo, equipos, recomendaciones, tarifa, score, apagones y meta. Entrada validada con Pydantic (`extra=forbid`); cada resultado trae fuentes con calidad (`REAL`/`ESTIMATED`/`PROJECTED`/`INFERRED`) y enlace interno. |
 | Proveedor | `app/services/copilot/provider.py` | `AnthropicProvider` (SDK oficial, `claude-opus-5-5`, pensamiento adaptativo, esfuerzo `medium`, `fallbacks: "default"`) y `FakeProvider` (determinista, sin red, solo `development`). |
 | Motor | `app/services/copilot/engine.py` | Cuota → pregunta guardada → bucle modelo/herramientas (máx. 6 rondas) con texto en streaming → respuesta guardada con fuentes, herramientas, tokens y estado (`complete`/`cancelled`/`error`/`refused`). Sin transacción abierta mientras responde el modelo. |
 | API | `app/api/v1/copilot.py` | `GET usage`, CRUD de conversaciones, `GET messages`, `POST messages` (SSE), `PUT …/feedback`. Detrás de `authorize_home`. |
-| BFF web | `apps/web/src/lib/auth/bff*.ts` | Rutas JSON con esquemas estrictos; el envío reenvía el stream solo si es `text/event-stream`, con tope de 512 KB y corte si la persona cancela. |
-| Interfaz | `apps/web/src/features/copilot/` | Conversaciones, compositor, streaming, detener/reintentar, acciones rápidas, fuentes con calidad, valoración, uso diario, sin conexión, límite alcanzado. |
+| BFF web | `frontend-web/app/src/lib/auth/bff*.ts` | Rutas JSON con esquemas estrictos; el envío reenvía el stream solo si es `text/event-stream`, con tope de 512 KB y corte si la persona cancela. |
+| Interfaz | `frontend-web/app/src/features/copilot/` | Conversaciones, compositor, streaming, detener/reintentar, acciones rápidas, fuentes con calidad, valoración, uso diario, sin conexión, límite alcanzado. |
 | Lógica compartida | `packages/core/src/copilot.ts` | Acciones rápidas, lector SSE y **Markdown seguro** (reutilizable por el móvil). |
 
 ## Seguridad
@@ -44,7 +44,7 @@ vivienda**, indicando la calidad de cada cifra. Es de solo lectura: no crea, cam
    la petición. Hace falta una corrida con `ANTHROPIC_API_KEY` en staging (costo real) para medir calidad, latencia y costo por pregunta.
 2. **Privacidad**: con `anthropic`, las preguntas y los datos que devuelven las herramientas (consumos, montos, nombres de equipos) viajan a
    Anthropic. Antes de producción hay que reflejarlo en la política de privacidad (hoy en BORRADOR, C-04) y decidir la retención.
-3. **Supervisión administrativa** (ERD-AI-ADMIN-WEB): los tokens, el estado y la latencia ya se guardan por mensaje, pero `apps/admin` aún no
+3. **Supervisión administrativa** (ERD-AI-ADMIN-WEB): los tokens, el estado y la latencia ya se guardan por mensaje, pero `frontend-web/admin` aún no
    tiene pantalla de uso, costos ni conversaciones marcadas; hacerlo sin exponer contenido privado requiere un scope propio y auditoría.
 4. **Moderación propia y feedback agregado** se apoyan hoy solo en los clasificadores del proveedor y en la valoración útil/no útil.
 5. La app móvil aún no tiene pantalla del Copilot (reutilizaría `api-client`, el lector SSE y el Markdown de `core`).

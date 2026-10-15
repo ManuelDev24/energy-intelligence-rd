@@ -16,7 +16,7 @@
 - `LoggingIntegration` apagada para no duplicar cada `logger.exception` como evento; `send_default_pii=False`.
 
 ## Qué existe (web, navegador) — 2026-10-11
-- `@sentry/browser` (versión fija) en `apps/web/src/lib/telemetry.ts`, **inactivo sin `NEXT_PUBLIC_SENTRY_DSN`** (verificado: cero
+- `@sentry/browser` (versión fija) en `frontend-web/app/src/lib/telemetry.ts`, **inactivo sin `NEXT_PUBLIC_SENTRY_DSN`** (verificado: cero
   peticiones). Solo errores no capturados (`globalHandlers`) y los que reporte `app/error.tsx` (que muestra un texto fijo, nunca el
   error). Sin migas de pan (llevan URLs y texto), sin sesiones, sin trazas, sin repetición, sin usuario: `sendDefaultPii=false`.
 - Cada evento pasa por `scrubSentryEvent` de `@energyrd/core` (mismas reglas que la API, 10 pruebas): correos, JWT, `Bearer`, tokens de

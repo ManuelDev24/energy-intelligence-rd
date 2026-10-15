@@ -1,6 +1,6 @@
 # ERD-BILL-02 — Revisión independiente (read-only) — 2026-10-04
 
-Alcance: `services/api/BILL_DETAIL_VALIDATION.md`, `apps/web/BILL_DETAIL_UI.md`, `apps/mobile/BILL_DETAIL_UI.md` y los archivos que listan
+Alcance: `backend/api/BILL_DETAIL_VALIDATION.md`, `frontend-web/app/BILL_DETAIL_UI.md`, `frontend-mobile/app/BILL_DETAIL_UI.md` y los archivos que listan
 (backend `bill_items`/`validate`/`bill_snapshots`, contratos, cliente compartido, BFF, UI web y móvil). No se editó producto.
 
 Pruebas temporales (fuera del repo):
@@ -17,9 +17,9 @@ principales que pedía revisar (IDOR, aprobación implícita, `null`→0, signos
 ## Required
 
 ### R1 — El snapshot "inmutable por SQL directo" se puede borrar con `TRUNCATE` (reproducido)
-- `services/api/app/alembic/versions/0011_bill_detail.py:21-29`: el trigger es `BEFORE UPDATE OR DELETE ... FOR EACH ROW`;
+- `backend/api/app/alembic/versions/0011_bill_detail.py:21-29`: el trigger es `BEFORE UPDATE OR DELETE ... FOR EACH ROW`;
   `TRUNCATE` no dispara triggers de fila.
-- `services/api/BILL_DETAIL_VALIDATION.md:98-101` afirma "inmutable por API y por SQL directo".
+- `backend/api/BILL_DETAIL_VALIDATION.md:98-101` afirma "inmutable por API y por SQL directo".
 - Evidencia: `test_probe_truncate_bypasses_snapshot_trigger` → `TRUNCATE bill_snapshots` funciona; luego `/validate` devuelve
   `origin=unknown`, `warnings=['original_unknown']` (el original de creación desaparece sin error).
 - Impacto: requiere privilegios de BD (no se alcanza por la API), pero la garantía documentada es falsa.
@@ -28,23 +28,23 @@ principales que pedía revisar (IDOR, aprobación implícita, `null`→0, signos
   "UPDATE/DELETE de fila". (El dueño de la tabla también puede usar `DISABLE TRIGGER`; anotarlo como límite.)
 
 ### R2 — Un PUT ya guardado en el servidor puede dejar la caché antigua (móvil reproducido; web por lectura de código)
-- Móvil `apps/mobile/src/features/bills/detail/saveItems.ts:44-51` + `hooks.ts:55-58`: la invalidación/`setQueryData`
+- Móvil `frontend-mobile/app/src/features/bills/detail/saveItems.ts:44-51` + `hooks.ts:55-58`: la invalidación/`setQueryData`
   solo ocurre en `publish`, después de que el `GET` de confirmación funcione y coincida. Si el `PUT` ya se guardó y luego el
   `GET` falla, no coincide o cambia el alcance, no se invalida nada.
   Evidencia: sonda vitest "PUT committed but confirmation GET fails" → `PUT committed: true`, `publish ran: false`.
   Consecuencia: la pantalla de detalle, que sigue abajo en la pila, conserva los ítems y la revisión anteriores. Además, ante un
   error de red el mensaje genérico hace pensar que el guardado falló.
-- Web `apps/web/src/lib/api/hooks.ts:169-174`: `usePutBillItems` invalida solo en `onSuccess`. El BFF responde 502 cuando el
-  upstream excede 10 s o no cumple el contrato, aunque la API ya haya hecho commit (`apps/web/src/lib/auth/bff.ts:319-321`);
+- Web `frontend-web/app/src/lib/api/hooks.ts:169-174`: `usePutBillItems` invalida solo en `onSuccess`. El BFF responde 502 cuando el
+  upstream excede 10 s o no cumple el contrato, aunque la API ya haya hecho commit (`frontend-web/app/src/lib/auth/bff.ts:319-321`);
   en ese caso la caché queda obsoleta. **Hipótesis:** no lo reproduje en vivo, pero el camino es directo en el código.
 - Remedio mínimo: invalidar `items` + `assessment` de esa factura en `onSettled` (web) y en un `finally` cuando el `PUT` haya
   resuelto (móvil). Esto no aplica si el error es `ScopeChangedError`, porque `queryClient.clear()` ya cubre ese caso. Añadir un
   test en cada app.
 
 ### R3 — El texto web dice "primeras 100" correcciones, pero la API devuelve las 100 **más recientes** (reproducido)
-- `services/api/app/services/bill_detail.py:67-72`: ordena `desc`, aplica `limit 101` y luego invierte el orden, así que conserva las
+- `backend/api/app/services/bill_detail.py:67-72`: ordena `desc`, aplica `limit 101` y luego invierte el orden, así que conserva las
   100 más recientes y descarta las más antiguas.
-- `apps/web/src/features/bills/BillAssessmentSection.tsx:177`: "Se muestran las primeras 100 correcciones."
+- `frontend-web/app/src/features/bills/BillAssessmentSection.tsx:177`: "Se muestran las primeras 100 correcciones."
 - Evidencia: `test_probe_corrections_window_is_most_recent_100` (101 eventos) → `corrections[0].before == {'days': 1}`,
   es decir, falta el evento más antiguo y `has_more=True`. El móvil sí dice "las 100 correcciones más recientes"
   (`assessmentModel.ts:143`).

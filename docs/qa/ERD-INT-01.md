@@ -1,6 +1,6 @@
 # ERD-INT-01 — Registro e historial de interrupciones del servicio eléctrico
 
-Diseño y reglas: `services/api/OUTAGES.md`.
+Diseño y reglas: `backend/api/OUTAGES.md`.
 
 | Criterio | Evidencia |
 |---|---|

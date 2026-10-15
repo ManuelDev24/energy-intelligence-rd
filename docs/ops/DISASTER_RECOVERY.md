@@ -86,7 +86,7 @@ Ninguno de estos cambios se ha ensayado en Render/Neon (⛔ requiere las cuentas
 | `RESEND_API_KEY` | Sin cambio si se hace en orden | crear clave nueva → actualizar Render → comprobar un correo de recuperación → borrar la anterior |
 | `SENTRY_DSN` | Eventos nuevos al DSN nuevo | rotar en Sentry, actualizar Render |
 | Clave `age` de respaldo | Los respaldos nuevos usan la clave nueva | generar par nuevo, cambiar `BACKUP_AGE_RECIPIENT`, **conservar la identidad anterior hasta que expiren los respaldos cifrados con ella** |
-| `STORAGE_ENCRYPTION_KEYS` | **Perderla = perder los originales cifrados.** Rotar es antepone-una-nueva, nunca reemplazar | `services/api/STORAGE.md`: anteponer clave nueva → redeploy API **y** worker → `python -m scripts.storage_maintenance --reencrypt` hasta `already_current` = total → solo entonces quitar la vieja; guardar la copia en el gestor, **separada** de la de la base |
+| `STORAGE_ENCRYPTION_KEYS` | **Perderla = perder los originales cifrados.** Rotar es antepone-una-nueva, nunca reemplazar | `backend/api/STORAGE.md`: anteponer clave nueva → redeploy API **y** worker → `python -m scripts.storage_maintenance --reencrypt` hasta `already_current` = total → solo entonces quitar la vieja; guardar la copia en el gestor, **separada** de la de la base |
 | `STORAGE_URL_SIGNING_KEY` | Los enlaces de descarga vigentes (60 s) dejan de valer | cambiar en API y worker; sin migración de datos |
 | Claves S3/R2 del bucket | El OCR y las descargas fallan hasta actualizar | crear clave nueva limitada al bucket → actualizar API y worker → comprobar una subida → revocar la anterior |
 | `EXPO_ACCESS_TOKEN` | Sin cambio si se hace en orden | crear token → actualizar el worker → comprobar un envío → revocar el anterior |

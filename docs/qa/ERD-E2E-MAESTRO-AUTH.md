@@ -33,7 +33,7 @@ Expo Go tenía su burbuja de desarrollo encima de `profile-entry`. Se movió por
 ## Reproducción
 
 1. API con `AUTH_ENABLED=true`, base dedicada vacía, correo de desarrollo; Metro con `EXPO_PUBLIC_AUTH_ENABLED=true` y URL de esa API. No reutilizar la base del piloto.
-2. `apps/mobile/maestro/run-auth.sh ios` o `… android`, apuntando exclusivamente a esa infraestructura. El script usa cuentas sintéticas únicas.
+2. `frontend-mobile/app/maestro/run-auth.sh ios` o `… android`, apuntando exclusivamente a esa infraestructura. El script usa cuentas sintéticas únicas.
 3. Ajustar la burbuja de Expo Go si tapa controles. Repetir dos veces por plataforma, revisar cada captura y mantener las credenciales/trazas fuera de git.
 
 `src/maestroFlows.test.ts` comprueba YAML, existencia de identificadores y salvaguardas del harness. Estas pruebas estáticas no prueban comportamiento nativo por sí solas.

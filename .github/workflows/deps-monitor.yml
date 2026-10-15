@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths: ['.github/workflows/deps-monitor.yml', 'package-lock.json', 'package.json',
-            'services/api/uv.lock', 'services/api/pyproject.toml',
+            'backend/api/uv.lock', 'backend/api/pyproject.toml',
             'docs/security/accepted-advisories.json', 'scripts/audit-monitor*',
             'docs/qa/evidence/web-quality-2026-10-07/simulated-api*']
 
@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: services/api
+        working-directory: backend/api
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0

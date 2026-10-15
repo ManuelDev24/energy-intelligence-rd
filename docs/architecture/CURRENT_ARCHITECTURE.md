@@ -7,8 +7,8 @@ proyección, equipos y alertas. Autenticación pospuesta por decisión explícit
 
 - Un monorepo npm con web Next.js 15/React 19, móvil Expo 57/React Native y API Python 3.12/FastAPI.
 - Un backend y PostgreSQL 16. Redis es opcional y no participa en el flujo del piloto.
-- `apps/web/src/app` compone rutas delgadas; las vistas viven en `features`.
-- `apps/mobile/src/navigation` compone pantallas agrupadas en `features`.
+- `frontend-web/app/src/app` compone rutas delgadas; las vistas viven en `features`.
+- `frontend-mobile/app/src/navigation` compone pantallas agrupadas en `features`.
 - `packages/core`: formato, gráficas, sugerencias de formulario y tokens de presentación.
 - `packages/api-contracts`: tipos y parsers Zod generados desde los schemas Pydantic, con OpenAPI versionado.
 - `packages/api-client`: HTTP compartido, validación runtime, paginación, errores, cancelación y timeout.

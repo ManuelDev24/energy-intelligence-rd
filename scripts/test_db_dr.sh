@@ -17,7 +17,7 @@ expect_fail() { local name="$1"; shift; if "$@" >"$work/out.txt" 2>&1; then bad 
 
 psql "$admin" -X -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$src\"" >/dev/null
 src_url="${admin%/*}/$src"
-( cd services/api && DATABASE_URL="${src_url/postgresql:/postgresql+psycopg:}" uv run --frozen alembic upgrade head >/dev/null 2>&1 )
+( cd backend/api && DATABASE_URL="${src_url/postgresql:/postgresql+psycopg:}" uv run --frozen alembic upgrade head >/dev/null 2>&1 )
 psql "$src_url" -X -q -c "INSERT INTO users(id,email,password_hash) VALUES (gen_random_uuid(),'dr@example.com','x');
   INSERT INTO homes(id,name,distributor) VALUES (gen_random_uuid(),'Casa DR','EDESUR');" >/dev/null
 age-keygen -o "$work/id.txt" >/dev/null 2>&1; pub="$(grep 'public key' "$work/id.txt" | awk '{print $NF}')"

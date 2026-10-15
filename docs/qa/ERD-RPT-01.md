@@ -21,12 +21,12 @@ Sin fechas: últimos 365 días hasta hoy (America/Santo_Domingo). Máximo 366 d�
   dependencias nativas nuevas) y «Compartir informe» (texto).
 
 ## Límites conocidos
-1. **Dependencia nueva**: `reportlab` (BSD, pura de Python) en `services/api`; decisión tomada para tener un solo PDF idéntico en web y móvil. El texto del PDF
+1. **Dependencia nueva**: `reportlab` (BSD, pura de Python) en `backend/api`; decisión tomada para tener un solo PDF idéntico en web y móvil. El texto del PDF
    está escrito en Python (`report_pdf.py`) en paralelo al de `core/report.ts`: si cambia uno, cambiar el otro (hay pruebas de contenido en ambos).
 2. Basado en **facturas mensuales**: no hay medición diaria ni por hora (se dice en las notas del informe).
 3. Móvil: sin verificar en Android/iOS (apertura del PDF con el visor del sistema, menú de compartir, lectores de pantalla).
 
 ## Pruebas
-`services/api/tests/test_reports.py` (6, también como `erd_app` en el inventario de autorización), `packages/core/src/report.test.ts`,
-`apps/web/src/test/reports-page.test.tsx`, BFF en `bff-recommendations.test.ts`, `apps/web/e2e/specs/14-reports.spec.ts`
-(totales, comparación, estimados, impresión, axe a 360/768/1280, privacidad entre cuentas) y `apps/mobile/src/features/reports/reports.test.ts`.
+`backend/api/tests/test_reports.py` (6, también como `erd_app` en el inventario de autorización), `packages/core/src/report.test.ts`,
+`frontend-web/app/src/test/reports-page.test.tsx`, BFF en `bff-recommendations.test.ts`, `frontend-web/app/e2e/specs/14-reports.spec.ts`
+(totales, comparación, estimados, impresión, axe a 360/768/1280, privacidad entre cuentas) y `frontend-mobile/app/src/features/reports/reports.test.ts`.

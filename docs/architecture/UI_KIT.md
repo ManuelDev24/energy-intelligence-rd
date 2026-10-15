@@ -4,11 +4,11 @@
 El plan original (`PLAN_COMPLETO_ENERGY_RD.md` §UI) pedía un `packages/ui` para la web y componentes móviles «con la misma
 API». **No se implementa**:
 - Web (DOM + Tailwind) y móvil (React Native + `StyleSheet`) no pueden compartir componentes; un paquete de UI solo
-  serviría a la web, que ya tiene su biblioteca en `apps/web/src/components`. Crearlo sería una capa vacía.
+  serviría a la web, que ya tiene su biblioteca en `frontend-web/app/src/components`. Crearlo sería una capa vacía.
 - Lo que sí se comparte, y funciona, está en `@energyrd/core`: tokens, etiquetas de calidad/severidad, formato y **lógica**
   (ahora también el rango de fechas: `validateRange`, `presetRange`, `MAX_RANGE_DAYS`, antes duplicada en web y móvil).
-- La «misma API» se mantiene por convención de nombres y props entre `apps/web/src/components` y
-  `apps/mobile/src/components`, y por pruebas en cada lado.
+- La «misma API» se mantiene por convención de nombres y props entre `frontend-web/app/src/components` y
+  `frontend-mobile/app/src/components`, y por pruebas en cada lado.
 
 ## Regla: no se construye un componente sin consumidor real
 Los componentes pendientes se hicieron extrayéndolos de código que ya los usaba, o con el uso que los exige:

@@ -1,6 +1,6 @@
 # Resumen administrativo (ERD-ADM-DASH-WEB, 2026-10-14)
 
-`apps/admin` → **Resumen** (`/resumen`), scope `admin.system.read` (roles `super_admin` y `operations_admin`). API: `GET /api/v1/admin/overview`
+`frontend-web/admin` → **Resumen** (`/resumen`), scope `admin.system.read` (roles `super_admin` y `operations_admin`). API: `GET /api/v1/admin/overview`
 (`Cache-Control: no-store`; cada consulta queda en `admin_audit_events` como cualquier ruta administrativa).
 
 ## Qué muestra

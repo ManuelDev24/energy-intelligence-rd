@@ -21,6 +21,24 @@ invitaciones a viviendas) y la base aísla los datos por vivienda con RLS. El mo
 
 No hay telemetría horaria, IA, integración IoT ni solar. Redis es opcional; no se utiliza en el flujo del piloto.
 
+## Estructura del repositorio
+
+```text
+backend/
+  api/            # API FastAPI, worker, migraciones Alembic y pruebas (única API de negocio)
+frontend-web/
+  app/            # Web de usuarios (Next.js) y su BFF de sesión
+  admin/          # Consola administrativa (Next.js) y su BFF de sesión
+frontend-mobile/
+  app/            # App móvil (Expo / React Native)
+packages/         # Código compartido por web y móvil: core, api-client, api-contracts (generado desde backend)
+docs/ scripts/ infrastructure/   # Documentación, utilidades de CI/operación y despliegue
+```
+
+Los workspaces npm son `frontend-web/*`, `frontend-mobile/*`, `backend/*` y `packages/*`; se usan por ruta
+(`npm run dev --workspace frontend-web/app`). Los textos de evidencia en `docs/qa/evidence/` conservan las rutas
+anteriores (`apps/*`, `services/api`) porque registran comandos tal como se ejecutaron.
+
 ## Inicio local
 
 Requisitos: Node.js 24, npm, Docker Compose; uv/Python 3.12 para desarrollo y pruebas API fuera de Docker.
@@ -28,7 +46,7 @@ Requisitos: Node.js 24, npm, Docker Compose; uv/Python 3.12 para desarrollo y pr
 ```bash
 npm ci
 cp .env.example .env
-cp apps/web/.env.example apps/web/.env.local
+cp frontend-web/app/.env.example frontend-web/app/.env.local
 SEED_PILOT=true docker compose up -d --build --wait postgres api
 npm run dev:web
 ```
@@ -43,7 +61,7 @@ LAN privada y `EXPO_PUBLIC_API_URL`; ver la guía de demo.
 npm run typecheck
 npm run lint
 npm test
-npm run build --workspace apps/web
+npm run build --workspace frontend-web/app
 npm run contracts:check
 python3 scripts/check_architecture.py
 npm run test:api
@@ -77,7 +95,7 @@ Los dumps se guardan fuera de Git y el restore drill solo usa una base desechabl
 - [Informe de cierre de UI y QA](docs/audit/CIERRE-UI-QA-2026-10-13.md)
 - [Guía de demo](docs/DEMO_GUIDE.md)
 - [Checklist de release](docs/RELEASE_CHECKLIST.md)
-- [API y reglas de datos](services/api/README.md)
+- [API y reglas de datos](backend/api/README.md)
 - [Visión del producto](docs/SPECIFICATION.md)
 - [Plan de cierre antes de módulos nuevos](docs/CLOSURE_PLAN_2026-10-10.md)
 - [Roles de base de datos y RLS](docs/ops/DB_ROLES.md)
