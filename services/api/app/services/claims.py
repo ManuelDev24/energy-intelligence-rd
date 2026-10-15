@@ -61,6 +61,13 @@ def _event(claim: Claim, kind: str, *, note: str | None = None, status_to: str |
 
 
 def create_claim(db: Session, home_id, payload, *, user_id=None) -> Claim:
+    try:
+        return _create_claim(db, home_id, payload, user_id=user_id)
+    except IntegrityError:  # carrera improbable (la vivienda se bloquea antes): el índice parcial único gana
+        raise ClaimConflict("Ya tienes una reclamación abierta de este tipo para esa factura") from None
+
+
+def _create_claim(db: Session, home_id, payload, *, user_id=None) -> Claim:
     if payload.kind in BILL_REQUIRED and payload.bill_id is None:
         raise InvalidInput("Este tipo de reclamación debe ir ligada a una factura")
     with write_transaction(db):
@@ -152,7 +159,3 @@ def close_claim(db: Session, home_id, claim_id, note: str | None = None) -> Clai
         _touch(claim)
         record_change(db, home_id, claim, "update")
     return claim
-
-
-def delete_integrity_error(error: IntegrityError) -> ApplicationError:  # pragma: no cover - defensa: el índice parcial también impide duplicados
-    return ClaimConflict("Ya tienes una reclamación abierta de este tipo para esa factura")

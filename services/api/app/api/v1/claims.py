@@ -2,7 +2,6 @@ import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, Response, status
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.auth_deps import current_user
@@ -16,11 +15,7 @@ router = APIRouter(prefix="/homes/{home_id}/claims", tags=["claims"])
 @router.post("", response_model=ClaimDetailOut, status_code=status.HTTP_201_CREATED)
 def create_claim(home_id: uuid.UUID, payload: ClaimIn, db: Session = Depends(get_db), user=Depends(current_user)):
     """Crea el caso con un resumen NEUTRAL de tus datos. No presenta nada ante la distribuidora ni afirma que haya un error."""
-    try:
-        claim = claims.create_claim(db, home_id, payload, user_id=user.id if user else None)
-    except IntegrityError as error:  # carrera: dos envíos a la vez; el índice parcial gana
-        db.rollback()
-        raise claims.delete_integrity_error(error) from error
+    claim = claims.create_claim(db, home_id, payload, user_id=user.id if user else None)
     return claims.claim_detail(db, home_id, claim.id)
 
 
