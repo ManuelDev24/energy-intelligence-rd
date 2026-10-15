@@ -342,6 +342,10 @@ export function createMockApi(): Api {
     }),
     listRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
     refreshRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
+    getGoalProposal: async (homeId) => ({ home_id: homeId, proposal: null, baseline: null, potential_savings: null, bills_used: 0, current_goal_kwh: null, reason: "Registra al menos una factura para poder proponer una meta.", assumptions: [] }),
+    applyGoalProposal: async () => {
+      throw new ApiError(409, "Sin propuesta");
+    },
     updateRecommendation: async () => {
       throw new ApiError(404, "No encontrado");
     },

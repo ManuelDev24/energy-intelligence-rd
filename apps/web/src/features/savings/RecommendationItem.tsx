@@ -29,7 +29,7 @@ export function RecommendationItem({ item, pending = false, onApply, onDismiss, 
           <QualityBadge quality="ESTIMATED" always />
         </span>
       ) : undefined}
-      footer={`${view.category} · ${view.confidence}`}
+      footer={[view.category, view.confidence, view.difficulty, view.impact].filter(Boolean).join(" · ")}
       action={
         <div className="flex flex-wrap items-center gap-x-3">
           <Link href={HREF[target.kind]} aria-label={`${target.label}: ${view.title}`} className={linkClass}>{target.label}</Link>

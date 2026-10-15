@@ -46,3 +46,14 @@ de un SAVEPOINT: **un fallo del motor nunca deshace el dato de la persona**.
 | `GET /api/v1/homes/{home}/recommendations?status=active\|applied\|dismissed\|resolved\|all&limit=` | lista guardada + totales ESTIMATED |
 | `POST /api/v1/homes/{home}/recommendations/refresh` | recalcula (idempotente) y devuelve las vigentes |
 | `PATCH /api/v1/homes/{home}/recommendations/{id}` `{status: active\|applied\|dismissed}` | decisión de la persona |
+
+## Dificultad, impacto y «Aplicar objetivo» (ERD-SAVE-01-CLOSE)
+- Cada recomendación expone `difficulty` (`easy|medium|hard`, tabla fija por `rule_id` en `recommendation_engine.DIFFICULTY`) e `impact`
+  (`low|medium|high` según el ahorro estimado: ≥ 10 kWh/mes medio, ≥ 40 alto; `null` si no promete ahorro). Son derivados: no se guardan.
+- `GET /recommendations/goal-proposal` (solo lectura): meta propuesta = promedio REAL de kWh de las últimas 3 facturas − suma del ahorro ESTIMADO de las
+  recomendaciones de equipos vigentes, redondeada a kWh enteros. Sin facturas, sin recomendaciones de equipos vigentes o con un ahorro mayor que el
+  consumo → `proposal: null` y un `reason` en español. Siempre con `assumptions`.
+- `POST /recommendations/goal-proposal/apply` (cuerpo vacío): el servidor recalcula la propuesta, guarda la meta en kWh y **conserva** la meta en RD$.
+  No acepta cifras del cliente. 409 `no_goal_proposal` si hoy no hay propuesta. Web (tarjeta con confirmación) y móvil (`Alert` nativo) lo usan.
+- Los umbrales (10/40 kWh) y la dificultad por regla son criterio de producto aún sin validar con personas usuarias: ajustarlos no requiere migración.
+

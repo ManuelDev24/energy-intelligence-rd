@@ -4,7 +4,7 @@ import { createApiClient } from "./index";
 const HOME = "00000000-0000-4000-8000-000000000001";
 const ID = "00000000-0000-4000-8000-0000000000a1";
 const row = {
-  id: ID, home_id: HOME, equipment_id: null, anomaly_id: null, rule_id: "ac-one-hour", rule_version: 1, ruleset_version: 1, category: "equipment",
+  id: ID, home_id: HOME, equipment_id: null, anomaly_id: null, rule_id: "ac-one-hour", rule_version: 1, ruleset_version: 1, difficulty: "easy", impact: "high", category: "equipment",
   title: "Una hora menos de aire acondicionado al día (Sala)", summary: "Sala usa unas 6 h al día.", action: "Sube el termostato.", confidence: "medium",
   status: "active", savings_kwh_month: "45.00", savings_dop_month: "585.00", assumptions: ["Potencia nominal."], evidence: { power_w: "1500" },
   created_at: "2026-10-11T12:00:00Z", last_seen_at: "2026-10-11T12:00:00Z", status_changed_at: "2026-10-11T12:00:00Z",
@@ -50,5 +50,19 @@ describe("recommendations API (ERD-SAVE-01)", () => {
     expect((await ok.updateRecommendation(HOME, ID, "applied")).status).toBe("applied");
     const other = createApiClient("http://api.test", vi.fn().mockResolvedValue(json({ ...row, id: "00000000-0000-4000-8000-0000000000b2" })));
     await expect(other.updateRecommendation(HOME, ID, "dismissed")).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("goal proposal: reads it with GET and applies it with an empty POST (the server recalculates)", async () => {
+    const proposal = { home_id: HOME, proposal: { value: "265", unit: "kWh/mes", quality: "ESTIMATED" }, baseline: { value: "310.00", unit: "kWh/mes", quality: "REAL" },
+      potential_savings: { value: "45.00", unit: "kWh/mes", quality: "ESTIMATED" }, bills_used: 2, current_goal_kwh: null, reason: null, assumptions: ["x"] };
+    const goal = { home_id: HOME, monthly_kwh: "265.00", monthly_amount_rd: null, created_at: "2026-10-11T12:00:00Z", updated_at: "2026-10-11T12:00:00Z" };
+    const fetcher = vi.fn().mockResolvedValueOnce(json(proposal)).mockResolvedValueOnce(json(goal));
+    const api = createApiClient("http://api.test", fetcher);
+    expect((await api.getGoalProposal(HOME)).proposal?.value).toBe("265");
+    expect(fetcher.mock.calls[0][0]).toBe(`http://api.test/api/v1/homes/${HOME}/recommendations/goal-proposal`);
+    expect((await api.applyGoalProposal(HOME)).monthly_kwh).toBe("265.00");
+    expect(fetcher.mock.calls[1][0]).toBe(`http://api.test/api/v1/homes/${HOME}/recommendations/goal-proposal/apply`);
+    expect(fetcher.mock.calls[1][1].method).toBe("POST");
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({});
   });
 });

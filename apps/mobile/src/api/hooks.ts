@@ -220,6 +220,20 @@ export function useDeleteReading(homeId: string) {
   });
 }
 
+/** ERD-SAVE-01-CLOSE: meta sugerida (solo lectura) y «Aplicar objetivo»; al aplicar se refrescan meta, progreso y recomendaciones. */
+export const useGoalProposal = (homeId: string | null) =>
+  useQuery(perHome([...keys.recommendations(homeId ?? 'none'), 'goal-proposal'], homeId, api.getGoalProposal));
+export function useApplyGoalProposal(homeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.applyGoalProposal(homeId),
+    onSuccess: () => {
+      invalidateAll(qc, goalInvalidations(keys.phase2, homeId));
+      void qc.invalidateQueries({ queryKey: keys.recommendations(homeId) });
+    },
+  });
+}
+
 export function useSaveGoal(homeId: string) {
   const qc = useQueryClient();
   return useMutation({

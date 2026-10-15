@@ -671,7 +671,9 @@ export const RecommendationRecordSchema = z.object({
   "evidence": z.record(z.string(), z.string()),
   "created_at": z.string().datetime({ offset: true }),
   "last_seen_at": z.string().datetime({ offset: true }),
-  "status_changed_at": z.string().datetime({ offset: true })
+  "status_changed_at": z.string().datetime({ offset: true }),
+  "difficulty": z.enum(["easy", "medium", "hard"]),
+  "impact": z.union([z.enum(["low", "medium", "high"]), z.null()])
 });
 export type RecommendationRecord = z.infer<typeof RecommendationRecordSchema>;
 
@@ -689,6 +691,18 @@ export const RecommendationListOutSchema = z.object({
   "note": z.string()
 });
 export type RecommendationListOut = z.infer<typeof RecommendationListOutSchema>;
+
+export const GoalProposalOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "proposal": z.union([MetricSchema, z.null()]),
+  "baseline": z.union([MetricSchema, z.null()]),
+  "potential_savings": z.union([MetricSchema, z.null()]),
+  "bills_used": z.number().finite().int(),
+  "current_goal_kwh": z.union([z.string(), z.null()]),
+  "reason": z.union([z.string(), z.null()]),
+  "assumptions": z.array(z.string())
+});
+export type GoalProposalOut = z.infer<typeof GoalProposalOutSchema>;
 
 export const ScoreComponentOutSchema = z.object({
   "key": z.enum(["consumption", "efficiency", "habits", "consistency"]),

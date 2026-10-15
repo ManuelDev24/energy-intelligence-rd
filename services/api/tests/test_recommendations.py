@@ -253,6 +253,7 @@ def test_strangers_cannot_read_refresh_or_change_recommendations(auth_client):
     alice, bob = register(auth_client), register(auth_client, "bob@example.com")
     home = auth_client.post("/api/v1/homes", headers=bearer(alice), json={"name": "Casa", "distributor": "EDESUR"}).json()["id"]
     for method, path, body in (("GET", rec_url(home), None), ("POST", rec_url(home, "refresh"), None),
+                               ("GET", rec_url(home, "goal-proposal"), None), ("POST", rec_url(home, "goal-proposal", "apply"), None),
                                ("PATCH", rec_url(home, str(uuid.uuid4())), {"status": "applied"})):
         assert auth_client.request(method, path, headers=bearer(bob), json=body).status_code == 404, (method, path)
         assert auth_client.request(method, path).status_code == 401, (method, path)
@@ -290,3 +291,50 @@ def test_the_database_rejects_inconsistent_rows(client, migrated):
         with pytest.raises((IntegrityError, DBAPIError)):
             with migrated.begin() as c:
                 c.execute(text(statement), {"h": home})
+
+
+# ---------- ERD-SAVE-01-CLOSE: dificultad, impacto y «Aplicar objetivo» ----------
+def test_every_recommendation_exposes_difficulty_and_impact_from_fixed_rules(client):
+    home = mk_home(client)["id"]
+    add_bill(client, home, "2026-07-01", "2026-07-30", "300", amount="3900")
+    add_eq(client, home)                                            # 45 kWh/mes → impacto alto
+    add_eq(client, home, name="Calentador", kind="water_heater", power_w="2000", hours_per_day="1")   # 30 kWh → medio
+    items = {i["rule_id"]: i for i in listing(client, home)["items"] if i["category"] == "equipment"}
+    assert (items["ac-one-hour"]["difficulty"], items["ac-one-hour"]["impact"]) == ("easy", "high")
+    assert items["water-heater-half-hour"]["impact"] == "medium"
+    assert engine.impact_for(None) is None and engine.impact_for(Decimal("9.99")) == "low" and engine.difficulty_for("desconocida") == "medium"
+
+
+def test_goal_proposal_is_average_minus_estimated_savings_and_saves_nothing(client):
+    home = mk_home(client)["id"]
+    empty = client.get(rec_url(home, "goal-proposal")).json()
+    assert empty["proposal"] is None and empty["bills_used"] == 0 and "factura" in empty["reason"]
+    add_bill(client, home, "2026-07-01", "2026-07-30", "300", amount="3900")
+    add_bill(client, home, "2026-08-01", "2026-08-30", "320", amount="4160")
+    no_equipment = client.get(rec_url(home, "goal-proposal")).json()
+    assert no_equipment["proposal"] is None and no_equipment["baseline"]["value"] == "310.00" and no_equipment["baseline"]["quality"] == "REAL"
+    add_eq(client, home)
+    out = client.get(rec_url(home, "goal-proposal")).json()
+    assert out["baseline"]["value"] == "310.00" and out["potential_savings"] == {"value": "45.00", "unit": "kWh/mes", "quality": "ESTIMATED"}
+    assert out["proposal"]["quality"] == "ESTIMATED" and Decimal(out["proposal"]["value"]) == 265
+    assert out["current_goal_kwh"] is None and out["assumptions"]
+    assert client.get(f"/api/v1/homes/{home}/goal").json() is None      # solo lectura: nada se guardó
+
+
+def test_apply_goal_saves_the_server_proposal_and_keeps_the_peso_goal(client):
+    home = mk_home(client)["id"]
+    add_bill(client, home, "2026-07-01", "2026-07-30", "300", amount="3900")
+    add_eq(client, home)
+    assert client.put(f"/api/v1/homes/{home}/goal", json={"monthly_amount_rd": "5000"}).status_code == 200
+    applied = client.post(rec_url(home, "goal-proposal", "apply"), json={"monthly_kwh": "1"})        # cifras del cliente se ignoran
+    assert applied.status_code == 200, applied.text
+    body = applied.json()
+    assert Decimal(body["monthly_kwh"]) == 255 and Decimal(body["monthly_amount_rd"]) == 5000
+    assert client.get(rec_url(home, "goal-proposal")).json()["current_goal_kwh"] == "255.00"
+
+
+def test_apply_goal_without_a_proposal_is_409(client):
+    home = mk_home(client)["id"]
+    r = client.post(rec_url(home, "goal-proposal", "apply"))
+    assert r.status_code == 409 and r.json()["code"] == "no_goal_proposal"
+    assert client.get(f"/api/v1/homes/{home}/goal").json() is None

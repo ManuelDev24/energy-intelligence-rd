@@ -7,6 +7,7 @@ import type {
   Recommendation,
   EnergyScore,
   RecommendationList,
+  GoalProposalOut,
   AlertItem,
   AlertStatus,
   Equipment,
@@ -78,6 +79,8 @@ export interface InsightsApi {
   getEnergyScore(homeId: string, signal?: AbortSignal): Promise<EnergyScore>;
   listRecommendations(homeId: string, opts?: { status?: "active" | "applied" | "dismissed" | "resolved" | "all"; limit?: number }, signal?: AbortSignal): Promise<RecommendationList>;
   refreshRecommendations(homeId: string): Promise<RecommendationList>;
+  getGoalProposal(homeId: string, signal?: AbortSignal): Promise<GoalProposalOut>;
+  applyGoalProposal(homeId: string): Promise<Goal>;
   updateRecommendation(homeId: string, recommendationId: string, status: "active" | "applied" | "dismissed"): Promise<Recommendation>;
 }
 

@@ -3691,6 +3691,91 @@
         "title": "GoalProgressOut",
         "type": "object"
       },
+      "GoalProposalOut": {
+        "description": "Propuesta de meta mensual en kWh. Nada se guarda hasta que la persona la aplica (`POST \u2026/goal-proposal/apply`).",
+        "properties": {
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bills_used": {
+            "title": "Bills Used",
+            "type": "integer"
+          },
+          "current_goal_kwh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Goal Kwh"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "potential_savings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "home_id",
+          "proposal",
+          "baseline",
+          "potential_savings",
+          "bills_used",
+          "current_goal_kwh",
+          "reason",
+          "assumptions"
+        ],
+        "title": "GoalProposalOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -5683,6 +5768,17 @@
             "title": "Created At",
             "type": "string"
           },
+          "difficulty": {
+            "description": "Esfuerzo para la persona (regla fija por `rule_id`, ver `recommendation_engine.DIFFICULTY`).",
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "readOnly": true,
+            "title": "Difficulty",
+            "type": "string"
+          },
           "equipment_id": {
             "anyOf": [
               {
@@ -5711,6 +5807,24 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tama\u00f1o del ahorro estimado en kWh/mes (umbrales en `recommendation_engine`); null si la recomendaci\u00f3n no promete ahorro.",
+            "readOnly": true,
+            "title": "Impact"
           },
           "last_seen_at": {
             "format": "date-time",
@@ -5795,7 +5909,9 @@
           "evidence",
           "created_at",
           "last_seen_at",
-          "status_changed_at"
+          "status_changed_at",
+          "difficulty",
+          "impact"
         ],
         "title": "RecommendationRecord",
         "type": "object"
@@ -12370,6 +12486,104 @@
           }
         ],
         "summary": "Get Recommendations",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/recommendations/goal-proposal": {
+      "get": {
+        "description": "Meta mensual que propone la app (promedio real \u2212 ahorro potencial). No guarda nada.",
+        "operationId": "get_goal_proposal_api_v1_homes__home_id__recommendations_goal_proposal_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Goal Proposal",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/recommendations/goal-proposal/apply": {
+      "post": {
+        "description": "\u00abAplicar objetivo\u00bb: el servidor recalcula la propuesta (no conf\u00eda en cifras del cliente) y la guarda como meta de kWh,\nconservando la meta en RD$ si exist\u00eda. 409 si hoy no hay propuesta.",
+        "operationId": "apply_goal_proposal_api_v1_homes__home_id__recommendations_goal_proposal_apply_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Goal Proposal",
         "tags": [
           "recommendations"
         ]

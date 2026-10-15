@@ -7,7 +7,7 @@ import { recommendationRow, savingsAction } from './savingsModel';
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const rec = (over: Partial<Recommendation> = {}): Recommendation => ({
   id: '00000000-0000-0000-0000-0000000000a1', home_id: '00000000-0000-0000-0000-000000000001', equipment_id: null, anomaly_id: null,
-  rule_id: 'ac-one-hour', rule_version: 1, ruleset_version: 1, category: 'equipment', title: 'Una hora menos de aire (Sala)',
+  rule_id: 'ac-one-hour', rule_version: 1, ruleset_version: 1, difficulty: 'easy', impact: 'high', category: 'equipment', title: 'Una hora menos de aire (Sala)',
   summary: 'Sala usa unas 6 h al día.', action: 'Sube el termostato.', confidence: 'medium', status: 'active', savings_kwh_month: '45.00',
   savings_dop_month: '585.00', assumptions: ['Potencia nominal.'], evidence: {}, created_at: '2026-10-11T12:00:00Z',
   last_seen_at: '2026-10-11T12:00:00Z', status_changed_at: '2026-10-11T12:00:00Z', ...over,
@@ -56,5 +56,14 @@ describe('savingsModel', () => {
     const dashboard = read('../dashboard/DashboardScreen.tsx');
     expect(dashboard).toContain('testID="open-savings"');
     expect(dashboard).toContain('<RecommendationCard text={recommendation} onPress={onOpenSavings} />');
+  });
+
+  it('«Aplicar objetivo» pide confirmación nativa y usa la propuesta del servidor (ERD-SAVE-01-CLOSE)', () => {
+    const screen = read('./SavingsScreen.tsx');
+    expect(screen).toContain('goalProposalView(proposal.data)');
+    expect(screen).toContain("Alert.alert('Aplicar objetivo'");
+    expect(screen).toContain('testID="goal-proposal-apply"');
+    expect(screen).toContain('view.difficulty, view.impact');
+    expect(read('../../api/hooks.ts')).toContain('api.applyGoalProposal(homeId)');
   });
 });

@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 from app.schemas.dashboard import Metric
 
@@ -34,6 +34,20 @@ class RecommendationRecord(BaseModel):
     last_seen_at: datetime
     status_changed_at: datetime
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def difficulty(self) -> Literal["easy", "medium", "hard"]:
+        """Esfuerzo para la persona (regla fija por `rule_id`, ver `recommendation_engine.DIFFICULTY`)."""
+        from app.services import recommendation_engine as engine
+        return engine.difficulty_for(self.rule_id)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def impact(self) -> Literal["low", "medium", "high"] | None:
+        """Tamaño del ahorro estimado en kWh/mes (umbrales en `recommendation_engine`); null si la recomendación no promete ahorro."""
+        from app.services import recommendation_engine as engine
+        return engine.impact_for(self.savings_kwh_month)
+
 
 class RecommendationStatusIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -47,3 +61,15 @@ class RecommendationListOut(BaseModel):
     total_savings_kwh_month: Metric | None   # ESTIMATED: suma de las vigentes con ahorro
     total_savings_dop_month: Metric | None   # ESTIMATED: usa el precio medio de las últimas facturas
     note: str
+
+
+class GoalProposalOut(BaseModel):
+    """Propuesta de meta mensual en kWh. Nada se guarda hasta que la persona la aplica (`POST …/goal-proposal/apply`)."""
+    home_id: uuid.UUID
+    proposal: Metric | None                      # ESTIMATED: promedio real − ahorro potencial vigente; null si no se puede proponer
+    baseline: Metric | None                      # REAL: promedio de kWh de las últimas facturas
+    potential_savings: Metric | None             # ESTIMATED: suma de las recomendaciones de equipos vigentes
+    bills_used: int
+    current_goal_kwh: Decimal | None
+    reason: str | None                           # por qué no hay propuesta
+    assumptions: list[str]

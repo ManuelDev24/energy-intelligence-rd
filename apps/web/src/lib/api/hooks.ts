@@ -128,6 +128,17 @@ export const useDecidedRecommendations = (homeId: string) =>
     enabled: enabled(homeId),
   });
 
+/** ERD-SAVE-01-CLOSE: meta sugerida (solo lectura). «Aplicar objetivo» la guarda con la cifra que recalcula el servidor. */
+export const useGoalProposal = (homeId: string) =>
+  useQuery({ queryKey: [...keys.recommendations(homeId), "goal-proposal"] as const, queryFn: ({ signal }) => getApi().getGoalProposal(homeId, signal), enabled: enabled(homeId) });
+export const useApplyGoalProposal = (homeId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => getApi().applyGoalProposal(homeId),
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: keys.recommendations(homeId) }), qc.invalidateQueries({ queryKey: keys.goal(homeId) }), qc.invalidateQueries({ queryKey: keys.goalProgress(homeId) })]),
+  });
+};
+
 export const useUpdateRecommendation = (homeId: string) => {
   const qc = useQueryClient();
   return useMutation({

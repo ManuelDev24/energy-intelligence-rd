@@ -255,3 +255,23 @@ def totals(candidates: Sequence[Candidate]) -> tuple[Decimal | None, Decimal | N
     kwh = [c.savings_kwh for c in candidates if c.savings_kwh is not None]
     dop = [c.savings_dop for c in candidates if c.savings_dop is not None]
     return (q2(sum(kwh, Decimal(0))) if kwh else None, q2(sum(dop, Decimal(0))) if dop else None)
+
+
+# ---------- ERD-SAVE-01-CLOSE: dificultad e impacto (derivados, no se guardan) ----------
+DIFFICULTY: dict[str, str] = {
+    "ac-one-hour": "easy", "water-heater-half-hour": "easy", "always-on-two-hours": "easy", "fridge-care": "easy",
+    "pool-pump-six-hours": "medium", "lighting-led": "medium", "top-consumer": "medium", "goal-gap": "medium",
+    "anomaly-increase": "easy", "anomaly-peak": "easy", "anomaly-night": "easy", "declare-equipment": "easy",
+}
+IMPACT_MEDIUM_KWH = Decimal("10")   # ≥ 10 kWh/mes: impacto medio
+IMPACT_HIGH_KWH = Decimal("40")     # ≥ 40 kWh/mes: impacto alto
+
+
+def difficulty_for(rule_id: str) -> str:
+    return DIFFICULTY.get(rule_id, "medium")
+
+
+def impact_for(savings_kwh_month: Decimal | None) -> str | None:
+    if savings_kwh_month is None:
+        return None
+    return "high" if savings_kwh_month >= IMPACT_HIGH_KWH else "medium" if savings_kwh_month >= IMPACT_MEDIUM_KWH else "low"
