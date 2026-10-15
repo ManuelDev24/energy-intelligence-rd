@@ -155,7 +155,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         Saltar al contenido
       </a>
-      <aside className="sticky top-0 hidden h-screen w-60 print:!hidden shrink-0 flex-col gap-6 border-r border-border bg-background p-4 md:flex">
+      <aside className="sticky top-0 hidden h-screen w-60 overflow-y-auto print:!hidden shrink-0 flex-col gap-6 border-r border-border bg-background p-4 md:flex">
         <Logo />
         <HomeSwitcher />
         <nav aria-label="Principal" className="flex flex-col gap-1">
