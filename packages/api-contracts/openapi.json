@@ -555,6 +555,232 @@
         "title": "AdminHomesPage",
         "type": "object"
       },
+      "AdminJobKindOut": {
+        "description": "ERD-ADM-OPS-WEB: una fila por tipo de trabajo. Solo n\u00fameros y fechas: nunca cargas \u00fatiles ni mensajes de error.",
+        "properties": {
+          "cancelled_24h": {
+            "title": "Cancelled 24H",
+            "type": "integer"
+          },
+          "dead": {
+            "title": "Dead",
+            "type": "integer"
+          },
+          "dead_24h": {
+            "title": "Dead 24H",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Finished At"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "oldest_wait_minutes": {
+            "title": "Oldest Wait Minutes",
+            "type": "integer"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "integer"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "running": {
+            "title": "Running",
+            "type": "integer"
+          },
+          "succeeded_24h": {
+            "title": "Succeeded 24H",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "queued",
+          "running",
+          "dead",
+          "succeeded_24h",
+          "dead_24h",
+          "cancelled_24h",
+          "overdue",
+          "oldest_wait_minutes",
+          "last_finished_at",
+          "last_success_at"
+        ],
+        "title": "AdminJobKindOut",
+        "type": "object"
+      },
+      "AdminJobOut": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "has_error": {
+            "title": "Has Error",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "run_at": {
+            "format": "date-time",
+            "title": "Run At",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "dead",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "attempts",
+          "max_attempts",
+          "run_at",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "has_error",
+          "overdue"
+        ],
+        "title": "AdminJobOut",
+        "type": "object"
+      },
+      "AdminJobsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminJobOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminJobsPage",
+        "type": "object"
+      },
+      "AdminJobsSummaryOut": {
+        "properties": {
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/AdminJobKindOut"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "overdue_minutes": {
+            "title": "Overdue Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generated_at",
+          "overdue_minutes",
+          "kinds"
+        ],
+        "title": "AdminJobsSummaryOut",
+        "type": "object"
+      },
       "AdminOcrHistoryOut": {
         "properties": {
           "action": {
@@ -9242,6 +9468,136 @@
           }
         ],
         "summary": "Home Bills",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/jobs": {
+      "get": {
+        "description": "Trabajos en segundo plano (m\u00e1s recientes primero). Solo lectura; sin carga \u00fatil ni texto de error.",
+        "operationId": "list_jobs_api_v1_admin_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "queued",
+                    "running",
+                    "succeeded",
+                    "dead",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminJobsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Jobs",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/jobs/summary": {
+      "get": {
+        "description": "Estado de la cola por tipo de trabajo: solo conteos y fechas, sin cargas \u00fatiles ni textos de error.",
+        "operationId": "jobs_summary_api_v1_admin_jobs_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminJobsSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Jobs Summary",
         "tags": [
           "admin"
         ]

@@ -51,7 +51,7 @@ async function jsonBody(request: Request) {
 }
 function route(path: string, method: string, search: URLSearchParams) {
   const simple: Record<string, string[]> = {
-    '/me': ['GET'], '/roles': ['GET'], '/scopes': ['GET'], '/overview': ['GET'], '/tariffs': ['GET'],
+    '/me': ['GET'], '/roles': ['GET'], '/scopes': ['GET'], '/overview': ['GET'], '/tariffs': ['GET'], '/jobs/summary': ['GET'], '/jobs': ['GET'],
     '/role-assignments': ['GET', 'POST'], '/audit-events': ['GET'],
   };
   const ocrJobs = '/ocr/jobs';
@@ -66,6 +66,7 @@ function route(path: string, method: string, search: URLSearchParams) {
     : path === '/role-assignments' && method === 'GET' ? ['user_id', 'role_name', 'status', 'limit', 'offset']
       : path === users ? ['q', 'verified', 'limit', 'offset']
       : path === homes ? ['q', 'distributor', 'limit', 'offset']
+      : path === '/jobs' ? ['kind', 'status', 'limit', 'offset']
       : path === billsSummary ? ['days']
       : new RegExp(`^/homes/${uuid}/bills$`).test(path) ? ['limit', 'offset']
       : path === ocrJobs ? ['status', 'error_code', 'min_attempts', 'created_from', 'created_to', 'limit', 'offset'] : [];

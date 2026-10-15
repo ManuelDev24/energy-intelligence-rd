@@ -7,12 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.api.admin_deps import current_admin, require_scope
 from app.database import get_db
-from app.schemas.admin import (AdminBillsSummary, AdminTariffsOut, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
+from app.schemas.admin import (AdminJobsPage, AdminJobsSummaryOut, AdminBillsSummary, AdminTariffsOut, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentsPage,
                                RoleAssignmentCreate, RoleAssignmentOut, RoleAssignmentRevoke, RoleOut, ScopeOut)
 from app.services import admin as admin_service
 from app.services.copilot.tools import today_rd
-from app.services import admin_bills, admin_homes, admin_tariffs, admin_ocr, admin_overview, admin_users
+from app.services import admin_bills, admin_homes, admin_jobs, admin_tariffs, admin_ocr, admin_overview, admin_users
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -81,6 +81,23 @@ def tariffs_coverage(response: Response, db: Session = Depends(get_db)):
     """Cobertura y versiones de las tarifas publicadas (datos públicos de la SIE). Solo lectura."""
     response.headers["Cache-Control"] = "no-store"
     return admin_tariffs.build(db, today_rd())
+
+
+@router.get('/jobs/summary', response_model=AdminJobsSummaryOut, dependencies=[Depends(require_scope('admin.system.read'))])
+def jobs_summary(response: Response, db: Session = Depends(get_db)):
+    """Estado de la cola por tipo de trabajo: solo conteos y fechas, sin cargas útiles ni textos de error."""
+    response.headers["Cache-Control"] = "no-store"
+    return admin_jobs.summary(db)
+
+
+@router.get('/jobs', response_model=AdminJobsPage, dependencies=[Depends(require_scope('admin.system.read'))])
+def list_jobs(response: Response, kind: str | None = Query(None, max_length=64),
+              status: Literal['queued', 'running', 'succeeded', 'dead', 'cancelled'] | None = None,
+              limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=100_000), db: Session = Depends(get_db)):
+    """Trabajos en segundo plano (más recientes primero). Solo lectura; sin carga útil ni texto de error."""
+    response.headers["Cache-Control"] = "no-store"
+    items, total = admin_jobs.list_jobs(db, kind=kind, status=status, limit=limit, offset=offset)
+    return AdminJobsPage(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get('/ocr/jobs', response_model=AdminOcrJobsPage,

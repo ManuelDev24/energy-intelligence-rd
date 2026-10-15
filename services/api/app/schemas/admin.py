@@ -348,3 +348,48 @@ class AdminTariffsOut(BaseModel):
     warn_days: int
     coverage: list[AdminTariffCoverage]
     versions: list[AdminTariffVersionOut]
+
+
+JobStatus = Literal['queued', 'running', 'succeeded', 'dead', 'cancelled']
+
+
+class AdminJobKindOut(BaseModel):
+    """ERD-ADM-OPS-WEB: una fila por tipo de trabajo. Solo números y fechas: nunca cargas útiles ni mensajes de error."""
+    kind: str
+    queued: int
+    running: int
+    dead: int
+    succeeded_24h: int
+    dead_24h: int
+    cancelled_24h: int
+    overdue: int                   # en cola y vencidos hace más de OVERDUE_MINUTES
+    oldest_wait_minutes: int       # el más antiguo en cola y ya vencido (0 = ninguno)
+    last_finished_at: datetime | None
+    last_success_at: datetime | None
+
+
+class AdminJobsSummaryOut(BaseModel):
+    generated_at: datetime
+    overdue_minutes: int
+    kinds: list[AdminJobKindOut]
+
+
+class AdminJobOut(BaseModel):
+    id: int
+    kind: str
+    status: JobStatus
+    attempts: int
+    max_attempts: int
+    run_at: datetime
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    has_error: bool                # el texto del error NO se expone (puede contener datos personales)
+    overdue: bool
+
+
+class AdminJobsPage(BaseModel):
+    items: list[AdminJobOut]
+    total: int
+    limit: int
+    offset: int
