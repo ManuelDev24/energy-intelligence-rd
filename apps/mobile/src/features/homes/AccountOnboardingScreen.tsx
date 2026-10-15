@@ -16,6 +16,7 @@ import { useSession } from '../../store/session';
 import { colors, spacing, TOUCH } from '../../theme';
 import { initialOnboardingDraft, onboardingTitles, validateOnboardingStep, type OnboardingDraft, type OnboardingErrors } from './onboardingModel';
 import { saveOnboarding } from './saveOnboarding';
+import { newIdempotencyKey } from '../../api/idempotency';
 import { EnergyProfileFields, energyFlags as flags, triStateLabel } from './EnergyProfileFields';
 
 const transport = createAuthenticatedFetch(authSession);
@@ -33,6 +34,8 @@ export function AccountOnboardingScreen({ onDone, onCancel }: { onDone: (home: H
   const inFlight = useRef(false);
   const createdId = useRef<string | null>(null);
   const [creationUncertain, setCreationUncertain] = useState(false);
+  // Una clave por intento de onboarding: si se pierde la respuesta, reintentar devuelve la MISMA vivienda en vez de crear otra.
+  const attemptKey = useRef(newIdempotencyKey());
   const qc = useQueryClient();
   const keyboardHeight = useKeyboardHeight();
   const set = <K extends keyof OnboardingDraft>(key: K, value: OnboardingDraft[K]) => {
@@ -48,7 +51,7 @@ export function AccountOnboardingScreen({ onDone, onCancel }: { onDone: (home: H
     if (Object.keys(problems).length === 0) setStep(step + 1);
   };
   const submit = async () => {
-    if (inFlight.current || creationUncertain) return;
+    if (inFlight.current) return;
     for (let i = 0; i < onboardingTitles.length - 1; i++) {
       const problems = validateOnboardingStep(i, draft);
       if (Object.keys(problems).length) { setErrors(problems); setStep(i); return; }
@@ -57,7 +60,7 @@ export function AccountOnboardingScreen({ onDone, onCancel }: { onDone: (home: H
     setBusy(true); setServerError(null);
     const epoch = authSession.getSnapshot().epoch;
     try {
-      const id = await saveOnboarding(draft, onboardingApi, { homeId, checkSession: () => authSession.checkEpoch(epoch), onCreated: (id) => { createdId.current = id; setHomeId(id); } });
+      const id = await saveOnboarding(draft, onboardingApi, { homeId, idempotencyKey: attemptKey.current, checkSession: () => authSession.checkEpoch(epoch), onCreated: (id) => { createdId.current = id; setHomeId(id); } });
       authSession.checkEpoch(epoch);
       // Re-fetch canonical server representation (all profile fields) before selecting it.
       const homes = await qc.fetchQuery({ queryKey: keys.homes, queryFn: () => api.listHomes(), staleTime: 0 });
@@ -108,9 +111,9 @@ export function AccountOnboardingScreen({ onDone, onCancel }: { onDone: (home: H
         <Text style={s.summary}>Meta mensual: {draft.goalAmount.trim() ? `RD$ ${draft.goalAmount.trim()}` : ''}{draft.goalKwh.trim() ? ` · ${draft.goalKwh.trim()} kWh` : ''}{!draft.goalAmount.trim() && !draft.goalKwh.trim() ? 'No indicada' : ''}</Text>
       </> : null}
       {serverError ? <Text testID="account-onboarding-error" accessibilityRole="alert" style={formStyles.serverErr}>{serverError}{homeId ? ' La vivienda ya fue creada; puede reintentar guardar los datos pendientes sin duplicarla.' : ''}</Text> : null}
-      <Button title={busy ? 'Guardando…' : step === 5 ? 'Guardar y comenzar' : 'Continuar'} testID="account-onboarding-next" disabled={busy || creationUncertain} onPress={() => { if (step === 5) void submit(); else next(); }} />
+      <Button title={busy ? 'Guardando…' : step === 5 ? 'Guardar y comenzar' : 'Continuar'} testID="account-onboarding-next" disabled={busy} onPress={() => { if (step === 5) void submit(); else next(); }} />
       {homeId ? <Text style={s.hint}>Contrato y meta quedan fijados durante este reintento para no ocultar datos ya guardados. Puede editarlos después en Mi servicio y Meta mensual.</Text> : null}
-      {creationUncertain ? <Text accessibilityRole="alert" style={s.hint}>No se pudo confirmar la creación. Vuelva a Mis viviendas y actualice antes de crear otra; la API no permite confirmar automáticamente una escritura sin respuesta.</Text> : null}
+      {creationUncertain ? <Text accessibilityRole="alert" style={s.hint}>No se pudo confirmar la creación. Puede reintentar con seguridad: si la vivienda ya se creó, no se duplicará.</Text> : null}
       {step > 0 ? <Button title="Atrás" variant="secondary" disabled={busy} onPress={() => { setStep(step - 1); setServerError(null); }} /> : null}
       {onCancel ? <Button title="Volver a mis viviendas" variant="secondary" disabled={busy} onPress={onCancel} /> : null}
     </ScrollView>

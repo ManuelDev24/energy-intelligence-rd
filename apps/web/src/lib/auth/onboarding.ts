@@ -13,10 +13,10 @@ function pathFor(homeId: string, suffix = "") {
   if (!UUID.test(homeId)) throw new Error("Vivienda inválida.");
   return `/api/v1/homes/${homeId}${suffix}`;
 }
-async function request<T>(path: string, method: string, input: unknown, schema: { safeParse: (value: unknown) => { success: boolean; data?: T } }, homeId?: string): Promise<T> {
+async function request<T>(path: string, method: string, input: unknown, schema: { safeParse: (value: unknown) => { success: boolean; data?: T } }, homeId?: string, extraHeaders: Record<string, string> = {}): Promise<T> {
   const current = accountGeneration();
   let response: Response;
-  try { response = await bffFetch(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }); }
+  try { response = await bffFetch(path, { method, headers: { "Content-Type": "application/json", ...extraHeaders }, body: JSON.stringify(input) }); }
   catch (cause) {
     if (cause instanceof AccountChangedError) throw cause;
     throw new ApiError(0, "No se pudo confirmar la operación. Consulta los datos antes de reintentar.");
@@ -34,8 +34,10 @@ async function request<T>(path: string, method: string, input: unknown, schema: 
 export function readProfileHome(id: string) {
   return request(pathFor(id), "GET", undefined, HomeSchema, id);
 }
-export function saveOnboardingHome(id: string | null, draft: HomeDraft) {
-  return request(id ? pathFor(id) : "/api/v1/homes", id ? "PATCH" : "POST", draft, HomeSchema, id ?? undefined);
+/** Al crear (id nulo) puede llevar una clave de idempotencia: repetir la misma solicitud devuelve la vivienda ya creada. */
+export function saveOnboardingHome(id: string | null, draft: HomeDraft, idempotencyKey?: string) {
+  if (idempotencyKey !== undefined && (id !== null || !UUID.test(idempotencyKey))) throw new Error("Clave de idempotencia no válida.");
+  return request(id ? pathFor(id) : "/api/v1/homes", id ? "PATCH" : "POST", draft, HomeSchema, id ?? undefined, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {});
 }
 export function readProfileContract(id: string) {
   return request(pathFor(id, "/contract"), "GET", undefined, ContractOutSchema, id);

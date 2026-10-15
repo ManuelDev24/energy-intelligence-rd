@@ -21,7 +21,10 @@ Entorno: PostgreSQL 16 local, API con `AUTH_ENABLED=true` (`:18011`, migraciones
 `NEXT_PUBLIC_AUTH_ENABLED=true` (`:3011`), Chromium headless. Solo cuentas `erd-onb-<uuid>@example.com`.
 Reproducir: levantar ambos y `python web-onb.py <dir>` (requiere `playwright` y Chromium).
 
-## Límite conocido (no es un defecto nuevo)
-La creación de la vivienda no tiene clave de idempotencia: si se pierde la respuesta del POST de la etapa 2, la web bloquea
-el reintento (`uncertain`) y pide revisar «Mis viviendas»; no puede garantizar ausencia total de duplicados. Una
-clave de idempotencia en `POST /homes` lo resolvería; no se hizo aquí porque cambia el contrato de web y móvil.
+## Idempotencia de «crear vivienda» (resuelto en API, web y móvil; sin verificar en dispositivo)
+`POST /homes` acepta `Idempotency-Key` (UUID). Misma clave + mismo contenido → la misma vivienda (cabecera `Idempotent-Replayed: true`,
+sin contar contra el tope de viviendas); misma clave + contenido distinto → 409 `idempotency_key_reused`; las claves son de cada persona,
+caducan a las 24 h y caen con la vivienda o la cuenta (migración 0035, tabla `home_create_requests`). El asistente web y el onboarding
+móvil generan una clave por intento y la reutilizan al reintentar, así que ya no bloquean el reintento tras perder la respuesta.
+Pruebas: `services/api/tests/test_home_idempotency.py` (6, también con `TEST_RLS_ROLE=1`), `bff-idempotency.test.ts`, `onboarding-wizard.test.tsx`
+y `apps/mobile/src/api/idempotency.test.ts`. **Pendiente:** forzar la pérdida real de la respuesta en Android/iOS (modo avión tras el POST).

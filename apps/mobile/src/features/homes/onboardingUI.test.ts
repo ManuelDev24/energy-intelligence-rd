@@ -21,3 +21,9 @@ it('onboarding ofrece tres opciones explícitas y revisa también respuestas neg
   expect(screen).not.toContain("set(key, !draft[key])");
   expect(screen).toContain('triStateLabel(draft[key])');
 });
+it('el reintento tras perder la respuesta ya no se bloquea: usa la misma clave de idempotencia', () => {
+  const screen = readFileSync(new URL('./AccountOnboardingScreen.tsx', import.meta.url), 'utf8');
+  expect(screen).toContain('idempotencyKey: attemptKey.current');
+  expect(screen).not.toContain('disabled={busy || creationUncertain}');
+  expect(screen).toContain('no se duplicará');
+});

@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api, ApiError } from '../../api/client';
 import { describeError } from '../../api/errors';
+import { newIdempotencyKey } from '../../api/idempotency';
 import { keys } from '../../api/hooks';
 import type { Distributor, Home } from '../../api/types';
 import { authSession } from '../../auth/runtime';
@@ -16,10 +17,15 @@ export function CreateHomeForm({ onCreated, onCancel }: { onCreated?: (home: Hom
   const [distributor, setDistributor] = useState<Distributor>('EDESUR');
   const [fieldError, setFieldError] = useState<string>();
   const qc = useQueryClient();
+  // Misma clave al reintentar con los mismos datos: la API devuelve la vivienda ya creada. Si cambian los datos, es otra solicitud.
+  const attempt = useRef({ key: newIdempotencyKey(), fingerprint: '' });
   const mutation = useMutation({
     mutationFn: async () => {
       const epoch = authSession.getSnapshot().epoch;
-      const home = await api.createHome({ name, distributor });
+      const fingerprint = `${name.trim()}|${distributor}`;
+      if (attempt.current.fingerprint && attempt.current.fingerprint !== fingerprint) attempt.current.key = newIdempotencyKey();
+      attempt.current.fingerprint = fingerprint;
+      const home = await api.createHome({ name, distributor }, attempt.current.key);
       authSession.checkEpoch(epoch);
       return home;
     },

@@ -48,6 +48,7 @@ const logoutName = (config: BffConfig) => config.secure ? "__Host-erd-logout" : 
 // current when their login *request* was sent, so a login whose Set-Cookie lands after a logout
 // (aborting fetch cannot stop it) carries a dead epoch: it is rejected and revoked on first use.
 const epochName = (config: BffConfig) => config.secure ? "__Host-erd-epoch" : "erd-epoch";
+const UUID_RE = new RegExp(`^${UUID}$`);
 const EPOCH = /^[0-9a-f]{32}$/;
 const EPOCH_MAX_AGE = 400 * 24 * 60 * 60;
 function cookie(request: Request, name: string) {
@@ -295,6 +296,12 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
         body = method === "DELETE" ? undefined : JSON.stringify(parsed.data);
       }
       headers["Content-Type"] = "application/json";
+      // ERD-ONB-ACCEPTANCE: única cabecera del navegador que se reenvía, y solo al crear vivienda; debe ser un UUID.
+      const idempotency = request.headers.get("idempotency-key");
+      if (idempotency !== null) {
+        if (method !== "POST" || path !== "/homes" || !UUID_RE.test(idempotency)) return reply({ detail: "Clave de idempotencia no válida." }, 400);
+        headers["Idempotency-Key"] = idempotency;
+      }
     } catch { return reply({ detail: "JSON inválido." }, 400); }
   }
   if ((!auth || path === "/auth/me") && !legal && !recovery) {

@@ -1,10 +1,12 @@
 import { ApiError, ContractError } from '@energyrd/api-client';
 import { HomeSchema, type Distributor, type Home } from '@energyrd/api-contracts';
 import { localApiError, serverError } from './errors';
+import { isIdempotencyKey } from './idempotency';
 
 export interface HomeInput { name: string; distributor: Distributor }
 export function createHomeApi(baseUrl: string, fetchImpl: typeof fetch) {
-  return { createHome: async (input: HomeInput): Promise<Home> => {
+  return { createHome: async (input: HomeInput, idempotencyKey?: string): Promise<Home> => {
+    if (idempotencyKey !== undefined && !isIdempotencyKey(idempotencyKey)) throw localApiError(422, 'Revise el nombre y la distribuidora.');
     const name = input.name.trim();
     if (!name || Array.from(name).length > 120 || !HomeSchema.shape.distributor.safeParse(input.distributor).success)
       throw localApiError(422, 'Revise el nombre y la distribuidora.');
@@ -16,7 +18,7 @@ export function createHomeApi(baseUrl: string, fetchImpl: typeof fetch) {
     try {
       return await Promise.race([timeout, (async () => {
         const response = await fetchImpl(`${baseUrl.replace(/\/+$/, '')}/api/v1/homes`, {
-          method: 'POST', signal: ctrl.signal, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          method: 'POST', signal: ctrl.signal, headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
           // Membership is assigned by the server; no owner/user/pilot/code supplied.
           body: JSON.stringify({ name, distributor: input.distributor }),
         });

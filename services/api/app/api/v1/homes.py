@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.auth_deps import current_user, require_home_owner
@@ -15,8 +15,13 @@ def list_homes(limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=
     return homes.list_homes(db, limit, offset, user_id=user.id if user else None)
 
 @router.post("", response_model=HomeOut, status_code=status.HTTP_201_CREATED)
-def create_home(payload: HomeCreate, db: Session = Depends(get_db), user=Depends(current_user)):
-    return homes.create_home(db, payload, owner_id=user.id if user else None)
+def create_home(payload: HomeCreate, response: Response, db: Session = Depends(get_db), user=Depends(current_user),
+                idempotency_key: uuid.UUID | None = Header(default=None, alias="Idempotency-Key")):
+    # ERD-ONB-ACCEPTANCE: con `Idempotency-Key` reintentar tras perder la respuesta no duplica la vivienda (se avisa con `Idempotent-Replayed`).
+    home, replayed = homes.create_home(db, payload, owner_id=user.id if user else None, idempotency_key=idempotency_key)
+    if replayed:
+        response.headers["Idempotent-Replayed"] = "true"
+    return home
 
 @router.get("/{home_id}", response_model=HomeOut)
 def get_home(home_id: uuid.UUID, db: Session = Depends(get_db)):

@@ -2,10 +2,11 @@ import { ContractError } from '@energyrd/api-client';
 import { ContractOutSchema, GoalOutSchema, HomeOutSchema, type Distributor, type GoalInput } from '@energyrd/api-contracts';
 import type { z } from 'zod';
 import { localApiError, serverError } from './errors';
+import { isIdempotencyKey } from './idempotency';
 
 export type OnboardingHomeInput = { name: string; distributor: Distributor; province?: string | null; municipality?: string | null; sector?: string | null; user_type?: string | null; occupants?: number | null; has_ac?: boolean | null; has_water_heater?: boolean | null; has_pool?: boolean | null; has_solar?: boolean | null; has_inverter?: boolean | null };
 export function createOnboardingApi(baseUrl: string, transport: typeof fetch) {
-  const request = async <T extends z.ZodTypeAny>(path: string, method: string, input: unknown, schema: T): Promise<z.output<T>> => {
+  const request = async <T extends z.ZodTypeAny>(path: string, method: string, input: unknown, schema: T, extraHeaders: Record<string, string> = {}): Promise<z.output<T>> => {
     const ctrl = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
@@ -13,7 +14,7 @@ export function createOnboardingApi(baseUrl: string, transport: typeof fetch) {
     });
     try {
       return await Promise.race([timeout, (async () => {
-        const response = await transport(`${baseUrl.replace(/\/+$/, '')}${path}`, { method, signal: ctrl.signal, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, ...(input === undefined ? {} : { body: JSON.stringify(input) }) });
+        const response = await transport(`${baseUrl.replace(/\/+$/, '')}${path}`, { method, signal: ctrl.signal, headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...extraHeaders }, ...(input === undefined ? {} : { body: JSON.stringify(input) }) });
         let body: unknown;
         try { body = await response.json(); } catch { if (!response.ok) throw serverError(response.status, null); throw new ContractError(); }
         if (!response.ok) throw serverError(response.status, body);
@@ -30,7 +31,10 @@ export function createOnboardingApi(baseUrl: string, transport: typeof fetch) {
     } finally { clearTimeout(timer); }
   };
   return {
-    createHome: (input: OnboardingHomeInput) => request('/api/v1/homes', 'POST', input, HomeOutSchema),
+    createHome: (input: OnboardingHomeInput, idempotencyKey?: string) => {
+      if (idempotencyKey !== undefined && !isIdempotencyKey(idempotencyKey)) throw localApiError(422, 'Revise los datos e intente de nuevo.');
+      return request('/api/v1/homes', 'POST', input, HomeOutSchema, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {});
+    },
     getHome: (homeId: string) => request(`/api/v1/homes/${encodeURIComponent(homeId)}`, 'GET', undefined, HomeOutSchema),
     updateHome: (homeId: string, input: Partial<OnboardingHomeInput> & { address?: string | null; city?: string | null }) => request(`/api/v1/homes/${encodeURIComponent(homeId)}`, 'PATCH', input, HomeOutSchema),
     getContract: (homeId: string) => request(`/api/v1/homes/${encodeURIComponent(homeId)}/contract`, 'GET', undefined, ContractOutSchema),
