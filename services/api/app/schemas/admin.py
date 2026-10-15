@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
+from app.schemas.tariff import TariffOut
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -323,3 +324,27 @@ class AdminHomeBillsPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class AdminTariffCoverage(BaseModel):
+    """ERD-ADM-TARIFFS-WEB: ¿hay una tarifa vigente para esta distribuidora hoy y hasta cuándo? (datos públicos de la SIE)."""
+    distributor: str
+    tariff_code: str
+    status: Literal['current', 'expiring', 'future_only', 'missing']
+    current_id: uuid.UUID | None
+    effective_from: date | None
+    effective_to: date | None
+    days_left: int | None          # días hasta el fin de la versión vigente (None = sin fecha de fin o sin versión vigente)
+    next_from: date | None         # inicio de la versión siguiente (cubre el fin de la vigente o es la primera futura)
+    last_ended: date | None        # fin de la última versión vencida (cuando no hay ninguna vigente)
+
+
+class AdminTariffVersionOut(TariffOut):
+    state: Literal['current', 'past', 'future']
+
+
+class AdminTariffsOut(BaseModel):
+    today: date
+    warn_days: int
+    coverage: list[AdminTariffCoverage]
+    versions: list[AdminTariffVersionOut]

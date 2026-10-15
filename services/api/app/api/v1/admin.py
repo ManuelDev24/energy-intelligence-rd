@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.api.admin_deps import current_admin, require_scope
 from app.database import get_db
-from app.schemas.admin import (AdminBillsSummary, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
+from app.schemas.admin import (AdminBillsSummary, AdminTariffsOut, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentsPage,
                                RoleAssignmentCreate, RoleAssignmentOut, RoleAssignmentRevoke, RoleOut, ScopeOut)
 from app.services import admin as admin_service
-from app.services import admin_bills, admin_homes, admin_ocr, admin_overview, admin_users
+from app.services.copilot.tools import today_rd
+from app.services import admin_bills, admin_homes, admin_tariffs, admin_ocr, admin_overview, admin_users
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -73,6 +74,13 @@ def home_bills(home_id: uuid.UUID, request: Request, response: Response, limit: 
     response.headers["Cache-Control"] = "no-store"
     items, total = admin_bills.home_bills(db, home_id, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None), limit=limit, offset=offset)
     return AdminHomeBillsPage(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get('/tariffs', response_model=AdminTariffsOut, dependencies=[Depends(require_scope('admin.system.read'))])
+def tariffs_coverage(response: Response, db: Session = Depends(get_db)):
+    """Cobertura y versiones de las tarifas publicadas (datos públicos de la SIE). Solo lectura."""
+    response.headers["Cache-Control"] = "no-store"
+    return admin_tariffs.build(db, today_rd())
 
 
 @router.get('/ocr/jobs', response_model=AdminOcrJobsPage,

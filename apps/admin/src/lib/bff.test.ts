@@ -196,4 +196,17 @@ describe("admin BFF", () => {
     }
     expect(upstream).toHaveBeenCalledTimes(2);
   });
+
+  it("proxies the tariff coverage as read-only and refuses writes or parameters", async () => {
+    cookies(await call("/session"));
+    cookies(await call("/auth/login", "POST", { email: "a@example.com", password: "secret" }));
+    upstream.mockClear();
+    upstream.mockImplementation(async () => Response.json({ today: "2026-10-15", warn_days: 30, coverage: [], versions: [] }));
+    expect((await call("/proxy/tariffs")).status).toBe(200);
+    expect(upstream).toHaveBeenLastCalledWith(`${config.apiBase}/api/v1/admin/tariffs`, expect.objectContaining({ method: "GET" }));
+    for (const [path, method] of [["/proxy/tariffs?on=2026-01-01", "GET"], ["/proxy/tariffs", "POST"], ["/proxy/tariffs", "DELETE"], ["/proxy/tariffs/x", "GET"]] as const) {
+      expect((await call(path, method, method === "GET" ? undefined : {})).status, `${method} ${path}`).toBe(404);
+    }
+    expect(upstream).toHaveBeenCalledTimes(1);
+  });
 });

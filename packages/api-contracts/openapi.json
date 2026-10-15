@@ -936,6 +936,263 @@
         "title": "AdminOverviewOut",
         "type": "object"
       },
+      "AdminTariffCoverage": {
+        "description": "ERD-ADM-TARIFFS-WEB: \u00bfhay una tarifa vigente para esta distribuidora hoy y hasta cu\u00e1ndo? (datos p\u00fablicos de la SIE).",
+        "properties": {
+          "current_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Id"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Left"
+          },
+          "distributor": {
+            "title": "Distributor",
+            "type": "string"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "last_ended": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ended"
+          },
+          "next_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next From"
+          },
+          "status": {
+            "enum": [
+              "current",
+              "expiring",
+              "future_only",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tariff_code": {
+            "title": "Tariff Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "distributor",
+          "tariff_code",
+          "status",
+          "current_id",
+          "effective_from",
+          "effective_to",
+          "days_left",
+          "next_from",
+          "last_ended"
+        ],
+        "title": "AdminTariffCoverage",
+        "type": "object"
+      },
+      "AdminTariffVersionOut": {
+        "properties": {
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/TariffBlockOut"
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "distributor": {
+            "enum": [
+              "EDESUR",
+              "EDENORTE",
+              "EDEESTE"
+            ],
+            "title": "Distributor",
+            "type": "string"
+          },
+          "effective_from": {
+            "format": "date",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "fixed_charges": {
+            "items": {
+              "$ref": "#/components/schemas/TariffFixedChargeOut"
+            },
+            "title": "Fixed Charges",
+            "type": "array"
+          },
+          "flat_all_units_from_kwh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flat All Units From Kwh"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "scope_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Note"
+          },
+          "source_resolution": {
+            "title": "Source Resolution",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "state": {
+            "enum": [
+              "current",
+              "past",
+              "future"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "tariff_code": {
+            "title": "Tariff Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "distributor",
+          "tariff_code",
+          "effective_from",
+          "effective_to",
+          "flat_all_units_from_kwh",
+          "fixed_charges",
+          "blocks",
+          "source_resolution",
+          "source_url",
+          "scope_note",
+          "state"
+        ],
+        "title": "AdminTariffVersionOut",
+        "type": "object"
+      },
+      "AdminTariffsOut": {
+        "properties": {
+          "coverage": {
+            "items": {
+              "$ref": "#/components/schemas/AdminTariffCoverage"
+            },
+            "title": "Coverage",
+            "type": "array"
+          },
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/AdminTariffVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          },
+          "warn_days": {
+            "title": "Warn Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "today",
+          "warn_days",
+          "coverage",
+          "versions"
+        ],
+        "title": "AdminTariffsOut",
+        "type": "object"
+      },
       "AdminUserDetailOut": {
         "properties": {
           "active": {
@@ -9633,6 +9890,33 @@
           }
         ],
         "summary": "List Scopes",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/tariffs": {
+      "get": {
+        "description": "Cobertura y versiones de las tarifas publicadas (datos p\u00fablicos de la SIE). Solo lectura.",
+        "operationId": "tariffs_coverage_api_v1_admin_tariffs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTariffsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Tariffs Coverage",
         "tags": [
           "admin"
         ]
