@@ -26,9 +26,9 @@ describe("access", () => {
   });
 
   it("never shows role management to someone without admin.roles.read", () => {
-    const supportReadonly: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.users.read"] };
+    const supportReadonly: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.users.read", "admin.homes.read", "admin.bills.read"] };
     expect(visibleNavItems(supportReadonly).map((i) => i.href)).not.toContain("/roles");
-    expect(visibleNavItems(supportReadonly).map((i) => i.href)).toEqual(["/mi-acceso", "/usuarios"]);
+    expect(visibleNavItems(supportReadonly).map((i) => i.href)).toEqual(["/mi-acceso", "/usuarios", "/viviendas", "/facturas"]);
   });
 
   it("shows the OCR console only with admin.ocr.read", () => {
@@ -47,5 +47,21 @@ describe("access", () => {
     const support: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.users.read"] };
     expect(visibleNavItems(support).map((i) => i.href)).toEqual(["/mi-acceso", "/usuarios"]);
     expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/usuarios");
+  });
+
+  it("shows the bills quality view only with admin.bills.read", () => {
+    const homes: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.homes.read"] };
+    expect(visibleNavItems(homes).map((i) => i.href)).not.toContain("/facturas");
+    const bills: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.bills.read"] };
+    expect(visibleNavItems(bills).map((i) => i.href)).toEqual(["/mi-acceso", "/facturas"]);
+    expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/facturas");
+  });
+
+  it("shows the home lookup only with admin.homes.read", () => {
+    const users: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.users.read"] };
+    expect(visibleNavItems(users).map((i) => i.href)).not.toContain("/viviendas");
+    const homes: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.homes.read"] };
+    expect(visibleNavItems(homes).map((i) => i.href)).toEqual(["/mi-acceso", "/viviendas"]);
+    expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/viviendas");
   });
 });

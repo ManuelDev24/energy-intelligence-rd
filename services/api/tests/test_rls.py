@@ -83,7 +83,7 @@ def test_every_table_with_a_home_column_has_rls_and_both_policies(migrated):
     unprotected = with_home - protected - {"audit_events", "home_invitations"}
     assert not unprotected, f"Tablas con home_id sin RLS: {sorted(unprotected)}"
     assert set(ALL_TABLES) <= protected
-    for table in ALL_TABLES:
+    for table in [*ALL_TABLES, "claims", "claim_events", "home_create_requests"]:
         assert (table, "erd_app") in policies and (table, "erd_worker") in policies, table
 
 
@@ -280,7 +280,7 @@ def test_migration_downgrade_and_upgrade_roundtrip(migrated, alembic_cfg):
         assert c.execute(text("SELECT count(*) FROM pg_proc WHERE proname IN ('app_user','app_home')")).scalar() == 0
     command.upgrade(alembic_cfg, "head")
     with migrated.connect() as c:
-        assert c.execute(text("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relrowsecurity")).scalar() == 18
+        assert c.execute(text("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relrowsecurity")).scalar() == 21
 
 
 def test_an_owner_can_still_manage_the_members_of_the_current_home_only(world):

@@ -1,6 +1,6 @@
 // Auditoría C-20: rutas y esquemas estrictos de las peticiones que el BFF acepta (extraído de bff.ts sin cambios de comportamiento).
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, EmailVerificationRequestOutSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, GoalProposalOutSchema, EnergyReportOutSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema, ConversationInSchema, ConversationOutSchema, ConversationRenameSchema, CopilotMessageOutSchema, CopilotUsageOutSchema, FeedbackInSchema, MessageInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, EmailVerificationRequestOutSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, GoalProposalOutSchema, EnergyReportOutSchema, DownloadUrlOutSchema, HelpIndexSchema, HelpArticleSchema, ClaimInSchema, ClaimNoteInSchema, ClaimCloseInSchema, ClaimReferenceInSchema, ClaimOutSchema, ClaimDetailOutSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema, ConversationInSchema, ConversationOutSchema, ConversationRenameSchema, CopilotMessageOutSchema, CopilotUsageOutSchema, FeedbackInSchema, MessageInSchema } from "@energyrd/api-contracts";
 // Cada ruta declara método, patrón, respuesta, cuerpo y consulta EXACTOS: un parámetro no declarado,
 // repetido o mal formado es 400 y un cuerpo no estricto es 422, siempre antes de contactar la API.
 export const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
@@ -125,8 +125,23 @@ export function phase2Route(path: string, method: string): Phase2Route | null {
   // ERD-SCORE-01: Energy Score (solo lectura, sin parámetros).
   if (new RegExp(`^/homes/${UUID}/energy-score$`).test(path)) return method === "GET" ? { response: EnergyScoreSchema, query: {} } : null;
   if (/\/energy-score(\/|$)/.test(path)) return null;
+  // ERD-CLAIM-01: reclamaciones. Cuerpos estrictos; el filtro de estado es cerrado.
+  if (new RegExp(`^/homes/${UUID}/claims$`).test(path)) return method === "GET" ? { response: ClaimOutSchema.array(), query: { status: { pattern: v => ["open", "in_review", "resolved", "closed"].includes(v) } } }
+    : method === "POST" ? { response: ClaimDetailOutSchema, body: ClaimInSchema.strict(), query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/claims/${UUID}$`).test(path)) return method === "GET" ? { response: ClaimDetailOutSchema, query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/claims/${UUID}/notes$`).test(path)) return method === "POST" ? { response: ClaimDetailOutSchema, body: ClaimNoteInSchema.strict(), query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/claims/${UUID}/reference$`).test(path)) return method === "PUT" ? { response: ClaimDetailOutSchema, body: ClaimReferenceInSchema.strict(), query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/claims/${UUID}/close$`).test(path)) return method === "POST" ? { response: ClaimDetailOutSchema, body: ClaimCloseInSchema.strict(), query: {} } : null;
+  if (/\/claims(\/|$)/.test(path)) return null;
+  // ERD-HELP-01: centro de ayuda (contenido editorial; solo lectura con búsqueda y categoría acotadas).
+  if (path === "/help") return method === "GET" ? { response: HelpIndexSchema, query: { q: { pattern: v => v.length <= 80 }, category: { pattern: v => /^[a-z-]{1,40}$/.test(v) } } } : null;
+  if (/^\/help\/articles\/[a-z0-9-]{1,64}$/.test(path)) return method === "GET" ? { response: HelpArticleSchema, query: {} } : null;
+  if (/^\/help(\/|$)/.test(path)) return null;
   // ERD-RPT-01: informe energético (solo lectura; fechas opcionales AAAA-MM-DD).
   if (new RegExp(`^/homes/${UUID}/reports/energy$`).test(path)) return method === "GET" ? { response: EnergyReportOutSchema, query: { from: { pattern: isoDate }, to: { pattern: isoDate } } } : null;
+  // PDF del informe: el BFF lo reenvía como bytes (rama `pdf` en bff.ts); el enlace firmado es para clientes sin sesión de cookies.
+  if (new RegExp(`^/homes/${UUID}/reports/energy\\.pdf$`).test(path)) return method === "GET" ? { response: z.unknown(), query: { from: { pattern: isoDate }, to: { pattern: isoDate } } } : null;
+  if (new RegExp(`^/homes/${UUID}/reports/energy/pdf-link$`).test(path)) return method === "POST" ? { response: DownloadUrlOutSchema, body: z.object({}).strict(), query: { from: { pattern: isoDate }, to: { pattern: isoDate } } } : null;
   if (/\/reports(\/|$)/.test(path)) return null;
   // ERD-SAVE-01: recomendaciones de ahorro. Lista con filtros cerrados, recálculo (cuerpo vacío) y cambio de estado.
   if (new RegExp(`^/homes/${UUID}/recommendations$`).test(path)) return method === "GET" ? { response: RecommendationListSchema, query: {

@@ -23,6 +23,7 @@ Convenciones:
 | Contraseña de rol Neon | La genera Neon al crear el rol (Console → *Roles* → *Add role*) |
 | `RESEND_API_KEY` | Resend → *API Keys* → *Create API key* → permiso **Sending access**, dominio del entorno |
 | `ANTHROPIC_API_KEY` (solo si `COPILOT_PROVIDER=anthropic`) | Anthropic Console → *API keys*; una por entorno. Por defecto el Copilot está apagado (`COPILOT_PROVIDER=disabled`). Ver `docs/architecture/COPILOT.md` |
+| `SUPPORT_EMAIL` (opcional) | Correo público de soporte que muestra el centro de ayuda. Vacío = la pantalla dice que aún no está configurado (no se inventa una vía de contacto). Ver `docs/qa/ERD-HELP-01.md` |
 
 Genera **una clave distinta por entorno**. Pégala directamente en el Dashboard de Render; no la guardes en
 archivos del repo. Cambiar `AUTH_SIGNING_KEY` cierra todas las sesiones (y reinicia los contadores anti-abuso).

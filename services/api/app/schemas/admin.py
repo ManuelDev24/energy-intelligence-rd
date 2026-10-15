@@ -1,6 +1,7 @@
 import re
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -238,6 +239,87 @@ class AdminUserDetailOut(AdminUserOut):
 
 class AdminUsersPage(BaseModel):
     items: list[AdminUserOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class AdminHomeOut(BaseModel):
+    """ERD-ADM-HOMES-WEB, solo lectura. Sin nombre, dirección, ciudad, sector ni identidad de miembros: solo identificadores y conteos."""
+    id: uuid.UUID
+    code: str | None
+    distributor: str
+    province: str | None
+    created_at: datetime
+    members: int
+    bills: int
+    last_bill_end: date | None
+    open_claims: int
+    unread_alerts: int
+
+
+class AdminHomeDetailOut(AdminHomeOut):
+    user_type: str | None
+    occupants: int | None
+    has_ac: bool | None
+    has_water_heater: bool | None
+    has_pool: bool | None
+    has_solar: bool | None
+    has_inverter: bool | None
+    owners: int
+    pending_invitations: int
+    first_bill_start: date | None
+    readings: int
+    equipment: int
+    documents: int
+    claims_total: int
+    outages: int
+
+
+class AdminHomesPage(BaseModel):
+    items: list[AdminHomeOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class AdminBillsSummary(BaseModel):
+    """ERD-ADM-BILLS-WEB: solo conteos de todas las viviendas; ningún importe ni identificador."""
+    days: int
+    total: int
+    recent: int
+    homes_with_bills: int
+    manual: int
+    seed: int
+    with_document: int
+    with_readings: int
+    with_due_date: int
+    paid: int
+    zero_kwh: int
+    zero_amount: int
+    ocr_pending: int
+    ocr_failed: int
+    ocr_done: int
+
+
+class AdminBillOut(BaseModel):
+    id: uuid.UUID
+    period_start: date
+    period_end: date
+    days: int
+    kwh: Decimal
+    amount_dop: Decimal
+    source: str
+    due_date: date | None
+    paid: bool
+    has_readings: bool
+    has_document: bool
+    ocr_status: str | None
+    created_at: datetime
+
+
+class AdminHomeBillsPage(BaseModel):
+    items: list[AdminBillOut]
     total: int
     limit: int
     offset: int

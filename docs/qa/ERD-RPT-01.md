@@ -1,6 +1,6 @@
 # ERD-RPT-01 — Informe energético (API, web y móvil)
 
-Estado: **implementado y verificado con pruebas de API, unitarias y Playwright (web); NO verificado en dispositivo ni como PDF real.**
+Estado: **implementado y verificado con pruebas de API, unitarias y Playwright (web, incluida la descarga de un PDF real); NO verificado en dispositivo.**
 
 ## Contrato
 `GET /api/v1/homes/{home}/reports/energy?from=AAAA-MM-DD&to=AAAA-MM-DD` (solo lectura, `Cache-Control: no-store`, mismo `authorize_home` que el resto).
@@ -13,15 +13,18 @@ Sin fechas: últimos 365 días hasta hoy (America/Santo_Domingo). Máximo 366 d�
 
 ## Clientes
 - **core** (`report.ts`): `energyReportView` y `energyReportToText` — mismas etiquetas en web y móvil.
-- **Web** `/reports` (menú «Informes»): período editable, vista imprimible (el menú lateral/inferior se oculta al imprimir) y botón
-  «Imprimir o guardar PDF» que abre el diálogo del navegador. No se añadió ninguna librería de PDF.
-- **Móvil** (Perfil → «Informe energético»): períodos 6 meses / 12 meses / este año y «Compartir informe» con el menú nativo (texto plano).
+- **PDF (API, `reportlab`)**: `GET /homes/{home}/reports/energy.pdf?from&to` (con sesión) y `POST …/reports/energy/pdf-link` → enlace firmado de 2 minutos
+  (`/api/v1/reports/download?token=rpt1.…`, sin Authorization; revalida la membresía; un token de documento no sirve y viceversa). Solo fuentes estándar de PDF
+  (Latin-1): sin descargas ni archivos externos; los textos de la persona se escapan.
+- **Web** `/reports` (menú «Informes»): período editable, vista imprimible, «Descargar PDF» (el BFF reenvía solo un PDF real de ≤ 2 MB con cabeceras fijas) e «Imprimir».
+- **Móvil** (Perfil → «Informe energético»): períodos 6 meses / 12 meses / este año, «Abrir PDF» (enlace firmado abierto con el visor del sistema; sin
+  dependencias nativas nuevas) y «Compartir informe» (texto).
 
 ## Límites conocidos
-1. **PDF generado por la app**: web depende del diálogo de impresión del navegador; en móvil solo se comparte texto. Un PDF propio requiere
-   decidir una dependencia (`reportlab` en la API o `expo-print` en móvil) — no se agregó sin esa decisión.
+1. **Dependencia nueva**: `reportlab` (BSD, pura de Python) en `services/api`; decisión tomada para tener un solo PDF idéntico en web y móvil. El texto del PDF
+   está escrito en Python (`report_pdf.py`) en paralelo al de `core/report.ts`: si cambia uno, cambiar el otro (hay pruebas de contenido en ambos).
 2. Basado en **facturas mensuales**: no hay medición diaria ni por hora (se dice en las notas del informe).
-3. Móvil: sin verificar en Android/iOS (menú de compartir, lectores de pantalla).
+3. Móvil: sin verificar en Android/iOS (apertura del PDF con el visor del sistema, menú de compartir, lectores de pantalla).
 
 ## Pruebas
 `services/api/tests/test_reports.py` (6, también como `erd_app` en el inventario de autorización), `packages/core/src/report.test.ts`,

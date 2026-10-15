@@ -19,7 +19,8 @@ jobs:
   api:
     name: api (pytest + migrations)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # La suite (pytest con cobertura + pytest como erd_app) ya tarda ~30 min en el runner; con 30 se cancelaba el segundo pase (run 179).
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16-alpine

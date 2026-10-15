@@ -9,6 +9,11 @@ import type {
   RecommendationList,
   GoalProposalOut,
   EnergyReportOut,
+  HelpIndex,
+  ClaimIn,
+  ClaimOut,
+  ClaimDetailOut,
+  HelpArticle,
   AlertItem,
   AlertStatus,
   Equipment,
@@ -125,6 +130,22 @@ export interface TariffsApi {
   listTariffs(opts?: { distributor?: Distributor; on?: string }, signal?: AbortSignal): Promise<Tariff[]>;
 }
 
+/** Reclamaciones (ERD-CLAIM-01). */
+export interface ClaimsApi {
+  listClaims(homeId: string, opts?: { status?: "open" | "in_review" | "resolved" | "closed" }, signal?: AbortSignal): Promise<ClaimOut[]>;
+  createClaim(homeId: string, input: ClaimIn): Promise<ClaimDetailOut>;
+  getClaim(homeId: string, claimId: string, signal?: AbortSignal): Promise<ClaimDetailOut>;
+  addClaimNote(homeId: string, claimId: string, note: string): Promise<ClaimDetailOut>;
+  setClaimReference(homeId: string, claimId: string, reference: string): Promise<ClaimDetailOut>;
+  closeClaim(homeId: string, claimId: string, note?: string): Promise<ClaimDetailOut>;
+}
+
+/** Centro de ayuda (ERD-HELP-01). */
+export interface HelpApi {
+  getHelp(opts?: { q?: string; category?: string }, signal?: AbortSignal): Promise<HelpIndex>;
+  getHelpArticle(id: string, signal?: AbortSignal): Promise<HelpArticle>;
+}
+
 /** Informe energético (ERD-RPT-01). */
 export interface ReportsApi {
   getEnergyReport(homeId: string, opts?: { from?: string; to?: string }, signal?: AbortSignal): Promise<EnergyReportOut>;
@@ -145,6 +166,8 @@ export interface Api
   extends HomesApi,
     CopilotApi,
     ReportsApi,
+    HelpApi,
+    ClaimsApi,
     BillsApi,
     DashboardApi,
     AnomaliesApi,

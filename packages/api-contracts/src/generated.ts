@@ -796,6 +796,154 @@ export const EnergyReportOutSchema = z.object({
 });
 export type EnergyReportOut = z.infer<typeof EnergyReportOutSchema>;
 
+export const HelpArticleSummarySchema = z.object({
+  "id": z.string(),
+  "category": z.string(),
+  "title": z.string(),
+  "summary": z.string()
+});
+export type HelpArticleSummary = z.infer<typeof HelpArticleSummarySchema>;
+
+export const HelpCategorySchema = z.object({
+  "id": z.string(),
+  "label": z.string()
+});
+export type HelpCategory = z.infer<typeof HelpCategorySchema>;
+
+export const HelpContactSchema = z.object({
+  "email": z.union([z.string(), z.null()]),
+  "note": z.string()
+});
+export type HelpContact = z.infer<typeof HelpContactSchema>;
+
+export const HelpIndexSchema = z.object({
+  "content_version": z.string(),
+  "categories": z.array(HelpCategorySchema),
+  "articles": z.array(HelpArticleSummarySchema),
+  "contact": HelpContactSchema,
+  "query": z.union([z.string(), z.null()]).default(null)
+});
+export type HelpIndex = z.infer<typeof HelpIndexSchema>;
+
+export const HelpArticleSchema = z.object({
+  "id": z.string(),
+  "category": z.string(),
+  "title": z.string(),
+  "summary": z.string(),
+  "body": z.array(z.string()),
+  "tags": z.array(z.string())
+});
+export type HelpArticle = z.infer<typeof HelpArticleSchema>;
+
+export const DownloadUrlOutSchema = z.object({
+  "url": z.string(),
+  "expires_at": z.string().datetime({ offset: true })
+});
+export type DownloadUrlOut = z.infer<typeof DownloadUrlOutSchema>;
+
+export const ClaimInSchema = z.object({
+  "kind": z.enum(["billing_error", "consumption_dispute", "outage_damage", "service_quality", "other"]),
+  "bill_id": z.union([z.string().uuid(), z.null()]).default(null),
+  "subject": z.string().min(3).max(120),
+  "description": z.string().min(10).max(2000),
+  "disputed_amount_dop": z.union([z.string(), z.null()]).default(null),
+  "reference_number": z.union([z.string().max(60), z.null()]).default(null)
+});
+export type ClaimIn = z.infer<typeof ClaimInSchema>;
+
+export const ClaimNoteInSchema = z.object({
+  "note": z.string().min(3).max(2000)
+});
+export type ClaimNoteIn = z.infer<typeof ClaimNoteInSchema>;
+
+export const ClaimCloseInSchema = z.object({
+  "note": z.union([z.string().min(3).max(2000), z.null()]).default(null)
+});
+export type ClaimCloseIn = z.infer<typeof ClaimCloseInSchema>;
+
+export const ClaimReferenceInSchema = z.object({
+  "reference_number": z.string().min(1).max(60)
+});
+export type ClaimReferenceIn = z.infer<typeof ClaimReferenceInSchema>;
+
+export const ClaimOutSchema = z.object({
+  "id": z.string().uuid(),
+  "home_id": z.string().uuid(),
+  "bill_id": z.union([z.string().uuid(), z.null()]),
+  "kind": z.enum(["billing_error", "consumption_dispute", "outage_damage", "service_quality", "other"]),
+  "status": z.enum(["open", "in_review", "resolved", "closed"]),
+  "subject": z.string(),
+  "description": z.string(),
+  "disputed_amount_dop": z.union([z.string(), z.null()]),
+  "reference_number": z.union([z.string(), z.null()]),
+  "created_at": z.string().datetime({ offset: true }),
+  "updated_at": z.string().datetime({ offset: true }),
+  "closed_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "disclaimer": z.string().default("Este caso es un registro tuyo: no afirma que la distribuidora haya cometido un error. La reclamaci\u00f3n formal la presentas t\u00fa ante tu distribuidora.")
+});
+export type ClaimOut = z.infer<typeof ClaimOutSchema>;
+
+export const ClaimEventOutSchema = z.object({
+  "id": z.string().uuid(),
+  "kind": z.enum(["created", "note", "status"]),
+  "actor": z.enum(["user", "support"]),
+  "note": z.union([z.string(), z.null()]),
+  "status_to": z.union([z.enum(["open", "in_review", "resolved", "closed"]), z.null()]),
+  "created_at": z.string().datetime({ offset: true })
+});
+export type ClaimEventOut = z.infer<typeof ClaimEventOutSchema>;
+
+export const EvidenceBillSchema = z.object({
+  "period_start": z.string().date(),
+  "period_end": z.string().date(),
+  "days": z.number().finite().int(),
+  "kwh": MetricSchema,
+  "amount_dop": MetricSchema,
+  "avg_price_per_kwh": z.union([MetricSchema, z.null()])
+});
+export type EvidenceBill = z.infer<typeof EvidenceBillSchema>;
+
+export const EvidencePreviousSchema = z.object({
+  "period_start": z.string().date(),
+  "period_end": z.string().date(),
+  "days": z.number().finite().int(),
+  "kwh": MetricSchema,
+  "amount_dop": MetricSchema,
+  "avg_price_per_kwh": z.union([MetricSchema, z.null()]),
+  "kwh_pct": z.union([MetricSchema, z.null()]),
+  "amount_pct": z.union([MetricSchema, z.null()])
+});
+export type EvidencePrevious = z.infer<typeof EvidencePreviousSchema>;
+
+export const ClaimEvidenceSchema = z.object({
+  "bill": EvidenceBillSchema,
+  "previous": z.union([EvidencePreviousSchema, z.null()]),
+  "readings_in_period": z.number().finite().int(),
+  "document_id": z.union([z.string().uuid(), z.null()]),
+  "captured_at": z.string().datetime({ offset: true }),
+  "note": z.string()
+});
+export type ClaimEvidence = z.infer<typeof ClaimEvidenceSchema>;
+
+export const ClaimDetailOutSchema = z.object({
+  "id": z.string().uuid(),
+  "home_id": z.string().uuid(),
+  "bill_id": z.union([z.string().uuid(), z.null()]),
+  "kind": z.enum(["billing_error", "consumption_dispute", "outage_damage", "service_quality", "other"]),
+  "status": z.enum(["open", "in_review", "resolved", "closed"]),
+  "subject": z.string(),
+  "description": z.string(),
+  "disputed_amount_dop": z.union([z.string(), z.null()]),
+  "reference_number": z.union([z.string(), z.null()]),
+  "created_at": z.string().datetime({ offset: true }),
+  "updated_at": z.string().datetime({ offset: true }),
+  "closed_at": z.union([z.string().datetime({ offset: true }), z.null()]),
+  "disclaimer": z.string().default("Este caso es un registro tuyo: no afirma que la distribuidora haya cometido un error. La reclamaci\u00f3n formal la presentas t\u00fa ante tu distribuidora."),
+  "evidence": z.union([ClaimEvidenceSchema, z.null()]),
+  "events": z.array(ClaimEventOutSchema)
+});
+export type ClaimDetailOut = z.infer<typeof ClaimDetailOutSchema>;
+
 export const ScoreComponentOutSchema = z.object({
   "key": z.enum(["consumption", "efficiency", "habits", "consistency"]),
   "label": z.string(),

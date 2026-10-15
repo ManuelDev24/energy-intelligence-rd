@@ -7,11 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.api.admin_deps import current_admin, require_scope
 from app.database import get_db
-from app.schemas.admin import (AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
+from app.schemas.admin import (AdminBillsSummary, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentsPage,
                                RoleAssignmentCreate, RoleAssignmentOut, RoleAssignmentRevoke, RoleOut, ScopeOut)
 from app.services import admin as admin_service
-from app.services import admin_ocr, admin_overview, admin_users
+from app.services import admin_bills, admin_homes, admin_ocr, admin_overview, admin_users
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -38,6 +38,41 @@ def list_users(request: Request, response: Response, q: str | None = Query(None,
 def user_detail(user_id: uuid.UUID, request: Request, response: Response, user=Depends(current_admin), db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
     return admin_users.get_user(db, user_id, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None))
+
+
+@router.get('/homes', response_model=AdminHomesPage, dependencies=[Depends(require_scope('admin.homes.read'))])
+def list_homes(request: Request, response: Response, q: str | None = Query(None, max_length=64),
+               distributor: Literal['EDESUR', 'EDENORTE', 'EDEESTE', 'Otra'] | None = None,
+               limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=100_000),
+               user=Depends(current_admin), db: Session = Depends(get_db)):
+    """Viviendas por código o identificador. Solo lectura; solo conteos, sin nombre/dirección/miembros. Queda auditado quién consultó (no qué buscó)."""
+    response.headers["Cache-Control"] = "no-store"
+    items, total = admin_homes.list_homes(db, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None),
+                                          q=q, distributor=distributor, limit=limit, offset=offset)
+    return AdminHomesPage(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get('/homes/{home_id}', response_model=AdminHomeDetailOut, dependencies=[Depends(require_scope('admin.homes.read'))])
+def home_detail(home_id: uuid.UUID, request: Request, response: Response, user=Depends(current_admin), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return admin_homes.get_home(db, home_id, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None))
+
+
+@router.get('/bills/summary', response_model=AdminBillsSummary, dependencies=[Depends(require_scope('admin.bills.read'))])
+def bills_summary(request: Request, response: Response, days: int = Query(30, ge=1, le=365),
+                  user=Depends(current_admin), db: Session = Depends(get_db)):
+    """Calidad de los datos de facturas: solo conteos agregados, sin importes ni identificadores de hogar."""
+    response.headers["Cache-Control"] = "no-store"
+    return admin_bills.summary(db, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None), days=days)
+
+
+@router.get('/homes/{home_id}/bills', response_model=AdminHomeBillsPage, dependencies=[Depends(require_scope('admin.bills.read'))])
+def home_bills(home_id: uuid.UUID, request: Request, response: Response, limit: int = Query(25, ge=1, le=100),
+               offset: int = Query(0, ge=0, le=100_000), user=Depends(current_admin), db: Session = Depends(get_db)):
+    """Facturas de UNA vivienda (por su identificador exacto): periodo, kWh, monto, origen y completitud. Auditado."""
+    response.headers["Cache-Control"] = "no-store"
+    items, total = admin_bills.home_bills(db, home_id, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None), limit=limit, offset=offset)
+    return AdminHomeBillsPage(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get('/ocr/jobs', response_model=AdminOcrJobsPage,

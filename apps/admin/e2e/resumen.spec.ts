@@ -29,7 +29,7 @@ test('el admin ve cifras agregadas, salud de servicios y tendencias con tabla al
   await expect(page.getByRole('heading', { name: 'Resumen', level: 1 })).toBeVisible();
   await expect(stat(page, 'Cifras de la plataforma', 'Personas registradas')).toContainText('2');
   await expect(stat(page, 'Cifras de la plataforma', 'Viviendas')).toContainText('1');
-  await expect(stat(page, 'Cifras de la plataforma', 'Facturas')).toContainText('0');
+  await expect(stat(page, 'Cifras de la plataforma', 'Facturas')).toContainText('2');
   await expect(page.getByRole('list', { name: 'Cola de trabajos' }).getByRole('listitem')).toHaveCount(4);
 
   const health = page.getByRole('region', { name: 'Salud de los servicios' });

@@ -27,6 +27,7 @@ dependencies = [
     "pypdfium2>=4.30,<6",
     "pillow-heif>=0.18,<2",
     "anthropic>=1,<2",
+    "reportlab>=4.2,<5",
 ]
 
 [dependency-groups]

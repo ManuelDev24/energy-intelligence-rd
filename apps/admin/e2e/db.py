@@ -15,12 +15,18 @@ OCR_CASES = [("failed", "engine_error", "dead", 3, 3), ("pending", None, "queued
 
 def seed_ocr(conn):
     """Never real data: one synthetic home and documents that only exist as rows (storage is disabled here)."""
-    home = conn.scalar(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'Vivienda sintética E2E','EDESUR') RETURNING id"))
+    home = conn.scalar(text("INSERT INTO homes(id,code,name,distributor,province,address) VALUES(gen_random_uuid(),'E2E-HOME-01','Vivienda sintética E2E','EDESUR','Distrito Nacional','Calle Sintética 1') RETURNING id"))
+    bills = [conn.scalar(text(
+        "INSERT INTO bills(id,home_id,period_start,period_end,kwh,amount_dop,days,source) "
+        "VALUES(gen_random_uuid(),:home,:s,:e,:kwh,:amount,30,'manual') RETURNING id"), {"home": home, "s": s, "e": e, "kwh": kwh, "amount": amount})
+        for s, e, kwh, amount in (("2026-07-01", "2026-07-30", "300", "3900.00"), ("2026-08-01", "2026-08-30", "390", "5460.00"))]
     for index, (state, error, job_status, attempts, max_attempts) in enumerate(OCR_CASES):
         doc = conn.scalar(text(
             "INSERT INTO documents(id,home_id,kind,content_type,size_bytes,sha256,storage_key,uploaded_via,retention_until) "
             "VALUES(gen_random_uuid(),:home,'bill_photo','image/jpeg',2048,:sha,gen_random_uuid()::text,'web',now()+interval '7 days') RETURNING id"),
             {"home": home, "sha": f"{index:x}" * 64})
+        if index == 2:  # el original de la primera factura, con su OCR fallido
+            conn.execute(text("UPDATE documents SET bill_id=:b WHERE id=:d"), {"b": bills[0], "d": doc})
         conn.execute(text("INSERT INTO document_ocr(document_id,status,error_code,draft) VALUES(:d,:s,:e,NULL)"),
                      {"d": doc, "s": state, "e": error})
         conn.execute(text(

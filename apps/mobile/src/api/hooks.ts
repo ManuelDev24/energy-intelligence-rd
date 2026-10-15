@@ -9,7 +9,7 @@ import { AUTH_ENABLED } from '../config';
 import { retryPolicy } from '@energyrd/api-client';
 export { retryPolicy } from '@energyrd/api-client';
 import type { AlertStatus, BillInput, EquipmentInput } from './types';
-import type { GoalInput, Granularity, OutageInput, ReadingInput } from '@energyrd/api-contracts';
+import type { ClaimIn, GoalInput, Granularity, OutageInput, ReadingInput } from '@energyrd/api-contracts';
 import { billInvalidations, goalInvalidations, phase2Keys, readingInvalidations } from './phase2Keys';
 
 const scope = () => AUTH_ENABLED ? ['account', authSession.getSnapshot().epoch] : ['pilot'];
@@ -219,6 +219,32 @@ export function useDeleteReading(homeId: string) {
     onSuccess: () => invalidateAll(qc, readingInvalidations(keys.phase2, homeId)),
   });
 }
+
+/** ERD-CLAIM-01-MOBILE: reclamaciones del hogar. Cada escritura refresca la lista y el caso. */
+export const claimKeys = {
+  list: (homeId: string) => [...scope(), 'claims', homeId] as const,
+  one: (homeId: string, claimId: string) => [...scope(), 'claims', homeId, claimId] as const,
+};
+export const useClaims = (homeId: string | null) =>
+  useQuery(perHome(claimKeys.list(homeId ?? 'none'), homeId, (id, signal) => api.listClaims(id, {}, signal)));
+export const useClaim = (homeId: string | null, claimId: string) =>
+  useQuery(perHome(claimKeys.one(homeId ?? 'none', claimId), homeId, (id, signal) => api.getClaim(id, claimId, signal)));
+export function useClaimMutations(homeId: string) {
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: claimKeys.list(homeId) });
+  return {
+    create: useMutation({ mutationFn: (input: ClaimIn) => api.createClaim(homeId, input), onSuccess: refresh }),
+    note: useMutation({ mutationFn: ({ id, note }: { id: string; note: string }) => api.addClaimNote(homeId, id, note), onSuccess: refresh }),
+    reference: useMutation({ mutationFn: ({ id, reference }: { id: string; reference: string }) => api.setClaimReference(homeId, id, reference), onSuccess: refresh }),
+    close: useMutation({ mutationFn: ({ id }: { id: string }) => api.closeClaim(homeId, id), onSuccess: refresh }),
+  };
+}
+
+/** ERD-HELP-01-MOBILE: ayuda (contenido editorial; no depende de la vivienda). */
+export const useHelp = (q: string, category: string | null) =>
+  useQuery({ queryKey: [...scope(), 'help', q, category] as const, queryFn: ({ signal }) => api.getHelp({ q, ...(category ? { category } : {}) }, signal), enabled: allowed(), retry: retryPolicy, staleTime: 5 * 60_000, placeholderData: (previous) => previous });
+export const useHelpArticle = (id: string, open: boolean) =>
+  useQuery({ queryKey: [...scope(), 'help', 'article', id] as const, queryFn: ({ signal }) => api.getHelpArticle(id, signal), enabled: allowed() && open, retry: retryPolicy, staleTime: 5 * 60_000 });
 
 /** ERD-RPT-01-MOBILE: informe energético del período (solo lectura). */
 export const useEnergyReport = (homeId: string | null, from: string, to: string) =>

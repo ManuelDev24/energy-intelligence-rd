@@ -1,22 +1,26 @@
 // ERD-RPT-01-MOBILE: informe energético en pantalla y para compartir como texto (sin dependencias nativas nuevas).
-// Compartir como PDF necesitaría una librería de impresión (p. ej. expo-print): decisión pendiente, ver docs/qa/ERD-RPT-01.md.
+// PDF: lo genera la API (reportlab) y se abre con un enlace firmado; «Compartir» envía el texto. Sin dependencias nativas nuevas.
 import { energyReportToText, energyReportView, todayRD } from '@energyrd/core';
 import { useState } from 'react';
-import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
+import { api } from '../../api/client';
 import { useEnergyReport } from '../../api/hooks';
+import { API_URL } from '../../config';
 import { Button } from '../../components/Button';
 import { QualityBadge } from '../../components/DataStatusBadge';
 import { Segmented } from '../../components/Segmented';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../../components/states';
 import { useSession } from '../../store/session';
 import { colors, radius, spacing } from '../../theme';
-import { REPORT_PERIODS, reportRange, type ReportPeriodKey } from './model';
+import { pdfOpenUrl, REPORT_PERIODS, reportRange, type ReportPeriodKey } from './model';
 
 export function ReportsScreen() {
   const homeId = useSession((st) => st.selectedHomeId);
   const [period, setPeriod] = useState<ReportPeriodKey>('12m');
   const [shareError, setShareError] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
   const range = reportRange(period, todayRD());
   const { data, isLoading, isError, error, refetch } = useEnergyReport(homeId, range.from, range.to);
 
@@ -26,6 +30,17 @@ export function ReportsScreen() {
     if (!data) return;
     setShareError(false);
     try { await Share.share({ title: 'Informe energético', message: energyReportToText(data) }); } catch { setShareError(true); }
+  };
+
+  // El PDF se abre con un enlace firmado de 2 minutos (el visor del teléfono no puede enviar la sesión): lo guarda o comparte desde ahí.
+  const openPdf = async () => {
+    setPdfBusy(true); setPdfError(false);
+    try {
+      const link = await api.createEnergyReportPdfLink(homeId, range);
+      const url = pdfOpenUrl(API_URL, link.url);
+      if (!url) throw new Error('enlace no válido');
+      await Linking.openURL(url);
+    } catch { setPdfError(true); } finally { setPdfBusy(false); }
   };
 
   return (
@@ -54,6 +69,8 @@ export function ReportsScreen() {
           <View style={{ gap: 2 }}><Text style={s.section} accessibilityRole="header">Notas</Text>{view.notes.map((x) => <Text key={x} style={s.muted}>• {x}</Text>)}</View>
           <Text style={s.muted}>{view.generated}</Text>
           {shareError ? <Text style={s.error} accessibilityRole="alert">No se pudo abrir el menú de compartir.</Text> : null}
+          {pdfError ? <Text style={s.error} accessibilityRole="alert">No se pudo abrir el PDF. Inténtalo de nuevo.</Text> : null}
+          <Button title="Abrir PDF" variant="secondary" loading={pdfBusy} onPress={() => void openPdf()} testID="report-pdf" />
           <Button title="Compartir informe" variant="secondary" onPress={() => void share()} testID="report-share" />
         </View>
       ) : null}

@@ -14,3 +14,9 @@ export function reportRange(key: ReportPeriodKey, today: string): { from: string
   const days = REPORT_PERIODS.find((p) => p.key === key)?.days ?? 364;
   return { from: addDays(today, -days), to: today };
 }
+
+/** URL absoluta del PDF a partir de la ruta que devuelve la API. Solo `/api/v1/reports/download?token=…` del mismo servidor; nada más se abre. */
+export function pdfOpenUrl(apiBase: string, path: string): string | null {
+  if (!/^\/api\/v1\/reports\/download\?token=[A-Za-z0-9._~-]{20,600}$/.test(path)) return null;
+  return `${apiBase.replace(/\/+$/, '')}${path}`;
+}
