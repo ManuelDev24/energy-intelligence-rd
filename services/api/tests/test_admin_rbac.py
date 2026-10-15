@@ -115,9 +115,9 @@ def test_home_membership_does_not_grant_admin_and_vice_versa(auth_client, migrat
 def test_each_role_has_exactly_its_own_scopes(auth_client, migrated):
     cases = {
         'super_admin': {'admin.roles.read', 'admin.roles.manage', 'admin.ocr.read', 'admin.ocr.retry',
-                        'admin.ocr.review', 'admin.audit.read', 'admin.users.read', 'admin.system.read', 'admin.homes.read', 'admin.bills.read'},
+                        'admin.ocr.review', 'admin.audit.read', 'admin.users.read', 'admin.system.read', 'admin.homes.read', 'admin.bills.read', 'admin.ai.read'},
         'operations_admin': {'admin.ocr.read', 'admin.ocr.retry', 'admin.ocr.review', 'admin.users.read',
-                             'admin.system.read', 'admin.homes.read', 'admin.bills.read'},
+                             'admin.system.read', 'admin.homes.read', 'admin.bills.read', 'admin.ai.read'},
         'ocr_reviewer': {'admin.ocr.read', 'admin.ocr.review'},
         'support_readonly': {'admin.users.read', 'admin.homes.read', 'admin.bills.read'},
         'auditor': {'admin.audit.read', 'admin.roles.read'},

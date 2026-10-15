@@ -1,5 +1,6 @@
 import os
 from functools import lru_cache
+from decimal import Decimal
 from typing import Literal, Self
 from urllib.parse import urlsplit
 
@@ -174,6 +175,10 @@ class Settings(BaseSettings):
     COPILOT_DAILY_MESSAGES_PER_USER: int = Field(default=40, ge=1, le=1000)
     COPILOT_DAILY_TOKENS_PER_USER: int = Field(default=400_000, ge=1000, le=20_000_000)
     COPILOT_MAX_CONVERSATIONS_PER_USER: int = Field(default=200, ge=1, le=5000)
+    # ERD-AI-ADMIN-WEB: precio por millón de tokens (USD) SOLO para estimar el costo en la consola. Sin valor no se estima nada (no se inventan precios);
+    # copiar de la tarifa vigente del proveedor al configurar el entorno.
+    COPILOT_PRICE_INPUT_USD_PER_MTOK: Decimal | None = Field(default=None, ge=0, le=10000)
+    COPILOT_PRICE_OUTPUT_USD_PER_MTOK: Decimal | None = Field(default=None, ge=0, le=10000)
 
     @property
     def max_upload_request_bytes(self) -> int:

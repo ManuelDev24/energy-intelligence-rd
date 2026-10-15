@@ -18,6 +18,7 @@ export const NAV_ITEMS = [
   { href: "/roles", label: "Roles y asignaciones", scope: "admin.roles.read" },
   { href: "/usuarios", label: "Usuarios", scope: "admin.users.read" },
   { href: "/viviendas", label: "Viviendas", scope: "admin.homes.read" },
+  { href: "/ia", label: "IA (Copilot)", scope: "admin.ai.read" },
   { href: "/operaciones", label: "Operaciones", scope: "admin.system.read" },
   { href: "/tarifas", label: "Tarifas", scope: "admin.system.read" },
   { href: "/facturas", label: "Facturas", scope: "admin.bills.read" },

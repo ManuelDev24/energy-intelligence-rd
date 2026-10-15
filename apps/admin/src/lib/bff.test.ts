@@ -224,4 +224,18 @@ describe("admin BFF", () => {
     }
     expect(upstream).toHaveBeenCalledTimes(2);
   });
+
+  it("proxies the AI usage as read-only with only the days filter", async () => {
+    cookies(await call("/session"));
+    cookies(await call("/auth/login", "POST", { email: "a@example.com", password: "secret" }));
+    upstream.mockClear();
+    upstream.mockImplementation(async () => Response.json({ days: 14 }));
+    expect((await call("/proxy/ai/usage?days=14")).status).toBe(200);
+    expect(upstream).toHaveBeenCalledTimes(1);
+    for (const [path, method] of [["/proxy/ai/usage?user=x", "GET"], ["/proxy/ai/usage?days=1&days=2", "GET"], ["/proxy/ai/usage", "POST"],
+      ["/proxy/ai/conversations", "GET"], ["/proxy/ai/usage/x", "GET"], ["/proxy/ai", "GET"]] as const) {
+      expect((await call(path, method, method === "GET" ? undefined : {})).status, `${method} ${path}`).toBe(404);
+    }
+    expect(upstream).toHaveBeenCalledTimes(1);
+  });
 });

@@ -13,6 +13,19 @@ OCR_CASES = [("failed", "engine_error", "dead", 3, 3), ("pending", None, "queued
              ("failed", "unreadable", "succeeded", 1, 3)]
 
 
+def seed_copilot(conn, home):
+    """Uso sintético del Copilot (sin texto real): lo justo para ver cifras, errores, herramientas y valoraciones en la consola."""
+    conv = conn.scalar(text("INSERT INTO copilot_conversations(id,home_id,title) VALUES(gen_random_uuid(),:h,'Conversación sintética E2E') RETURNING id"), {"h": home})
+    for status, tokens_in, tokens_out, latency, feedback, tools in (
+            ("complete", 1000, 500, 1200, 1, '["consultar_facturas"]'), ("complete", 2000, 800, 3400, -1, '["consultar_facturas","consultar_tarifa"]'),
+            ("error", 0, 0, 100, None, None)):
+        conn.execute(text(
+            "INSERT INTO copilot_messages(id,conversation_id,role,content,status,tools,model,input_tokens,output_tokens,latency_ms,feedback) "
+            "VALUES(gen_random_uuid(),:c,'assistant','texto sintético de la respuesta',:s,CAST(:t AS jsonb),'modelo-e2e',:i,:o,:l,:f)"),
+            {"c": conv, "s": status, "t": tools, "i": tokens_in, "o": tokens_out, "l": latency, "f": feedback})
+    conn.execute(text("INSERT INTO copilot_usage(subject,day,messages,tokens) VALUES('pilot',(now() AT TIME ZONE 'America/Santo_Domingo')::date,3,4300)"))
+
+
 def seed_ocr(conn):
     """Never real data: one synthetic home and documents that only exist as rows (storage is disabled here)."""
     home = conn.scalar(text("INSERT INTO homes(id,code,name,distributor,province,address) VALUES(gen_random_uuid(),'E2E-HOME-01','Vivienda sintética E2E','EDESUR','Distrito Nacional','Calle Sintética 1') RETURNING id"))
@@ -20,6 +33,7 @@ def seed_ocr(conn):
         "INSERT INTO bills(id,home_id,period_start,period_end,kwh,amount_dop,days,source) "
         "VALUES(gen_random_uuid(),:home,:s,:e,:kwh,:amount,30,'manual') RETURNING id"), {"home": home, "s": s, "e": e, "kwh": kwh, "amount": amount})
         for s, e, kwh, amount in (("2026-07-01", "2026-07-30", "300", "3900.00"), ("2026-08-01", "2026-08-30", "390", "5460.00"))]
+    seed_copilot(conn, home)
     for index, (state, error, job_status, attempts, max_attempts) in enumerate(OCR_CASES):
         doc = conn.scalar(text(
             "INSERT INTO documents(id,home_id,kind,content_type,size_bytes,sha256,storage_key,uploaded_via,retention_until) "

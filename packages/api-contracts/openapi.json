@@ -20,6 +20,313 @@
         "title": "AccountDeletionIn",
         "type": "object"
       },
+      "AdminAiCost": {
+        "description": "Estimaci\u00f3n: tokens \u00d7 precio configurado. Sin precios configurados no se estima nada (`configured=False`).",
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "input_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Usd"
+          },
+          "output_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Usd"
+          },
+          "total_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Usd"
+          }
+        },
+        "required": [
+          "configured",
+          "input_usd",
+          "output_usd",
+          "total_usd"
+        ],
+        "title": "AdminAiCost",
+        "type": "object"
+      },
+      "AdminAiDayRow": {
+        "properties": {
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "people": {
+            "title": "People",
+            "type": "integer"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "messages",
+          "tokens",
+          "people"
+        ],
+        "title": "AdminAiDayRow",
+        "type": "object"
+      },
+      "AdminAiLimits": {
+        "properties": {
+          "daily_messages_per_user": {
+            "title": "Daily Messages Per User",
+            "type": "integer"
+          },
+          "daily_tokens_per_user": {
+            "title": "Daily Tokens Per User",
+            "type": "integer"
+          },
+          "max_conversations_per_user": {
+            "title": "Max Conversations Per User",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "disabled",
+              "anthropic",
+              "fake"
+            ],
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "daily_messages_per_user",
+          "daily_tokens_per_user",
+          "max_conversations_per_user"
+        ],
+        "title": "AdminAiLimits",
+        "type": "object"
+      },
+      "AdminAiModelRow": {
+        "properties": {
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model",
+          "messages",
+          "input_tokens",
+          "output_tokens"
+        ],
+        "title": "AdminAiModelRow",
+        "type": "object"
+      },
+      "AdminAiPersonRow": {
+        "description": "Solo el identificador (seud\u00f3nimo) de la persona: ni correo, ni vivienda, ni contenido.",
+        "properties": {
+          "days_active": {
+            "title": "Days Active",
+            "type": "integer"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "subject",
+          "messages",
+          "tokens",
+          "days_active"
+        ],
+        "title": "AdminAiPersonRow",
+        "type": "object"
+      },
+      "AdminAiToolRow": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ],
+        "title": "AdminAiToolRow",
+        "type": "object"
+      },
+      "AdminAiUsageOut": {
+        "description": "ERD-AI-ADMIN-WEB: agregados del Copilot. Nunca texto de conversaciones, t\u00edtulos, fuentes ni la vivienda.",
+        "properties": {
+          "assistant_messages": {
+            "title": "Assistant Messages",
+            "type": "integer"
+          },
+          "by_day": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAiDayRow"
+            },
+            "title": "By Day",
+            "type": "array"
+          },
+          "by_model": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAiModelRow"
+            },
+            "title": "By Model",
+            "type": "array"
+          },
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Status",
+            "type": "object"
+          },
+          "conversations": {
+            "title": "Conversations",
+            "type": "integer"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/AdminAiCost"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "feedback_down": {
+            "title": "Feedback Down",
+            "type": "integer"
+          },
+          "feedback_up": {
+            "title": "Feedback Up",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "latency_p50_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency P50 Ms"
+          },
+          "latency_p95_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency P95 Ms"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/AdminAiLimits"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAiToolRow"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "top_people": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAiPersonRow"
+            },
+            "title": "Top People",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days",
+          "assistant_messages",
+          "by_status",
+          "input_tokens",
+          "output_tokens",
+          "latency_p50_ms",
+          "latency_p95_ms",
+          "feedback_up",
+          "feedback_down",
+          "conversations",
+          "by_model",
+          "tools",
+          "by_day",
+          "top_people",
+          "cost",
+          "limits"
+        ],
+        "title": "AdminAiUsageOut",
+        "type": "object"
+      },
       "AdminBillOut": {
         "properties": {
           "amount_dop": {
@@ -9086,6 +9393,57 @@
           }
         },
         "summary": "Root"
+      }
+    },
+    "/api/v1/admin/ai/usage": {
+      "get": {
+        "description": "Supervisi\u00f3n del Copilot: solo agregados (uso, tokens, latencia, errores, herramientas, valoraciones). Sin contenido de conversaciones. Auditado.",
+        "operationId": "ai_usage_api_v1_admin_ai_usage_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 14,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAiUsageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ai Usage",
+        "tags": [
+          "admin"
+        ]
       }
     },
     "/api/v1/admin/audit-events": {

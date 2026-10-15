@@ -51,6 +51,14 @@ describe("access", () => {
     expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/usuarios");
   });
 
+  it("shows the AI supervision only with admin.ai.read", () => {
+    const support: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.users.read", "admin.homes.read", "admin.bills.read"] };
+    expect(visibleNavItems(support).map((i) => i.href)).not.toContain("/ia");
+    const ops: MyAccess = { ...NONE, roles: ["operations_admin"], scopes: ["admin.ai.read"] };
+    expect(visibleNavItems(ops).map((i) => i.href)).toEqual(["/mi-acceso", "/ia"]);
+    expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/ia");
+  });
+
   it("shows the bills quality view only with admin.bills.read", () => {
     const homes: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.homes.read"] };
     expect(visibleNavItems(homes).map((i) => i.href)).not.toContain("/facturas");

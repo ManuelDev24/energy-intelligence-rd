@@ -107,7 +107,7 @@ try {
   await ready(`${adminUrl}/login`, web);
   // Next dev compiles each route lazily on first hit; pre-warm every route the spec visits
   // so the FIRST real request in a test isn't also paying first-compile latency.
-  for (const route of ['/', '/mi-acceso', '/roles', '/auditoria', '/ocr', '/ocr/1', '/resumen', '/usuarios', '/viviendas', '/facturas', '/tarifas', '/operaciones', '/viviendas/00000000-0000-4000-8000-000000000000', '/facturas/00000000-0000-4000-8000-000000000000']) {
+  for (const route of ['/', '/mi-acceso', '/roles', '/auditoria', '/ocr', '/ocr/1', '/resumen', '/usuarios', '/viviendas', '/facturas', '/tarifas', '/operaciones', '/ia', '/viviendas/00000000-0000-4000-8000-000000000000', '/facturas/00000000-0000-4000-8000-000000000000']) {
     await fetch(`${adminUrl}${route}`, { redirect: 'manual' }).catch(() => undefined);
   }
   await fetch(`${adminUrl}/api/admin/session`).catch(() => undefined);

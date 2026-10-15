@@ -7,12 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.api.admin_deps import current_admin, require_scope
 from app.database import get_db
-from app.schemas.admin import (AdminJobsPage, AdminJobsSummaryOut, AdminBillsSummary, AdminTariffsOut, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
+from app.schemas.admin import (AdminAiUsageOut, AdminJobsPage, AdminJobsSummaryOut, AdminBillsSummary, AdminTariffsOut, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentsPage,
                                RoleAssignmentCreate, RoleAssignmentOut, RoleAssignmentRevoke, RoleOut, ScopeOut)
 from app.services import admin as admin_service
 from app.services.copilot.tools import today_rd
-from app.services import admin_bills, admin_homes, admin_jobs, admin_tariffs, admin_ocr, admin_overview, admin_users
+from app.services import admin_ai, admin_bills, admin_homes, admin_jobs, admin_tariffs, admin_ocr, admin_overview, admin_users
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -98,6 +98,14 @@ def list_jobs(response: Response, kind: str | None = Query(None, max_length=64),
     response.headers["Cache-Control"] = "no-store"
     items, total = admin_jobs.list_jobs(db, kind=kind, status=status, limit=limit, offset=offset)
     return AdminJobsPage(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get('/ai/usage', response_model=AdminAiUsageOut, dependencies=[Depends(require_scope('admin.ai.read'))])
+def ai_usage(request: Request, response: Response, days: int = Query(14, ge=1, le=90),
+             user=Depends(current_admin), db: Session = Depends(get_db)):
+    """Supervisión del Copilot: solo agregados (uso, tokens, latencia, errores, herramientas, valoraciones). Sin contenido de conversaciones. Auditado."""
+    response.headers["Cache-Control"] = "no-store"
+    return admin_ai.usage(db, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None), days=days)
 
 
 @router.get('/ocr/jobs', response_model=AdminOcrJobsPage,

@@ -393,3 +393,66 @@ class AdminJobsPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class AdminAiModelRow(BaseModel):
+    model: str
+    messages: int
+    input_tokens: int
+    output_tokens: int
+
+
+class AdminAiToolRow(BaseModel):
+    name: str
+    count: int
+
+
+class AdminAiDayRow(BaseModel):
+    day: str
+    messages: int
+    tokens: int
+    people: int
+
+
+class AdminAiPersonRow(BaseModel):
+    """Solo el identificador (seudónimo) de la persona: ni correo, ni vivienda, ni contenido."""
+    subject: str
+    messages: int
+    tokens: int
+    days_active: int
+
+
+class AdminAiCost(BaseModel):
+    """Estimación: tokens × precio configurado. Sin precios configurados no se estima nada (`configured=False`)."""
+    configured: bool
+    input_usd: Decimal | None
+    output_usd: Decimal | None
+    total_usd: Decimal | None
+
+
+class AdminAiLimits(BaseModel):
+    provider: Literal['disabled', 'anthropic', 'fake']
+    model: str
+    daily_messages_per_user: int
+    daily_tokens_per_user: int
+    max_conversations_per_user: int
+
+
+class AdminAiUsageOut(BaseModel):
+    """ERD-AI-ADMIN-WEB: agregados del Copilot. Nunca texto de conversaciones, títulos, fuentes ni la vivienda."""
+    days: int
+    assistant_messages: int
+    by_status: dict[str, int]
+    input_tokens: int
+    output_tokens: int
+    latency_p50_ms: int | None
+    latency_p95_ms: int | None
+    feedback_up: int
+    feedback_down: int
+    conversations: int
+    by_model: list[AdminAiModelRow]
+    tools: list[AdminAiToolRow]
+    by_day: list[AdminAiDayRow]
+    top_people: list[AdminAiPersonRow]
+    cost: AdminAiCost
+    limits: AdminAiLimits
