@@ -36,6 +36,9 @@ from app.schemas.ocr import OcrDraft, OcrJobOut
 from app.schemas.anomaly import AnomalyRecord, AnomalyStatusIn
 from app.schemas.outage import OutageIn, OutageOut, OutageSummaryOut
 from app.schemas.energy_score import EnergyScoreOut
+from app.schemas.claim import ClaimCloseIn, ClaimDetailOut, ClaimIn, ClaimNoteIn, ClaimOut, ClaimReferenceIn
+from app.schemas.documents import DownloadUrlOut
+from app.schemas.help import HelpArticle, HelpIndex
 from app.schemas.report import EnergyReportOut
 from app.schemas.recommendation import GoalProposalOut, RecommendationListOut, RecommendationRecord, RecommendationStatusIn
 from app.schemas.admin import (AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
@@ -51,7 +54,7 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           TariffOut, ContractIn, ContractOut, BillItemsReplace, BillItemsOut, BillAssessment,
           RegisterIn, AccountDeletionIn, LegalOut, PasswordForgotIn, PasswordForgotAccepted, PasswordResetIn,
           PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
-          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, GoalProposalOut, EnergyReportOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn,
+          NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, GoalProposalOut, EnergyReportOut, HelpIndex, HelpArticle, DownloadUrlOut, ClaimIn, ClaimNoteIn, ClaimCloseIn, ClaimReferenceIn, ClaimOut, ClaimDetailOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn,
           AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
           AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate, RoleAssignmentOut,
           RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut,

@@ -7,7 +7,7 @@ import { Button } from '../../components/ui';
 import { useSession } from '../../store/session';
 import { colors, spacing } from '../../theme';
 
-export function ProfileScreen({ onHome, onService, onHomes, onAccountSettings, onShare, onOutages, onReports }: { onHome: () => void; onService: () => void; onHomes: () => void; onAccountSettings: () => void; onShare: () => void; onOutages?: () => void; onReports?: () => void }) {
+export function ProfileScreen({ onHome, onService, onHomes, onAccountSettings, onShare, onOutages, onReports, onHelp, onClaims }: { onHome: () => void; onService: () => void; onHomes: () => void; onAccountSettings: () => void; onShare: () => void; onOutages?: () => void; onReports?: () => void; onHelp?: () => void; onClaims?: () => void }) {
   const homeId = useSession(state => state.selectedHomeId);
   const home = useHomes().data?.find(item => item.id === homeId);
   return <ScrollView style={s.screen} contentContainerStyle={s.content} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
@@ -19,6 +19,8 @@ export function ProfileScreen({ onHome, onService, onHomes, onAccountSettings, o
       <Button title="Mi servicio" testID="profile-service" variant="secondary" disabled={!homeId} onPress={onService} />
       {onOutages ? <Button title="Apagones" testID="profile-outages" variant="secondary" disabled={!homeId} onPress={onOutages} /> : null}
       {onReports ? <Button title="Informe energético" testID="profile-reports" variant="secondary" disabled={!homeId} onPress={onReports} /> : null}
+      {onClaims ? <Button title="Reclamaciones" testID="profile-claims" variant="secondary" disabled={!homeId} onPress={onClaims} /> : null}
+      {onHelp ? <Button title="Ayuda" testID="profile-help" variant="secondary" onPress={onHelp} /> : null}
       <Button title="Cambiar vivienda" testID="profile-homes" variant="secondary" onPress={onHomes} />
     </View>
     <View style={s.card}>

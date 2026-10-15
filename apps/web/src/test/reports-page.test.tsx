@@ -44,6 +44,16 @@ describe("ReportsPage", () => {
     expect(spy).toHaveBeenCalledWith(HOME_A, expect.objectContaining({ from: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), to: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) }), expect.anything());
   });
 
+  it("ofrece descargar el PDF con el período elegido, solo cuando hay informe", async () => {
+    vi.spyOn(getApi(), "getEnergyReport").mockResolvedValue(full as never);
+    renderWithApp(<ReportsPage />, HOME_A);
+    const link = await screen.findByRole("link", { name: /Descargar PDF/ });
+    expect(link).toHaveAttribute("href", expect.stringMatching(new RegExp(`^/api/bff/homes/${HOME_A}/reports/energy\\.pdf\\?from=\\d{4}-\\d{2}-\\d{2}&to=\\d{4}-\\d{2}-\\d{2}$`)));
+    expect(link).toHaveAttribute("download");
+    fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "2999-01-01" } });
+    await waitFor(() => expect(screen.queryByRole("link", { name: /Descargar PDF/ })).toBeNull());
+  });
+
   it("sin facturas lo dice y no inventa totales; imprimir llama al diálogo del navegador", async () => {
     const print = vi.fn();
     vi.stubGlobal("print", print);
@@ -51,7 +61,7 @@ describe("ReportsPage", () => {
     const report = await screen.findByTestId("energy-report");
     expect(within(report).getByText("No hay facturas registradas en este período.")).toBeInTheDocument();
     expect(within(report).queryByText("Consumo total")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Imprimir o guardar PDF/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Imprimir$/ }));
     expect(print).toHaveBeenCalled();
     vi.unstubAllGlobals();
   });

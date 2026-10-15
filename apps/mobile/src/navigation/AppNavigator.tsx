@@ -19,6 +19,10 @@ import { BillOcrScreen } from '../features/bills/BillOcrScreen';
 import { BillsScreen } from '../features/bills/BillsScreen';
 import { BillDetailScreen } from '../features/bills/detail/BillDetailScreen';
 import { BillItemsEditorScreen } from '../features/bills/detail/BillItemsEditorScreen';
+import { ClaimDetailScreen } from '../features/claims/ClaimDetailScreen';
+import { ClaimFormScreen } from '../features/claims/ClaimFormScreen';
+import { ClaimsScreen } from '../features/claims/ClaimsScreen';
+import { HelpScreen } from '../features/help/HelpScreen';
 import { ReportsScreen } from '../features/reports/ReportsScreen';
 import { CopilotScreen } from '../features/copilot/CopilotScreen';
 import type { LinkTarget } from '../features/copilot/model';
@@ -63,6 +67,10 @@ export type RootStackParams = {
   Outages: undefined;
   Copilot: undefined;
   Reports: undefined;
+  Help: undefined;
+  Claims: undefined;
+  ClaimForm: undefined;
+  ClaimDetail: { claimId: string };
   OutageForm: { outageId?: string } | undefined;
 };
 // 5 pestañas: cambiar de vivienda es poco frecuente y vive en el encabezado (hoja "Homes").
@@ -277,6 +285,16 @@ function DomainNavigator() {
             else { const homeId = useSession.getState().selectedHomeId; if (homeId) navigation.navigate('BillDetail', { homeId, billId: target.billId }); }
           }} />}
         </Stack.Screen>
+        <Stack.Screen name="Claims" options={{ title: 'Reclamaciones' }}>
+          {({ navigation }) => <ClaimsScreen onNew={() => navigation.navigate('ClaimForm')} onOpen={(claimId) => navigation.navigate('ClaimDetail', { claimId })} />}
+        </Stack.Screen>
+        <Stack.Screen name="ClaimForm" options={{ title: 'Nueva reclamación' }}>
+          {({ navigation }) => <ClaimFormScreen onDone={(claimId) => navigation.replace('ClaimDetail', { claimId })} />}
+        </Stack.Screen>
+        <Stack.Screen name="ClaimDetail" options={{ title: 'Reclamación' }}>
+          {({ route }) => <ClaimDetailScreen claimId={route.params.claimId} />}
+        </Stack.Screen>
+        <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Ayuda' }} />
         <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Informe energético' }} />
         <Stack.Screen name="Outages" options={{ title: 'Apagones' }}>
           {({ navigation }) => <OutagesScreen onAdd={() => navigation.navigate('OutageForm')} onEdit={(outageId) => navigation.navigate('OutageForm', { outageId })} />}
@@ -288,7 +306,7 @@ function DomainNavigator() {
           {({ navigation }) => <GoalFormScreen onDone={() => navigation.goBack()} />}
         </Stack.Screen>
         <Stack.Screen name="Profile" options={{ title: 'Perfil' }}>
-          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} onAccountSettings={() => navigation.navigate('AccountSettings')} onShare={() => navigation.navigate('ShareHome')} onOutages={() => navigation.navigate('Outages')} onReports={() => navigation.navigate('Reports')} />}
+          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} onAccountSettings={() => navigation.navigate('AccountSettings')} onShare={() => navigation.navigate('ShareHome')} onOutages={() => navigation.navigate('Outages')} onReports={() => navigation.navigate('Reports')} onHelp={() => navigation.navigate('Help')} onClaims={() => navigation.navigate('Claims')} />}
         </Stack.Screen>
         <Stack.Screen name="HomeProfile" component={HomeProfileScreen} options={{ title: 'Mi vivienda' }} />
         <Stack.Screen name="ServiceProfile" component={ServiceProfileScreen} options={{ title: 'Mi servicio' }} />

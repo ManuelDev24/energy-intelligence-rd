@@ -81,3 +81,81 @@ def test_report_is_private_to_the_home(auth_client):
     assert auth_client.get(url(home), headers=bearer(alice)).status_code == 200
     assert auth_client.get(url(home), headers=bearer(bob)).status_code == 404
     assert auth_client.get(url(home)).status_code == 401
+
+
+# ---------- PDF ----------
+def pdf_text(content: bytes) -> str:
+    import pypdfium2 as pdfium
+    doc = pdfium.PdfDocument(content)
+    try:
+        return "\n".join(doc[i].get_textpage().get_text_range() for i in range(len(doc)))
+    finally:
+        doc.close()
+
+
+def test_pdf_has_the_same_content_labels_and_safe_headers(client):
+    home = seeded(client)
+    client.post(eq_url(home), json={"name": "Aire <b>sala</b> & co", "room": "Sala", "power_w": "1500", "hours_per_day": "6", "kind": "air_conditioner"})
+    r = client.get(f"/api/v1/homes/{home}/reports/energy.pdf", params={"from": "2026-05-01", "to": "2026-06-30"})
+    assert r.status_code == 200 and r.content.startswith(b"%PDF")
+    assert r.headers["content-type"] == "application/pdf" and r.headers["Cache-Control"] == "private, no-store"
+    assert r.headers["Content-Disposition"] == 'attachment; filename="informe-energetico-2026-05-01-2026-06-30.pdf"'
+    assert r.headers["X-Content-Type-Options"] == "nosniff"
+    text = pdf_text(r.content)
+    for expected in ("Informe energético", "Consumo total", "640 kWh", "RD$ 8,320.00", "Precio medio (estimado)", "Equipos que más pesan (estimado)",
+                     "Aire <b>sala</b> & co", "Fuentes", "no tiene medición diaria ni por hora", "no son mediciones ni garantías"):
+        assert expected in text, expected
+    assert len(r.content) < 200_000
+
+
+def test_pdf_without_bills_says_so(client):
+    home = mk_home(client)["id"]
+    text = pdf_text(client.get(f"/api/v1/homes/{home}/reports/energy.pdf", params={"from": "2026-01-01", "to": "2026-01-31"}).content)
+    assert "No hay facturas registradas en este período." in text and "Consumo total" not in text
+
+
+def test_pdf_period_validation_matches_the_json_report(client):
+    home = mk_home(client)["id"]
+    assert client.get(f"/api/v1/homes/{home}/reports/energy.pdf", params={"from": "2026-06-30", "to": "2026-06-01"}).status_code == 422
+
+
+def test_signed_link_downloads_the_pdf_without_a_session_and_expires(auth_client, migrated, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from app.services import report_link
+    alice, bob = register(auth_client), register(auth_client, "bob@example.com")
+    home = auth_client.post("/api/v1/homes", headers=bearer(alice), json={"name": "Casa", "distributor": "EDESUR"}).json()["id"]
+    link = auth_client.post(f"/api/v1/homes/{home}/reports/energy/pdf-link", params={"from": "2026-01-01", "to": "2026-01-31"}, headers=bearer(alice))
+    assert link.status_code == 200 and link.headers["Cache-Control"] == "no-store"
+    url = link.json()["url"]
+    assert url.startswith("/api/v1/reports/download?token=rpt1.")
+    got = auth_client.get(url)                                           # sin Authorization: la firma sustituye a la sesión
+    assert got.status_code == 200 and got.content.startswith(b"%PDF") and got.headers["content-type"] == "application/pdf"
+    assert auth_client.post(f"/api/v1/homes/{home}/reports/energy/pdf-link", headers=bearer(bob)).status_code == 404
+    assert auth_client.post(f"/api/v1/homes/{home}/reports/energy/pdf-link").status_code == 401
+    token = url.split("token=")[1]
+    for bad in (token[:-2] + "xx", "rpt1.abc.def", "v1." + token.split(".", 1)[1], "x" * 40):
+        assert auth_client.get("/api/v1/reports/download", params={"token": bad}).status_code in (404, 422), bad
+    past = datetime.now(timezone.utc) + timedelta(seconds=report_link.TTL_SECONDS + 5)
+    import pytest
+    from app.services.errors import NotFound
+    with pytest.raises(NotFound):
+        report_link.verify_report(token, now=past)
+    # Quien deja la vivienda pierde el enlace aunque no haya vencido.
+    with migrated.begin() as c:
+        c.execute(__import__("sqlalchemy").text("DELETE FROM home_members WHERE user_id = (SELECT id FROM users WHERE email = 'alice@example.com')"))
+    assert auth_client.get(url).status_code == 404
+
+
+def test_a_document_token_is_not_a_report_token():
+    import uuid
+    from datetime import date
+    from app.services import report_link
+    from app.services.storage.signing import sign_download, verify_download
+    doc_token, _ = sign_download(uuid.uuid4(), uuid.uuid4(), None)
+    rep_token, _ = report_link.sign_report(uuid.uuid4(), None, date(2026, 1, 1), date(2026, 1, 31))
+    import pytest
+    from app.services.errors import NotFound
+    with pytest.raises(NotFound):
+        report_link.verify_report(doc_token)
+    with pytest.raises(NotFound):
+        verify_download(rep_token)

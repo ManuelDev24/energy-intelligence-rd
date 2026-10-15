@@ -342,6 +342,26 @@ export function createMockApi(): Api {
     }),
     listRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
     refreshRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
+    listClaims: async () => [],
+    createClaim: async () => {
+      throw new ApiError(409, "Sin implementar en el simulacro");
+    },
+    getClaim: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
+    addClaimNote: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
+    setClaimReference: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
+    closeClaim: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
+    getHelp: async () => ({ content_version: "test", categories: [{ id: "cuenta", label: "Cuenta y privacidad" }], articles: [], contact: { email: null, note: "El correo de soporte aún no está configurado en este entorno." }, query: null }),
+    getHelpArticle: async () => {
+      throw new ApiError(404, "No encontrado");
+    },
     getEnergyReport: async (homeId) => ({
       home_id: homeId, home: { id: homeId, name: "Casa", distributor: "EDESUR", province: null, municipality: null },
       period: { period_from: "2025-10-16", period_to: "2026-10-14", days: 364 }, generated_at: "2026-10-14T12:00:00Z", bills: [],

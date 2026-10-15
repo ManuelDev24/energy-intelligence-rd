@@ -17,3 +17,4 @@ export * from './url';
 export * from './ocr';
 export * from './copilot';
 export * from './report';
+export * from './claims';

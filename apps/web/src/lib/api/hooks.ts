@@ -128,6 +128,32 @@ export const useDecidedRecommendations = (homeId: string) =>
     enabled: enabled(homeId),
   });
 
+/** ERD-CLAIM-01: reclamaciones del hogar. Cada escritura refresca la lista y el caso. */
+export const claimKeys = {
+  list: (homeId: string) => ["homes", homeId, "claims"] as const,
+  one: (homeId: string, claimId: string) => ["homes", homeId, "claims", claimId] as const,
+};
+export const useClaims = (homeId: string) =>
+  useQuery({ queryKey: claimKeys.list(homeId), queryFn: ({ signal }) => getApi().listClaims(homeId, {}, signal), enabled: enabled(homeId) });
+export const useClaim = (homeId: string, claimId: string) =>
+  useQuery({ queryKey: claimKeys.one(homeId, claimId), queryFn: ({ signal }) => getApi().getClaim(homeId, claimId, signal), enabled: enabled(homeId) && !!claimId });
+export function useClaimMutations(homeId: string) {
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: claimKeys.list(homeId) });
+  return {
+    create: useMutation({ mutationFn: (input: import("@energyrd/api-contracts").ClaimIn) => getApi().createClaim(homeId, input), onSuccess: refresh }),
+    note: useMutation({ mutationFn: ({ id, note }: { id: string; note: string }) => getApi().addClaimNote(homeId, id, note), onSuccess: refresh }),
+    reference: useMutation({ mutationFn: ({ id, reference }: { id: string; reference: string }) => getApi().setClaimReference(homeId, id, reference), onSuccess: refresh }),
+    close: useMutation({ mutationFn: ({ id, note }: { id: string; note?: string }) => getApi().closeClaim(homeId, id, note), onSuccess: refresh }),
+  };
+}
+
+/** ERD-HELP-01: ayuda (contenido editorial, no depende vivienda). */
+export const useHelp = (q: string, category: string | null) =>
+  useQuery({ queryKey: ["help", q, category] as const, queryFn: ({ signal }) => getApi().getHelp({ q, ...(category ? { category } : {}) }, signal), staleTime: 5 * 60_000, placeholderData: keepPreviousData });
+export const useHelpArticle = (id: string, open: boolean) =>
+  useQuery({ queryKey: ["help", "article", id] as const, queryFn: ({ signal }) => getApi().getHelpArticle(id, signal), enabled: open, staleTime: 5 * 60_000 });
+
 /** ERD-RPT-01: informe energético del período (solo lectura). */
 export const useEnergyReport = (homeId: string, from: string, to: string, ready = true) =>
   useQuery({ queryKey: ["homes", homeId, "report", from, to] as const, queryFn: ({ signal }) => getApi().getEnergyReport(homeId, { from, to }, signal), enabled: enabled(homeId) && ready });

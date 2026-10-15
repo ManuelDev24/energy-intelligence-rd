@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronsUpDown, FileText, Gauge, Home as HomeIcon, NotebookPen, PiggyBank, Plug, Sparkles, Zap, Receipt, BarChart3, Target, UserRound } from "lucide-react";
+import { Bell, ChevronsUpDown, FileText, LifeBuoy, MessageSquareWarning, Gauge, Home as HomeIcon, NotebookPen, PiggyBank, Plug, Sparkles, Zap, Receipt, BarChart3, Target, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -22,6 +22,8 @@ const NAV = [
   { href: "/outages", label: "Apagones", icon: Zap, sideOnly: true },
   { href: "/copilot", label: "Copilot", icon: Sparkles, sideOnly: true },
   { href: "/reports", label: "Informes", icon: FileText, sideOnly: true },
+  { href: "/claims", label: "Reclamaciones", icon: MessageSquareWarning, sideOnly: true },
+  { href: "/help", label: "Ayuda", icon: LifeBuoy, sideOnly: true },
   { href: "/profile", label: "Perfil", icon: UserRound, sideOnly: true },
 ] as const;
 

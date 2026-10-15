@@ -30,9 +30,16 @@ test.describe("Informes", () => {
     await expect(report.getByRole("region", { name: "Fuentes" })).toContainText("registradas por ti — real");
     await expect(report.getByRole("region", { name: "Notas" })).toContainText("no tiene medición diaria ni por hora");
 
+    // Descargar PDF: el navegador recibe un PDF real con el contenido del informe.
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: /Descargar PDF/ }).click()]);
+    expect(download.suggestedFilename()).toBe("informe-energetico-2026-07-01-2026-08-31.pdf");
+    const bytes = await (await import("node:fs/promises")).readFile((await download.path())!);
+    expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(bytes.length).toBeGreaterThan(1500);
+
     // Imprimir abre el diálogo del navegador; aquí se intercepta para comprobar que se invoca.
     await page.evaluate(() => { (window as unknown as { __printed: number }).__printed = 0; window.print = () => { (window as unknown as { __printed: number }).__printed += 1; }; });
-    await page.getByRole("button", { name: /Imprimir o guardar PDF/ }).click();
+    await page.getByRole("button", { name: /^Imprimir$/ }).click();
     expect(await page.evaluate(() => (window as unknown as { __printed: number }).__printed)).toBe(1);
 
     for (const [width, height] of [[360, 740], [768, 1024], [1280, 800]] as const) {

@@ -1834,6 +1834,515 @@
         "title": "Body_upload_document_api_v1_homes__home_id__documents_post",
         "type": "object"
       },
+      "ClaimCloseIn": {
+        "additionalProperties": false,
+        "description": "Cierre del caso; la nota es opcional (el cuerpo puede ir vac\u00edo: `{}`).",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "ClaimCloseIn",
+        "type": "object"
+      },
+      "ClaimDetailOut": {
+        "properties": {
+          "bill_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bill Id"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "disclaimer": {
+            "default": "Este caso es un registro tuyo: no afirma que la distribuidora haya cometido un error. La reclamaci\u00f3n formal la presentas t\u00fa ante tu distribuidora.",
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "disputed_amount_dop": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disputed Amount Dop"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimEventOut"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClaimEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "billing_error",
+              "consumption_dispute",
+              "outage_damage",
+              "service_quality",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reference_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Number"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "in_review",
+              "resolved",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "home_id",
+          "bill_id",
+          "kind",
+          "status",
+          "subject",
+          "description",
+          "disputed_amount_dop",
+          "reference_number",
+          "created_at",
+          "updated_at",
+          "closed_at",
+          "evidence",
+          "events"
+        ],
+        "title": "ClaimDetailOut",
+        "type": "object"
+      },
+      "ClaimEventOut": {
+        "properties": {
+          "actor": {
+            "enum": [
+              "user",
+              "support"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "created",
+              "note",
+              "status"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status_to": {
+            "anyOf": [
+              {
+                "enum": [
+                  "open",
+                  "in_review",
+                  "resolved",
+                  "closed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status To"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "actor",
+          "note",
+          "status_to",
+          "created_at"
+        ],
+        "title": "ClaimEventOut",
+        "type": "object"
+      },
+      "ClaimEvidence": {
+        "description": "Resumen congelado al crear el caso, con datos de la propia persona. No prueba por s\u00ed solo un error de la distribuidora.",
+        "properties": {
+          "bill": {
+            "$ref": "#/components/schemas/EvidenceBill"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidencePrevious"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "readings_in_period": {
+            "title": "Readings In Period",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bill",
+          "previous",
+          "readings_in_period",
+          "document_id",
+          "captured_at",
+          "note"
+        ],
+        "title": "ClaimEvidence",
+        "type": "object"
+      },
+      "ClaimIn": {
+        "additionalProperties": false,
+        "properties": {
+          "bill_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bill Id"
+          },
+          "description": {
+            "maxLength": 2000,
+            "minLength": 10,
+            "title": "Description",
+            "type": "string"
+          },
+          "disputed_amount_dop": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disputed Amount Dop"
+          },
+          "kind": {
+            "enum": [
+              "billing_error",
+              "consumption_dispute",
+              "outage_damage",
+              "service_quality",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reference_number": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Number"
+          },
+          "subject": {
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "subject",
+          "description"
+        ],
+        "title": "ClaimIn",
+        "type": "object"
+      },
+      "ClaimNoteIn": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "ClaimNoteIn",
+        "type": "object"
+      },
+      "ClaimOut": {
+        "properties": {
+          "bill_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bill Id"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "disclaimer": {
+            "default": "Este caso es un registro tuyo: no afirma que la distribuidora haya cometido un error. La reclamaci\u00f3n formal la presentas t\u00fa ante tu distribuidora.",
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "disputed_amount_dop": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disputed Amount Dop"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "billing_error",
+              "consumption_dispute",
+              "outage_damage",
+              "service_quality",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reference_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Number"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "in_review",
+              "resolved",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "home_id",
+          "bill_id",
+          "kind",
+          "status",
+          "subject",
+          "description",
+          "disputed_amount_dop",
+          "reference_number",
+          "created_at",
+          "updated_at",
+          "closed_at"
+        ],
+        "title": "ClaimOut",
+        "type": "object"
+      },
+      "ClaimReferenceIn": {
+        "additionalProperties": false,
+        "description": "N\u00famero que la distribuidora le dio a la persona al presentar la reclamaci\u00f3n formal.",
+        "properties": {
+          "reference_number": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Reference Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference_number"
+        ],
+        "title": "ClaimReferenceIn",
+        "type": "object"
+      },
       "Comparison": {
         "properties": {
           "amount_delta": {
@@ -3455,6 +3964,116 @@
         "title": "EquipmentOut",
         "type": "object"
       },
+      "EvidenceBill": {
+        "properties": {
+          "amount_dop": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "avg_price_per_kwh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end",
+          "days",
+          "kwh",
+          "amount_dop",
+          "avg_price_per_kwh"
+        ],
+        "title": "EvidenceBill",
+        "type": "object"
+      },
+      "EvidencePrevious": {
+        "properties": {
+          "amount_dop": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "amount_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avg_price_per_kwh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "kwh_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end",
+          "days",
+          "kwh",
+          "amount_dop",
+          "avg_price_per_kwh",
+          "kwh_pct",
+          "amount_pct"
+        ],
+        "title": "EvidencePrevious",
+        "type": "object"
+      },
       "FeedbackIn": {
         "additionalProperties": false,
         "properties": {
@@ -3893,6 +4512,166 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HelpArticle": {
+        "properties": {
+          "body": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Body",
+            "type": "array"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "title",
+          "summary",
+          "body",
+          "tags"
+        ],
+        "title": "HelpArticle",
+        "type": "object"
+      },
+      "HelpArticleSummary": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "title",
+          "summary"
+        ],
+        "title": "HelpArticleSummary",
+        "type": "object"
+      },
+      "HelpCategory": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "HelpCategory",
+        "type": "object"
+      },
+      "HelpContact": {
+        "description": "V\u00eda de escalaci\u00f3n. `email` es null si el entorno no tiene un correo de soporte configurado: la app no inventa uno.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "note"
+        ],
+        "title": "HelpContact",
+        "type": "object"
+      },
+      "HelpIndex": {
+        "properties": {
+          "articles": {
+            "items": {
+              "$ref": "#/components/schemas/HelpArticleSummary"
+            },
+            "title": "Articles",
+            "type": "array"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/HelpCategory"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/HelpContact"
+          },
+          "content_version": {
+            "title": "Content Version",
+            "type": "string"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          }
+        },
+        "required": [
+          "content_version",
+          "categories",
+          "articles",
+          "contact"
+        ],
+        "title": "HelpIndex",
         "type": "object"
       },
       "HomeCreate": {
@@ -8859,6 +9638,115 @@
         ]
       }
     },
+    "/api/v1/help": {
+      "get": {
+        "operationId": "help_index_api_v1_help_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpIndex"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Help Index",
+        "tags": [
+          "help"
+        ]
+      }
+    },
+    "/api/v1/help/articles/{article_id}": {
+      "get": {
+        "operationId": "help_article_api_v1_help_articles__article_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "article_id",
+            "required": true,
+            "schema": {
+              "title": "Article Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpArticle"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Help Article",
+        "tags": [
+          "help"
+        ]
+      }
+    },
     "/api/v1/homes": {
       "get": {
         "operationId": "list_homes_api_v1_homes_get",
@@ -10390,6 +11278,429 @@
         "summary": "Validate Bill",
         "tags": [
           "bills"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/claims": {
+      "get": {
+        "operationId": "list_claims_api_v1_homes__home_id__claims_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "open",
+                    "in_review",
+                    "resolved",
+                    "closed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClaimOut"
+                  },
+                  "title": "Response List Claims Api V1 Homes  Home Id  Claims Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Claims",
+        "tags": [
+          "claims"
+        ]
+      },
+      "post": {
+        "description": "Crea el caso con un resumen NEUTRAL de tus datos. No presenta nada ante la distribuidora ni afirma que haya un error.",
+        "operationId": "create_claim_api_v1_homes__home_id__claims_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Claim",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/claims/{claim_id}": {
+      "get": {
+        "operationId": "get_claim_api_v1_homes__home_id__claims__claim_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Claim Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Claim",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/claims/{claim_id}/close": {
+      "post": {
+        "operationId": "close_claim_api_v1_homes__home_id__claims__claim_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Claim Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ClaimCloseIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Close Claim",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/claims/{claim_id}/notes": {
+      "post": {
+        "operationId": "add_note_api_v1_homes__home_id__claims__claim_id__notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Claim Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimNoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Note",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/claims/{claim_id}/reference": {
+      "put": {
+        "operationId": "set_reference_api_v1_homes__home_id__claims__claim_id__reference_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Claim Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimReferenceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Reference",
+        "tags": [
+          "claims"
         ]
       }
     },
@@ -13265,6 +14576,170 @@
           }
         ],
         "summary": "Energy Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/reports/energy.pdf": {
+      "get": {
+        "description": "El mismo informe como PDF descargable (con sesi\u00f3n).",
+        "operationId": "energy_report_pdf_api_v1_homes__home_id__reports_energy_pdf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Energy Report Pdf",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/reports/energy/pdf-link": {
+      "post": {
+        "description": "Enlace firmado de 2 minutos para abrir el PDF en el navegador o el visor del tel\u00e9fono (que no pueden enviar Authorization).",
+        "operationId": "energy_report_pdf_link_api_v1_homes__home_id__reports_energy_pdf_link_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadUrlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Energy Report Pdf Link",
         "tags": [
           "reports"
         ]

@@ -1,7 +1,7 @@
 "use client";
 
 import { energyReportView, todayRD } from "@energyrd/core";
-import { FileText, Printer } from "lucide-react";
+import { Download, FileText, Printer } from "lucide-react";
 import { useState } from "react";
 import { QualityBadge } from "@/components/quality-badge";
 import { QueryState } from "@/components/query-state";
@@ -28,14 +28,20 @@ export default function ReportsPage() {
       <header className="flex flex-col gap-1 print:hidden">
         <h1 className="flex items-center gap-2 text-2xl font-bold"><FileText className="h-6 w-6 text-primary" aria-hidden /> Informes</h1>
         <p className="text-pretty text-sm text-muted-foreground">
-          Resumen de tu consumo y gasto en el período que elijas, con la calidad de cada dato. Puedes imprimirlo o guardarlo como PDF.
+          Resumen de tu consumo y gasto en el período que elijas, con la calidad de cada dato. Puedes descargarlo como PDF o imprimirlo.
         </p>
       </header>
       <form className="flex flex-wrap items-end gap-3 print:hidden" aria-label="Período del informe" onSubmit={event => event.preventDefault()}>
         <Field label="Desde" type="date" width="sm" value={from} max={today} onChange={e => setFrom(e.target.value)} />
         <Field label="Hasta" type="date" width="sm" value={to} max={today} onChange={e => setTo(e.target.value)}
           error={valid ? undefined : "Elige un período de hasta 366 días que termine hoy o antes."} />
-        <Button type="button" variant="outline" onClick={() => window.print()} disabled={!view}><Printer className="h-4 w-4" aria-hidden /> Imprimir o guardar PDF</Button>
+        {view && homeId ? (
+          <a href={`/api/bff/homes/${homeId}/reports/energy.pdf?from=${from}&to=${to}`} download
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <Download className="h-4 w-4" aria-hidden /> Descargar PDF
+          </a>
+        ) : null}
+        <Button type="button" variant="outline" onClick={() => window.print()} disabled={!view}><Printer className="h-4 w-4" aria-hidden /> Imprimir</Button>
       </form>
       {valid ? (
         <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()}>

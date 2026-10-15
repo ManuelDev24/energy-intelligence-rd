@@ -124,4 +124,67 @@ describe("recomendaciones por BFF (ERD-SAVE-01)", () => {
     expect((await handleBff(new Request(`${url}/pdf`, { headers: { cookie } }), config, refused)).status).toBe(404);
     expect(refused).not.toHaveBeenCalled();
   });
+
+  it("ayuda: GET de índice con búsqueda y categoría acotadas y de artículos por id; nada más", async () => {
+    const index = { content_version: "v", categories: [{ id: "cuenta", label: "Cuenta" }], articles: [], contact: { email: null, note: "n" }, query: null };
+    const article = { id: "real-estimado", category: "datos", title: "t", summary: "s", body: ["b"], tags: [] };
+    const upstream = vi.fn().mockResolvedValueOnce(json(index)).mockResolvedValueOnce(json(article));
+    const url = "http://localhost:3000/api/bff/help";
+    expect((await handleBff(new Request(`${url}?q=contrase%C3%B1a&category=cuenta`, { headers: { cookie } }), config, upstream)).status).toBe(200);
+    expect((await handleBff(new Request(`${url}/articles/real-estimado`, { headers: { cookie } }), config, upstream)).status).toBe(200);
+    expect(upstream.mock.calls[0][0]).toContain("/api/v1/help?q=contrase%C3%B1a&category=cuenta");
+    const refused = vi.fn();
+    for (const bad of [`${url}?q=${"x".repeat(81)}`, `${url}?category=../x`, `${url}?x=1`, `${url}/articles/A_B`, `${url}/otra`]) {
+      expect([400, 404], bad).toContain((await handleBff(new Request(bad, { headers: { cookie } }), config, refused)).status);
+    }
+    expect((await handleBff(write(url, "POST", {}), config, refused)).status).toBe(404);
+    expect(refused).not.toHaveBeenCalled();
+  });
+
+  it("reclamaciones: cuerpos estrictos, estado cerrado y vivienda/caso verificados en la respuesta", async () => {
+    const CLAIM = "cccccccc-0000-4000-8000-0000000000c1";
+    const claim = { id: CLAIM, home_id: HOME, bill_id: null, kind: "other", status: "open", subject: "Voltaje bajo", description: "Hay variaciones de voltaje.", disputed_amount_dop: null, reference_number: null,
+      created_at: "2026-10-14T10:00:00Z", updated_at: "2026-10-14T10:00:00Z", closed_at: null, disclaimer: "d", evidence: null, events: [] };
+    const url = `http://localhost:3000/api/bff/homes/${HOME}/claims`;
+    const upstream = vi.fn().mockResolvedValueOnce(json([{ ...claim, evidence: undefined, events: undefined }])).mockResolvedValueOnce(json(claim, 201)).mockResolvedValueOnce(json(claim)).mockResolvedValueOnce(json(claim, 201));
+    expect((await handleBff(new Request(`${url}?status=open`, { headers: { cookie } }), config, upstream)).status).toBe(200);
+    expect((await handleBff(write(url, "POST", { kind: "other", subject: "Voltaje bajo", description: "Hay variaciones de voltaje." }), config, upstream)).status).toBe(201);
+    expect((await handleBff(new Request(`${url}/${CLAIM}`, { headers: { cookie } }), config, upstream)).status).toBe(200);
+    expect((await handleBff(write(`${url}/${CLAIM}/notes`, "POST", { note: "Llamé hoy" }), config, upstream)).status).toBe(201);
+    const closeUp = vi.fn().mockResolvedValue(json({ ...claim, status: "closed" }));
+    expect((await handleBff(write(`${url}/${CLAIM}/close`, "POST", {}), config, closeUp)).status).toBe(200);          // lo que envían web y móvil sin nota
+    expect(JSON.parse(closeUp.mock.calls[0][1].body)).toEqual({ note: null });
+    const refused = vi.fn();
+    expect((await handleBff(write(`${url}/${CLAIM}/close`, "POST", { status: "resolved" }), config, refused)).status).toBe(422);
+    expect((await handleBff(new Request(`${url}?status=x`, { headers: { cookie } }), config, refused)).status).toBe(400);
+    expect((await handleBff(write(url, "POST", { kind: "other", subject: "Voltaje bajo", description: "Hay variaciones de voltaje.", status: "resolved" }), config, refused)).status).toBe(422);
+    expect((await handleBff(write(`${url}/${CLAIM}`, "DELETE", {}), config, refused)).status).toBe(404);
+    expect((await handleBff(write(`${url}/${CLAIM}/status`, "POST", {}), config, refused)).status).toBe(404);
+    expect(refused).not.toHaveBeenCalled();
+    const foreign = vi.fn().mockResolvedValue(json({ ...claim, home_id: "55555555-5555-4555-8555-555555555555" }));
+    expect((await handleBff(new Request(`${url}/${CLAIM}`, { headers: { cookie } }), config, foreign)).status).toBe(502);
+  });
+
+  it("PDF del informe: reenvía solo un PDF real y pequeño con cabeceras fijas; el enlace firmado es POST sin cuerpo", async () => {
+    const pdf = (bytes: Uint8Array, headers: Record<string, string> = {}) => new Response(bytes as BodyInit, { status: 200, headers: { "content-type": "application/pdf",
+      "content-disposition": 'attachment; filename="informe-energetico-2026-05-01-2026-06-30.pdf"', ...headers } });
+    const good = new TextEncoder().encode("%PDF-1.4 contenido");
+    const url = `http://localhost:3000/api/bff/homes/${HOME}/reports/energy.pdf?from=2026-05-01&to=2026-06-30`;
+    const ok = await handleBff(new Request(url, { headers: { cookie } }), config, vi.fn().mockResolvedValue(pdf(good)));
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get("content-type")).toBe("application/pdf");
+    expect(ok.headers.get("content-disposition")).toBe('attachment; filename="informe-energetico-2026-05-01-2026-06-30.pdf"');
+    expect(ok.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(new TextDecoder().decode(await ok.arrayBuffer())).toBe("%PDF-1.4 contenido");
+    for (const bad of [pdf(new TextEncoder().encode("<html>no pdf</html>")), pdf(good, { "content-type": "text/html" }), pdf(new Uint8Array(2_000_001).fill(37))]) {
+      expect((await handleBff(new Request(url, { headers: { cookie } }), config, vi.fn().mockResolvedValue(bad))).status).toBe(502);
+    }
+    const refused = vi.fn();
+    expect((await handleBff(new Request(`${url}&x=1`, { headers: { cookie } }), config, refused)).status).toBe(400);
+    expect((await handleBff(new Request(url.replace("from=2026-05-01", "from=ayer"), { headers: { cookie } }), config, refused)).status).toBe(400);
+    const link = vi.fn().mockResolvedValue(json({ url: "/api/v1/reports/download?token=rpt1.a.b", expires_at: "2026-10-15T10:00:00Z" }));
+    expect((await handleBff(write(`http://localhost:3000/api/bff/homes/${HOME}/reports/energy/pdf-link?from=2026-05-01&to=2026-06-30`, "POST", {}), config, link)).status).toBe(200);
+    expect((await handleBff(write(`http://localhost:3000/api/bff/homes/${HOME}/reports/energy/pdf-link`, "POST", { x: 1 }), config, refused)).status).toBe(422);
+    expect(refused).not.toHaveBeenCalled();
+  });
 });

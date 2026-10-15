@@ -164,6 +164,8 @@ class Settings(BaseSettings):
     # ERD-AI-CHAT: Energy Copilot. `disabled` (por defecto) apaga las rutas con 503; `anthropic` usa Claude API con ANTHROPIC_API_KEY
     # (secreto del entorno, nunca en el repositorio); `fake` es un proveedor determinista solo para desarrollo y pruebas E2E.
     COPILOT_PROVIDER: Literal["disabled", "anthropic", "fake"] = "disabled"
+    # ERD-HELP-01: correo público de soporte que muestra el centro de ayuda. Vacío = no se muestra una vía de contacto inventada.
+    SUPPORT_EMAIL: str = ""
     ANTHROPIC_API_KEY: str = Field(default="", repr=False)
     COPILOT_MODEL: str = "claude-opus-5-5"
     COPILOT_EFFORT: Literal["low", "medium", "high"] = "medium"

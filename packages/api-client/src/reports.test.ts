@@ -23,4 +23,13 @@ describe("informe energético (ERD-RPT-01)", () => {
     const fetcher = vi.fn().mockResolvedValue(json(report("00000000-0000-4000-8000-0000000000ff")));
     await expect(createApiClient("http://api.test", fetcher).getEnergyReport(HOME)).rejects.toBeInstanceOf(ContractError);
   });
+
+  it("ayuda: busca con q y valida el id del artículo antes de pedirlo (ERD-HELP-01)", async () => {
+    const index = { content_version: "v", categories: [], articles: [], contact: { email: null, note: "n" }, query: "contraseña" };
+    const fetcher = vi.fn().mockImplementation(async () => json(index));
+    const api = createApiClient("http://api.test", fetcher);
+    expect((await api.getHelp({ q: " contraseña ", category: "cuenta" })).query).toBe("contraseña");
+    expect(fetcher.mock.calls[0][0]).toBe("http://api.test/api/v1/help?q=contrase%C3%B1a&category=cuenta");
+    expect(() => api.getHelpArticle("../x")).toThrow();
+  });
 });

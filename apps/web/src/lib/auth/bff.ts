@@ -253,6 +253,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   const forwardedIp = firstForwardedIp(request);
   if (config.bffApiSharedSecret && forwardedIp) headers["X-Forwarded-Client-Ip"] = signClientIp(forwardedIp, config.bffApiSharedSecret);
   let body: string | ArrayBuffer | undefined;
+  const pdf = method === "GET" && new RegExp(`^/homes/${UUID}/reports/energy\\.pdf$`).test(path);
   const logout = path === "/auth/logout";
   const deleteAccount = path === "/auth/me" && method === "DELETE";
   if (ocr) {
@@ -322,6 +323,15 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
   try {
     const upstream = await fetchImpl(`${config.apiBase}/api/v1${path}${url.search}`, { method, headers, body, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(ocr ? OCR_TIMEOUT_MS : 10_000) });
     if (upstream.status >= 300 && upstream.status < 400) throw new Error("Redirect rejected");
+    if (pdf && upstream.ok) {
+      // ERD-RPT-01: único cuerpo binario del BFF. Solo un PDF de tamaño razonable; las cabeceras de seguridad las fija el BFF.
+      if (!(upstream.headers.get("content-type") || "").startsWith("application/pdf")) throw new Error("Unexpected content type");
+      const bytes = await upstream.arrayBuffer();
+      if (bytes.byteLength === 0 || bytes.byteLength > 2_000_000 || new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") throw new Error("Unexpected PDF");
+      const name = /^attachment; filename="informe-energetico-\d{4}-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}\.pdf"$/.exec(upstream.headers.get("content-disposition") ?? "")?.[0];
+      return new NextResponse(bytes, { status: 200, headers: { "Content-Type": "application/pdf", "Content-Disposition": name ?? 'attachment; filename="informe-energetico.pdf"',
+        "Cache-Control": "private, no-store", "Vary": "Cookie", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'; sandbox" } });
+    }
     const data: unknown = upstream.status === 204 ? undefined : await upstream.json();
     if (logout) return setEpoch(clear(reply(upstream.ok ? { ok: true } : safeError(data, upstream.status, path), upstream.ok ? 200 : upstream.status), config), config);
     if (!upstream.ok) {
@@ -391,6 +401,11 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       if (rows.some(row => row.conversation_id !== conversation) || (message && rows[0]?.id !== message)) throw new Error("Mismatched message");
     }
     if (parsed !== undefined && /\/(reports\/energy|recommendations\/goal-proposal)$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched report");
+    if (parsed !== undefined && /\/claims(\/[0-9a-f-]{36})?(\/(notes|reference|close))?$/.test(path)) {
+      const [, , home, , child] = path.split("/");
+      const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { home_id: string; id: string }[];
+      if (rows.some(row => row.home_id !== home) || (child && rows[0]?.id !== child)) throw new Error("Mismatched claim");
+    }
     if (parsed !== undefined && /\/energy-score$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched energy score");
     if (parsed !== undefined && /\/recommendations(\/refresh|\/[0-9a-f-]{36})?$/.test(path)) {
       const [, , home, , child] = path.split("/");

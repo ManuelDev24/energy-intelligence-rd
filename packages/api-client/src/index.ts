@@ -3,10 +3,10 @@ import {
   HomeSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema,
   ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema,
   BillItemsOutSchema, BillAssessmentSchema, AccountDeletionInSchema, LegalOutSchema, RegisterInSchema,
-  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, EmailVerificationRequestOutSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema, GoalProposalOutSchema, EnergyReportOutSchema, EnergyScoreSchema, OutageSchema, OutageSummarySchema,
+  PasswordForgotInSchema, PasswordForgotAcceptedSchema, PasswordResetInSchema, EmailVerifyInSchema, EmailVerificationRequestOutSchema, OcrJobSchema, AnomalySchema, AnomaliesSchema, RecommendationSchema, RecommendationListSchema, GoalProposalOutSchema, EnergyReportOutSchema, HelpIndexSchema, HelpArticleSchema, DownloadUrlOutSchema, ClaimOutSchema, ClaimDetailOutSchema, EnergyScoreSchema, OutageSchema, OutageSummarySchema,
   ConversationOutSchema, CopilotMessageOutSchema, CopilotUsageOutSchema,
   type BillInput, type EquipmentInput, type AlertStatus, type ReadingInput, type GoalInput, type Granularity,
-  type Distributor, type OutageInput, type BillItemsReplace, type RegisterIn, type Anomaly,
+  type ClaimIn, type Distributor, type OutageInput, type BillItemsReplace, type RegisterIn, type Anomaly,
 } from "@energyrd/api-contracts";
 
 export class ApiError extends Error {
@@ -251,6 +251,30 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       return request(`${homePath(id)}/recommendations${qs ? `?${qs}` : ""}`, RecommendationListSchema, { signal });
     },
     refreshRecommendations: (id: string) => request(`${homePath(id)}/recommendations/refresh`, RecommendationListSchema, write("POST", {})),
+    // ERD-CLAIM-01: reclamaciones (casos con historial). El servidor congela un resumen neutral de la factura al crearlas.
+    listClaims: (id: string, opts: { status?: "open" | "in_review" | "resolved" | "closed" } = {}, signal?: AbortSignal) =>
+      request(`${homePath(id)}/claims${opts.status ? `?status=${opts.status}` : ""}`, ClaimOutSchema.array(), { signal }),
+    createClaim: (id: string, input: ClaimIn) => request(`${homePath(id)}/claims`, ClaimDetailOutSchema, write("POST", input), 201),
+    getClaim: (id: string, claim: string, signal?: AbortSignal) =>
+      request(`${homePath(id)}/claims/${idPath(claim)}`, ClaimDetailOutSchema, { signal }).then(out => {
+        if (out.id !== claim) throw new ContractError();
+        return out;
+      }),
+    addClaimNote: (id: string, claim: string, note: string) => request(`${homePath(id)}/claims/${idPath(claim)}/notes`, ClaimDetailOutSchema, write("POST", { note }), 201),
+    setClaimReference: (id: string, claim: string, reference_number: string) =>
+      request(`${homePath(id)}/claims/${idPath(claim)}/reference`, ClaimDetailOutSchema, write("PUT", { reference_number })),
+    closeClaim: (id: string, claim: string, note?: string) =>
+      request(`${homePath(id)}/claims/${idPath(claim)}/close`, ClaimDetailOutSchema, write("POST", note ? { note } : {})),
+    // ERD-HELP-01: centro de ayuda (contenido editorial público y versionado; la búsqueda se hace en el servidor).
+    getHelp: (opts: { q?: string; category?: string } = {}, signal?: AbortSignal) => {
+      const query = new URLSearchParams();
+      if (opts.q?.trim()) query.set("q", opts.q.trim());
+      if (opts.category) query.set("category", opts.category);
+      const qs = query.toString();
+      return request(`/help${qs ? `?${qs}` : ""}`, HelpIndexSchema, { signal });
+    },
+    getHelpArticle: (id: string, signal?: AbortSignal) =>
+      request(`/help/articles/${z.string().regex(/^[a-z0-9-]{1,64}$/).parse(id)}`, HelpArticleSchema, { signal }),
     // ERD-RPT-01: informe energético del período (solo lectura). Sin fechas: últimos 365 días hasta hoy.
     getEnergyReport: (id: string, opts: { from?: string; to?: string } = {}, signal?: AbortSignal) => {
       const query = new URLSearchParams();
@@ -258,6 +282,14 @@ export function createApiClient(baseUrl: string, fetchImpl: typeof fetch = fetch
       if (opts.to) query.set("to", opts.to);
       const qs = query.toString();
       return request(`${homePath(id)}/reports/energy${qs ? `?${qs}` : ""}`, EnergyReportOutSchema, { signal });
+    },
+    // ERD-RPT-01: enlace firmado (2 min) para abrir el PDF del informe en el navegador o el visor del teléfono.
+    createEnergyReportPdfLink: (id: string, opts: { from?: string; to?: string } = {}) => {
+      const query = new URLSearchParams();
+      if (opts.from) query.set("from", opts.from);
+      if (opts.to) query.set("to", opts.to);
+      const qs = query.toString();
+      return request(`${homePath(id)}/reports/energy/pdf-link${qs ? `?${qs}` : ""}`, DownloadUrlOutSchema, write("POST", {}));
     },
     // ERD-SAVE-01-CLOSE: meta sugerida (solo lectura) y «Aplicar objetivo» (el servidor recalcula; no recibe cifras del cliente).
     getGoalProposal: (id: string, signal?: AbortSignal) => request(`${homePath(id)}/recommendations/goal-proposal`, GoalProposalOutSchema, { signal }),

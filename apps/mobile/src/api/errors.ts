@@ -63,6 +63,8 @@ const FIELD_MESSAGES: Record<string, string> = {
 };
 const KNOWN_CODES = new Set([
   'validation_error', 'invalid_input', 'not_found', 'conflict', 'invalid_response',
+  // ERD-CLAIM-01 / ERD-AI-CHAT: códigos que las pantallas traducen a su propio texto (el detalle del servidor nunca se muestra).
+  'claim_conflict', 'claim_limit', 'copilot_limit', 'copilot_disabled', 'no_goal_proposal', 'idempotency_key_reused',
   // ERD-AUTH-03: eliminación de cuenta.
   'reauthentication_failed', 'ownership_transfer_required',
   // ERD-SHARE-01: compartir vivienda.

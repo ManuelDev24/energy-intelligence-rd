@@ -33,7 +33,7 @@ def setup_homes(client):
     return a, b, homes, bill, eq, alert, reading
 
 
-def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID, anomaly=OTHER_ID, recommendation=OTHER_ID, outage=OTHER_ID, conversation=OTHER_ID, message=OTHER_ID):
+def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, document=OTHER_ID, anomaly=OTHER_ID, recommendation=OTHER_ID, outage=OTHER_ID, conversation=OTHER_ID, message=OTHER_ID, claim=OTHER_ID):
     u = f'/api/v1/homes/{h}'
     return [('GET',u,None),('PATCH',u,{'name':'changed'}),('DELETE',u,None),
             ('GET',u+'/contract',None),('PUT',u+'/contract',{'account_number':'123'}),
@@ -52,7 +52,9 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('GET',u+'/energy-score',None),
             # ERD-SAVE-01
             ('GET',u+'/recommendations',None),('POST',u+'/recommendations/refresh',None),
-            ('GET',u+'/reports/energy',None),
+            ('GET',u+'/reports/energy',None),('GET',u+'/reports/energy.pdf',None),('POST',u+'/reports/energy/pdf-link',None),
+            ('GET',u+'/claims',None),('POST',u+'/claims',{'kind':'other','subject':'Asunto','description':'Descripción suficiente.'}),
+            ('GET',u+'/claims/'+claim,None),('POST',u+'/claims/'+claim+'/notes',{'note':'nota'}),('PUT',u+'/claims/'+claim+'/reference',{'reference_number':'R1'}),('POST',u+'/claims/'+claim+'/close',None),
             ('GET',u+'/recommendations/goal-proposal',None),('POST',u+'/recommendations/goal-proposal/apply',None),
             ('PATCH',u+'/recommendations/'+recommendation,{'status':'applied'}),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
             ('GET',u+'/alert-settings',None),('PUT',u+'/alert-settings',{'warning_pct':'10','critical_pct':'40'}),
@@ -111,7 +113,7 @@ def test_all_private_routes_require_membership_and_token(auth_client, migrated, 
 
 def test_private_route_inventory_remains_covered(auth_client):
     paths = auth_client.get('/openapi.json').json()['paths']
-    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}', '{anomaly_id}', '{recommendation_id}', '{outage_id}', '{conversation_id}', '{message_id}')
+    tested = cases('{home_id}', '{bill_id}', '{equipment_id}', '{alert_id}', '{reading_id}', '{user_id}', '{invitation_id}', '{document_id}', '{anomaly_id}', '{recommendation_id}', '{outage_id}', '{conversation_id}', '{message_id}', '{claim_id}')
     actual = {(method.upper(), path) for path, operations in paths.items()
               if path.startswith('/api/v1/homes/') for method in operations if method != 'parameters'}
     assert actual == {(method, path.split('?')[0]) for method, path, _ in tested}
@@ -120,12 +122,13 @@ def test_private_route_inventory_remains_covered(auth_client):
     # /admin/* exige bearer real y scopes; se verifica por separado en test_admin_rbac.py.
     public = {path for path in paths if path.startswith('/api/v1/') and not path.startswith('/api/v1/homes')
               and not path.startswith('/api/v1/admin')}
-    assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal', '/api/v1/invitations/accept'}
+    assert {p for p in public if not p.startswith('/api/v1/auth/')} == {'/api/v1/tariffs', '/api/v1/legal', '/api/v1/help', '/api/v1/help/articles/{article_id}', '/api/v1/invitations/accept'}
     # Rutas /auth sin access token (las credenciales o el token opaco van en el cuerpo) más las que lo exigen
     # (/me y el cambio de contraseña, que además reautentica).
     assert {p for p in public if p.startswith('/api/v1/auth/')} == PUBLIC_AUTH_ROUTES | PRIVATE_AUTH_ROUTES
     # /legal solo expone GET, nunca escrituras.
     assert set(paths['/api/v1/legal']) == {'get'}
+    assert set(paths['/api/v1/help']) == {'get'} and set(paths['/api/v1/help/articles/{article_id}']) == {'get'}
 
 
 # Rutas de /auth que SÍ exigen access token (se prueban en test_auth*, test_password_change, test_account_settings).

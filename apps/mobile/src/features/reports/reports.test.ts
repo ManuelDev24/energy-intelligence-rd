@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { reportRange } from './model';
+import { pdfOpenUrl, reportRange } from './model';
 
 const read = (f: string) => readFileSync(new URL(f, import.meta.url), 'utf8');
 describe('informe energético (móvil)', () => {
@@ -21,5 +21,16 @@ describe('informe energético (móvil)', () => {
     expect(screen).toContain('energyReportToText(data)');
     expect(screen).toContain("line.quality !== 'REAL'");
     expect(JSON.parse(read('../../../package.json')).dependencies).not.toHaveProperty('expo-print');
+  });
+
+  it('el PDF solo se abre desde el enlace firmado del propio servidor', () => {
+    const token = 'rpt1.' + 'a'.repeat(30) + '.' + 'b'.repeat(20);
+    expect(pdfOpenUrl('https://api.test/', `/api/v1/reports/download?token=${token}`)).toBe(`https://api.test/api/v1/reports/download?token=${token}`);
+    for (const bad of ['https://evil.example/x', '/api/v1/documents/download?token=' + token, '/api/v1/reports/download?token=corto', '//evil/api/v1/reports/download?token=' + token, '']) {
+      expect(pdfOpenUrl('https://api.test', bad), bad).toBeNull();
+    }
+    const screen = read('./ReportsScreen.tsx');
+    expect(screen).toContain('createEnergyReportPdfLink(homeId, range)');
+    expect(screen).toContain('testID="report-pdf"');
   });
 });
