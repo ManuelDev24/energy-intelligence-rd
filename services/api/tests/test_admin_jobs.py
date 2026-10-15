@@ -7,6 +7,7 @@ from tests.test_admin_rbac import _grant
 from tests.test_auth import auth_client, bearer, register  # noqa: F401
 
 ADMIN = '/api/v1/admin'
+# Se fija DENTRO de la prueba: pytest importa el módulo al inicio de la sesión y la prueba puede correr minutos después (la espera «de 45 min» dejaría de serlo).
 NOW = datetime.now(timezone.utc)
 
 
@@ -21,6 +22,8 @@ def _job(conn, kind, status, *, run_at=None, attempts=0, error=None, finished=No
 
 
 def test_jobs_summary_and_list_scope_aggregates_and_no_payload_or_error_text(auth_client, migrated):
+    global NOW
+    NOW = datetime.now(timezone.utc)
     ops = register(auth_client, 'ops-jobs@example.com')
     support = register(auth_client, 'soporte-jobs@example.com')
     owner = register(auth_client, 'persona-jobs@example.com')

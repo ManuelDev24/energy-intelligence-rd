@@ -107,8 +107,8 @@ def migrations(db: Session) -> dict:
     """Revisión aplicada vs la más reciente del código. Si no se puede comprobar (p. ej. sin carpeta de migraciones) se dice, no se supone."""
     current = head = None
     try:
-        current = db.execute(text("SELECT version_num FROM alembic_version")).scalar()
-    except Exception:  # noqa: BLE001 — tabla ausente o sin permiso: «no verificable»
+        current = db.execute(text("SELECT admin_migration_version()")).scalar()
+    except Exception:  # noqa: BLE001 — función ausente o sin permiso: «no verificable»
         db.rollback()
     try:
         from alembic.config import Config
