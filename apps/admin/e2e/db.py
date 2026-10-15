@@ -15,7 +15,7 @@ OCR_CASES = [("failed", "engine_error", "dead", 3, 3), ("pending", None, "queued
 
 def seed_ocr(conn):
     """Never real data: one synthetic home and documents that only exist as rows (storage is disabled here)."""
-    home = conn.scalar(text("INSERT INTO homes(id,name,distributor) VALUES(gen_random_uuid(),'Vivienda sintética E2E','EDESUR') RETURNING id"))
+    home = conn.scalar(text("INSERT INTO homes(id,code,name,distributor,province,address) VALUES(gen_random_uuid(),'E2E-HOME-01','Vivienda sintética E2E','EDESUR','Distrito Nacional','Calle Sintética 1') RETURNING id"))
     for index, (state, error, job_status, attempts, max_attempts) in enumerate(OCR_CASES):
         doc = conn.scalar(text(
             "INSERT INTO documents(id,home_id,kind,content_type,size_bytes,sha256,storage_key,uploaded_via,retention_until) "

@@ -20,6 +20,334 @@
         "title": "AccountDeletionIn",
         "type": "object"
       },
+      "AdminHomeDetailOut": {
+        "properties": {
+          "bills": {
+            "title": "Bills",
+            "type": "integer"
+          },
+          "claims_total": {
+            "title": "Claims Total",
+            "type": "integer"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "distributor": {
+            "title": "Distributor",
+            "type": "string"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "equipment": {
+            "title": "Equipment",
+            "type": "integer"
+          },
+          "first_bill_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Bill Start"
+          },
+          "has_ac": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Ac"
+          },
+          "has_inverter": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Inverter"
+          },
+          "has_pool": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Pool"
+          },
+          "has_solar": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Solar"
+          },
+          "has_water_heater": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Water Heater"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_bill_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Bill End"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "occupants": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occupants"
+          },
+          "open_claims": {
+            "title": "Open Claims",
+            "type": "integer"
+          },
+          "outages": {
+            "title": "Outages",
+            "type": "integer"
+          },
+          "owners": {
+            "title": "Owners",
+            "type": "integer"
+          },
+          "pending_invitations": {
+            "title": "Pending Invitations",
+            "type": "integer"
+          },
+          "province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province"
+          },
+          "readings": {
+            "title": "Readings",
+            "type": "integer"
+          },
+          "unread_alerts": {
+            "title": "Unread Alerts",
+            "type": "integer"
+          },
+          "user_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Type"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "distributor",
+          "province",
+          "created_at",
+          "members",
+          "bills",
+          "last_bill_end",
+          "open_claims",
+          "unread_alerts",
+          "user_type",
+          "occupants",
+          "has_ac",
+          "has_water_heater",
+          "has_pool",
+          "has_solar",
+          "has_inverter",
+          "owners",
+          "pending_invitations",
+          "first_bill_start",
+          "readings",
+          "equipment",
+          "documents",
+          "claims_total",
+          "outages"
+        ],
+        "title": "AdminHomeDetailOut",
+        "type": "object"
+      },
+      "AdminHomeOut": {
+        "description": "ERD-ADM-HOMES-WEB, solo lectura. Sin nombre, direcci\u00f3n, ciudad, sector ni identidad de miembros: solo identificadores y conteos.",
+        "properties": {
+          "bills": {
+            "title": "Bills",
+            "type": "integer"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "distributor": {
+            "title": "Distributor",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_bill_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Bill End"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "open_claims": {
+            "title": "Open Claims",
+            "type": "integer"
+          },
+          "province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province"
+          },
+          "unread_alerts": {
+            "title": "Unread Alerts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "distributor",
+          "province",
+          "created_at",
+          "members",
+          "bills",
+          "last_bill_end",
+          "open_claims",
+          "unread_alerts"
+        ],
+        "title": "AdminHomeOut",
+        "type": "object"
+      },
+      "AdminHomesPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminHomeOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminHomesPage",
+        "type": "object"
+      },
       "AdminOcrHistoryOut": {
         "properties": {
           "action": {
@@ -8176,6 +8504,156 @@
           }
         ],
         "summary": "List Audit Events",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/homes": {
+      "get": {
+        "description": "Viviendas por c\u00f3digo o identificador. Solo lectura; solo conteos, sin nombre/direcci\u00f3n/miembros. Queda auditado qui\u00e9n consult\u00f3 (no qu\u00e9 busc\u00f3).",
+        "operationId": "list_homes_api_v1_admin_homes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "distributor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "EDESUR",
+                    "EDENORTE",
+                    "EDEESTE",
+                    "Otra"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Distributor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminHomesPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Homes",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/homes/{home_id}": {
+      "get": {
+        "operationId": "home_detail_api_v1_admin_homes__home_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminHomeDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Home Detail",
         "tags": [
           "admin"
         ]

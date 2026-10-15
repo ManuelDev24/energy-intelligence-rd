@@ -241,3 +241,42 @@ class AdminUsersPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class AdminHomeOut(BaseModel):
+    """ERD-ADM-HOMES-WEB, solo lectura. Sin nombre, dirección, ciudad, sector ni identidad de miembros: solo identificadores y conteos."""
+    id: uuid.UUID
+    code: str | None
+    distributor: str
+    province: str | None
+    created_at: datetime
+    members: int
+    bills: int
+    last_bill_end: date | None
+    open_claims: int
+    unread_alerts: int
+
+
+class AdminHomeDetailOut(AdminHomeOut):
+    user_type: str | None
+    occupants: int | None
+    has_ac: bool | None
+    has_water_heater: bool | None
+    has_pool: bool | None
+    has_solar: bool | None
+    has_inverter: bool | None
+    owners: int
+    pending_invitations: int
+    first_bill_start: date | None
+    readings: int
+    equipment: int
+    documents: int
+    claims_total: int
+    outages: int
+
+
+class AdminHomesPage(BaseModel):
+    items: list[AdminHomeOut]
+    total: int
+    limit: int
+    offset: int
