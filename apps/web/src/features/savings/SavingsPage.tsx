@@ -1,16 +1,49 @@
 "use client";
 
-import { fmtNumber } from "@energyrd/core";
+import { fmtNumber, goalProposalView } from "@energyrd/core";
 import { PiggyBank } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { QualityBadge } from "@/components/quality-badge";
 import { QueryState } from "@/components/query-state";
 import { Card } from "@/components/ui/card";
-import { useDecidedRecommendations, useRecommendations, useUpdateRecommendation } from "@/lib/api/hooks";
+import { useApplyGoalProposal, useDecidedRecommendations, useGoalProposal, useRecommendations, useUpdateRecommendation } from "@/lib/api/hooks";
+import { Button } from "@/components/ui/button";
 import { userMessage } from "@/lib/api/errors";
 import { useSession } from "@/lib/session";
 import { RecommendationItem } from "./RecommendationItem";
+
+function GoalProposalCard({ homeId }: { homeId: string }) {
+  const proposal = useGoalProposal(homeId);
+  const apply = useApplyGoalProposal(homeId);
+  const [confirming, setConfirming] = useState(false);
+  if (!proposal.data) return null;
+  const view = goalProposalView(proposal.data);
+  if (!view.headline && !view.reason) return null;
+  return (
+    <Card aria-label="Meta sugerida" data-testid="goal-proposal">
+      <h2 className="text-sm font-semibold">Tu meta sugerida</h2>
+      {view.headline ? (
+        <p className="mt-1 flex flex-wrap items-center gap-2 text-xl font-bold">{view.headline} <QualityBadge quality="ESTIMATED" always /></p>
+      ) : <p className="mt-1 text-sm text-muted-foreground">{view.reason}</p>}
+      {view.breakdown ? <p className="mt-1 text-sm text-muted-foreground">{view.breakdown}</p> : null}
+      {view.replaces ? <p className="mt-1 text-sm text-muted-foreground">{view.replaces}</p> : null}
+      <ul className="mt-2 list-disc pl-5 text-xs text-muted-foreground">{view.assumptions.map(a => <li key={a}>{a}</li>)}</ul>
+      {apply.isError ? <p role="alert" className="mt-2 rounded-lg bg-danger-bg p-2 text-sm text-danger">No se pudo aplicar el objetivo. Inténtalo de nuevo.</p> : null}
+      {apply.isSuccess && !view.canApply ? <p role="status" className="mt-2 text-sm text-muted-foreground">Objetivo aplicado.</p> : null}
+      {view.canApply ? (
+        confirming ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Confirmar objetivo">
+            <p className="text-sm">¿Guardar {view.headline?.replace("Meta sugerida: ", "")} como tu meta mensual?</p>
+            <Button size="sm" loading={apply.isPending} onClick={() => apply.mutate(undefined, { onSettled: () => setConfirming(false) })}>Sí, aplicar objetivo</Button>
+            <Button size="sm" variant="outline" disabled={apply.isPending} onClick={() => setConfirming(false)}>Cancelar</Button>
+          </div>
+        ) : <div className="mt-3"><Button size="sm" variant="outline" onClick={() => setConfirming(true)}>Aplicar objetivo</Button></div>
+      ) : null}
+    </Card>
+  );
+}
 
 export default function SavingsPage() {
   const { homeId } = useSession();
@@ -48,6 +81,7 @@ export default function SavingsPage() {
                 <p className="mt-1 text-xs text-muted-foreground">{data.note}</p>
               </Card>
             ) : null}
+            <GoalProposalCard homeId={homeId ?? ""} />
             {data.items.length === 0 ? (
               <EmptyState
                 icon={PiggyBank}

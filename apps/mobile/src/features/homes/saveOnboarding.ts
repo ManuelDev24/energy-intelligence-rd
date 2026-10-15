@@ -3,10 +3,10 @@ import type { OnboardingHomeInput } from '../../api/onboarding';
 import { buildOnboardingPayload, validateOnboardingStep, type OnboardingDraft } from './onboardingModel';
 import { localApiError } from '../../api/errors';
 
-type Api = { updateHome?: (id: string, input: OnboardingHomeInput) => Promise<unknown>; createHome: (input: OnboardingHomeInput) => Promise<{ id: string }>; putContract: (id: string, number: string) => Promise<unknown>; putGoal: (id: string, goal: GoalInput) => Promise<unknown> };
+type Api = { updateHome?: (id: string, input: OnboardingHomeInput) => Promise<unknown>; createHome: (input: OnboardingHomeInput, idempotencyKey?: string) => Promise<{ id: string }>; putContract: (id: string, number: string) => Promise<unknown>; putGoal: (id: string, goal: GoalInput) => Promise<unknown> };
 export async function saveOnboarding(
   draft: OnboardingDraft, api: Api,
-  options: { homeId?: string | null; checkSession?: () => void; onCreated?: (id: string) => void; onComplete?: (id: string) => void } = {},
+  options: { homeId?: string | null; idempotencyKey?: string; checkSession?: () => void; onCreated?: (id: string) => void; onComplete?: (id: string) => void } = {},
 ): Promise<string> {
   options.checkSession?.();
   for (let step = 0; step < 5; step++) {
@@ -16,7 +16,7 @@ export async function saveOnboarding(
   const payload = buildOnboardingPayload(draft);
   let id = options.homeId;
   if (!id) {
-    const created = await api.createHome(payload.home);
+    const created = options.idempotencyKey ? await api.createHome(payload.home, options.idempotencyKey) : await api.createHome(payload.home);
     id = created.id;
     options.checkSession?.();
     options.onCreated?.(id);

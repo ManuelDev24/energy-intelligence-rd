@@ -3,8 +3,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OnboardingWizard } from "./onboarding-wizard";
 import { invalidateAccountRequests } from "@/lib/auth/client";
 import { ApiError } from "@energyrd/api-client";
-it("no repite POST cuando no se pudo confirmar la creación", async () => {
-  vi.mocked(saveOnboardingHome).mockRejectedValueOnce(new ApiError(0, "upstream secreto"));
+it("si no se pudo confirmar la creación permite reintentar con la MISMA clave de idempotencia", async () => {
+  vi.mocked(saveOnboardingHome).mockReset();
+  vi.mocked(saveOnboardingHome).mockRejectedValueOnce(new ApiError(0, "upstream secreto")).mockResolvedValueOnce(home as never);
   render(<OnboardingWizard onComplete={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: /Empezar/ }));
   for (const label of ["Nombre de la vivienda", "Provincia", "Municipio"]) fireEvent.change(screen.getByLabelText(label), { target: { value: "Casa" } });
@@ -12,8 +13,14 @@ it("no repite POST cuando no se pudo confirmar la creación", async () => {
   await screen.findByRole("heading", { name: /Distribuidora/ });
   fireEvent.click(screen.getByRole("button", { name: /Guardar y continuar/ }));
   await screen.findByRole("alert");
-  expect(screen.getByRole("button", { name: /Guardar y continuar/ })).toBeDisabled();
-  expect(screen.getByRole("link", { name: /Consultar mis viviendas/ })).toHaveAttribute("href", "/homes");
+  expect(screen.getByRole("status")).toHaveTextContent("no se duplicará");
+  expect(screen.getByRole("link", { name: /Ver mis viviendas/ })).toHaveAttribute("href", "/homes");
+  fireEvent.click(screen.getByRole("button", { name: /Guardar y continuar/ }));
+  await screen.findByRole("heading", { name: /Tipo de usuario|Perfil|Contrato/ });
+  const calls = vi.mocked(saveOnboardingHome).mock.calls.filter(([homeId]) => homeId === null);
+  expect(calls).toHaveLength(2);
+  expect(calls[0][2]).toMatch(/^[0-9a-f-]{36}$/);
+  expect(calls[1][2]).toBe(calls[0][2]);
 });
 
 it("muestra un mensaje de error visible al enviar la Ubicación vacía, sin avanzar de etapa (QA visual 2026-10-05)", async () => {
@@ -83,7 +90,7 @@ it("recorre seis etapas, persiste vivienda/contrato/meta y permite omitir datos 
   fireEvent.change(screen.getByLabelText("Meta de consumo mensual (kWh)"), { target: { value: "200" } });
   fireEvent.click(screen.getByRole("button", { name: /Guardar y continuar/ }));
   await screen.findByRole("heading", { name: /Revisión/ });
-  expect(saveOnboardingHome).toHaveBeenCalledWith(null, expect.objectContaining({ name: "Casa", province: "Santiago", municipality: "Santiago" }));
+  expect(saveOnboardingHome).toHaveBeenCalledWith(null, expect.objectContaining({ name: "Casa", province: "Santiago", municipality: "Santiago" }), expect.stringMatching(/^[0-9a-f-]{36}$/));
   expect(saveOnboardingHome).toHaveBeenCalledWith(id, expect.objectContaining({ user_type: "Residencial" }));
   expect(saveOnboardingHome).toHaveBeenCalledWith(id, expect.objectContaining({ occupants: 2, has_ac: false, has_pool: null }));
   expect(saveOnboardingContract).toHaveBeenCalledWith(id, "C-1");

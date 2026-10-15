@@ -156,3 +156,35 @@ def summary_totals(rows: list[Recommendation]) -> tuple[Decimal | None, Decimal 
     kwh = [r.savings_kwh_month for r in rows if r.status == "active" and r.savings_kwh_month is not None]
     dop = [r.savings_dop_month for r in rows if r.status == "active" and r.savings_dop_month is not None]
     return (calc.q2(sum(kwh, Decimal(0))) if kwh else None, calc.q2(sum(dop, Decimal(0))) if dop else None)
+
+
+GOAL_PROPOSAL_ASSUMPTIONS = [
+    "Parte del promedio de kWh de tus últimas facturas.",
+    "Resta el ahorro estimado de las recomendaciones de equipos que sigues teniendo activas.",
+    "Es un objetivo, no una garantía: el ahorro real depende de que apliques los cambios.",
+]
+
+
+def goal_proposal(db: Session, home_id) -> dict:
+    """Meta mensual propuesta = promedio real de las últimas facturas − ahorro potencial vigente de equipos. Solo lectura."""
+    bills = [b for b in db.scalars(select(Bill).where(Bill.home_id == home_id).order_by(Bill.period_start, Bill.period_end))
+             if b.kwh > 0][-PRICE_BILLS:]
+    goal = db.get(HomeGoal, home_id)
+    rows = [r for r in list_recommendations(db, home_id, status="active", limit=100) if r.category == "equipment" and r.savings_kwh_month is not None]
+    out: dict = {"home_id": home_id, "proposal": None, "baseline": None, "potential_savings": None, "bills_used": len(bills),
+                 "current_goal_kwh": goal.monthly_kwh if goal else None, "reason": None, "assumptions": GOAL_PROPOSAL_ASSUMPTIONS}
+    if not bills:
+        out["reason"] = "Registra al menos una factura para poder proponer una meta."
+        return out
+    baseline = calc.q2(sum((b.kwh for b in bills), Decimal(0)) / len(bills))
+    savings = calc.q2(sum((r.savings_kwh_month for r in rows), Decimal(0)))
+    out["baseline"] = {"value": baseline, "unit": "kWh/mes", "quality": "REAL"}
+    out["potential_savings"] = {"value": savings, "unit": "kWh/mes", "quality": "ESTIMATED"} if rows else None
+    target = (baseline - savings).quantize(Decimal("1"))
+    if not rows:
+        out["reason"] = "No hay recomendaciones de equipos vigentes: sin ahorro estimado no se propone una meta distinta de tu consumo."
+    elif target <= 0:
+        out["reason"] = "El ahorro estimado supera tu consumo promedio; revisa los equipos declarados antes de fijar una meta."
+    else:
+        out["proposal"] = {"value": target, "unit": "kWh/mes", "quality": "ESTIMATED"}
+    return out

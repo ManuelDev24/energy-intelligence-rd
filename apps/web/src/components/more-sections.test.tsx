@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import { MOBILE_EXTRA_SECTIONS, MoreSections } from "./app-shell";
 
 describe("MoreSections (navegación en pantallas estrechas)", () => {
-  it("ofrece Meta, Ahorro, Apagones y Copilot, que la barra inferior no muestra", () => {
+  it("ofrece Meta, Ahorro, Apagones, Copilot e Informes, que la barra inferior no muestra", () => {
     render(<MoreSections />);
     const nav = screen.getByRole("navigation", { name: "Más secciones" });
     const links = within(nav).getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")]);
-    expect(links).toEqual([["Meta", "/goal"], ["Ahorro", "/savings"], ["Apagones", "/outages"], ["Copilot", "/copilot"]]);
+    expect(links).toEqual([["Meta", "/goal"], ["Ahorro", "/savings"], ["Apagones", "/outages"], ["Copilot", "/copilot"], ["Informes", "/reports"]]);
   });
 
   it("solo se muestra en <768 px (en escritorio ya están en la barra lateral) y cada enlace mide 44 px", () => {

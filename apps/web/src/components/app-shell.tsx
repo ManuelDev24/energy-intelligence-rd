@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronsUpDown, Gauge, Home as HomeIcon, NotebookPen, PiggyBank, Plug, Sparkles, Zap, Receipt, BarChart3, Target, UserRound } from "lucide-react";
+import { Bell, ChevronsUpDown, FileText, Gauge, Home as HomeIcon, NotebookPen, PiggyBank, Plug, Sparkles, Zap, Receipt, BarChart3, Target, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -21,13 +21,14 @@ const NAV = [
   { href: "/savings", label: "Ahorro", icon: PiggyBank, sideOnly: true },
   { href: "/outages", label: "Apagones", icon: Zap, sideOnly: true },
   { href: "/copilot", label: "Copilot", icon: Sparkles, sideOnly: true },
+  { href: "/reports", label: "Informes", icon: FileText, sideOnly: true },
   { href: "/profile", label: "Perfil", icon: UserRound, sideOnly: true },
 ] as const;
 
 /** Destinos que la barra inferior (móvil) no muestra. En <768 px solo se llega a ellos desde aquí (Perfil). */
 export const MOBILE_EXTRA_SECTIONS = NAV.filter((item) => "sideOnly" in item && item.href !== "/profile");
 
-/** Enlaces a Meta, Ahorro, Apagones y Copilot para pantallas estrechas; en escritorio ya están en la barra lateral. */
+/** Enlaces a Meta, Ahorro, Apagones, Copilot e Informes para pantallas estrechas; en escritorio ya están en la barra lateral. */
 export function MoreSections() {
   return (
     <nav aria-label="Más secciones" className="md:hidden">
@@ -152,7 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         Saltar al contenido
       </a>
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 border-r border-border bg-background p-4 md:flex">
+      <aside className="sticky top-0 hidden h-screen w-60 print:!hidden shrink-0 flex-col gap-6 border-r border-border bg-background p-4 md:flex">
         <Logo />
         <HomeSwitcher />
         <nav aria-label="Principal" className="flex flex-col gap-1">
@@ -161,7 +162,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mt-auto flex flex-col gap-3 text-sm">{authEnabled ? <><Link href="/homes" className="text-primary underline">Mis viviendas</Link><Link href="/account" className="text-primary underline">Mi cuenta</Link></> : null}<p className="text-xs text-muted-foreground">{authEnabled ? "Facturas y lecturas del medidor" : "Piloto · facturas y lecturas del medidor"}</p></div>
       </aside>
 
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-4 py-2 md:hidden">
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-4 py-2 md:hidden print:hidden">
         <Image src="/brand/logo-96.png" alt="Energy RD" width={32} height={32} className="rounded-lg" />
         <HomeSwitcher compact />
         <Link href="/profile" className="shrink-0 rounded-lg px-2 py-2 text-sm text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Perfil</Link>
@@ -174,7 +175,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav
         aria-label="Principal"
-        className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden print:hidden"
       >
         {links("bottom")}
       </nav>

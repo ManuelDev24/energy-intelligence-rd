@@ -34,9 +34,11 @@ export function OnboardingWizard({ onComplete, initialHome }: { onComplete: (hom
   const [kwh, setKwh] = useState("");
   const [pending, setPending] = useState(false);
   const [uncertain, setUncertain] = useState(false);
+  // Una clave por intento: si se pierde la respuesta, reintentar devuelve la MISMA vivienda en vez de crear otra.
+  const [attemptKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   async function next(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (pending || uncertain) return;
+    event.preventDefault(); if (pending) return;
     setError(null);
     if (step === 1 && (!clean(name) || !clean(province) || !clean(municipality))) { setError("Indica nombre, provincia y municipio."); return; }
     if (step === 4 && occupants && (!/^[1-9]\d*$/.test(occupants) || Number(occupants) > 999)) { setError("Indica entre 1 y 999 ocupantes."); return; }
@@ -47,7 +49,8 @@ export function OnboardingWizard({ onComplete, initialHome }: { onComplete: (hom
     try {
       // La ubicación se conserva local hasta elegir distribuidora: la API exige ambas para crear.
       if (step === 2) {
-        const result = await saveOnboardingHome(id, { name: name.trim(), province: province.trim(), municipality: municipality.trim(), sector: clean(sector), distributor });
+        const profile = { name: name.trim(), province: province.trim(), municipality: municipality.trim(), sector: clean(sector), distributor };
+        const result = id ? await saveOnboardingHome(id, profile) : await saveOnboardingHome(null, profile, attemptKey);
         assertAccountGeneration(current);
         setId(result.id);
       }
@@ -65,7 +68,7 @@ export function OnboardingWizard({ onComplete, initialHome }: { onComplete: (hom
       setStep(current => current + 1);
     } catch (cause) {
       if (step === 2 && !id && (cause instanceof ContractError || (cause instanceof ApiError && (cause.status === 0 || cause.status >= 500)))) setUncertain(true);
-      setError("No se pudo guardar. Consulta los datos de esta vivienda antes de reintentar.");
+      setError("No se pudo guardar. Puedes reintentar.");
     }
     finally { setPending(false); }
   }
@@ -80,8 +83,8 @@ export function OnboardingWizard({ onComplete, initialHome }: { onComplete: (hom
       {step === 5 ? <><Field name="onb-contract" label="Número de cuenta" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} maxLength={120} /><p className="text-sm text-muted-foreground">Opcional. No verificamos la titularidad del contrato.</p></> : null}
       {step === 6 ? <><Field name="onb-amount" label="Meta de gasto mensual (RD$)" width="sm" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /><Field name="onb-kwh" label="Meta de consumo mensual (kWh)" width="sm" inputMode="decimal" value={kwh} onChange={e => setKwh(e.target.value)} /><p className="text-sm text-muted-foreground">Opcional. El gasto estimado depende de facturas o de una tarifa oficial disponible.</p></> : null}
       {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
-      {uncertain ? <a href="/homes" className="text-primary underline">Consultar mis viviendas antes de crear otra</a> : null}
-      <div className="flex gap-3"><Button type="button" variant="outline" disabled={pending} onClick={() => setStep(current => current - 1)}>Atrás</Button><Button type="submit" disabled={pending || uncertain}>{pending ? "Guardando…" : "Guardar y continuar"}</Button></div>
+      {uncertain ? <p role="status" className="text-sm">No se pudo confirmar la creación. Puedes reintentar con seguridad: si la vivienda ya se creó, no se duplicará. <a href="/homes" className="text-primary underline">Ver mis viviendas</a></p> : null}
+      <div className="flex gap-3"><Button type="button" variant="outline" disabled={pending} onClick={() => setStep(current => current - 1)}>Atrás</Button><Button type="submit" disabled={pending}>{pending ? "Guardando…" : "Guardar y continuar"}</Button></div>
     </form> : null}
     {step === 7 ? <><p className="my-4 text-sm">{name} · {province}, {municipality} · {distributor}</p><p className="mb-4 text-sm text-muted-foreground">Puedes editar tu meta y vivienda después. Los campos omitidos no se han supuesto.</p><Button onClick={() => { if (id) onComplete(id); }} disabled={!id}>Ir al panel</Button></> : null}
   </Card>;

@@ -9,7 +9,7 @@ const ID = "66666666-6666-4666-8666-666666666666";
 const EPOCH = "0123456789abcdef0123456789abcdef";
 const cookie = `erd-epoch=${EPOCH}; erd-access=${EPOCH}~access-token`;
 const row = (over: Record<string, unknown> = {}) => ({
-  id: ID, home_id: HOME, equipment_id: null, anomaly_id: null, rule_id: "ac-one-hour", rule_version: 1, ruleset_version: 1, category: "equipment",
+  id: ID, home_id: HOME, equipment_id: null, anomaly_id: null, rule_id: "ac-one-hour", rule_version: 1, ruleset_version: 1, difficulty: "easy", impact: "high", category: "equipment",
   title: "t", summary: "s", action: "a", confidence: "medium", status: "active", savings_kwh_month: "45.00", savings_dop_month: null,
   assumptions: ["x"], evidence: { power_w: "1500" }, created_at: "2026-10-11T12:00:00Z", last_seen_at: "2026-10-11T12:00:00Z",
   status_changed_at: "2026-10-11T12:00:00Z", ...over,
@@ -91,5 +91,37 @@ describe("recomendaciones por BFF (ERD-SAVE-01)", () => {
     const response = await handleBff(write(`${base}/${ID}`, "PATCH", { status: "applied" }), config, vi.fn().mockResolvedValue(json({ detail: "TEXTO-INTERNO", code: "conflict" }, 409)));
     expect(response.status).toBe(409);
     expect(JSON.stringify(await response.json())).not.toContain("TEXTO-INTERNO");
+  });
+
+  it("meta sugerida: GET sin parámetros y POST de aplicar con cuerpo vacío; nada más", async () => {
+    const proposal = { home_id: HOME, proposal: { value: "265", unit: "kWh/mes", quality: "ESTIMATED" }, baseline: { value: "310.00", unit: "kWh/mes", quality: "REAL" },
+      potential_savings: null, bills_used: 2, current_goal_kwh: null, reason: null, assumptions: [] };
+    const upstream = vi.fn().mockResolvedValueOnce(json(proposal)).mockResolvedValueOnce(json({ home_id: HOME, monthly_kwh: "265.00", monthly_amount_rd: null, created_at: "2026-10-14T10:00:00Z", updated_at: "2026-10-14T10:00:00Z" }));
+    expect((await handleBff(get("/goal-proposal"), config, upstream)).status).toBe(200);
+    expect((await handleBff(write(`${base}/goal-proposal/apply`, "POST", {}), config, upstream)).status).toBe(200);
+    expect(upstream.mock.calls.map(([u, init]) => [u, init.method])).toEqual([
+      [`http://127.0.0.1:8000/api/v1/homes/${HOME}/recommendations/goal-proposal`, "GET"],
+      [`http://127.0.0.1:8000/api/v1/homes/${HOME}/recommendations/goal-proposal/apply`, "POST"],
+    ]);
+    const refused = vi.fn();
+    expect((await handleBff(get("/goal-proposal?x=1"), config, refused)).status).toBe(400);
+    expect((await handleBff(write(`${base}/goal-proposal/apply`, "POST", { monthly_kwh: "1" }), config, refused)).status).toBe(422);
+    expect((await handleBff(write(`${base}/goal-proposal`, "POST", {}), config, refused)).status).toBe(404);
+    expect(refused).not.toHaveBeenCalled();
+  });
+
+  it("informe energético: solo lectura con fechas válidas; nada más pasa", async () => {
+    const report = { home_id: HOME, home: { id: HOME, name: "Casa", distributor: "EDESUR", province: null, municipality: null }, period: { period_from: "2026-05-01", period_to: "2026-06-30", days: 61 },
+      generated_at: "2026-10-14T12:00:00Z", bills: [], totals: { bills_count: 0, kwh: null, amount_dop: null, avg_price_per_kwh: null, avg_kwh_per_bill: null }, peak_bill: null,
+      comparison: null, equipment: [], recommendations: [], goal: null, sources: [], notes: [] };
+    const upstream = vi.fn().mockResolvedValue(json(report));
+    const url = `http://localhost:3000/api/bff/homes/${HOME}/reports/energy`;
+    expect((await handleBff(new Request(`${url}?from=2026-05-01&to=2026-06-30`, { headers: { cookie } }), config, upstream)).status).toBe(200);
+    expect(upstream.mock.calls[0][0]).toBe(`http://127.0.0.1:8000/api/v1/homes/${HOME}/reports/energy?from=2026-05-01&to=2026-06-30`);
+    const refused = vi.fn();
+    for (const qs of ["?from=ayer", "?x=1", "?from=2026-05-01&from=2026-05-02"]) expect((await handleBff(new Request(`${url}${qs}`, { headers: { cookie } }), config, refused)).status, qs).toBe(400);
+    expect((await handleBff(write(url, "POST", {}), config, refused)).status).toBe(404);
+    expect((await handleBff(new Request(`${url}/pdf`, { headers: { cookie } }), config, refused)).status).toBe(404);
+    expect(refused).not.toHaveBeenCalled();
   });
 });

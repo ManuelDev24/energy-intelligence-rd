@@ -41,7 +41,7 @@ test('páginas protegidas del admin: sin violaciones de axe ni desborde a 360, 7
   for (const [width, height] of WIDTHS) {
     await page.setViewportSize({ width, height });
     for (const [name, path, heading] of [['mi-acceso', '/mi-acceso', 'Mi acceso'], ['roles', '/roles', 'Roles y asignaciones'],
-      ['auditoria', '/auditoria', 'Auditoría'], ['resumen', '/resumen', 'Resumen'], ['ocr', '/ocr', 'Trabajos OCR']] as const) {
+      ['auditoria', '/auditoria', 'Auditoría'], ['resumen', '/resumen', 'Resumen'], ['usuarios', '/usuarios', 'Usuarios'], ['ocr', '/ocr', 'Trabajos OCR']] as const) {
       await page.goto(path);
       await expect(page.getByRole('heading', { name: new RegExp(heading) }).first()).toBeVisible();
       found.push(...(await problems(page, name, width)));

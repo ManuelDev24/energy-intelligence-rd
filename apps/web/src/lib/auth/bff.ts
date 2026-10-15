@@ -48,6 +48,7 @@ const logoutName = (config: BffConfig) => config.secure ? "__Host-erd-logout" : 
 // current when their login *request* was sent, so a login whose Set-Cookie lands after a logout
 // (aborting fetch cannot stop it) carries a dead epoch: it is rejected and revoked on first use.
 const epochName = (config: BffConfig) => config.secure ? "__Host-erd-epoch" : "erd-epoch";
+const UUID_RE = new RegExp(`^${UUID}$`);
 const EPOCH = /^[0-9a-f]{32}$/;
 const EPOCH_MAX_AGE = 400 * 24 * 60 * 60;
 function cookie(request: Request, name: string) {
@@ -295,6 +296,12 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
         body = method === "DELETE" ? undefined : JSON.stringify(parsed.data);
       }
       headers["Content-Type"] = "application/json";
+      // ERD-ONB-ACCEPTANCE: única cabecera del navegador que se reenvía, y solo al crear vivienda; debe ser un UUID.
+      const idempotency = request.headers.get("idempotency-key");
+      if (idempotency !== null) {
+        if (method !== "POST" || path !== "/homes" || !UUID_RE.test(idempotency)) return reply({ detail: "Clave de idempotencia no válida." }, 400);
+        headers["Idempotency-Key"] = idempotency;
+      }
     } catch { return reply({ detail: "JSON inválido." }, 400); }
   }
   if ((!auth || path === "/auth/me") && !legal && !recovery) {
@@ -383,6 +390,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { conversation_id: string; id: string }[];
       if (rows.some(row => row.conversation_id !== conversation) || (message && rows[0]?.id !== message)) throw new Error("Mismatched message");
     }
+    if (parsed !== undefined && /\/(reports\/energy|recommendations\/goal-proposal)$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched report");
     if (parsed !== undefined && /\/energy-score$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched energy score");
     if (parsed !== undefined && /\/recommendations(\/refresh|\/[0-9a-f-]{36})?$/.test(path)) {
       const [, , home, , child] = path.split("/");

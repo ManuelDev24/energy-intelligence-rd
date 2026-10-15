@@ -401,6 +401,174 @@
         "title": "AdminOverviewOut",
         "type": "object"
       },
+      "AdminUserDetailOut": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "active_sessions": {
+            "title": "Active Sessions",
+            "type": "integer"
+          },
+          "admin_roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Admin Roles",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "email_verified": {
+            "title": "Email Verified",
+            "type": "boolean"
+          },
+          "homes": {
+            "title": "Homes",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "terms_accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terms Accepted At"
+          },
+          "terms_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terms Version"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "email_verified",
+          "active",
+          "created_at",
+          "active_sessions",
+          "homes",
+          "admin_roles",
+          "role",
+          "terms_version",
+          "terms_accepted_at"
+        ],
+        "title": "AdminUserDetailOut",
+        "type": "object"
+      },
+      "AdminUserOut": {
+        "description": "Solo lectura. Sin contrase\u00f1a, hash, tokens ni documentos; las viviendas son un conteo, no una lista.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "active_sessions": {
+            "title": "Active Sessions",
+            "type": "integer"
+          },
+          "admin_roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Admin Roles",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "email_verified": {
+            "title": "Email Verified",
+            "type": "boolean"
+          },
+          "homes": {
+            "title": "Homes",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "email_verified",
+          "active",
+          "created_at",
+          "active_sessions",
+          "homes",
+          "admin_roles"
+        ],
+        "title": "AdminUserOut",
+        "type": "object"
+      },
+      "AdminUsersPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminUserOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminUsersPage",
+        "type": "object"
+      },
       "AlertRecord": {
         "properties": {
           "anomaly_id": {
@@ -2649,6 +2817,112 @@
         "title": "EmailVerifyIn",
         "type": "object"
       },
+      "EnergyReportOut": {
+        "description": "Informe energ\u00e9tico de una vivienda en un per\u00edodo. Cada cifra lleva su calidad; nada se inventa: lo que falta viene `null`/vac\u00edo\ny se explica en `notes`. No incluye direcci\u00f3n, contrato ni datos de otras personas.",
+        "properties": {
+          "bills": {
+            "items": {
+              "$ref": "#/components/schemas/ReportBill"
+            },
+            "title": "Bills",
+            "type": "array"
+          },
+          "comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "equipment": {
+            "items": {
+              "$ref": "#/components/schemas/ReportEquipment"
+            },
+            "title": "Equipment",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportGoal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "home": {
+            "$ref": "#/components/schemas/ReportHome"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "peak_bill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportBill"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/ReportRecommendation"
+            },
+            "title": "Recommendations",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ReportSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ReportTotals"
+          }
+        },
+        "required": [
+          "home_id",
+          "home",
+          "period",
+          "generated_at",
+          "bills",
+          "totals",
+          "peak_bill",
+          "comparison",
+          "equipment",
+          "recommendations",
+          "goal",
+          "sources",
+          "notes"
+        ],
+        "title": "EnergyReportOut",
+        "type": "object"
+      },
       "EnergyScoreOut": {
         "description": "Energy Score 0\u2013100 calculado por el backend (la f\u00f3rmula vive solo all\u00ed). Indicador interno INFERIDO: orientativo.",
         "properties": {
@@ -3521,6 +3795,91 @@
           "quality_legend"
         ],
         "title": "GoalProgressOut",
+        "type": "object"
+      },
+      "GoalProposalOut": {
+        "description": "Propuesta de meta mensual en kWh. Nada se guarda hasta que la persona la aplica (`POST \u2026/goal-proposal/apply`).",
+        "properties": {
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bills_used": {
+            "title": "Bills Used",
+            "type": "integer"
+          },
+          "current_goal_kwh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Goal Kwh"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "potential_savings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "home_id",
+          "proposal",
+          "baseline",
+          "potential_savings",
+          "bills_used",
+          "current_goal_kwh",
+          "reason",
+          "assumptions"
+        ],
+        "title": "GoalProposalOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -5515,6 +5874,17 @@
             "title": "Created At",
             "type": "string"
           },
+          "difficulty": {
+            "description": "Esfuerzo para la persona (regla fija por `rule_id`, ver `recommendation_engine.DIFFICULTY`).",
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "readOnly": true,
+            "title": "Difficulty",
+            "type": "string"
+          },
           "equipment_id": {
             "anyOf": [
               {
@@ -5543,6 +5913,24 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tama\u00f1o del ahorro estimado en kWh/mes (umbrales en `recommendation_engine`); null si la recomendaci\u00f3n no promete ahorro.",
+            "readOnly": true,
+            "title": "Impact"
           },
           "last_seen_at": {
             "format": "date-time",
@@ -5627,7 +6015,9 @@
           "evidence",
           "created_at",
           "last_seen_at",
-          "status_changed_at"
+          "status_changed_at",
+          "difficulty",
+          "impact"
         ],
         "title": "RecommendationRecord",
         "type": "object"
@@ -5698,6 +6088,380 @@
           "accept_terms"
         ],
         "title": "RegisterIn",
+        "type": "object"
+      },
+      "ReportBill": {
+        "properties": {
+          "amount_dop": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "avg_price_per_kwh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bill_id": {
+            "format": "uuid",
+            "title": "Bill Id",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id",
+          "period_start",
+          "period_end",
+          "days",
+          "kwh",
+          "amount_dop",
+          "avg_price_per_kwh"
+        ],
+        "title": "ReportBill",
+        "type": "object"
+      },
+      "ReportComparison": {
+        "properties": {
+          "amount_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kwh_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_amount_dop": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "previous_from": {
+            "format": "date",
+            "title": "Previous From",
+            "type": "string"
+          },
+          "previous_kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "previous_to": {
+            "format": "date",
+            "title": "Previous To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "previous_from",
+          "previous_to",
+          "previous_kwh",
+          "previous_amount_dop",
+          "kwh_pct",
+          "amount_pct"
+        ],
+        "title": "ReportComparison",
+        "type": "object"
+      },
+      "ReportEquipment": {
+        "properties": {
+          "monthly_kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room"
+          },
+          "share_pct": {
+            "$ref": "#/components/schemas/Metric"
+          }
+        },
+        "required": [
+          "name",
+          "room",
+          "monthly_kwh",
+          "share_pct"
+        ],
+        "title": "ReportEquipment",
+        "type": "object"
+      },
+      "ReportGoal": {
+        "properties": {
+          "monthly_amount_rd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Amount Rd"
+          },
+          "monthly_kwh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Kwh"
+          }
+        },
+        "required": [
+          "monthly_kwh",
+          "monthly_amount_rd"
+        ],
+        "title": "ReportGoal",
+        "type": "object"
+      },
+      "ReportHome": {
+        "properties": {
+          "distributor": {
+            "title": "Distributor",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "municipality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipality"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "distributor",
+          "province",
+          "municipality"
+        ],
+        "title": "ReportHome",
+        "type": "object"
+      },
+      "ReportPeriod": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "period_from": {
+            "format": "date",
+            "title": "Period From",
+            "type": "string"
+          },
+          "period_to": {
+            "format": "date",
+            "title": "Period To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_from",
+          "period_to",
+          "days"
+        ],
+        "title": "ReportPeriod",
+        "type": "object"
+      },
+      "ReportRecommendation": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "difficulty": {
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
+          "savings_kwh_month": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "action",
+          "savings_kwh_month",
+          "difficulty",
+          "impact"
+        ],
+        "title": "ReportRecommendation",
+        "type": "object"
+      },
+      "ReportSource": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "quality": {
+            "enum": [
+              "REAL",
+              "ESTIMATED",
+              "PROJECTED"
+            ],
+            "title": "Quality",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "quality"
+        ],
+        "title": "ReportSource",
+        "type": "object"
+      },
+      "ReportTotals": {
+        "properties": {
+          "amount_dop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avg_kwh_per_bill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avg_price_per_kwh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bills_count": {
+            "title": "Bills Count",
+            "type": "integer"
+          },
+          "kwh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "bills_count",
+          "kwh",
+          "amount_dop",
+          "avg_price_per_kwh",
+          "avg_kwh_per_bill"
+        ],
+        "title": "ReportTotals",
         "type": "object"
       },
       "RoleAssignmentCreate": {
@@ -7286,6 +8050,150 @@
         ]
       }
     },
+    "/api/v1/admin/users": {
+      "get": {
+        "description": "B\u00fasqueda por correo. Solo lectura; queda en la auditor\u00eda qui\u00e9n busc\u00f3 (no qu\u00e9 se busc\u00f3).",
+        "operationId": "list_users_api_v1_admin_users_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "verified",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Verified"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUsersPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Users",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}": {
+      "get": {
+        "operationId": "user_detail_api_v1_admin_users__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "User Detail",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/auth/devices": {
       "put": {
         "description": "Registra (o renueva) el dispositivo para recibir avisos push. Idempotente.",
@@ -8017,6 +8925,25 @@
       },
       "post": {
         "operationId": "create_home_api_v1_homes_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -12044,6 +12971,104 @@
         ]
       }
     },
+    "/api/v1/homes/{home_id}/recommendations/goal-proposal": {
+      "get": {
+        "description": "Meta mensual que propone la app (promedio real \u2212 ahorro potencial). No guarda nada.",
+        "operationId": "get_goal_proposal_api_v1_homes__home_id__recommendations_goal_proposal_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Goal Proposal",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/recommendations/goal-proposal/apply": {
+      "post": {
+        "description": "\u00abAplicar objetivo\u00bb: el servidor recalcula la propuesta (no conf\u00eda en cifras del cliente) y la guarda como meta de kWh,\nconservando la meta en RD$ si exist\u00eda. 409 si hoy no hay propuesta.",
+        "operationId": "apply_goal_proposal_api_v1_homes__home_id__recommendations_goal_proposal_apply_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Goal Proposal",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/api/v1/homes/{home_id}/recommendations/refresh": {
       "post": {
         "description": "Recalcula con los datos actuales (idempotente: repetirlo sin cambios no cambia nada) y devuelve las vigentes.",
@@ -12159,6 +13184,89 @@
         "summary": "Update Recommendation",
         "tags": [
           "recommendations"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/reports/energy": {
+      "get": {
+        "description": "Informe energ\u00e9tico del per\u00edodo (por defecto, los \u00faltimos 365 d\u00edas hasta hoy en America/Santo_Domingo). Solo lectura.",
+        "operationId": "energy_report_api_v1_homes__home_id__reports_energy_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnergyReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Energy Report",
+        "tags": [
+          "reports"
         ]
       }
     },

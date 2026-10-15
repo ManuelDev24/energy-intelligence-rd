@@ -7,11 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.api.admin_deps import current_admin, require_scope
 from app.database import get_db
-from app.schemas.admin import (AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
+from app.schemas.admin import (AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentsPage,
                                RoleAssignmentCreate, RoleAssignmentOut, RoleAssignmentRevoke, RoleOut, ScopeOut)
 from app.services import admin as admin_service
-from app.services import admin_ocr, admin_overview
+from app.services import admin_ocr, admin_overview, admin_users
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -21,6 +21,23 @@ def overview(response: Response, db: Session = Depends(get_db)):
     """Resumen operativo: solo agregados (números y series diarias), nunca datos de un hogar concreto."""
     response.headers["Cache-Control"] = "no-store"
     return admin_overview.build(db)
+
+
+@router.get('/users', response_model=AdminUsersPage, dependencies=[Depends(require_scope('admin.users.read'))])
+def list_users(request: Request, response: Response, q: str | None = Query(None, max_length=120), verified: bool | None = None,
+               limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=100_000),
+               user=Depends(current_admin), db: Session = Depends(get_db)):
+    """Búsqueda por correo. Solo lectura; queda en la auditoría quién buscó (no qué se buscó)."""
+    response.headers["Cache-Control"] = "no-store"
+    items, total = admin_users.list_users(db, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None),
+                                          q=q, verified=verified, limit=limit, offset=offset)
+    return AdminUsersPage(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get('/users/{user_id}', response_model=AdminUserDetailOut, dependencies=[Depends(require_scope('admin.users.read'))])
+def user_detail(user_id: uuid.UUID, request: Request, response: Response, user=Depends(current_admin), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return admin_users.get_user(db, user_id, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None))
 
 
 @router.get('/ocr/jobs', response_model=AdminOcrJobsPage,

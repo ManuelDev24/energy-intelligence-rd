@@ -32,6 +32,14 @@ export const keys = {
   get phase2() { return phase2Keys(scope()); },
 };
 
+/** ERD-AI-CHAT-MOBILE: claves del Copilot por cuenta y vivienda (invalidar `root` refresca conversaciones, mensajes y uso). */
+export const copilotKeys = {
+  root: (homeId: string) => [...scope(), 'copilot', homeId] as const,
+  usage: (homeId: string) => [...scope(), 'copilot', homeId, 'usage'] as const,
+  conversations: (homeId: string) => [...scope(), 'copilot', homeId, 'conversations'] as const,
+  messages: (homeId: string, conversationId: string) => [...scope(), 'copilot', homeId, 'messages', conversationId] as const,
+};
+
 const perHome = <T,>(key: readonly unknown[], homeId: string | null, fn: (id: string, signal?: AbortSignal) => Promise<T>) => ({
   queryKey: key,
   queryFn: ({ signal }: { signal: AbortSignal }) => fn(homeId as string, signal),
@@ -209,6 +217,28 @@ export function useDeleteReading(homeId: string) {
   return useMutation({
     mutationFn: (readingId: string) => api.deleteReading(homeId, readingId),
     onSuccess: () => invalidateAll(qc, readingInvalidations(keys.phase2, homeId)),
+  });
+}
+
+/** ERD-RPT-01-MOBILE: informe energético del período (solo lectura). */
+export const useEnergyReport = (homeId: string | null, from: string, to: string) =>
+  useQuery({
+    queryKey: [...scope(), 'report', homeId ?? 'none', from, to] as const,
+    queryFn: ({ signal }) => api.getEnergyReport(homeId as string, { from, to }, signal),
+    enabled: allowed() && !!homeId, retry: retryPolicy,
+  });
+
+/** ERD-SAVE-01-CLOSE: meta sugerida (solo lectura) y «Aplicar objetivo»; al aplicar se refrescan meta, progreso y recomendaciones. */
+export const useGoalProposal = (homeId: string | null) =>
+  useQuery(perHome([...keys.recommendations(homeId ?? 'none'), 'goal-proposal'], homeId, api.getGoalProposal));
+export function useApplyGoalProposal(homeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.applyGoalProposal(homeId),
+    onSuccess: () => {
+      invalidateAll(qc, goalInvalidations(keys.phase2, homeId));
+      void qc.invalidateQueries({ queryKey: keys.recommendations(homeId) });
+    },
   });
 }
 

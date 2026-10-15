@@ -1,6 +1,6 @@
 // Auditoría C-20: rutas y esquemas estrictos de las peticiones que el BFF acepta (extraído de bff.ts sin cambios de comportamiento).
 import { z } from "zod";
-import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, EmailVerificationRequestOutSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema, ConversationInSchema, ConversationOutSchema, ConversationRenameSchema, CopilotMessageOutSchema, CopilotUsageOutSchema, FeedbackInSchema, MessageInSchema } from "@energyrd/api-contracts";
+import { HomeSchema, ContractInSchema, ContractOutSchema, BillSchema, DashboardSchema, EquipmentSchema, EquipmentEstimateSchema, AlertItemSchema, BillCreateSchema, BillUpdateSchema, EquipmentInSchema, AlertStatusUpdateSchema, ReadingSchema, ConsumptionSchema, GoalSchema, GoalOrNullSchema, GoalProgressSchema, TariffSchema, BillItemsOutSchema, BillAssessmentSchema, EmailVerificationRequestOutSchema, OcrJobSchema, InvitationCreateInSchema, InvitationOutSchema, InvitationAcceptInSchema, MemberOutSchema, OwnershipTransferInSchema, NotificationPreferencesInSchema, NotificationPreferencesOutSchema, SessionOutSchema, AnomaliesSchema, AnomalySchema, AnomalyStatusInSchema, BillPaymentInSchema, RecommendationSchema, RecommendationListSchema, RecommendationStatusInSchema, GoalProposalOutSchema, EnergyReportOutSchema, EnergyScoreSchema, OutageSchema, OutagesSchema, OutageSummarySchema, OutageInSchema, ConversationInSchema, ConversationOutSchema, ConversationRenameSchema, CopilotMessageOutSchema, CopilotUsageOutSchema, FeedbackInSchema, MessageInSchema } from "@energyrd/api-contracts";
 // Cada ruta declara método, patrón, respuesta, cuerpo y consulta EXACTOS: un parámetro no declarado,
 // repetido o mal formado es 400 y un cuerpo no estricto es 422, siempre antes de contactar la API.
 export const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
@@ -125,12 +125,18 @@ export function phase2Route(path: string, method: string): Phase2Route | null {
   // ERD-SCORE-01: Energy Score (solo lectura, sin parámetros).
   if (new RegExp(`^/homes/${UUID}/energy-score$`).test(path)) return method === "GET" ? { response: EnergyScoreSchema, query: {} } : null;
   if (/\/energy-score(\/|$)/.test(path)) return null;
+  // ERD-RPT-01: informe energético (solo lectura; fechas opcionales AAAA-MM-DD).
+  if (new RegExp(`^/homes/${UUID}/reports/energy$`).test(path)) return method === "GET" ? { response: EnergyReportOutSchema, query: { from: { pattern: isoDate }, to: { pattern: isoDate } } } : null;
+  if (/\/reports(\/|$)/.test(path)) return null;
   // ERD-SAVE-01: recomendaciones de ahorro. Lista con filtros cerrados, recálculo (cuerpo vacío) y cambio de estado.
   if (new RegExp(`^/homes/${UUID}/recommendations$`).test(path)) return method === "GET" ? { response: RecommendationListSchema, query: {
     status: { pattern: v => ["active", "applied", "dismissed", "resolved", "all"].includes(v) },
     limit: { pattern: v => /^\d{1,3}$/.test(v) && Number(v) >= 1 && Number(v) <= 100 },
   } } : null;
   if (new RegExp(`^/homes/${UUID}/recommendations/refresh$`).test(path)) return method === "POST" ? { response: RecommendationListSchema, body: z.object({}).strict(), query: {} } : null;
+  // ERD-SAVE-01-CLOSE: meta sugerida (solo lectura) y «Aplicar objetivo» (cuerpo vacío: el servidor recalcula).
+  if (new RegExp(`^/homes/${UUID}/recommendations/goal-proposal$`).test(path)) return method === "GET" ? { response: GoalProposalOutSchema, query: {} } : null;
+  if (new RegExp(`^/homes/${UUID}/recommendations/goal-proposal/apply$`).test(path)) return method === "POST" ? { response: GoalSchema, body: z.object({}).strict(), query: {} } : null;
   if (new RegExp(`^/homes/${UUID}/recommendations/${UUID}$`).test(path)) return method === "PATCH" ? { response: RecommendationSchema, body: RecommendationStatusInSchema.strict(), query: {} } : null;
   if (/\/recommendations(\/|$)/.test(path)) return null;
   // ERD-ALERT-02: marcar una factura como pagada/pendiente.

@@ -1,13 +1,13 @@
-import { fmtNumber } from '@energyrd/core';
+import { fmtNumber, goalProposalView } from '@energyrd/core';
 import { useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { useDecidedRecommendations, useRecommendations, useUpdateRecommendation } from '../../api/hooks';
+import { useApplyGoalProposal, useDecidedRecommendations, useGoalProposal, useRecommendations, useUpdateRecommendation } from '../../api/hooks';
 import type { Recommendation } from '../../api/types';
 import { AlertCard } from '../../components/AlertCard';
 import { QualityBadge } from '../../components/DataStatusBadge';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../../components/states';
-import { TextAction } from '../../components/ui';
+import { Button, TextAction } from '../../components/ui';
 import { useSession } from '../../store/session';
 import { colors, radius, spacing } from '../../theme';
 import { recommendationRow, savingsAction, type SavingsNav } from './savingsModel';
@@ -26,7 +26,7 @@ function Item({ item, nav, pending, onApply, onDismiss, onRestore }: {
         title={view.title}
         trailing={view.savings ? `${view.savings} · ESTIMADO` : undefined}
         message={`${view.summary}\n${view.action}`}
-        meta={`${view.category} · ${view.confidence}`}
+        meta={[view.category, view.confidence, view.difficulty, view.impact].filter(Boolean).join(' · ')}
         actions={
           <>
             {go ? <TextAction title={target.label} testID={`reco-go-${item.id}`} onPress={go} /> : null}
@@ -44,6 +44,31 @@ function Item({ item, nav, pending, onApply, onDismiss, onRestore }: {
           <Text style={s.whyText}>Regla: {view.rule}</Text>
         </View>
       ) : null}
+    </View>
+  );
+}
+
+function GoalProposalCard({ homeId }: { homeId: string }) {
+  const proposal = useGoalProposal(homeId);
+  const apply = useApplyGoalProposal(homeId);
+  if (!proposal.data) return null;
+  const view = goalProposalView(proposal.data);
+  if (!view.headline && !view.reason) return null;
+  const confirm = () => Alert.alert('Aplicar objetivo', `${view.headline}. ${view.replaces ?? 'Se guardará como tu meta mensual de consumo.'} Es un objetivo, no una garantía.`, [
+    { text: 'Cancelar', style: 'cancel' },
+    { text: 'Aplicar objetivo', onPress: () => apply.mutate() },
+  ]);
+  return (
+    <View style={s.total} testID="goal-proposal">
+      <Text style={s.totalLabel} accessibilityRole="header">Tu meta sugerida</Text>
+      {view.headline ? <Text style={s.totalValue}>{view.headline}</Text> : <Text style={s.note}>{view.reason}</Text>}
+      {view.headline ? <QualityBadge quality="ESTIMATED" always /> : null}
+      {view.breakdown ? <Text style={s.note}>{view.breakdown}</Text> : null}
+      {view.replaces ? <Text style={s.note}>{view.replaces}</Text> : null}
+      {view.assumptions.map((a) => <Text key={a} style={s.note}>• {a}</Text>)}
+      {apply.isError ? <Text style={s.mutErr} accessibilityRole="alert" testID="goal-proposal-error">No se pudo aplicar el objetivo. Intente de nuevo.</Text> : null}
+      {apply.isSuccess && !view.canApply ? <Text style={s.note} accessibilityLiveRegion="polite" testID="goal-proposal-done">Objetivo aplicado.</Text> : null}
+      {view.canApply ? <Button title="Aplicar objetivo" variant="secondary" loading={apply.isPending} onPress={confirm} testID="goal-proposal-apply" /> : null}
     </View>
   );
 }
@@ -84,6 +109,7 @@ export function SavingsScreen(nav: SavingsNav = {}) {
                 <Text style={s.note}>{data.note}</Text>
               </View>
             ) : null}
+            <GoalProposalCard homeId={homeId} />
           </View>
         }
         ListEmptyComponent={

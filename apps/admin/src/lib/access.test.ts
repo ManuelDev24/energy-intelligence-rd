@@ -27,7 +27,8 @@ describe("access", () => {
 
   it("never shows role management to someone without admin.roles.read", () => {
     const supportReadonly: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.users.read"] };
-    expect(visibleNavItems(supportReadonly).map((i) => i.href)).toEqual(["/mi-acceso"]);
+    expect(visibleNavItems(supportReadonly).map((i) => i.href)).not.toContain("/roles");
+    expect(visibleNavItems(supportReadonly).map((i) => i.href)).toEqual(["/mi-acceso", "/usuarios"]);
   });
 
   it("shows the OCR console only with admin.ocr.read", () => {
@@ -40,5 +41,11 @@ describe("access", () => {
     const ops: MyAccess = { ...NONE, roles: ["operations_admin"], scopes: ["admin.system.read", "admin.ocr.read"] };
     expect(visibleNavItems(ops).map((i) => i.href)).toEqual(["/mi-acceso", "/resumen", "/ocr"]);
     expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/resumen");
+  });
+
+  it("shows the user lookup only with admin.users.read", () => {
+    const support: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.users.read"] };
+    expect(visibleNavItems(support).map((i) => i.href)).toEqual(["/mi-acceso", "/usuarios"]);
+    expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/usuarios");
   });
 });
