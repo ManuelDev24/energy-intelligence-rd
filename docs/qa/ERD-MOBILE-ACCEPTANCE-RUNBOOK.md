@@ -78,7 +78,7 @@ es evidencia en dispositivo. Esta guía convierte cada ítem en una corrida con 
   acepta, ve la vivienda; A revoca → B pierde acceso al instante (probar con una petición real); invitación caducada/ya usada → mensaje claro;
   límites anti-spam (pendientes por vivienda, diario).
 - **Pasa si:** todo lo anterior se observa en Android e iOS; el correo llega con el enlace correcto (no `localhost`).
-- **Bloqueo:** dominio de correo verificado y `APP_BASE_URL` de staging.
+- **Bloqueo:** dominio de correo verificado y `PASSWORD_RESET_URL`/`INVITATION_URL` de staging.
 
 ## 6. `ERD-AI-CHAT-MOBILE` — cierre nativo
 
