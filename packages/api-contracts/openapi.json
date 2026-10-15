@@ -20,6 +20,213 @@
         "title": "AccountDeletionIn",
         "type": "object"
       },
+      "AdminBillOut": {
+        "properties": {
+          "amount_dop": {
+            "title": "Amount Dop",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "has_document": {
+            "title": "Has Document",
+            "type": "boolean"
+          },
+          "has_readings": {
+            "title": "Has Readings",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kwh": {
+            "title": "Kwh",
+            "type": "string"
+          },
+          "ocr_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Status"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "boolean"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "period_start",
+          "period_end",
+          "days",
+          "kwh",
+          "amount_dop",
+          "source",
+          "due_date",
+          "paid",
+          "has_readings",
+          "has_document",
+          "ocr_status",
+          "created_at"
+        ],
+        "title": "AdminBillOut",
+        "type": "object"
+      },
+      "AdminBillsSummary": {
+        "description": "ERD-ADM-BILLS-WEB: solo conteos de todas las viviendas; ning\u00fan importe ni identificador.",
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "homes_with_bills": {
+            "title": "Homes With Bills",
+            "type": "integer"
+          },
+          "manual": {
+            "title": "Manual",
+            "type": "integer"
+          },
+          "ocr_done": {
+            "title": "Ocr Done",
+            "type": "integer"
+          },
+          "ocr_failed": {
+            "title": "Ocr Failed",
+            "type": "integer"
+          },
+          "ocr_pending": {
+            "title": "Ocr Pending",
+            "type": "integer"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "integer"
+          },
+          "recent": {
+            "title": "Recent",
+            "type": "integer"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "with_document": {
+            "title": "With Document",
+            "type": "integer"
+          },
+          "with_due_date": {
+            "title": "With Due Date",
+            "type": "integer"
+          },
+          "with_readings": {
+            "title": "With Readings",
+            "type": "integer"
+          },
+          "zero_amount": {
+            "title": "Zero Amount",
+            "type": "integer"
+          },
+          "zero_kwh": {
+            "title": "Zero Kwh",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "total",
+          "recent",
+          "homes_with_bills",
+          "manual",
+          "seed",
+          "with_document",
+          "with_readings",
+          "with_due_date",
+          "paid",
+          "zero_kwh",
+          "zero_amount",
+          "ocr_pending",
+          "ocr_failed",
+          "ocr_done"
+        ],
+        "title": "AdminBillsSummary",
+        "type": "object"
+      },
+      "AdminHomeBillsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBillOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminHomeBillsPage",
+        "type": "object"
+      },
       "AdminHomeDetailOut": {
         "properties": {
           "bills": {
@@ -8509,6 +8716,57 @@
         ]
       }
     },
+    "/api/v1/admin/bills/summary": {
+      "get": {
+        "description": "Calidad de los datos de facturas: solo conteos agregados, sin importes ni identificadores de hogar.",
+        "operationId": "bills_summary_api_v1_admin_bills_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBillsSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bills Summary",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/homes": {
       "get": {
         "description": "Viviendas por c\u00f3digo o identificador. Solo lectura; solo conteos, sin nombre/direcci\u00f3n/miembros. Queda auditado qui\u00e9n consult\u00f3 (no qu\u00e9 busc\u00f3).",
@@ -8654,6 +8912,79 @@
           }
         ],
         "summary": "Home Detail",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/homes/{home_id}/bills": {
+      "get": {
+        "description": "Facturas de UNA vivienda (por su identificador exacto): periodo, kWh, monto, origen y completitud. Auditado.",
+        "operationId": "home_bills_api_v1_admin_homes__home_id__bills_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminHomeBillsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Home Bills",
         "tags": [
           "admin"
         ]

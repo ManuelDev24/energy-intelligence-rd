@@ -1,6 +1,7 @@
 import re
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -277,6 +278,48 @@ class AdminHomeDetailOut(AdminHomeOut):
 
 class AdminHomesPage(BaseModel):
     items: list[AdminHomeOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class AdminBillsSummary(BaseModel):
+    """ERD-ADM-BILLS-WEB: solo conteos de todas las viviendas; ningún importe ni identificador."""
+    days: int
+    total: int
+    recent: int
+    homes_with_bills: int
+    manual: int
+    seed: int
+    with_document: int
+    with_readings: int
+    with_due_date: int
+    paid: int
+    zero_kwh: int
+    zero_amount: int
+    ocr_pending: int
+    ocr_failed: int
+    ocr_done: int
+
+
+class AdminBillOut(BaseModel):
+    id: uuid.UUID
+    period_start: date
+    period_end: date
+    days: int
+    kwh: Decimal
+    amount_dop: Decimal
+    source: str
+    due_date: date | None
+    paid: bool
+    has_readings: bool
+    has_document: bool
+    ocr_status: str | None
+    created_at: datetime
+
+
+class AdminHomeBillsPage(BaseModel):
+    items: list[AdminBillOut]
     total: int
     limit: int
     offset: int

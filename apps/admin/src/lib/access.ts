@@ -18,6 +18,7 @@ export const NAV_ITEMS = [
   { href: "/roles", label: "Roles y asignaciones", scope: "admin.roles.read" },
   { href: "/usuarios", label: "Usuarios", scope: "admin.users.read" },
   { href: "/viviendas", label: "Viviendas", scope: "admin.homes.read" },
+  { href: "/facturas", label: "Facturas", scope: "admin.bills.read" },
   { href: "/ocr", label: "OCR", scope: "admin.ocr.read" },
   { href: "/auditoria", label: "Auditoría", scope: "admin.audit.read" },
 ] as const;

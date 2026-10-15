@@ -179,4 +179,21 @@ describe("admin BFF", () => {
     }
     expect(upstream).toHaveBeenCalledTimes(2);
   });
+
+  it("proxies only read-only bill lookups: the aggregate summary and one home's bills", async () => {
+    cookies(await call("/session"));
+    cookies(await call("/auth/login", "POST", { email: "a@example.com", password: "secret" }));
+    upstream.mockClear();
+    upstream.mockImplementation(async () => Response.json({ items: [], total: 0, limit: 25, offset: 0 }));
+    const home = "11111111-1111-4111-8111-111111111111";
+    expect((await call("/proxy/bills/summary?days=30")).status).toBe(200);
+    expect((await call(`/proxy/homes/${home}/bills?limit=25&offset=0`)).status).toBe(200);
+    expect(upstream).toHaveBeenCalledTimes(2);
+    for (const [path, method] of [["/proxy/bills", "GET"], ["/proxy/bills/summary?home_id=x", "GET"], ["/proxy/bills/summary", "POST"],
+      [`/proxy/homes/${home}/bills?q=x`, "GET"], [`/proxy/homes/${home}/bills`, "POST"], [`/proxy/homes/${home}/bills/abc`, "GET"],
+      ["/proxy/homes/abc/bills", "GET"]] as const) {
+      expect((await call(path, method, method === "GET" ? undefined : {})).status, `${method} ${path}`).toBe(404);
+    }
+    expect(upstream).toHaveBeenCalledTimes(2);
+  });
 });
