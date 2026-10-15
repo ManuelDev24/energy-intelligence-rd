@@ -20,7 +20,7 @@ def cfg(**over):
                 PASSWORD_RESET_URL='https://app.example.org/r', INVITATION_URL='https://app.example.org/i', EMAIL_VERIFICATION_URL='https://app.example.org/v',
                 STORAGE_BACKEND='s3', STORAGE_S3_BUCKET='bucket', STORAGE_S3_ACCESS_KEY_ID='k', STORAGE_S3_SECRET_ACCESS_KEY=SECRETS[4],
                 STORAGE_ENCRYPTION_KEYS='v1:abc', STORAGE_URL_SIGNING_KEY=STRONG, SENTRY_DSN=SECRETS[3], CLIENT_IP_SOURCE='socket', BFF_API_SHARED_SECRET='',
-                COPILOT_PROVIDER='anthropic', ANTHROPIC_API_KEY=SECRETS[0], SUPPORT_EMAIL='ayuda@example.org', SEED_PILOT=False,
+                COPILOT_PROVIDER='anthropic', ANTHROPIC_API_KEY=SECRETS[0], SUPPORT_EMAIL='ayuda@example.org', SEED_PILOT=False, ALLOW_DRAFT_LEGAL=False,
                 OPS_LAST_BACKUP_VERIFIED_AT=None, OPS_LAST_RESTORE_DRILL_AT=None)
     base.update(over)
     return SimpleNamespace(**base)
@@ -31,9 +31,17 @@ def by_key(checks):
 
 
 def test_a_healthy_production_config_has_no_missing_or_warning_checks():
-    checks = config_checks(cfg())
+    checks = config_checks(cfg(), legal_status='final')
     assert [c['key'] for c in checks if c['status'] in ('missing', 'warning')] == []
     assert by_key(checks)['BFF_API_SHARED_SECRET']['status'] == 'na'  # solo se exige con Cloudflare
+
+
+def test_legal_texts_in_draft_are_never_reported_as_ok():
+    assert by_key(config_checks(cfg(), legal_status='final'))['ALLOW_DRAFT_LEGAL']['status'] == 'ok'
+    assert by_key(config_checks(cfg(ENVIRONMENT='staging'), legal_status='draft'))['ALLOW_DRAFT_LEGAL']['status'] == 'warning'
+    accepted = by_key(config_checks(cfg(ALLOW_DRAFT_LEGAL=True), legal_status='draft'))['ALLOW_DRAFT_LEGAL']
+    assert accepted['status'] == 'warning' and 'riesgo aceptado' in accepted['hint']
+    assert by_key(config_checks(cfg(), legal_status='draft'))['ALLOW_DRAFT_LEGAL']['status'] == 'missing'  # producción sin aceptar el riesgo
 
 
 def test_missing_pieces_are_reported_by_name_without_values():

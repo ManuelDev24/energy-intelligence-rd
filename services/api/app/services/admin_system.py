@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import settings as default_settings
+from app.services.legal import LEGAL_STATUS
 
 _STARTED = datetime.now(timezone.utc)
 BACKUP_MAX_AGE_DAYS = 35
@@ -36,7 +37,7 @@ def _strong(secret: str, minimum: int = 43) -> bool:
     return len(secret or "") >= minimum and len(set(secret)) >= 16
 
 
-def config_checks(cfg=default_settings) -> list[dict]:
+def config_checks(cfg=default_settings, legal_status: str = LEGAL_STATUS) -> list[dict]:
     """Función pura: recibe la configuración y devuelve las comprobaciones. No lee el entorno ni la base de datos."""
     dev = cfg.ENVIRONMENT.lower() == "development"
     prod = cfg.ENVIRONMENT.lower() in {"production", "staging"}
@@ -84,10 +85,23 @@ def config_checks(cfg=default_settings) -> list[dict]:
             "Configurada." if cfg.COPILOT_PROVIDER == "anthropic" and cfg.ANTHROPIC_API_KEY.strip() else (f"No aplica: el Copilot está en «{cfg.COPILOT_PROVIDER}»." if cfg.COPILOT_PROVIDER != "anthropic" else "Falta la clave.")),
         row("SUPPORT_EMAIL", "Correo de soporte del centro de ayuda", "ok" if cfg.SUPPORT_EMAIL.strip() else "warning",
             "Definido." if cfg.SUPPORT_EMAIL.strip() else "Sin definir: el centro de ayuda no muestra una vía de contacto."),
+        _legal_row(cfg, legal_status),
         row("SEED_PILOT", "Datos de demostración apagados", "ok" if not cfg.SEED_PILOT else ("warning" if dev else "missing"),
             "Apagados." if not cfg.SEED_PILOT else "Los datos de demostración están activos."),
     ]
     return checks
+
+
+def _legal_row(cfg, legal_status: str) -> dict:
+    """Términos y privacidad: en producción la API no arranca con textos en borrador salvo aceptación explícita del riesgo (ALLOW_DRAFT_LEGAL, C-04)."""
+    key, label = "ALLOW_DRAFT_LEGAL", "Términos y política de privacidad"
+    if legal_status == "final":
+        return {"key": key, "label": label, "status": "ok", "hint": "Textos legales aprobados."}
+    if cfg.ENVIRONMENT.lower() == "production" and getattr(cfg, "ALLOW_DRAFT_LEGAL", False):
+        return {"key": key, "label": label, "status": "warning", "hint": "Textos en BORRADOR con el riesgo aceptado de forma explícita (ALLOW_DRAFT_LEGAL): personas reales aceptan un texto sin revisión legal."}
+    if cfg.ENVIRONMENT.lower() == "production":
+        return {"key": key, "label": label, "status": "missing", "hint": "Textos en borrador sin aceptación del riesgo: producción no debería estar sirviendo."}
+    return {"key": key, "label": label, "status": "warning", "hint": "Textos en borrador pendientes de revisión legal: producción no arrancará hasta aprobarlos."}
 
 
 def attestations(now: datetime, cfg=default_settings) -> list[dict]:
