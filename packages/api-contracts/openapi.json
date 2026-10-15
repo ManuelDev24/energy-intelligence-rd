@@ -1469,6 +1469,241 @@
         "title": "AdminOverviewOut",
         "type": "object"
       },
+      "AdminSystemAttestation": {
+        "properties": {
+          "age_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Days"
+          },
+          "declared_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared At"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "max_age_days": {
+            "title": "Max Age Days",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "stale",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "declared_at",
+          "age_days",
+          "max_age_days",
+          "status",
+          "source"
+        ],
+        "title": "AdminSystemAttestation",
+        "type": "object"
+      },
+      "AdminSystemCheck": {
+        "description": "Una comprobaci\u00f3n de configuraci\u00f3n. Dice si est\u00e1 bien, no cu\u00e1l es su valor: nunca se devuelve un secreto ni una URL.",
+        "properties": {
+          "hint": {
+            "title": "Hint",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "warning",
+              "missing",
+              "na"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "status",
+          "hint"
+        ],
+        "title": "AdminSystemCheck",
+        "type": "object"
+      },
+      "AdminSystemMigrations": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "head": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head"
+          },
+          "up_to_date": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Up To Date"
+          }
+        },
+        "required": [
+          "current",
+          "head",
+          "up_to_date"
+        ],
+        "title": "AdminSystemMigrations",
+        "type": "object"
+      },
+      "AdminSystemOut": {
+        "description": "ERD-ADM-SYSTEM-WEB: configuraci\u00f3n y salud. Ning\u00fan valor de variable de entorno sale por aqu\u00ed.",
+        "properties": {
+          "attestations": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSystemAttestation"
+            },
+            "title": "Attestations",
+            "type": "array"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSystemCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "migrations": {
+            "$ref": "#/components/schemas/AdminSystemMigrations"
+          },
+          "release": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release"
+          },
+          "runbooks": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSystemRunbook"
+            },
+            "title": "Runbooks",
+            "type": "array"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "uptime_seconds": {
+            "title": "Uptime Seconds",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment",
+          "version",
+          "release",
+          "started_at",
+          "uptime_seconds",
+          "migrations",
+          "checks",
+          "attestations",
+          "runbooks"
+        ],
+        "title": "AdminSystemOut",
+        "type": "object"
+      },
+      "AdminSystemRunbook": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "use_when": {
+            "title": "Use When",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "path",
+          "use_when"
+        ],
+        "title": "AdminSystemRunbook",
+        "type": "object"
+      },
       "AdminTariffCoverage": {
         "description": "ERD-ADM-TARIFFS-WEB: \u00bfhay una tarifa vigente para esta distribuidora hoy y hasta cu\u00e1ndo? (datos p\u00fablicos de la SIE).",
         "properties": {
@@ -10604,6 +10839,33 @@
           }
         ],
         "summary": "List Scopes",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/system": {
+      "get": {
+        "description": "Configuraci\u00f3n y salud: dice si cada ajuste cumple lo que exige la aplicaci\u00f3n; nunca devuelve valores, secretos ni URLs.",
+        "operationId": "system_status_api_v1_admin_system_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSystemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "System Status",
         "tags": [
           "admin"
         ]

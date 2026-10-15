@@ -24,6 +24,7 @@ Convenciones:
 | `RESEND_API_KEY` | Resend → *API Keys* → *Create API key* → permiso **Sending access**, dominio del entorno |
 | `ANTHROPIC_API_KEY` (solo si `COPILOT_PROVIDER=anthropic`) | Anthropic Console → *API keys*; una por entorno. Por defecto el Copilot está apagado (`COPILOT_PROVIDER=disabled`). Ver `docs/architecture/COPILOT.md` |
 | `COPILOT_PRICE_INPUT_USD_PER_MTOK` / `COPILOT_PRICE_OUTPUT_USD_PER_MTOK` (opcionales) | Tarifa vigente del proveedor (USD por millón de tokens de entrada / salida). **Solo** sirven para el costo estimado de la consola `/ia`; sin ambos no se estima nada. No son secretos |
+| `OPS_LAST_BACKUP_VERIFIED_AT` / `OPS_LAST_RESTORE_DRILL_AT` (opcionales) | Fecha ISO (p. ej. `2026-10-15T14:00:00Z`) **declarada por operaciones** tras verificar un respaldo / ensayar una restauración (`docs/ops/DISASTER_RECOVERY.md`). La consola `/sistema` las muestra como «declarado, no medido» y avisa si pasan de 35 / 180 días. No son secretos |
 | `SUPPORT_EMAIL` (opcional) | Correo público de soporte que muestra el centro de ayuda. Vacío = la pantalla dice que aún no está configurado (no se inventa una vía de contacto). Ver `docs/qa/ERD-HELP-01.md` |
 
 Genera **una clave distinta por entorno**. Pégala directamente en el Dashboard de Render; no la guardes en

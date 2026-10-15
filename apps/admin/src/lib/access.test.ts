@@ -39,10 +39,11 @@ describe("access", () => {
 
   it("shows the overview only with admin.system.read", () => {
     const ops: MyAccess = { ...NONE, roles: ["operations_admin"], scopes: ["admin.system.read", "admin.ocr.read"] };
-    expect(visibleNavItems(ops).map((i) => i.href)).toEqual(["/mi-acceso", "/resumen", "/operaciones", "/tarifas", "/ocr"]);
+    expect(visibleNavItems(ops).map((i) => i.href)).toEqual(["/mi-acceso", "/resumen", "/sistema", "/operaciones", "/tarifas", "/ocr"]);
     expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/resumen");
     expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/tarifas");
     expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/operaciones");
+    expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/sistema");
   });
 
   it("shows the user lookup only with admin.users.read", () => {

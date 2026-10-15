@@ -7,12 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.api.admin_deps import current_admin, require_scope
 from app.database import get_db
-from app.schemas.admin import (AdminAiUsageOut, AdminJobsPage, AdminJobsSummaryOut, AdminBillsSummary, AdminTariffsOut, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
+from app.schemas.admin import (AdminSystemOut, AdminAiUsageOut, AdminJobsPage, AdminJobsSummaryOut, AdminBillsSummary, AdminTariffsOut, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentsPage,
                                RoleAssignmentCreate, RoleAssignmentOut, RoleAssignmentRevoke, RoleOut, ScopeOut)
 from app.services import admin as admin_service
 from app.services.copilot.tools import today_rd
-from app.services import admin_ai, admin_bills, admin_homes, admin_jobs, admin_tariffs, admin_ocr, admin_overview, admin_users
+from app.services import admin_ai, admin_bills, admin_system, admin_homes, admin_jobs, admin_tariffs, admin_ocr, admin_overview, admin_users
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -106,6 +106,13 @@ def ai_usage(request: Request, response: Response, days: int = Query(14, ge=1, l
     """Supervisión del Copilot: solo agregados (uso, tokens, latencia, errores, herramientas, valoraciones). Sin contenido de conversaciones. Auditado."""
     response.headers["Cache-Control"] = "no-store"
     return admin_ai.usage(db, actor_user_id=user.id, request_id=getattr(request.state, 'request_id', None), days=days)
+
+
+@router.get('/system', response_model=AdminSystemOut, dependencies=[Depends(require_scope('admin.system.read'))])
+def system_status(response: Response, db: Session = Depends(get_db)):
+    """Configuración y salud: dice si cada ajuste cumple lo que exige la aplicación; nunca devuelve valores, secretos ni URLs."""
+    response.headers["Cache-Control"] = "no-store"
+    return admin_system.build(db)
 
 
 @router.get('/ocr/jobs', response_model=AdminOcrJobsPage,

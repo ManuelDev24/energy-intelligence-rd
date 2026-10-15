@@ -456,3 +456,46 @@ class AdminAiUsageOut(BaseModel):
     top_people: list[AdminAiPersonRow]
     cost: AdminAiCost
     limits: AdminAiLimits
+
+
+class AdminSystemCheck(BaseModel):
+    """Una comprobación de configuración. Dice si está bien, no cuál es su valor: nunca se devuelve un secreto ni una URL."""
+    key: str                                   # nombre de la variable de entorno (no su valor)
+    label: str
+    status: Literal['ok', 'warning', 'missing', 'na']
+    hint: str
+
+
+class AdminSystemAttestation(BaseModel):
+    key: str
+    label: str
+    declared_at: datetime | None
+    age_days: int | None
+    max_age_days: int
+    status: Literal['ok', 'stale', 'unknown']
+    source: str
+
+
+class AdminSystemRunbook(BaseModel):
+    title: str
+    path: str
+    use_when: str
+
+
+class AdminSystemMigrations(BaseModel):
+    current: str | None
+    head: str | None
+    up_to_date: bool | None                    # None = no se pudo verificar
+
+
+class AdminSystemOut(BaseModel):
+    """ERD-ADM-SYSTEM-WEB: configuración y salud. Ningún valor de variable de entorno sale por aquí."""
+    environment: str
+    version: str
+    release: str | None
+    started_at: datetime
+    uptime_seconds: int
+    migrations: AdminSystemMigrations
+    checks: list[AdminSystemCheck]
+    attestations: list[AdminSystemAttestation]
+    runbooks: list[AdminSystemRunbook]

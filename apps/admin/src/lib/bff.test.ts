@@ -238,4 +238,17 @@ describe("admin BFF", () => {
     }
     expect(upstream).toHaveBeenCalledTimes(1);
   });
+
+  it("proxies the system status as read-only and refuses writes or parameters", async () => {
+    cookies(await call("/session"));
+    cookies(await call("/auth/login", "POST", { email: "a@example.com", password: "secret" }));
+    upstream.mockClear();
+    upstream.mockImplementation(async () => Response.json({ environment: "development" }));
+    expect((await call("/proxy/system")).status).toBe(200);
+    expect(upstream).toHaveBeenLastCalledWith(`${config.apiBase}/api/v1/admin/system`, expect.objectContaining({ method: "GET" }));
+    for (const [path, method] of [["/proxy/system?verbose=1", "GET"], ["/proxy/system", "POST"], ["/proxy/system", "PUT"], ["/proxy/system/env", "GET"], ["/proxy/system/config", "GET"]] as const) {
+      expect((await call(path, method, method === "GET" ? undefined : {})).status, `${method} ${path}`).toBe(404);
+    }
+    expect(upstream).toHaveBeenCalledTimes(1);
+  });
 });

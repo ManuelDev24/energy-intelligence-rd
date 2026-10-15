@@ -1,5 +1,6 @@
 import os
 from functools import lru_cache
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Self
 from urllib.parse import urlsplit
@@ -167,6 +168,10 @@ class Settings(BaseSettings):
     COPILOT_PROVIDER: Literal["disabled", "anthropic", "fake"] = "disabled"
     # ERD-HELP-01: correo público de soporte que muestra el centro de ayuda. Vacío = no se muestra una vía de contacto inventada.
     SUPPORT_EMAIL: str = ""
+    # ERD-ADM-SYSTEM-WEB: fechas DECLARADAS por operaciones (no medidas) del último respaldo verificado y del último simulacro de restauración
+    # (ver docs/ops/DISASTER_RECOVERY.md). La consola las muestra como «declarado por operaciones» y avisa cuando se vuelven viejas.
+    OPS_LAST_BACKUP_VERIFIED_AT: datetime | None = None
+    OPS_LAST_RESTORE_DRILL_AT: datetime | None = None
     ANTHROPIC_API_KEY: str = Field(default="", repr=False)
     COPILOT_MODEL: str = "claude-opus-5-5"
     COPILOT_EFFORT: Literal["low", "medium", "high"] = "medium"
