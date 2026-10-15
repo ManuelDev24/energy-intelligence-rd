@@ -704,6 +704,98 @@ export const GoalProposalOutSchema = z.object({
 });
 export type GoalProposalOut = z.infer<typeof GoalProposalOutSchema>;
 
+export const ReportBillSchema = z.object({
+  "bill_id": z.string().uuid(),
+  "period_start": z.string().date(),
+  "period_end": z.string().date(),
+  "days": z.number().finite().int(),
+  "kwh": MetricSchema,
+  "amount_dop": MetricSchema,
+  "avg_price_per_kwh": z.union([MetricSchema, z.null()])
+});
+export type ReportBill = z.infer<typeof ReportBillSchema>;
+
+export const ReportComparisonSchema = z.object({
+  "previous_from": z.string().date(),
+  "previous_to": z.string().date(),
+  "previous_kwh": MetricSchema,
+  "previous_amount_dop": MetricSchema,
+  "kwh_pct": z.union([MetricSchema, z.null()]),
+  "amount_pct": z.union([MetricSchema, z.null()])
+});
+export type ReportComparison = z.infer<typeof ReportComparisonSchema>;
+
+export const ReportEquipmentSchema = z.object({
+  "name": z.string(),
+  "room": z.union([z.string(), z.null()]),
+  "monthly_kwh": MetricSchema,
+  "share_pct": MetricSchema
+});
+export type ReportEquipment = z.infer<typeof ReportEquipmentSchema>;
+
+export const ReportGoalSchema = z.object({
+  "monthly_kwh": z.union([z.string(), z.null()]),
+  "monthly_amount_rd": z.union([z.string(), z.null()])
+});
+export type ReportGoal = z.infer<typeof ReportGoalSchema>;
+
+export const ReportHomeSchema = z.object({
+  "id": z.string().uuid(),
+  "name": z.string(),
+  "distributor": z.string(),
+  "province": z.union([z.string(), z.null()]),
+  "municipality": z.union([z.string(), z.null()])
+});
+export type ReportHome = z.infer<typeof ReportHomeSchema>;
+
+export const ReportPeriodSchema = z.object({
+  "period_from": z.string().date(),
+  "period_to": z.string().date(),
+  "days": z.number().finite().int()
+});
+export type ReportPeriod = z.infer<typeof ReportPeriodSchema>;
+
+export const ReportRecommendationSchema = z.object({
+  "title": z.string(),
+  "action": z.string(),
+  "savings_kwh_month": z.union([MetricSchema, z.null()]),
+  "difficulty": z.enum(["easy", "medium", "hard"]),
+  "impact": z.union([z.enum(["low", "medium", "high"]), z.null()])
+});
+export type ReportRecommendation = z.infer<typeof ReportRecommendationSchema>;
+
+export const ReportSourceSchema = z.object({
+  "label": z.string(),
+  "quality": z.enum(["REAL", "ESTIMATED", "PROJECTED"])
+});
+export type ReportSource = z.infer<typeof ReportSourceSchema>;
+
+export const ReportTotalsSchema = z.object({
+  "bills_count": z.number().finite().int(),
+  "kwh": z.union([MetricSchema, z.null()]),
+  "amount_dop": z.union([MetricSchema, z.null()]),
+  "avg_price_per_kwh": z.union([MetricSchema, z.null()]),
+  "avg_kwh_per_bill": z.union([MetricSchema, z.null()])
+});
+export type ReportTotals = z.infer<typeof ReportTotalsSchema>;
+
+export const EnergyReportOutSchema = z.object({
+  "home_id": z.string().uuid(),
+  "home": ReportHomeSchema,
+  "period": ReportPeriodSchema,
+  "generated_at": z.string().datetime({ offset: true }),
+  "bills": z.array(ReportBillSchema),
+  "totals": ReportTotalsSchema,
+  "peak_bill": z.union([ReportBillSchema, z.null()]),
+  "comparison": z.union([ReportComparisonSchema, z.null()]),
+  "equipment": z.array(ReportEquipmentSchema),
+  "recommendations": z.array(ReportRecommendationSchema),
+  "goal": z.union([ReportGoalSchema, z.null()]),
+  "sources": z.array(ReportSourceSchema),
+  "notes": z.array(z.string())
+});
+export type EnergyReportOut = z.infer<typeof EnergyReportOutSchema>;
+
 export const ScoreComponentOutSchema = z.object({
   "key": z.enum(["consumption", "efficiency", "habits", "consistency"]),
   "label": z.string(),

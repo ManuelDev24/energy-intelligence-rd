@@ -8,6 +8,7 @@ import type {
   EnergyScore,
   RecommendationList,
   GoalProposalOut,
+  EnergyReportOut,
   AlertItem,
   AlertStatus,
   Equipment,
@@ -124,6 +125,11 @@ export interface TariffsApi {
   listTariffs(opts?: { distributor?: Distributor; on?: string }, signal?: AbortSignal): Promise<Tariff[]>;
 }
 
+/** Informe energético (ERD-RPT-01). */
+export interface ReportsApi {
+  getEnergyReport(homeId: string, opts?: { from?: string; to?: string }, signal?: AbortSignal): Promise<EnergyReportOut>;
+}
+
 /** Energy Copilot (ERD-AI-CHAT): operaciones JSON; el streaming de respuestas vive en `features/copilot/stream.ts`. */
 export interface CopilotApi {
   getCopilotUsage(homeId: string, signal?: AbortSignal): Promise<CopilotUsage>;
@@ -138,6 +144,7 @@ export interface CopilotApi {
 export interface Api
   extends HomesApi,
     CopilotApi,
+    ReportsApi,
     BillsApi,
     DashboardApi,
     AnomaliesApi,

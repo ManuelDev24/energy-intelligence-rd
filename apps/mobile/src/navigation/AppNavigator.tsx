@@ -19,6 +19,7 @@ import { BillOcrScreen } from '../features/bills/BillOcrScreen';
 import { BillsScreen } from '../features/bills/BillsScreen';
 import { BillDetailScreen } from '../features/bills/detail/BillDetailScreen';
 import { BillItemsEditorScreen } from '../features/bills/detail/BillItemsEditorScreen';
+import { ReportsScreen } from '../features/reports/ReportsScreen';
 import { CopilotScreen } from '../features/copilot/CopilotScreen';
 import type { LinkTarget } from '../features/copilot/model';
 import { ConsumptionScreen } from '../features/consumption/ConsumptionScreen';
@@ -61,6 +62,7 @@ export type RootStackParams = {
   Savings: undefined;
   Outages: undefined;
   Copilot: undefined;
+  Reports: undefined;
   OutageForm: { outageId?: string } | undefined;
 };
 // 5 pestañas: cambiar de vivienda es poco frecuente y vive en el encabezado (hoja "Homes").
@@ -275,6 +277,7 @@ function DomainNavigator() {
             else { const homeId = useSession.getState().selectedHomeId; if (homeId) navigation.navigate('BillDetail', { homeId, billId: target.billId }); }
           }} />}
         </Stack.Screen>
+        <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Informe energético' }} />
         <Stack.Screen name="Outages" options={{ title: 'Apagones' }}>
           {({ navigation }) => <OutagesScreen onAdd={() => navigation.navigate('OutageForm')} onEdit={(outageId) => navigation.navigate('OutageForm', { outageId })} />}
         </Stack.Screen>
@@ -285,7 +288,7 @@ function DomainNavigator() {
           {({ navigation }) => <GoalFormScreen onDone={() => navigation.goBack()} />}
         </Stack.Screen>
         <Stack.Screen name="Profile" options={{ title: 'Perfil' }}>
-          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} onAccountSettings={() => navigation.navigate('AccountSettings')} onShare={() => navigation.navigate('ShareHome')} onOutages={() => navigation.navigate('Outages')} />}
+          {({ navigation }) => <ProfileScreen onHome={() => navigation.navigate('HomeProfile')} onService={() => navigation.navigate('ServiceProfile')} onHomes={() => navigation.navigate('Homes')} onAccountSettings={() => navigation.navigate('AccountSettings')} onShare={() => navigation.navigate('ShareHome')} onOutages={() => navigation.navigate('Outages')} onReports={() => navigation.navigate('Reports')} />}
         </Stack.Screen>
         <Stack.Screen name="HomeProfile" component={HomeProfileScreen} options={{ title: 'Mi vivienda' }} />
         <Stack.Screen name="ServiceProfile" component={ServiceProfileScreen} options={{ title: 'Mi servicio' }} />

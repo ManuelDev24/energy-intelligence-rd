@@ -52,6 +52,7 @@ def cases(h, bill, eq, alert, reading, member=OTHER_ID, invitation=OTHER_ID, doc
             ('GET',u+'/energy-score',None),
             # ERD-SAVE-01
             ('GET',u+'/recommendations',None),('POST',u+'/recommendations/refresh',None),
+            ('GET',u+'/reports/energy',None),
             ('GET',u+'/recommendations/goal-proposal',None),('POST',u+'/recommendations/goal-proposal/apply',None),
             ('PATCH',u+'/recommendations/'+recommendation,{'status':'applied'}),('PATCH',u+'/alerts/'+alert,{'status':'read'}),
             ('GET',u+'/alert-settings',None),('PUT',u+'/alert-settings',{'warning_pct':'10','critical_pct':'40'}),

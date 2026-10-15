@@ -342,6 +342,12 @@ export function createMockApi(): Api {
     }),
     listRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
     refreshRecommendations: async (homeId) => ({ home_id: homeId, ruleset_version: 1, items: [], total_savings_kwh_month: null, total_savings_dop_month: null, note: "" }),
+    getEnergyReport: async (homeId) => ({
+      home_id: homeId, home: { id: homeId, name: "Casa", distributor: "EDESUR", province: null, municipality: null },
+      period: { period_from: "2025-10-16", period_to: "2026-10-14", days: 364 }, generated_at: "2026-10-14T12:00:00Z", bills: [],
+      totals: { bills_count: 0, kwh: null, amount_dop: null, avg_price_per_kwh: null, avg_kwh_per_bill: null }, peak_bill: null, comparison: null,
+      equipment: [], recommendations: [], goal: null, sources: [], notes: ["No hay facturas registradas en este período; registra tus facturas para ver consumo y gasto."],
+    }),
     getGoalProposal: async (homeId) => ({ home_id: homeId, proposal: null, baseline: null, potential_savings: null, bills_used: 0, current_goal_kwh: null, reason: "Registra al menos una factura para poder proponer una meta.", assumptions: [] }),
     applyGoalProposal: async () => {
       throw new ApiError(409, "Sin propuesta");

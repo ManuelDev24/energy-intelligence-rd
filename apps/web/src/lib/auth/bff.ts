@@ -390,6 +390,7 @@ export async function handleBff(request: Request, config: BffConfig, fetchImpl: 
       const rows = (Array.isArray(parsed) ? parsed : [parsed]) as { conversation_id: string; id: string }[];
       if (rows.some(row => row.conversation_id !== conversation) || (message && rows[0]?.id !== message)) throw new Error("Mismatched message");
     }
+    if (parsed !== undefined && /\/(reports\/energy|recommendations\/goal-proposal)$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched report");
     if (parsed !== undefined && /\/energy-score$/.test(path) && (parsed as { home_id: string }).home_id !== path.split("/")[2]) throw new Error("Mismatched energy score");
     if (parsed !== undefined && /\/recommendations(\/refresh|\/[0-9a-f-]{36})?$/.test(path)) {
       const [, , home, , child] = path.split("/");

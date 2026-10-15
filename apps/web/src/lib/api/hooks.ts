@@ -128,6 +128,10 @@ export const useDecidedRecommendations = (homeId: string) =>
     enabled: enabled(homeId),
   });
 
+/** ERD-RPT-01: informe energético del período (solo lectura). */
+export const useEnergyReport = (homeId: string, from: string, to: string, ready = true) =>
+  useQuery({ queryKey: ["homes", homeId, "report", from, to] as const, queryFn: ({ signal }) => getApi().getEnergyReport(homeId, { from, to }, signal), enabled: enabled(homeId) && ready });
+
 /** ERD-SAVE-01-CLOSE: meta sugerida (solo lectura). «Aplicar objetivo» la guarda con la cifra que recalcula el servidor. */
 export const useGoalProposal = (homeId: string) =>
   useQuery({ queryKey: [...keys.recommendations(homeId), "goal-proposal"] as const, queryFn: ({ signal }) => getApi().getGoalProposal(homeId, signal), enabled: enabled(homeId) });

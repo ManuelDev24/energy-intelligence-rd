@@ -109,4 +109,19 @@ describe("recomendaciones por BFF (ERD-SAVE-01)", () => {
     expect((await handleBff(write(`${base}/goal-proposal`, "POST", {}), config, refused)).status).toBe(404);
     expect(refused).not.toHaveBeenCalled();
   });
+
+  it("informe energético: solo lectura con fechas válidas; nada más pasa", async () => {
+    const report = { home_id: HOME, home: { id: HOME, name: "Casa", distributor: "EDESUR", province: null, municipality: null }, period: { period_from: "2026-05-01", period_to: "2026-06-30", days: 61 },
+      generated_at: "2026-10-14T12:00:00Z", bills: [], totals: { bills_count: 0, kwh: null, amount_dop: null, avg_price_per_kwh: null, avg_kwh_per_bill: null }, peak_bill: null,
+      comparison: null, equipment: [], recommendations: [], goal: null, sources: [], notes: [] };
+    const upstream = vi.fn().mockResolvedValue(json(report));
+    const url = `http://localhost:3000/api/bff/homes/${HOME}/reports/energy`;
+    expect((await handleBff(new Request(`${url}?from=2026-05-01&to=2026-06-30`, { headers: { cookie } }), config, upstream)).status).toBe(200);
+    expect(upstream.mock.calls[0][0]).toBe(`http://127.0.0.1:8000/api/v1/homes/${HOME}/reports/energy?from=2026-05-01&to=2026-06-30`);
+    const refused = vi.fn();
+    for (const qs of ["?from=ayer", "?x=1", "?from=2026-05-01&from=2026-05-02"]) expect((await handleBff(new Request(`${url}${qs}`, { headers: { cookie } }), config, refused)).status, qs).toBe(400);
+    expect((await handleBff(write(url, "POST", {}), config, refused)).status).toBe(404);
+    expect((await handleBff(new Request(`${url}/pdf`, { headers: { cookie } }), config, refused)).status).toBe(404);
+    expect(refused).not.toHaveBeenCalled();
+  });
 });

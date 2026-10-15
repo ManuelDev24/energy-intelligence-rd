@@ -2817,6 +2817,112 @@
         "title": "EmailVerifyIn",
         "type": "object"
       },
+      "EnergyReportOut": {
+        "description": "Informe energ\u00e9tico de una vivienda en un per\u00edodo. Cada cifra lleva su calidad; nada se inventa: lo que falta viene `null`/vac\u00edo\ny se explica en `notes`. No incluye direcci\u00f3n, contrato ni datos de otras personas.",
+        "properties": {
+          "bills": {
+            "items": {
+              "$ref": "#/components/schemas/ReportBill"
+            },
+            "title": "Bills",
+            "type": "array"
+          },
+          "comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "equipment": {
+            "items": {
+              "$ref": "#/components/schemas/ReportEquipment"
+            },
+            "title": "Equipment",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportGoal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "home": {
+            "$ref": "#/components/schemas/ReportHome"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "peak_bill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportBill"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/ReportRecommendation"
+            },
+            "title": "Recommendations",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ReportSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ReportTotals"
+          }
+        },
+        "required": [
+          "home_id",
+          "home",
+          "period",
+          "generated_at",
+          "bills",
+          "totals",
+          "peak_bill",
+          "comparison",
+          "equipment",
+          "recommendations",
+          "goal",
+          "sources",
+          "notes"
+        ],
+        "title": "EnergyReportOut",
+        "type": "object"
+      },
       "EnergyScoreOut": {
         "description": "Energy Score 0\u2013100 calculado por el backend (la f\u00f3rmula vive solo all\u00ed). Indicador interno INFERIDO: orientativo.",
         "properties": {
@@ -5982,6 +6088,380 @@
           "accept_terms"
         ],
         "title": "RegisterIn",
+        "type": "object"
+      },
+      "ReportBill": {
+        "properties": {
+          "amount_dop": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "avg_price_per_kwh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bill_id": {
+            "format": "uuid",
+            "title": "Bill Id",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id",
+          "period_start",
+          "period_end",
+          "days",
+          "kwh",
+          "amount_dop",
+          "avg_price_per_kwh"
+        ],
+        "title": "ReportBill",
+        "type": "object"
+      },
+      "ReportComparison": {
+        "properties": {
+          "amount_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kwh_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_amount_dop": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "previous_from": {
+            "format": "date",
+            "title": "Previous From",
+            "type": "string"
+          },
+          "previous_kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "previous_to": {
+            "format": "date",
+            "title": "Previous To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "previous_from",
+          "previous_to",
+          "previous_kwh",
+          "previous_amount_dop",
+          "kwh_pct",
+          "amount_pct"
+        ],
+        "title": "ReportComparison",
+        "type": "object"
+      },
+      "ReportEquipment": {
+        "properties": {
+          "monthly_kwh": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room"
+          },
+          "share_pct": {
+            "$ref": "#/components/schemas/Metric"
+          }
+        },
+        "required": [
+          "name",
+          "room",
+          "monthly_kwh",
+          "share_pct"
+        ],
+        "title": "ReportEquipment",
+        "type": "object"
+      },
+      "ReportGoal": {
+        "properties": {
+          "monthly_amount_rd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Amount Rd"
+          },
+          "monthly_kwh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Kwh"
+          }
+        },
+        "required": [
+          "monthly_kwh",
+          "monthly_amount_rd"
+        ],
+        "title": "ReportGoal",
+        "type": "object"
+      },
+      "ReportHome": {
+        "properties": {
+          "distributor": {
+            "title": "Distributor",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "municipality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipality"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "distributor",
+          "province",
+          "municipality"
+        ],
+        "title": "ReportHome",
+        "type": "object"
+      },
+      "ReportPeriod": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "period_from": {
+            "format": "date",
+            "title": "Period From",
+            "type": "string"
+          },
+          "period_to": {
+            "format": "date",
+            "title": "Period To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_from",
+          "period_to",
+          "days"
+        ],
+        "title": "ReportPeriod",
+        "type": "object"
+      },
+      "ReportRecommendation": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "difficulty": {
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
+          "savings_kwh_month": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "action",
+          "savings_kwh_month",
+          "difficulty",
+          "impact"
+        ],
+        "title": "ReportRecommendation",
+        "type": "object"
+      },
+      "ReportSource": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "quality": {
+            "enum": [
+              "REAL",
+              "ESTIMATED",
+              "PROJECTED"
+            ],
+            "title": "Quality",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "quality"
+        ],
+        "title": "ReportSource",
+        "type": "object"
+      },
+      "ReportTotals": {
+        "properties": {
+          "amount_dop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avg_kwh_per_bill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avg_price_per_kwh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bills_count": {
+            "title": "Bills Count",
+            "type": "integer"
+          },
+          "kwh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "bills_count",
+          "kwh",
+          "amount_dop",
+          "avg_price_per_kwh",
+          "avg_kwh_per_bill"
+        ],
+        "title": "ReportTotals",
         "type": "object"
       },
       "RoleAssignmentCreate": {
@@ -12704,6 +13184,89 @@
         "summary": "Update Recommendation",
         "tags": [
           "recommendations"
+        ]
+      }
+    },
+    "/api/v1/homes/{home_id}/reports/energy": {
+      "get": {
+        "description": "Informe energ\u00e9tico del per\u00edodo (por defecto, los \u00faltimos 365 d\u00edas hasta hoy en America/Santo_Domingo). Solo lectura.",
+        "operationId": "energy_report_api_v1_homes__home_id__reports_energy_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnergyReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Energy Report",
+        "tags": [
+          "reports"
         ]
       }
     },

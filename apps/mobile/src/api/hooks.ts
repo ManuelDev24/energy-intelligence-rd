@@ -220,6 +220,14 @@ export function useDeleteReading(homeId: string) {
   });
 }
 
+/** ERD-RPT-01-MOBILE: informe energético del período (solo lectura). */
+export const useEnergyReport = (homeId: string | null, from: string, to: string) =>
+  useQuery({
+    queryKey: [...scope(), 'report', homeId ?? 'none', from, to] as const,
+    queryFn: ({ signal }) => api.getEnergyReport(homeId as string, { from, to }, signal),
+    enabled: allowed() && !!homeId, retry: retryPolicy,
+  });
+
 /** ERD-SAVE-01-CLOSE: meta sugerida (solo lectura) y «Aplicar objetivo»; al aplicar se refrescan meta, progreso y recomendaciones. */
 export const useGoalProposal = (homeId: string | null) =>
   useQuery(perHome([...keys.recommendations(homeId ?? 'none'), 'goal-proposal'], homeId, api.getGoalProposal));
