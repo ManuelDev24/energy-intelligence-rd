@@ -75,4 +75,11 @@ describe("access", () => {
     expect(visibleNavItems(homes).map((i) => i.href)).toEqual(["/mi-acceso", "/viviendas"]);
     expect(visibleNavItems(AUDITOR).map((i) => i.href)).not.toContain("/viviendas");
   });
+
+  it("shows the data requests queue only with its dedicated read scope", () => {
+    const support: MyAccess = { ...NONE, roles: ["support_readonly"], scopes: ["admin.users.read"] };
+    const security: MyAccess = { ...NONE, roles: ["super_admin"], scopes: ["admin.users.requests.read"] };
+    expect(visibleNavItems(support).map((i) => i.href)).not.toContain("/solicitudes");
+    expect(visibleNavItems(security).map((i) => i.href)).toContain("/solicitudes");
+  });
 });

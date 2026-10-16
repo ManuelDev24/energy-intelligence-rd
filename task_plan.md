@@ -144,3 +144,26 @@ Error no bloqueante: `pygount` no está instalado (`command not found`). No se i
   Pendiente: UI web/móvil para mostrar severidad, observado vs baseline, delta y estados sin historial.
 - 🔄 ERD-ANOM-01 UI integrada sin commit: web y móvil consumen `/anomalies?granularity=month` con caché por vivienda/granularidad; muestran severidad, observado vs baseline, delta, período y explicación, con estado vacío calmado. No calculan anomalías localmente ni atribuyen a equipos.
   Gates canónicos OCR+anomalías: API 565 (+8), core 29, contratos 16, api-client 34, web 485 (+3), móvil 372 (+1), typecheck/lint/diff-check 0, exports iOS/Android OK. Falta QA visual/dispositivo real.
+
+## Continuación solicitada — release web + administración (baselined 2026-10-15)
+- Worktree de entrega aislado: `/Users/macbookpro/Desktop/energy-intelligence-rd-web-release`, basado en `origin/Dev` `f3cb2f42`; worktree previo `energy-intelligence-rd-web-start` se conserva intacto como respaldo de cambios locales no integrados.
+- No crear gaps ficticios: en `origin/Dev` ya están Claims, Help, Reports/PDF, Copilot móvil, Ahorro, OCR administrativo, resumen admin y consulta admin de usuarios read-only; verificarlos, no reconstruirlos.
+- Verificación actual del baseline y release web: API completa **1363 passed**; web unit **904 passed / 5 skipped**; typecheck de todos los workspaces, lint web y build web de producción pasan (build con una advertencia Node no bloqueante); `frontend-web/admin` unit **46/46**, typecheck/build y E2E safety **2/2**. OCR/font focused **39/39**. Worktree anterior y prod/piloto no se modificaron.
+- [✅] ERD-WEB-RELEASE-QA: secuencia E2E local contra PostgreSQL/API/worker/BFF reales con factura sintética; primera corrida 102/104 por dos aserciones de test, corregidas. Suite integral final **104/104 passed (5.6m)**; `docs/qa/ERD-WEB-RELEASE-QA.md`.
+- [✅ parcial] ERD-WEB-CROSS-BROWSER: suite completa 104/104; Firefox/WebKit y Pixel 7/iPhone 13 emulados pasaron 16/16 smoke, con reflow/teclado/red lenta/carga de foto. 640 px es proxy, no zoom real; dispositivos físicos y CI remoto siguen pendientes.
+- [✅ parcial] ERD-WEB-A11Y-FINAL: axe + reflow y pruebas automáticas de teclado/foco/diálogo/formulario pasaron en 104/104. Lector de pantalla, gráficos y zoom al 200% manual pendientes.
+- [✅ parcial] ERD-WEB-CAMERA-01: controles explícitos y unit 7/7; carga OCR revisable pasó en los cinco proyectos. Safari iOS/Chrome Android físicos pendientes.
+- [✅] ERD-WEB-OFFLINE-UX-01: aviso, borrador retenido, GET refrescado al reconectar y cero escrituras/reintentos; unit 13/13 y E2E integrado 104/104.
+- [blocked] ERD-WEB-LEGAL-PUBLISH: texto aprobado para términos/privacidad (OCR, Copilot, notificaciones) no aportado; no inventar aprobación legal.
+- [✅ local] ERD-ADM-USERS-WRITE: migración 0043 (antes 0038), API, scopes, motivos/auditoría, solicitud de exportación/borrado no ejecutable, cierre de sesiones y desactivación con protección del último super-admin; UI de ficha/cola con gestión oculta sin `admin.users.requests.manage`. API 1363; admin 48 unit; E2E admin 13/13; build/typecheck/contracts/architecture/diff-check OK. Evidencia `docs/qa/ERD-ADM-USERS-WRITE.md`. Sin despliegue ni commit.
+- [decision] ERD-ADM-HOMES-WEB: definir minimización de datos para soporte antes de exponer viviendas/contratos.
+- [ ] ERD-ADM-BILLS-WEB: revisión/corrección de factura auditada, procedencia/documentos protegidos.
+- [ ] ERD-ADM-TARIFFS-WEB: versiones/periodos/fuente oficial/validación/preview.
+- [ ] ERD-ADM-OPERATIONS-WEB: lectura de consumos/anomalías/alertas/apagones/recomendaciones, todo solo lectura salvo scope específico.
+- [ ] ERD-ADM-SYSTEM-WEB: health real de worker/API, backup/restore y sondas; no tratar métricas inferidas como estado vivo.
+- [ ] ERD-AI-ADMIN-WEB: costos/latencia/feedback agregados del Copilot, sin abrir conversaciones privadas.
+- [decision] ERD-CLAIM-SUPPORT: panel soporte con transiciones en revisión/resuelta, scope y auditoría.
+- [blocked] ERD-CLAIM-ATTACHMENTS: no habilitar adjuntos nuevos hasta aprobar tipos, tamaño, retención y borrado.
+- [blocked] ERD-HELP-OPERATIONS: faltan correo de soporte, responsable, SLAs y decisión sobre contenido editable.
+- [blocked] ERD-ADM-DEPLOY: código y staging pueden prepararse localmente; no push/despliegue/domino/TLS sin autorización explícita y credenciales aprobadas.
+- Invariantes: una API central `backend/api`; BFF solo sesión/seguridad; mínima divulgación; todo acto sensible con scope y audit; no datos/keys reales en pruebas; nada se publica sin autorización.

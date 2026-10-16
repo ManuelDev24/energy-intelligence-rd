@@ -98,7 +98,10 @@ test.describe("carga OCR", () => {
   test("@smoke foto → progreso → borrador revisable → confirmar guarda UNA factura con su original", async ({ page, request, run }) => {
     await page.getByRole("link", { name: "Registrar factura" }).click();
     await page.waitForURL("**/bills/new");
-    await page.locator("input[type=file]").setInputFiles(run.bill_image);
+    const camera = page.getByLabel("Tomar foto");
+    await expect(camera).toHaveAttribute("accept", "image/*");
+    await expect(camera).toHaveAttribute("capture", "environment");
+    await page.getByLabel("Elegir foto o PDF").setInputFiles(run.bill_image);
     await expect(page.getByRole("heading", { name: "Revisa la sugerencia" })).toBeVisible({ timeout: 90_000 });
     // La lectura NO crea la factura por sí sola.
     const homes = await bff<Array<{ id: string }>>(page, "homes?limit=10&offset=0");
@@ -126,7 +129,7 @@ test.describe("carga OCR", () => {
   test("un archivo que no es una factura legible da un mensaje claro y no crea nada", async ({ page }) => {
     await page.getByRole("link", { name: "Registrar factura" }).click();
     await page.waitForURL("**/bills/new");
-    await page.locator("input[type=file]").setInputFiles({ name: "falso.png", mimeType: "image/png", buffer: Buffer.from("esto no es una imagen") });
+    await page.getByLabel("Elegir foto o PDF").setInputFiles({ name: "falso.png", mimeType: "image/png", buffer: Buffer.from("esto no es una imagen") });
     await expect(page.getByRole("alert").first()).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("heading", { name: "Revisa la sugerencia" })).toHaveCount(0);
     const homes = await bff<Array<{ id: string }>>(page, "homes?limit=10&offset=0");

@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { useEnergyReport } from "@/lib/api/hooks";
 import { useSession } from "@/lib/session";
+import { reportPdfHref } from "./report-url";
 
 const shift = (iso: string, days: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
@@ -36,7 +37,7 @@ export default function ReportsPage() {
         <Field label="Hasta" type="date" width="sm" value={to} max={today} onChange={e => setTo(e.target.value)}
           error={valid ? undefined : "Elige un período de hasta 366 días que termine hoy o antes."} />
         {view && homeId ? (
-          <a href={`/api/bff/homes/${homeId}/reports/energy.pdf?from=${from}&to=${to}`} download
+          <a href={reportPdfHref(homeId, from, to)} download
             className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
             <Download className="h-4 w-4" aria-hidden /> Descargar PDF
           </a>

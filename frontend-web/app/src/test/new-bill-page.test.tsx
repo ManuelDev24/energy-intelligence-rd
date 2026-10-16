@@ -15,7 +15,7 @@ vi.mock("@/lib/api", async () => {
 const push = vi.fn();
 
 function choose(name = "factura.pdf", type = "application/pdf") {
-  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+  const input = screen.getByLabelText("Elegir foto o PDF") as HTMLInputElement;
   fireEvent.change(input, { target: { files: [new File([new Uint8Array(8)], name, { type })] } });
 }
 const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
@@ -24,10 +24,15 @@ describe("NewBillPage con OCR asíncrono", () => {
   beforeEach(() => { window.localStorage.clear(); push.mockClear(); vi.useFakeTimers({ shouldAdvanceTime: true }); setMockOcr("done", 1); });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
-  it("acepta fotos y PDF y dice qué se hace con el archivo", () => {
+  it("separa el acceso a cámara trasera del selector foto/PDF", () => {
     renderWithApp(<NewBillPage />, HOME_A);
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    expect(input.accept).toBe("image/*,application/pdf");
+    const camera = screen.getByLabelText("Tomar foto") as HTMLInputElement;
+    const picker = screen.getByLabelText("Elegir foto o PDF") as HTMLInputElement;
+    expect(camera).toHaveAttribute("type", "file");
+    expect(camera).toHaveAttribute("accept", "image/*");
+    expect(camera).toHaveAttribute("capture", "environment");
+    expect(picker).toHaveAttribute("accept", "image/*,application/pdf");
+    expect(picker).not.toHaveAttribute("capture");
     expect(screen.getByText(/se guarda cifrado/)).toBeInTheDocument();
     expect(screen.getByText(/se elimina automáticamente/)).toBeInTheDocument();
   });

@@ -27,7 +27,8 @@ test('el admin ve cifras agregadas, salud de servicios y tendencias con tabla al
   await login(page, admin);
   await page.getByRole('link', { name: 'Resumen' }).click();
   await expect(page.getByRole('heading', { name: 'Resumen', level: 1 })).toBeVisible();
-  await expect(stat(page, 'Cifras de la plataforma', 'Personas registradas')).toContainText('2');
+  // admin, user y target (cuenta dedicada a las acciones destructivas de usuarios.spec).
+  await expect(stat(page, 'Cifras de la plataforma', 'Personas registradas')).toContainText('3');
   await expect(stat(page, 'Cifras de la plataforma', 'Viviendas')).toContainText('1');
   await expect(stat(page, 'Cifras de la plataforma', 'Facturas')).toContainText('2');
   await expect(page.getByRole('list', { name: 'Cola de trabajos' }).getByRole('listitem')).toHaveCount(4);
@@ -37,7 +38,7 @@ test('el admin ve cifras agregadas, salud de servicios y tendencias con tabla al
   await expect(health.getByRole('row').filter({ hasText: 'Worker de trabajos' })).toContainText(/Sin atraso|Posiblemente detenido/);
   await expect(health.getByRole('row').filter({ hasText: 'Copilot' })).toContainText('Apagado');
 
-  await expect(page.getByRole('img', { name: /Personas nuevas: 2 personas en 14 días/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Personas nuevas: 3 personas en 14 días/ })).toBeVisible();
   const trend = page.locator('figure').filter({ hasText: 'Personas nuevas' });
   await trend.getByText('Ver datos').click();
   await expect(trend.getByRole('region', { name: 'Datos: Personas nuevas' }).getByRole('row')).toHaveCount(15);

@@ -133,9 +133,9 @@ jobs:
       - run: uv sync --frozen
         working-directory: backend/api
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
         working-directory: frontend-web/app
-      - name: Playwright (base, API, worker y web se levantan y se apagan solos)
+      - name: Playwright (suite Chromium + Firefox/WebKit y smoke móvil; base/API/worker se levantan y se apagan solos)
         run: npm run e2e --workspace frontend-web/app
       - name: Depurar evidencias (sin tokens, cookies, contraseñas ni correos; sin videos)
         if: failure()

@@ -147,8 +147,9 @@ def _active_super_admin_count(db: Session, *, exclude_assignment_id: uuid.UUID |
     if role is None:
         return 0
     moment = now()
-    rows = db.scalars(select(AdminRoleAssignment).where(AdminRoleAssignment.role_id == role.id,
-                                                        AdminRoleAssignment.revoked_at.is_(None))).all()
+    rows = db.scalars(select(AdminRoleAssignment).join(User, User.id == AdminRoleAssignment.user_id)
+                      .where(AdminRoleAssignment.role_id == role.id,
+                             AdminRoleAssignment.revoked_at.is_(None), User.active.is_(True))).all()
     return len([r for r in rows if (r.expires_at is None or r.expires_at > moment)
                and r.id != exclude_assignment_id])
 
@@ -191,6 +192,21 @@ def guard_admin_account_deletion(db: Session, user_id: uuid.UUID) -> None:
     if assignment is not None and (assignment.expires_at is None or assignment.expires_at > now()):
         if _active_super_admin_count(db, exclude_assignment_id=assignment.id) == 0:
             raise Forbidden("No se puede eliminar la cuenta del último super_admin activo")
+
+
+def guard_admin_account_deactivation(db: Session, user_id: uuid.UUID) -> None:
+    """Serialize deactivation against role revocation and preserve one active super_admin."""
+    role = db.scalar(select(AdminRole).where(AdminRole.name == SUPER_ADMIN).with_for_update())
+    if role is None:
+        return
+    assignment = db.scalar(select(AdminRoleAssignment).where(
+        AdminRoleAssignment.user_id == user_id,
+        AdminRoleAssignment.role_id == role.id,
+        AdminRoleAssignment.revoked_at.is_(None),
+    ))
+    if assignment is not None and (assignment.expires_at is None or assignment.expires_at > now()):
+        if _active_super_admin_count(db, exclude_assignment_id=assignment.id) == 0:
+            raise Forbidden("No se puede desactivar la cuenta del último super_admin activo")
 
 
 def list_audit_events(db: Session, *, actor_user_id: uuid.UUID | None = None, action: str | None = None,

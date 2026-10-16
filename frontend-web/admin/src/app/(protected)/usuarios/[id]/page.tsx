@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { ErrorView, Forbidden, Loading } from "@/components/StateViews";
 import { formatDate } from "@/lib/ocr";
+import { useSession } from "@/lib/session";
+import UserWriteActions from "@/components/UserWriteActions";
 import { roleLabel, type AdminUserDetail } from "@/lib/users";
 
 type State = { status: "loading" } | { status: "ok"; user: AdminUserDetail } | { status: "forbidden" } | { status: "missing" } | { status: "error"; message: string };
@@ -12,6 +14,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function UsuarioPage() {
   const params = useParams<{ id: string }>();
+  const { access } = useSession();
   const id = UUID.test(params.id ?? "") ? params.id : null;
   const [state, setState] = useState<State>({ status: "loading" });
   const load = useCallback(async () => {
@@ -44,8 +47,8 @@ export default function UsuarioPage() {
       <p><Link href="/usuarios">← Usuarios</Link></p>
       <h1>Persona</h1>
       <p style={{ color: "#555", maxWidth: "70ch" }}>
-        Solo lectura. Abrir esta ficha queda registrado en la auditoría. Para cambiar roles administrativos usa «Roles y asignaciones».
-        Los datos de sus viviendas, facturas y documentos no se muestran aquí.
+        Esta ficha muestra datos de cuenta de solo lectura. Los datos de viviendas, facturas y documentos no se muestran aquí.
+        Acciones administrativas aparecen solo con su scope, motivo obligatorio y registro de auditoría.
       </p>
       <dl style={{ display: "grid", gridTemplateColumns: "minmax(0, max-content) minmax(0, 1fr)", gap: "6px 16px" }}>
         {rows.map(([term, value]) => (
@@ -54,6 +57,7 @@ export default function UsuarioPage() {
           </div>
         ))}
       </dl>
+      <UserWriteActions user={u} access={access} onRefresh={load} />
     </section>
   );
 }

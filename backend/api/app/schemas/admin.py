@@ -81,7 +81,7 @@ class RoleAssignmentOut(BaseModel):
     status: str
 
 
-class OcrOperationReason(BaseModel):
+class AdminOperationReason(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: str = Field(min_length=1, max_length=500)
 
@@ -89,6 +89,10 @@ class OcrOperationReason(BaseModel):
     @classmethod
     def safe_reason(cls, value: str) -> str:
         return _reason(value)
+
+
+class OcrOperationReason(AdminOperationReason):
+    pass
 
 
 class AdminOcrJobOut(BaseModel):
@@ -395,6 +399,47 @@ class AdminJobsPage(BaseModel):
     offset: int
 
 
+class AdminUserRequestCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["export", "deletion"]
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, value: str) -> str:
+        return _reason(value)
+
+
+class AdminUserRequestTransition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["in_progress", "completed", "rejected"]
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, value: str) -> str:
+        return _reason(value)
+
+
+class AdminUserRequestOut(BaseModel):
+    id: uuid.UUID
+    target_user_id: uuid.UUID
+    kind: Literal["export", "deletion"]
+    status: Literal["pending", "in_progress", "completed", "rejected"]
+    reason: str
+    resolution_reason: str | None
+    created_at: datetime
+    updated_at: datetime
+    resolved_at: datetime | None
+
+
+class AdminUserRequestsPage(BaseModel):
+    items: list[AdminUserRequestOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class AdminAiModelRow(BaseModel):
     model: str
     messages: int
@@ -499,3 +544,14 @@ class AdminSystemOut(BaseModel):
     checks: list[AdminSystemCheck]
     attestations: list[AdminSystemAttestation]
     runbooks: list[AdminSystemRunbook]
+
+
+class AdminCloseSessionsOut(BaseModel):
+    user_id: uuid.UUID
+    closed_sessions: int
+
+
+class AdminUserDeactivationOut(BaseModel):
+    user_id: uuid.UUID
+    active: bool
+    closed_sessions: int

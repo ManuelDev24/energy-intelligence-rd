@@ -1,5 +1,7 @@
 # Análisis de brechas del proyecto — actualizado el 11 de octubre de 2026
 
+**Estado actual:** `origin/Dev` avanzó hasta `f3cb2f42` después de la foto descrita abajo. Los commits posteriores integran ERD-CLAIM-01, ERD-HELP-01, ERD-RPT-01/PDF, ERD-AI-CHAT-MOBILE, actualizaciones de ahorro, OCR administrativo, resumen administrativo y consulta admin de usuarios read-only. Esta foto y sus conteos históricos no describen el backlog faltante actual: no volver a contarlos como desarrollo pendiente. El panel admin continúa parcial; su backlog vigente está en `docs/PLAN_COMPLETO_ENERGY_RD.md` §5 y `task_plan.md`.
+
 Documento vivo creado el 10-oct-2026 como foto del plan de cierre (`CLOSURE_PLAN_2026-10-10.md`) y actualizado tras el
 **Módulo 1 — Núcleo residencial restante**. Regla de este documento: *una tarea solo figura como cerrada si su criterio
 real se cumplió*; lo que depende de datos, cuentas o dispositivos que no están a nuestro alcance se declara como

@@ -6,6 +6,7 @@ import { test, expect, type Page } from '@playwright/test';
 const AXE = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const admin = { email: process.env.ADMIN_E2E_ADMIN_EMAIL!, password: process.env.ADMIN_E2E_ADMIN_PASSWORD! };
 const user = { email: process.env.ADMIN_E2E_USER_EMAIL!, password: process.env.ADMIN_E2E_USER_PASSWORD! };
+const targetId = process.env.ADMIN_E2E_USER_ID!;
 const WIDTHS: Array<[number, number]> = [[360, 740], [768, 1024], [1280, 800]];
 
 async function login(page: Page, account: { email: string; password: string }) {
@@ -41,7 +42,8 @@ test('páginas protegidas del admin: sin violaciones de axe ni desborde a 360, 7
   for (const [width, height] of WIDTHS) {
     await page.setViewportSize({ width, height });
     for (const [name, path, heading] of [['mi-acceso', '/mi-acceso', 'Mi acceso'], ['roles', '/roles', 'Roles y asignaciones'],
-      ['auditoria', '/auditoria', 'Auditoría'], ['resumen', '/resumen', 'Resumen'], ['usuarios', '/usuarios', 'Usuarios'], ['viviendas', '/viviendas', 'Viviendas'], ['facturas', '/facturas', 'Facturas'], ['tarifas', '/tarifas', 'Tarifas'], ['operaciones', '/operaciones', 'Operaciones'], ['ia', '/ia', 'IA \\(Copilot\\)'], ['sistema', '/sistema', 'Sistema'], ['ocr', '/ocr', 'Trabajos OCR']] as const) {
+      ['auditoria', '/auditoria', 'Auditoría'], ['resumen', '/resumen', 'Resumen'], ['usuarios', '/usuarios', 'Usuarios'], ['viviendas', '/viviendas', 'Viviendas'], ['facturas', '/facturas', 'Facturas'], ['tarifas', '/tarifas', 'Tarifas'], ['operaciones', '/operaciones', 'Operaciones'], ['ia', '/ia', 'IA \\(Copilot\\)'], ['sistema', '/sistema', 'Sistema'],
+      ['solicitudes', '/solicitudes', 'Solicitudes de datos'], ['usuario-detalle', `/usuarios/${targetId}`, 'Persona'], ['ocr', '/ocr', 'Trabajos OCR']] as const) {
       await page.goto(path);
       await expect(page.getByRole('heading', { name: new RegExp(heading) }).first()).toBeVisible();
       found.push(...(await problems(page, name, width)));

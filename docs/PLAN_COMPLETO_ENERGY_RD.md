@@ -26,33 +26,33 @@
 | 03 | Consumo | 🔄 | Solo barras mensuales. Faltan filtros Hoy/Semana/Mes/Año/Personalizado, comparar, kW promedio, pico máximo, promedio diario/semanal, lecturas |
 | 04 | Facturas | 🔄 | Manual OK. Falta foto/archivo, OCR, pantalla de confirmación, `bill_items`, documento original, análisis de factura |
 | 05 | Proyección | 🔄 | Lineal simple. Falta panel (días transcurridos/restantes, kWh proyectado, factura estimada), botón "¿Cómo bajar esta factura?" |
-| 06 | Ahorro | ⛔ | Recomendaciones con impacto/ahorro/dificultad, "Aplicar objetivo", simulaciones |
+| 06 | Ahorro | ✅ | API, web y móvil ya tienen recomendaciones explicables, dificultad orientativa y aplicación de meta; falta calibración con datos reales y aceptación de staging |
 | 07 | Alertas | 🔄 | Existen alertas por variación. Faltan 4 severidades de color, anomalías, recordatorios de pago, datos incompletos |
 | 08 | Equipos | 🔄 | Existe CRUD + estimación. Faltan marca/modelo, iconos por tipo, % de consumo por equipo (gráfica) |
-| 09 | Energy Copilot | ⛔ | Todo |
-| 10 | Perfil | ⛔ | Todo (cuenta, vivienda, servicio, notificaciones, seguridad, documentos) |
+| 09 | Energy Copilot | ✅ | Conversaciones, fuentes, streaming y feedback en web; cliente nativo ya en Dev. Cuotas/privacidad están implementadas; admin agregados AI siguen en ERD-AI-ADMIN-WEB |
+| 10 | Perfil | 🔄 | Perfil residencial, servicio y notificaciones básicos ya están en Dev; restan ajustes de cuenta/documentos y aceptación legal/de dispositivos según alcance |
 
 ### 1.2 Módulos 11–33 de la especificación (fuera del MVP real, dentro del plan completo)
 
-Anomalías (11) · Consumo por equipo (13) · Interrupciones (14) · Historial del servicio (15) · Mapa energético (16) · Smart Meter (17) · IoT (18) · Solar (19) · Batería (20) · Calculadora solar (21) · Objetivos (23) · Gamificación (24) · Mi vivienda (26) · Configuración (27) · Centro de ayuda (28) · Reclamaciones (29) · Business (30) · Condominios (31) · Administración (32) · Energy Intelligence RD (33). **Todos ⛔.**
+Anomalías (11) · Consumo por equipo (13) · Interrupciones (14) · Historial del servicio (15) · Mapa energético (16) · Smart Meter (17) · IoT (18) · Solar (19) · Batería (20) · Calculadora solar (21) · Objetivos (23) · Gamificación (24) · Mi vivienda (26) · Configuración (27) · Centro de ayuda (28) · Reclamaciones (29) · Business (30) · Condominios (31) · Administración (32) · Energy Intelligence RD (33). **Baseline `origin/Dev` `f3cb2f42` (2026-10-15):** Centro de ayuda (M28), reclamaciones (M29), informes/PDF, Copilot móvil, OCR admin, resumen administrativo y consulta de usuarios read-only ya están integrados; no son faltantes de desarrollo. El panel admin en conjunto es parcial; quedan paquetes finitos §5. Las demás funciones de visión siguen pendientes según su fase.
 
 ### 1.3 Infraestructura y stack
 
 | Elemento del chat | Repo hoy | Acción |
 |---|---|---|
-| Auth (registro/login/roles) | ⛔ pospuesta | **Fase 1, bloqueante** |
-| Tablas: users, home_members, contracts, bill_items, meter_readings, tariffs, interruptions, forecasts, anomalies, recommendations, conversations, messages | Solo homes, bills, equipment, alerts, audit | Migraciones 0006+ |
+| Auth (registro/login/roles) | Auth por usuario, membresía residencial y RBAC admin en `backend/api` | Base integrada; aceptación legal/operacional pendiente |
+| Tablas: users, home_members, contracts, bill_items, meter_readings, tariffs, interruptions, forecasts, anomalies, recommendations, conversations, messages | Esquema extendido con estos dominios y sus migraciones | Auditar fuentes/retención; no inferir datos de telemetría sin meter readings |
 | Expo Router + NativeWind | React Navigation + StyleSheet | Decisión: ver §6 (no migrar sin motivo) |
 | React Hook Form + Zod | Zod sí; formularios manuales | Adoptar RHF en formularios nuevos |
 | Recharts (web) / librería RN | Gráficas hechas a mano (sin librería) | Fase 2: Recharts web + victory-native/gifted-charts móvil |
-| shadcn/ui | Estilo propio | Adoptar al construir admin |
-| Redis + workers | Opcional (perfil `jobs`) | Obligatorio desde OCR |
-| Storage de facturas | ⛔ | Cloudflare R2 / S3 compatible (MinIO local) |
-| `frontend-web/admin`, `services/energy-engine`, `ai`, `ingestion`, `workers`, `mcp/energy-rd-mcp`, `packages/ui`, `database/` | `frontend-web/admin` vacío; resto no existe | Crear en la fase que corresponda |
+| shadcn/ui | Estilo propio | Panel admin básico existe; no hace falta reescribir componentes para ampliar módulos |
+| Redis + workers | Cola respaldada por PostgreSQL + worker | Salud real del worker/latido aún por construir |
+| Storage de facturas | Storage configurado por backend y documentos protegidos | Prueba de proveedor real y despliegue pendientes |
+| `frontend-web/admin`, `services/energy-engine`, `ai`, `ingestion`, `workers`, `mcp/energy-rd-mcp`, `packages/ui`, `database/` | `frontend-web/admin` sí existe con RBAC, auditoría, OCR, resumen y usuarios read-only; módulos lógicos adicionales no deben convertirse automáticamente en procesos/backend separados | Ampliar el mismo `backend/api`; despliegue admin requiere autorización |
 | TimescaleDB + pgvector | ⛔ (Postgres 16 plano) | Fase 5 (telemetría) y Fase 3 (Copilot/RAG) |
-| Playwright / Jest-RNTL | Vitest + Maestro | Añadir Playwright en web |
-| Neon (prod) / Vercel / Expo EAS / Render o Fly | Todo local | Fase 1 (despliegue piloto) |
-| Sentry / monitoreo | ⛔ | Fase 1 |
+| Playwright / Jest-RNTL | Vitest + Maestro + Playwright web/admin E2E | Ampliar aceptación de navegadores/dispositivos |
+| Neon (prod) / Vercel / Expo EAS / Render o Fly | Config de despliegue preparada, sin staging desplegado | Fase 1 (despliegue piloto) |
+| Sentry / monitoreo | Código admite configuración; DSN real no confirmado | Requiere cuenta/DSN y consentimiento; no inventar |
 
 ---
 
@@ -119,22 +119,22 @@ Se crean en `packages/ui` (web) y `frontend-mobile/app/src/components` con la **
 | CH-05 | Deltas de factura: Consumo +14 % · Costo +18 % · Días +2 % | Análisis de factura | bills | Flechas y color por signo | 🔄 consumo y costo ✅; días falta en la API (`comparison.days_pct`) |
 | CH-06 | Panel de proyección: consumo actual, días transcurridos/restantes, kWh proyectado, factura estimada | Proyección | forecasts | Etiqueta `PROJECTED` | 🔄 |
 | CH-07 | Barra de meta (RD$ 6,000 · actual · proyección) | Dashboard, Objetivos | goals | Barra de progreso; rojo si la proyección excede la meta | ⛔ |
-| CH-08 | Barra de impacto `████████░░` + ahorro RD$ + dificultad | Ahorro | recommendations | Verde (ahorro) | ⛔ |
-| CH-09 | `EnergyGauge` — Energy Score 0–100 + 4 componentes (Consumo, Eficiencia, Hábitos, Consistencia) | Dashboard, Ahorro | scores | Gauge semicircular; indicador "interno y configurable" | 🔄 componente listo (web y móvil); sin API de score |
+| CH-08 | Barra de impacto `████████░░` + ahorro RD$ + dificultad | Ahorro | recommendations | Verde (ahorro) | ✅ API/web/móvil; kWh y RD$ estimados, falta calibración externa |
+| CH-09 | `EnergyGauge` — Energy Score 0–100 + 4 componentes (Consumo, Eficiencia, Hábitos, Consistencia) | Dashboard, Ahorro | scores | Gauge semicircular; indicador "interno y configurable" | ✅ API + web/móvil; separar INFERRED de lecturas reales |
 | CH-10 | Desglose por equipo (AC 41 % · Nevera 17 % · Bomba 11 % · Boiler 9 % · Cocina 8 % · Otros 14 %) | Equipos | devices | Donut o barras; etiqueta `ESTIMATED` | ✅ barras horizontales (web y móvil) |
-| CH-11 | Interrupciones por mes (ej. 7, 8h42m, promedio 1h14m) | Historial del servicio | interruptions | Barras; KPIs encima | ⛔ |
-| CH-12 | Línea de tiempo de interrupción (inicio, fin, duración) | Interrupciones | interruptions | Lista con duración calculada | ⛔ |
-| CH-13 | Marcador de anomalía (promedio 12 kWh/día vs. hoy 27) | Anomalías | anomalies | Línea base + punto resaltado + botón **Investigar** | ⛔ |
+| CH-11 | Interrupciones por mes (ej. 7, 8h42m, promedio 1h14m) | Historial del servicio | interruptions | Barras; KPIs encima | ✅ historial y resumen mensual (API/web/móvil) |
+| CH-12 | Línea de tiempo de interrupción (inicio, fin, duración) | Interrupciones | interruptions | Lista con duración calculada | ✅ registro e historial; sin IoT de estado vivo |
+| CH-13 | Marcador de anomalía (promedio 12 kWh/día vs. hoy 27) | Anomalías | anomalies | Línea base + punto resaltado + botón **Investigar** | 🔄 motor y UI ya existen; lectura mensual depende de datos disponibles |
 | CH-14 | Tendencia de historial (Jun 380 → Sep 435) | Facturas | bills | Mini-línea | ✅ web (≥ 2 facturas) · móvil usa CH-01 en Facturas |
-| CH-15 | Medidor en vivo (2.84 kW, 121 V, 23.4 A, 🟢 conectado) | Smart Meter | telemetría | Valores grandes + sparkline | ⛔ (Fase 5) |
-| CH-16 | Solar: producción · consumo · red · batería % | Solar | telemetría | Barras apiladas / flujo | ⛔ (Fase 6) |
-| CH-17 | Batería 78 %, 10.4 kWh, autonomía 7h20m | Batería | telemetría | Gauge | ⛔ (Fase 6) |
+| CH-15 | Medidor en vivo (2.84 kW, 121 V, 23.4 A, 🟢 conectado) | Smart Meter | telemetría | Valores grandes + sparkline | ⛔ (Fase 6, requiere telemetría real) |
+| CH-16 | Solar: producción · consumo · red · batería % | Solar | telemetría | Barras apiladas / flujo | ⛔ (Fase 7, requiere telemetría) |
+| CH-17 | Batería 78 %, 10.4 kWh, autonomía 7h20m | Batería | telemetría | Gauge | ⛔ (Fase 7, requiere telemetría) |
 | CH-18 | Mapa de RD con capas (Interrupciones, Consumo, Solar, Generación, Medidores) | Mapa | datos agregados | Mapa coroplético | ⛔ (Fase 8) |
 | CH-19 | Business: consumo 48,420 kWh, costo, variación, Peak Demand, mayor carga | Business | readings | KPI + barras | ⛔ (Fase 7) |
 | CH-20 | Condominio: 120 unidades, áreas comunes, bombas, ascensores, iluminación | Condominios | readings | Treemap/barras | ⛔ (Fase 7) |
-| CH-21 | Gráficos de admin: viviendas, facturas pendientes, salud del sistema, uso de IA | Admin | varios | Tablas + KPIs | ⛔ |
+| CH-21 | Gráficos de admin: viviendas, facturas pendientes, salud del sistema, uso de IA | Admin | varios | Tablas + KPIs | 🔄 resumen agregado ya existe; estado de worker aún inferido y sin latidos/backups reales |
 | CH-22 | Racha y nivel (🔥 12 días · ⚡ 8 % · 🏆 Nivel 4) | Gamificación | challenges | Insignias | ⛔ (Fase 7) |
-| CH-23 | Informe energético descargable/imprimible | Informes | todas | PDF de una página con CH-01/02/06/10 | ⛔ |
+| CH-23 | Informe energético descargable/imprimible | Informes | todas | PDF de una página con CH-01/02/06/10 | ✅ API/web/móvil en `origin/Dev`; datos disponibles y estimados etiquetados |
 
 **Librerías:** web → Recharts (como dice el chat); móvil → `victory-native` o `react-native-gifted-charts` + `react-native-svg`. Las gráficas actuales hechas a mano (CH-01) se migran para compartir tooltips, ejes y accesibilidad.
 **Accesibilidad de gráficos:** cada gráfica expone un resumen textual (ya hecho en `MonthlyChart`) y una tabla alternativa.
@@ -192,7 +192,7 @@ Se crean en `packages/ui` (web) y `frontend-mobile/app/src/components` con la **
 | ERD-STORE-01 | Almacenamiento de documentos (R2/S3; MinIO local), URLs firmadas | Storage del flujo OCR |
 | ERD-OCR-01 | `POST /bills/upload` → worker → OCR (Tesseract inicial, proveedor intercambiable) → parser Pydantic → validación → **confirmación humana** → BD | "Nunca OCR → DB" |
 | ERD-OCR-02 | Móvil: Tomar foto / Seleccionar imagen / Manual + pantalla "Hemos encontrado…" [Confirmar][Editar] | módulo 9 |
-| ERD-OCR-03 | Admin: cola de OCR, errores y pendientes | panel admin → OCR |
+| ERD-OCR-03 | ✅ Cola OCR administrativa con errores/reintentos, RBAC y auditoría ya integrada; acceso al documento sigue protegido por permisos específicos |
 | ERD-ANOM-01 | Motor de anomalías (picos, nocturno, incrementos, caídas, patrones nuevos) con nivel de confianza | M11 · CH-13 |
 | ERD-ALERT-02 | 4 severidades (🔴🟠🟡🟢), recordatorios de pago, datos incompletos, notificaciones push | M10 |
 | ERD-SAVE-01 | Reglas de ahorro (A/C, calentador, nocturno, standby) con impacto, RD$ y dificultad + "Aplicar objetivo" | M08 · CH-08 |
@@ -215,11 +215,12 @@ Se crean en `packages/ui` (web) y `frontend-mobile/app/src/components` con la **
 ### Fase 5 — Panel administrativo, informes, reclamaciones (3 semanas)
 | ID | Tarea |
 |---|---|
-| ERD-ADM-01 | `frontend-web/admin` (Next.js): resumen, usuarios, viviendas, contratos, facturas (validar/corregir/rechazar), OCR, consumo, tarifas, alertas, interrupciones, recomendaciones, Copilot, auditoría, configuración (14 módulos del chat) |
-| ERD-ADM-02 | RBAC con permisos específicos y registro de operaciones sensibles; un admin no ve datos privados sin permiso |
-| ERD-RPT-01 | `GET /reports/energy` + informe PDF descargable/imprimible (CH-23) |
-| ERD-CLAIM-01 | Reclamaciones (M29): caso con factura, consumo, historial, diferencia, documentos y seguimiento — sin acusar automáticamente a la distribuidora |
-| ERD-HELP-01 | Centro de ayuda y FAQ (M28) |
+| ERD-ADM-01 | **Parcial en `origin/Dev`:** `frontend-web/admin` ya tiene resumen agregado, usuarios de solo lectura, OCR, roles/asignaciones y auditoría. No reimplementar estos módulos; cerrar los paquetes ERD-ADM-* pendientes de este plan sobre la misma API `backend/api` |
+| ERD-ADM-02 | **Base RBAC integrada:** scopes de roles/OCR/auditoría/usuarios/sistema. Añadir scopes específicos para futuras acciones sensibles; registro inmutable existente |
+| ERD-RPT-01 | ✅ Informe por período y PDF descargable/imprimible ya integrados en `origin/Dev` (CH-23) |
+| ERD-CLAIM-01 | ✅ Reclamaciones de usuario ya integradas en `origin/Dev`; permanece la cola de soporte y transiciones administrativas `ERD-CLAIM-SUPPORT` |
+| ERD-HELP-01 | ✅ Centro de ayuda y FAQ ya integrados en `origin/Dev`; contacto/SLAs/configuración editorial están pendientes de decisión |
+
 
 ### Fase 6 — Tiempo real: Smart Meter e IoT (4 semanas) *(visión fase 3–4 del chat)*
 | ID | Tarea |
@@ -358,3 +359,29 @@ El chat original proponía 12 semanas para el MVP; con el alcance del chat, **Fa
 2. Decidir paleta (§2.2) y dueño de Data/IA (§5).
 3. Autorizar commit + push de lo local (ERD-REL-COMMIT).
 4. Arrancar Fase 1 con **ERD-AUTH-01**.
+
+## 14. Paquete vigente solicitado — release web y administración (baseline `origin/Dev` `f3cb2f42`)
+
+**Módulos ya integrados en Dev — no reabrir como faltantes de desarrollo:** Copilot móvil (`ERD-AI-CHAT-MOBILE`), Reports/PDF (`ERD-RPT-01`), Help (`ERD-HELP-01`), Claims del usuario (`ERD-CLAIM-01`), OCR administrativo (`ERD-OCR-03`), resumen agregado admin (`ERD-ADM-DASH-WEB`) y consulta admin de usuarios read-only (`ERD-ADM-USERS-WEB`). El panel admin es parcial, no vacío.
+
+| ID | Estado local verificable / siguiente gate |
+|---|---|
+| ERD-WEB-RELEASE-QA | E2E integrado y ejecutado contra PostgreSQL/API/worker/BFF locales con factura sintética; `docs/qa/ERD-WEB-RELEASE-QA.md`. **104/104 passed en 5.6 min** tras corregir dos selectores del harness. Solo aceptación local, sin staging. |
+| ERD-WEB-CROSS-BROWSER | Suite integral final **104/104**; proyectos Chromium, Firefox, WebKit, Pixel 7 e iPhone 13 emulados. Primera/última suite pasó los **16/16 smoke** adicionales. Viewport 640 px es proxy de reflow al 200%, no zoom real; CI remoto y dispositivos físicos no verificados. |
+| ERD-WEB-A11Y-FINAL | Suite integral **104/104**; `12-a11y-layout.spec.ts` axe WCAG 2.0/2.1/2.2 A/AA + buenas prácticas y teclado/foco/diálogo/formulario pasaron. Lector de pantalla, gráficos y zoom real requieren revisión manual; CI remoto pendiente. |
+| ERD-WEB-CAMERA-01 | Controles explícitos «Tomar foto» (`image/*`, `capture=environment`) y «Elegir foto o PDF»; unidad 7/7. Carga OCR revisable pasó en Chromium, Firefox, WebKit y emulación Pixel/iPhone; Safari iOS/Chrome Android físicos pendientes. |
+| ERD-WEB-OFFLINE-UX-01 | Aviso sin desmontar formularios, lecturas revalidan al reconectar y escrituras no se reintentan; unit 13/13. E2E de borrador/red/revalidación/cero escrituras pasó en suite integral 104/104. |
+| ERD-WEB-LEGAL-PUBLISH | Bloqueado: falta copy aprobado para términos/privacidad que cubra OCR, Copilot y notificaciones; los borradores no se sustituyen por texto inventado. |
+| ERD-ADM-USERS-WRITE | Implementado y verificado localmente: solicitudes de exportación/borrado sin ejecución automática, cierre de sesiones/desactivación con scope, motivo, auditoría y guarda del último super-admin. Cola `/solicitudes` y acciones en ficha; transición oculta sin `admin.users.requests.manage`; API 1363, admin unit 48, E2E admin 13/13, build/typecheck/contracts/arquitectura OK. Evidencia `docs/qa/ERD-ADM-USERS-WRITE.md`; sin commit/deploy. |
+| ERD-ADM-HOMES-WEB | Decisión de privacidad pendiente antes de exponer vivienda/contrato a soporte. |
+| ERD-ADM-BILLS-WEB | Pendiente: revisión/corrección auditada, procedencia y documentos protegidos. |
+| ERD-ADM-TARIFFS-WEB | Pendiente: versionado, vigencia, fuente oficial, validación y vista previa. |
+| ERD-ADM-OPERATIONS-WEB | Pendiente: lectura de consumo/anomalías/alertas/apagones/recomendaciones; solo lectura salvo scope específico. |
+| ERD-ADM-SYSTEM-WEB | Pendiente: heartbeat real, latencia, backup/restore y sondas; el estado actual del worker es inferido. |
+| ERD-AI-ADMIN-WEB | Pendiente: uso/costo/latencia/feedback agregado sin leer conversaciones privadas; coste exige tarifa/modelo y fuente aprobados. |
+| ERD-CLAIM-SUPPORT | Pendiente: cola de soporte y transiciones «en revisión/resuelta» con scope/audit; no duplicar el flujo de usuario ya integrado. |
+| ERD-CLAIM-ATTACHMENTS | Bloqueado hasta definir tipos, límite, retención y borrado; por ahora solo se enlaza la factura original. |
+| ERD-HELP-OPERATIONS | Bloqueado: correo público, responsable, SLA y decisión de administración editorial no aportados. |
+| ERD-ADM-DEPLOY | No desplegar desde este worktree: requiere autorización de publicación, dominio/TLS y staging aprobados; ejecutar localmente no equivale a staging. |
+
+**Arquitectura invariable:** `backend/api` sigue siendo la API de negocio única; BFF solo media sesión y seguridad. No crear base ni backend administrativo paralelo.

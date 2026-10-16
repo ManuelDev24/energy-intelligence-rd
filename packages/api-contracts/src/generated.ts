@@ -1171,6 +1171,57 @@ export const OcrOperationReasonSchema = z.object({
 });
 export type OcrOperationReason = z.infer<typeof OcrOperationReasonSchema>;
 
+export const AdminUserRequestCreateSchema = z.object({
+  "kind": z.enum(["export", "deletion"]),
+  "reason": z.string().min(1).max(500)
+});
+export type AdminUserRequestCreate = z.infer<typeof AdminUserRequestCreateSchema>;
+
+export const AdminUserRequestTransitionSchema = z.object({
+  "status": z.enum(["in_progress", "completed", "rejected"]),
+  "reason": z.string().min(1).max(500)
+});
+export type AdminUserRequestTransition = z.infer<typeof AdminUserRequestTransitionSchema>;
+
+export const AdminUserRequestOutSchema = z.object({
+  "id": z.string().uuid(),
+  "target_user_id": z.string().uuid(),
+  "kind": z.enum(["export", "deletion"]),
+  "status": z.enum(["pending", "in_progress", "completed", "rejected"]),
+  "reason": z.string(),
+  "resolution_reason": z.union([z.string(), z.null()]),
+  "created_at": z.string().datetime({ offset: true }),
+  "updated_at": z.string().datetime({ offset: true }),
+  "resolved_at": z.union([z.string().datetime({ offset: true }), z.null()])
+});
+export type AdminUserRequestOut = z.infer<typeof AdminUserRequestOutSchema>;
+
+export const AdminUserRequestsPageSchema = z.object({
+  "items": z.array(AdminUserRequestOutSchema),
+  "total": z.number().finite().int(),
+  "limit": z.number().finite().int(),
+  "offset": z.number().finite().int()
+});
+export type AdminUserRequestsPage = z.infer<typeof AdminUserRequestsPageSchema>;
+
+export const AdminCloseSessionsOutSchema = z.object({
+  "user_id": z.string().uuid(),
+  "closed_sessions": z.number().finite().int()
+});
+export type AdminCloseSessionsOut = z.infer<typeof AdminCloseSessionsOutSchema>;
+
+export const AdminUserDeactivationOutSchema = z.object({
+  "user_id": z.string().uuid(),
+  "active": z.boolean(),
+  "closed_sessions": z.number().finite().int()
+});
+export type AdminUserDeactivationOut = z.infer<typeof AdminUserDeactivationOutSchema>;
+
+export const AdminOperationReasonSchema = z.object({
+  "reason": z.string().min(1).max(500)
+});
+export type AdminOperationReason = z.infer<typeof AdminOperationReasonSchema>;
+
 export const AuditEventOutSchema = z.object({
   "id": z.string().uuid(),
   "actor_user_id": z.union([z.string().uuid(), z.null()]),

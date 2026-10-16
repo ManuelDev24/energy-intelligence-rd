@@ -9,7 +9,10 @@ export function QueryProvider({ children }: { children: ReactNode }) {
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { retry: retryPolicy, staleTime: 60_000, refetchOnWindowFocus: false },
+          // Relee datos tras volver la red aunque aún no haya vencido staleTime.
+          queries: { retry: retryPolicy, staleTime: 60_000, refetchOnWindowFocus: false, refetchOnReconnect: "always" },
+          // Una escritura que falla sin red no queda pausada para reenviarse automáticamente al reconectar.
+          mutations: { retry: false, networkMode: "always" },
         },
       }),
   );

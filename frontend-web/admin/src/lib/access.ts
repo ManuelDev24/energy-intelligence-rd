@@ -23,6 +23,7 @@ export const NAV_ITEMS = [
   { href: "/operaciones", label: "Operaciones", scope: "admin.system.read" },
   { href: "/tarifas", label: "Tarifas", scope: "admin.system.read" },
   { href: "/facturas", label: "Facturas", scope: "admin.bills.read" },
+  { href: "/solicitudes", label: "Solicitudes de datos", scope: "admin.users.requests.read" },
   { href: "/ocr", label: "OCR", scope: "admin.ocr.read" },
   { href: "/auditoria", label: "Auditoría", scope: "admin.audit.read" },
 ] as const;

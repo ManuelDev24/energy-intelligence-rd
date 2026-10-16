@@ -98,8 +98,13 @@ try {
   const userEmail = `user-e2e-${suffix}@example.com`;
   const adminPassword = randomBytes(32).toString('base64url');
   const userPassword = randomBytes(32).toString('base64url');
+  // Dedicated account for destructive admin actions (close sessions, deactivate) so the shared
+  // `user` account stays usable for every other spec regardless of file order.
+  const targetEmail = `target-e2e-${suffix}@example.com`;
+  const targetPassword = randomBytes(32).toString('base64url');
   await register(adminEmail, adminPassword);
   const userId = await register(userEmail, userPassword);
+  const targetId = await register(targetEmail, targetPassword);
   // The only elevation path: trusted CLI, on the account just registered in this DB.
   command('uv', ['run', '--frozen', 'python', '-m', 'app.cli_bootstrap_admin', adminEmail], apiDir);
   const web = start(path.join(root, 'node_modules/.bin/next'),
@@ -107,13 +112,14 @@ try {
   await ready(`${adminUrl}/login`, web);
   // Next dev compiles each route lazily on first hit; pre-warm every route the spec visits
   // so the FIRST real request in a test isn't also paying first-compile latency.
-  for (const route of ['/', '/mi-acceso', '/roles', '/auditoria', '/ocr', '/ocr/1', '/resumen', '/usuarios', '/viviendas', '/facturas', '/tarifas', '/operaciones', '/ia', '/sistema', '/viviendas/00000000-0000-4000-8000-000000000000', '/facturas/00000000-0000-4000-8000-000000000000']) {
+  for (const route of ['/', '/mi-acceso', '/roles', '/auditoria', '/ocr', '/ocr/1', '/resumen', '/usuarios', '/solicitudes', '/viviendas', '/facturas', '/tarifas', '/operaciones', '/ia', '/sistema', '/viviendas/00000000-0000-4000-8000-000000000000', '/facturas/00000000-0000-4000-8000-000000000000']) {
     await fetch(`${adminUrl}${route}`, { redirect: 'manual' }).catch(() => undefined);
   }
   await fetch(`${adminUrl}/api/admin/session`).catch(() => undefined);
   process.exitCode = await playwright({ ...browserEnv, ADMIN_E2E_OWNED: '1', ADMIN_E2E_ADMIN_PORT: String(adminPort),
     ADMIN_E2E_ADMIN_EMAIL: adminEmail, ADMIN_E2E_ADMIN_PASSWORD: adminPassword,
-    ADMIN_E2E_USER_EMAIL: userEmail, ADMIN_E2E_USER_PASSWORD: userPassword, ADMIN_E2E_USER_ID: userId });
+    ADMIN_E2E_USER_EMAIL: userEmail, ADMIN_E2E_USER_PASSWORD: userPassword, ADMIN_E2E_USER_ID: userId,
+    ADMIN_E2E_TARGET_EMAIL: targetEmail, ADMIN_E2E_TARGET_PASSWORD: targetPassword, ADMIN_E2E_TARGET_ID: targetId });
 } catch (error) {
   console.error(error instanceof Error ? error.message : 'Isolated E2E failed');
   process.exitCode = 1;

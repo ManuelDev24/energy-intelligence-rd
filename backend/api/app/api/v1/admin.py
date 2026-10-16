@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 from app.api.admin_deps import current_admin, require_scope
 from app.database import get_db
 from app.schemas.admin import (AdminSystemOut, AdminAiUsageOut, AdminJobsPage, AdminJobsSummaryOut, AdminBillsSummary, AdminTariffsOut, AdminHomeBillsPage, AdminHomeDetailOut, AdminHomesPage, AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobDetailOut, AdminOcrJobsPage, OcrOperationReason,
+                               AdminUserRequestCreate, AdminUserRequestTransition, AdminUserRequestOut, AdminUserRequestsPage,
+                               AdminCloseSessionsOut, AdminUserDeactivationOut, AdminOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentsPage,
                                RoleAssignmentCreate, RoleAssignmentOut, RoleAssignmentRevoke, RoleOut, ScopeOut)
 from app.services import admin as admin_service
 from app.services.copilot.tools import today_rd
-from app.services import admin_ai, admin_bills, admin_system, admin_homes, admin_jobs, admin_tariffs, admin_ocr, admin_overview, admin_users
+from app.services import admin_ai, admin_bills, admin_system, admin_homes, admin_jobs, admin_tariffs, admin_ocr, admin_overview, admin_users, admin_users_write
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -113,6 +115,53 @@ def system_status(response: Response, db: Session = Depends(get_db)):
     """Configuración y salud: dice si cada ajuste cumple lo que exige la aplicación; nunca devuelve valores, secretos ni URLs."""
     response.headers["Cache-Control"] = "no-store"
     return admin_system.build(db)
+
+
+@router.post('/users/{user_id}/requests', response_model=AdminUserRequestOut, status_code=201,
+             dependencies=[Depends(require_scope('admin.users.requests.manage'))])
+def create_user_request(user_id: uuid.UUID, payload: AdminUserRequestCreate, request: Request, response: Response,
+                        user=Depends(current_admin), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return admin_users_write.create_request(db, target_user_id=user_id, actor_user_id=user.id, kind=payload.kind,
+                                            reason=payload.reason, request_id=getattr(request.state, 'request_id', None))
+
+
+@router.get('/user-requests', response_model=AdminUserRequestsPage,
+            dependencies=[Depends(require_scope('admin.users.requests.read'))])
+def list_user_requests(response: Response, status: Literal['pending', 'in_progress', 'completed', 'rejected'] | None = None,
+                       limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=100_000),
+                       db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    items, total = admin_users_write.list_requests(db, status=status, limit=limit, offset=offset)
+    return AdminUserRequestsPage(items=[AdminUserRequestOut.model_validate(item) for item in items], total=total, limit=limit, offset=offset)
+
+
+@router.post('/user-requests/{request_record_id}/transition', response_model=AdminUserRequestOut,
+             dependencies=[Depends(require_scope('admin.users.requests.manage'))])
+def transition_user_request(request_record_id: uuid.UUID, payload: AdminUserRequestTransition, request: Request,
+                            response: Response, user=Depends(current_admin), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return admin_users_write.transition_request(db, request_record_id=request_record_id, actor_user_id=user.id,
+                                                status=payload.status, reason=payload.reason,
+                                                request_id=getattr(request.state, 'request_id', None))
+
+
+@router.post('/users/{user_id}/sessions/close', response_model=AdminCloseSessionsOut,
+             dependencies=[Depends(require_scope('admin.users.sessions.close'))])
+def close_user_sessions(user_id: uuid.UUID, payload: AdminOperationReason, request: Request, response: Response,
+                        user=Depends(current_admin), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return admin_users_write.close_sessions(db, target_user_id=user_id, actor_user_id=user.id, reason=payload.reason,
+                                            request_id=getattr(request.state, 'request_id', None))
+
+
+@router.post('/users/{user_id}/deactivate', response_model=AdminUserDeactivationOut,
+             dependencies=[Depends(require_scope('admin.users.deactivate'))])
+def deactivate_user(user_id: uuid.UUID, payload: AdminOperationReason, request: Request, response: Response,
+                    user=Depends(current_admin), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return admin_users_write.deactivate_user(db, target_user_id=user_id, actor_user_id=user.id, reason=payload.reason,
+                                             request_id=getattr(request.state, 'request_id', None))
 
 
 @router.get('/ocr/jobs', response_model=AdminOcrJobsPage,

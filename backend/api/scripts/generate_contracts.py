@@ -42,6 +42,8 @@ from app.schemas.help import HelpArticle, HelpIndex
 from app.schemas.report import EnergyReportOut
 from app.schemas.recommendation import GoalProposalOut, RecommendationListOut, RecommendationRecord, RecommendationStatusIn
 from app.schemas.admin import (AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
+                               AdminUserRequestCreate, AdminUserRequestTransition, AdminUserRequestOut, AdminUserRequestsPage,
+                               AdminCloseSessionsOut, AdminUserDeactivationOut, AdminOperationReason,
                                AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate,
                                RoleAssignmentOut, RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut)
 from app.schemas.copilot import (ConversationIn, ConversationOut, ConversationRename, CopilotMessageOut, CopilotUsageOut, FeedbackIn,
@@ -56,6 +58,8 @@ MODELS = [HomeOut, BillOut, DashboardOut, EquipmentOut, EquipmentEstimateOut, Al
           PasswordChangeIn, InvitationCreateIn, InvitationOut, InvitationAcceptIn, MemberOut, OwnershipTransferIn,
           NotificationPreferencesIn, NotificationPreferencesOut, SessionOut, EmailVerifyIn, EmailVerificationRequestOut, OcrDraft, OcrJobOut, AnomalyRecord, AnomalyStatusIn, RecommendationRecord, RecommendationStatusIn, RecommendationListOut, GoalProposalOut, EnergyReportOut, HelpIndex, HelpArticle, DownloadUrlOut, ClaimIn, ClaimNoteIn, ClaimCloseIn, ClaimReferenceIn, ClaimOut, ClaimDetailOut, EnergyScoreOut, OutageIn, OutageOut, OutageSummaryOut, BillPaymentIn, DeviceIn, DeviceRemoveIn,
           AdminUserDetailOut, AdminUsersPage, AdminOverviewOut, AdminOcrJobOut, AdminOcrJobsPage, OcrOperationReason,
+          AdminUserRequestCreate, AdminUserRequestTransition, AdminUserRequestOut, AdminUserRequestsPage,
+          AdminCloseSessionsOut, AdminUserDeactivationOut, AdminOperationReason,
           AuditEventOut, AuditEventsPage, MyAccessOut, RoleAssignmentCreate, RoleAssignmentOut,
           RoleAssignmentRevoke, RoleAssignmentsPage, RoleOut, ScopeOut,
           ConversationIn, ConversationRename, ConversationOut, CopilotMessageOut, MessageIn, FeedbackIn, CopilotUsageOut]

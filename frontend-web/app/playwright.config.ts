@@ -3,6 +3,10 @@ import { defineConfig, devices } from "@playwright/test";
 import { WEB_URL } from "./e2e/support/env";
 
 const ci = !!process.env.CI;
+const chromiumLaunchOptions = process.env.E2E_CHROMIUM_PATH
+  ? { executablePath: process.env.E2E_CHROMIUM_PATH, args: ["--no-sandbox"] }
+  : { args: ["--no-sandbox"] };
+const crossBrowserSpec = /09-cross-browser\.spec\.ts/;
 
 export default defineConfig({
   testDir: "./e2e/specs",
@@ -25,7 +29,12 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
-    launchOptions: process.env.E2E_CHROMIUM_PATH ? { executablePath: process.env.E2E_CHROMIUM_PATH, args: ["--no-sandbox"] } : { args: ["--no-sandbox"] },
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"], launchOptions: chromiumLaunchOptions } },
+    { name: "firefox", testMatch: crossBrowserSpec, use: { ...devices["Desktop Firefox"] } },
+    { name: "webkit", testMatch: crossBrowserSpec, use: { ...devices["Desktop Safari"] } },
+    { name: "mobile-chromium", testMatch: crossBrowserSpec, use: { ...devices["Pixel 7"] } },
+    { name: "mobile-webkit", testMatch: crossBrowserSpec, use: { ...devices["iPhone 13"] } },
+  ],
 });

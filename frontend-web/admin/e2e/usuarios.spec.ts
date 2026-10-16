@@ -3,6 +3,9 @@ import { test, expect, type Page } from '@playwright/test';
 
 const admin = { email: process.env.ADMIN_E2E_ADMIN_EMAIL!, password: process.env.ADMIN_E2E_ADMIN_PASSWORD! };
 const user = { email: process.env.ADMIN_E2E_USER_EMAIL!, password: process.env.ADMIN_E2E_USER_PASSWORD! };
+// Destructive actions (close sessions, deactivate) use a dedicated account so `user` stays valid for other specs.
+const target = { email: process.env.ADMIN_E2E_TARGET_EMAIL!, password: process.env.ADMIN_E2E_TARGET_PASSWORD! };
+const targetId = process.env.ADMIN_E2E_TARGET_ID!;
 
 async function login(page: Page, account: typeof admin) {
   await page.goto('/login');
@@ -57,6 +60,58 @@ test('el admin busca, abre una ficha de solo lectura y todo queda auditado sin e
   const search = page.getByRole('row').filter({ hasText: 'users.search' }).first();
   await expect(search).toBeVisible();
   await expect(page.locator('main').getByText(needle)).toHaveCount(0);
+});
+
+test('admin registra y tramita solicitudes, cierra sesiones y desactiva sin borrar automáticamente', async ({ page, browser }) => {
+  await login(page, admin);
+  await page.goto(`/usuarios/${targetId}`);
+  await expect(page.getByRole('heading', { name: 'Persona', level: 1 })).toBeVisible();
+  await page.getByLabel('Tipo de solicitud').selectOption('export');
+  await page.getByLabel('Motivo de la solicitud').fill('solicitud de exportación');
+  await page.getByRole('button', { name: 'Registrar solicitud' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'No se exportó ni se borró' })).toBeVisible();
+  await expect(page.getByRole('definition').filter({ hasText: 'Activa' })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Solicitudes de datos' }).click();
+  await expect(page.getByRole('heading', { name: 'Solicitudes de datos' })).toBeVisible();
+  await page.getByLabel('Filtrar por estado').selectOption('');
+  const exportRow = page.getByRole('row').filter({ hasText: targetId }).filter({ hasText: 'Exportación' });
+  await expect(exportRow).toContainText('Pendiente');
+  await exportRow.getByLabel('Siguiente estado').selectOption('in_progress');
+  await exportRow.getByLabel('Motivo').fill('caso asignado');
+  await exportRow.getByRole('button', { name: 'Iniciar revisión' }).click();
+  await expect(exportRow).toContainText('En revisión');
+  await exportRow.getByLabel('Siguiente estado').selectOption('completed');
+  await exportRow.getByLabel('Motivo').fill('exportación atendida por canal aprobado');
+  await exportRow.getByRole('button', { name: 'Marcar atendida' }).click();
+  await expect(exportRow).toContainText('Atendida');
+
+  await page.goto(`/usuarios/${targetId}`);
+  await page.getByLabel('Tipo de solicitud').selectOption('deletion');
+  await page.getByLabel('Motivo de la solicitud').fill('solicitud de borrado');
+  await page.getByRole('button', { name: 'Registrar solicitud' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'No se exportó ni se borró' })).toBeVisible();
+
+  const userContext = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  try {
+    const userPage = await userContext.newPage();
+    await login(userPage, target);
+    expect(await status(userPage, '/me')).toBe(200);
+
+    await page.getByLabel('Motivo para cerrar sesiones').fill('sesiones revocadas por soporte');
+    await page.getByRole('button', { name: 'Cerrar todas las sesiones' }).click();
+    await expect.poll(() => status(userPage, '/me')).toBe(401);
+
+    await login(userPage, target);
+    expect(await status(userPage, '/me')).toBe(200);
+    await page.getByLabel('Motivo para desactivar cuenta').fill('cuenta suspendida por solicitud');
+    page.once('dialog', dialog => dialog.accept());
+    await page.getByRole('button', { name: 'Desactivar cuenta y cerrar sesiones' }).click();
+    await expect(page.getByRole('definition').filter({ hasText: 'Desactivada' })).toBeVisible();
+    await expect.poll(() => status(userPage, '/me')).toBe(401);
+  } finally {
+    await userContext.close();
+  }
 });
 
 test('una ficha inexistente muestra un estado claro', async ({ page }) => {

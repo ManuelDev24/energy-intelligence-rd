@@ -115,7 +115,9 @@ def test_home_membership_does_not_grant_admin_and_vice_versa(auth_client, migrat
 def test_each_role_has_exactly_its_own_scopes(auth_client, migrated):
     cases = {
         'super_admin': {'admin.roles.read', 'admin.roles.manage', 'admin.ocr.read', 'admin.ocr.retry',
-                        'admin.ocr.review', 'admin.audit.read', 'admin.users.read', 'admin.system.read', 'admin.homes.read', 'admin.bills.read', 'admin.ai.read'},
+                        'admin.ocr.review', 'admin.audit.read', 'admin.users.read', 'admin.system.read', 'admin.homes.read', 'admin.bills.read', 'admin.ai.read',
+                        'admin.users.requests.read', 'admin.users.requests.manage', 'admin.users.sessions.close',
+                        'admin.users.deactivate'},
         'operations_admin': {'admin.ocr.read', 'admin.ocr.retry', 'admin.ocr.review', 'admin.users.read',
                              'admin.system.read', 'admin.homes.read', 'admin.bills.read', 'admin.ai.read'},
         'ocr_reviewer': {'admin.ocr.read', 'admin.ocr.review'},
@@ -451,3 +453,74 @@ def test_admin_users_read_only_search_audit_and_no_secrets(auth_client, migrated
     assert {e[0] for e in events} == {'users.search', 'users.view'}
     assert any(e[0] == 'users.view' and e[1] == f"users:{page['items'][0]['id']}" for e in events)
     assert all('busqueda' not in (e[2] or '') and 'alicia' not in (e[2] or '') for e in events)  # el término buscado no se guarda
+
+
+def test_admin_user_request_is_scoped_reasoned_and_does_not_export_or_delete(auth_client, migrated):
+    target_tokens = register(auth_client, 'target-request@example.com')
+    admin_tokens = _setup_admin(auth_client, migrated, email='admin-request@example.com')
+    readonly_tokens = register(auth_client, 'readonly-request@example.com')
+    _grant(migrated, 'readonly-request@example.com', 'support_readonly')
+    with migrated.connect() as c:
+        target_id = str(c.execute(text("SELECT id FROM users WHERE email='target-request@example.com'")).scalar_one())
+
+    route = f'/api/v1/admin/users/{target_id}/requests'
+    assert auth_client.post(route, json={'kind': 'export', 'reason': 'solicitud recibida'}).status_code == 401
+    assert auth_client.post(route, headers=bearer(readonly_tokens),
+                            json={'kind': 'export', 'reason': 'solicitud recibida'}).status_code == 403
+    created = auth_client.post(route, headers=bearer(admin_tokens),
+                               json={'kind': 'export', 'reason': 'solicitud recibida'})
+    assert created.status_code == 201, created.text
+    request = created.json()
+    assert request['target_user_id'] == target_id and request['kind'] == 'export' and request['status'] == 'pending'
+    assert auth_client.get('/api/v1/admin/user-requests', headers=bearer(readonly_tokens)).status_code == 403
+    listed = auth_client.get('/api/v1/admin/user-requests?status=pending', headers=bearer(admin_tokens))
+    assert listed.status_code == 200 and listed.json()['total'] == 1
+    assert listed.json()['items'][0]['id'] == request['id']
+    unsafe = auth_client.post(route, headers=bearer(admin_tokens),
+                              json={'kind': 'deletion', 'reason': 'contact target-request@example.com'})
+    assert unsafe.status_code == 422
+    # Registering an administrative request must not run the self-service export or delete the account.
+    assert auth_client.get('/api/v1/auth/me', headers=bearer(target_tokens)).status_code == 200
+    with migrated.connect() as c:
+        user = c.execute(text('SELECT active FROM users WHERE id=:id'), {'id': target_id}).scalar_one()
+        events = c.execute(text("SELECT action, resource, reason FROM admin_audit_events WHERE action='users.request.create'")).all()
+    assert user is True and len(events) == 1
+    assert events[0][1] == f'users:{target_id}' and events[0][2] == 'solicitud recibida'
+    assert 'target-request' not in str(events)
+
+
+def test_admin_close_sessions_revokes_access_and_refresh(auth_client, migrated):
+    target_tokens = register(auth_client, 'target-sessions@example.com')
+    admin_tokens = _setup_admin(auth_client, migrated, email='admin-sessions@example.com')
+    with migrated.connect() as c:
+        target_id = str(c.execute(text("SELECT id FROM users WHERE email='target-sessions@example.com'")).scalar_one())
+    response = auth_client.post(f'/api/v1/admin/users/{target_id}/sessions/close', headers=bearer(admin_tokens),
+                                json={'reason': 'sesiones revocadas por soporte'})
+    assert response.status_code == 200, response.text
+    assert response.json()['closed_sessions'] == 1
+    assert auth_client.get('/api/v1/auth/me', headers=bearer(target_tokens)).status_code == 401
+    assert auth_client.post('/api/v1/auth/refresh', json={'refresh_token': target_tokens['refresh_token']}).status_code == 401
+    with migrated.connect() as c:
+        event = c.execute(text("SELECT action, reason FROM admin_audit_events WHERE action='users.sessions.close'")).one()
+    assert event[0] == 'users.sessions.close' and event[1] == 'sesiones revocadas por soporte'
+
+
+def test_admin_deactivation_revokes_sessions_and_preserves_last_super_admin(auth_client, migrated):
+    actor_tokens = _setup_admin(auth_client, migrated, email='admin-deactivate@example.com')
+    target_tokens = register(auth_client, 'target-deactivate@example.com')
+    _grant(migrated, 'target-deactivate@example.com', 'super_admin')
+    with migrated.connect() as c:
+        target_id = str(c.execute(text("SELECT id FROM users WHERE email='target-deactivate@example.com'")).scalar_one())
+    response = auth_client.post(f'/api/v1/admin/users/{target_id}/deactivate', headers=bearer(actor_tokens),
+                                json={'reason': 'cuenta desactivada a petición'})
+    assert response.status_code == 200, response.text
+    assert response.json()['active'] is False and response.json()['closed_sessions'] == 1
+    assert auth_client.get('/api/v1/auth/me', headers=bearer(target_tokens)).status_code == 401
+    assert auth_client.post('/api/v1/auth/login', json={'email': 'target-deactivate@example.com', 'password': PASSWORD}).status_code == 401
+
+    with migrated.connect() as c:
+        actor_id = str(c.execute(text("SELECT id FROM users WHERE email='admin-deactivate@example.com'")).scalar_one())
+    blocked = auth_client.post(f'/api/v1/admin/users/{actor_id}/deactivate', headers=bearer(actor_tokens),
+                               json={'reason': 'cuenta desactivada a petición'})
+    assert blocked.status_code == 403
+    assert auth_client.get('/api/v1/admin/roles', headers=bearer(actor_tokens)).status_code == 200

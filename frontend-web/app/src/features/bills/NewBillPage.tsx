@@ -66,11 +66,15 @@ export default function NewBillPage() {
           El archivo se guarda cifrado y se asocia a la factura que confirmes. Si no la confirmas, se elimina automáticamente.
         </CardDescription>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-            {active ? "Analizando…" : "Seleccionar foto o PDF"}
+          <label className={`inline-flex min-h-11 items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${active ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:opacity-90"}`}>
+            Tomar foto
+            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={selectFile} disabled={active} />
+          </label>
+          <label className={`inline-flex min-h-11 items-center rounded-lg border border-border px-4 py-2 text-sm font-medium focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${active ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-muted"}`}>
+            Elegir foto o PDF
             <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={selectFile} disabled={active} />
           </label>
-          <span className="text-xs text-muted-foreground">JPG, PNG, WEBP, HEIC o PDF</span>
+          <span className="text-xs text-muted-foreground">JPG, PNG, WEBP, HEIC o PDF. Si tu navegador no abre la cámara, elige una foto.</span>
         </div>
         {active ? (
           <div role="status" className="mt-3 text-sm">

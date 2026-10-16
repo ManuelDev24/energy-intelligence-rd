@@ -251,4 +251,32 @@ describe("admin BFF", () => {
     }
     expect(upstream).toHaveBeenCalledTimes(1);
   });
+
+  it("proxies scoped user requests and session actions only on the declared methods and filters", async () => {
+    cookies(await call("/session"));
+    cookies(await call("/auth/login", "POST", { email: "a@example.com", password: "secret" }));
+    upstream.mockClear();
+    upstream.mockImplementation(async (url: string, init: RequestInit) => {
+      if (url.endsWith("/requests") && init.method === "POST")
+        return Response.json({ id: "11111111-1111-4111-8111-111111111111", status: "pending" }, { status: 201 });
+      return Response.json({ items: [], total: 0, limit: 25, offset: 0 });
+    });
+    const userId = "22222222-2222-4222-8222-222222222222";
+    const requestId = "11111111-1111-4111-8111-111111111111";
+    const created = await call(`/proxy/users/${userId}/requests`, "POST", { kind: "export", reason: "solicitud recibida" });
+    expect(created.status).toBe(201);
+    expect((await call("/proxy/user-requests?status=pending&limit=25&offset=0")).status).toBe(200);
+    expect((await call(`/proxy/user-requests/${requestId}/transition`, "POST", { status: "in_progress", reason: "caso asignado" })).status).toBe(200);
+    expect((await call(`/proxy/users/${userId}/sessions/close`, "POST", { reason: "sesiones revocadas" })).status).toBe(200);
+    expect((await call(`/proxy/users/${userId}/deactivate`, "POST", { reason: "cuenta desactivada" })).status).toBe(200);
+    expect(upstream).toHaveBeenCalledTimes(5);
+    for (const [path, method] of [
+      [`/proxy/users/${userId}/requests`, "GET"], [`/proxy/users/${userId}/sessions/close`, "GET"],
+      [`/proxy/users/${userId}/deactivate`, "DELETE"], [`/proxy/user-requests?status=pending&status=rejected`, "GET"],
+      [`/proxy/user-requests?home_id=x`, "GET"], [`/proxy/user-requests/${requestId}/delete`, "POST"],
+    ] as const) {
+      expect((await call(path, method, method === "GET" ? undefined : {})).status, `${method} ${path}`).toBe(404);
+    }
+    expect(upstream).toHaveBeenCalledTimes(5);
+  });
 });

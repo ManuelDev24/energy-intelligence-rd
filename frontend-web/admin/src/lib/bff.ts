@@ -58,9 +58,14 @@ function route(path: string, method: string, search: URLSearchParams) {
   const users = '/users';
   const homes = '/homes';
   const billsSummary = '/bills/summary';
-  const methods = simple[path] || (path === users || new RegExp(`^/users/${uuid}$`).test(path) || path === homes || new RegExp(`^/homes/${uuid}(/bills)?$`).test(path) || path === billsSummary || path === ocrJobs || /^\/ocr\/jobs\/[1-9][0-9]{0,18}$/.test(path) ? ['GET']
+  const userRequests = '/user-requests';
+  const isUserWrite = new RegExp(`^/users/${uuid}/requests$`).test(path) ||
+    new RegExp(`^/users/${uuid}/sessions/close$`).test(path) ||
+    new RegExp(`^/users/${uuid}/deactivate$`).test(path) ||
+    new RegExp(`^/user-requests/${uuid}/transition$`).test(path);
+  const methods = simple[path] || (isUserWrite ? ['POST'] : (path === users || path === userRequests || new RegExp(`^/users/${uuid}$`).test(path) || path === homes || new RegExp(`^/homes/${uuid}(/bills)?$`).test(path) || path === billsSummary || path === ocrJobs || /^\/ocr\/jobs\/[1-9][0-9]{0,18}$/.test(path) ? ['GET']
     : new RegExp(`^/role-assignments/${uuid}/revoke$`).test(path) || /^\/ocr\/jobs\/[1-9][0-9]{0,18}\/(retry|cancel)$/.test(path)
-      ? ['POST'] : []);
+      ? ['POST'] : []));
   if (!methods.includes(method)) return false;
   const allowed = path === '/audit-events' ? ['action', 'actor_user_id', 'result', 'limit', 'offset']
     : path === '/role-assignments' && method === 'GET' ? ['user_id', 'role_name', 'status', 'limit', 'offset']
@@ -70,6 +75,7 @@ function route(path: string, method: string, search: URLSearchParams) {
       : path === '/ai/usage' ? ['days']
       : path === billsSummary ? ['days']
       : new RegExp(`^/homes/${uuid}/bills$`).test(path) ? ['limit', 'offset']
+      : path === userRequests ? ['status', 'limit', 'offset']
       : path === ocrJobs ? ['status', 'error_code', 'min_attempts', 'created_from', 'created_to', 'limit', 'offset'] : [];
   return [...search.keys()].every(key => allowed.includes(key) && search.getAll(key).length === 1 && (search.get(key)?.length || 0) <= 120);
 }
@@ -147,5 +153,5 @@ export async function handleAdminBff(request: Request, config: AdminBffConfig): 
   if (!result) return fail(502);
   if (!result.ok) return fail([400, 401, 403, 404, 409, 422, 429].includes(result.status) ? result.status : 502);
   if (result.status === 204) return new NextResponse(null, { status: 204, headers: { 'Cache-Control': 'private, no-store', Vary: 'Cookie' } });
-  try { return reply(await result.json()); } catch { return fail(502); }
+  try { return reply(await result.json(), result.status); } catch { return fail(502); }
 }
