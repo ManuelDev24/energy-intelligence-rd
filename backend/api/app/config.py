@@ -121,6 +121,10 @@ class Settings(BaseSettings):
     # tablas. Obligatoria en staging/production. `MIGRATION_DATABASE_URL` (rol dueño) solo la usan las migraciones (Alembic).
     DB_REQUIRE_RESTRICTED_ROLE: bool = False
     MIGRATION_DATABASE_URL: str = Field(default="", repr=False)
+    # Plan gratuito (un solo contenedor, sin servicio de worker): la API arranca también `python -m app.worker` en segundo plano
+    # (docker-entrypoint.sh). El worker se conecta con SU rol `erd_worker` (WORKER_DATABASE_URL), nunca con el del API ni el dueño.
+    RUN_WORKER_IN_WEB: bool = False
+    WORKER_DATABASE_URL: str = Field(default="", repr=False)
     DB_POOL_SIZE: int = Field(default=5, ge=1, le=100)
     DB_MAX_OVERFLOW: int = Field(default=5, ge=0, le=100)
     DB_POOL_TIMEOUT: int = Field(default=10, gt=0, le=120)
@@ -206,6 +210,8 @@ class Settings(BaseSettings):
             if any(os.environ.get(name) for name in PLATFORM_ENV_VARS) or (database_host and database_host not in LOCAL_DATABASE_HOSTS):
                 raise ValueError("ENVIRONMENT must be set explicitly (development, staging or production) on a deployment platform "
                                  "or with a non-local database; it is never assumed to be development")
+        if self.RUN_WORKER_IN_WEB and not self.WORKER_DATABASE_URL.strip():
+            raise ValueError("RUN_WORKER_IN_WEB=true requires WORKER_DATABASE_URL (erd_worker role)")
         if "*" in self.cors_origins_list:
             raise ValueError("CORS must list explicit origins")
         if self.ENVIRONMENT.lower() in {"production", "staging"}:
@@ -224,6 +230,13 @@ class Settings(BaseSettings):
                     raise ValueError("MIGRATION_DATABASE_URL must be an explicit non-local URL with a password")
             if self.MIGRATE_ON_START:
                 raise ValueError("Production/staging migrations must run as a single release step")
+            if self.RUN_WORKER_IN_WEB:
+                worker, api = make_url(self.WORKER_DATABASE_URL), url
+                if (not worker.host or worker.host in LOCAL_DATABASE_HOSTS or not worker.password
+                        or worker.password == "change_me_local_only"):
+                    raise ValueError("WORKER_DATABASE_URL must be an explicit non-local URL with a password")
+                if worker.username == api.username:
+                    raise ValueError("WORKER_DATABASE_URL must use the erd_worker role, not the API role (see docs/ops/DB_ROLES.md)")
             if not self.cors_origins_list or any(
                 urlsplit(origin).scheme != "https" or not urlsplit(origin).hostname
                 for origin in self.cors_origins_list

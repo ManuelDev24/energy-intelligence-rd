@@ -16,7 +16,7 @@
       "distribution": "internal",
       "environment": "development",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://energyrd-api-staging.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://energyrd-api.onrender.com"
       }
     },
     "preview": {
@@ -27,7 +27,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://energyrd-api-staging.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://energyrd-api.onrender.com"
       }
     },
     "production": {
@@ -35,7 +35,7 @@
       "environment": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://energyrd-api-prod.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://energyrd-api.onrender.com"
       }
     }
   },

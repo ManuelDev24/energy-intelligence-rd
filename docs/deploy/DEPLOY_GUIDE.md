@@ -1,5 +1,7 @@
 # Guía de despliegue — Energy RD (ERD-DEPLOY-01)
 
+> **Obsoleto (2026-10-15):** el despliegue vigente es el piloto gratuito (Neon + Render Free con un solo servicio + Vercel Hobby): ver `docs/deploy/VERCEL_PLAN.md` y `render.yaml`. Este documento describe el diseño anterior (staging/producción de pago) y se conserva solo como referencia (roles de BD, variables).
+
 Para: el dueño del proyecto. Todo lo de esta guía lo hace **una persona con acceso a las cuentas**; el repo
 ya trae la configuración (`render.yaml`, `frontend-mobile/app/eas.json`) y nada se ha desplegado todavía.
 

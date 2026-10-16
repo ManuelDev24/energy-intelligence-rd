@@ -1,5 +1,7 @@
 # Checklist de variables de entorno — Energy RD (ERD-DEPLOY-01)
 
+> **Obsoleto (2026-10-15):** el despliegue vigente es el piloto gratuito (Neon + Render Free con un solo servicio + Vercel Hobby): ver `docs/deploy/VERCEL_PLAN.md` y `render.yaml`. Este documento describe el diseño anterior (staging/producción de pago) y se conserva solo como referencia (roles de BD, variables).
+
 Fuente de verdad: `backend/api/app/config.py` (API), `frontend-web/app/next.config.mjs` + `frontend-web/app/src/lib/auth/bff.ts`
 + `frontend-web/app/src/middleware.ts` (web), `frontend-mobile/app/src/config.ts` (móvil). Blueprint: `render.yaml`.
 Comprobación automática (sin red): `python3 infrastructure/deploy/check_deploy_config.py`.

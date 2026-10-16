@@ -11,6 +11,19 @@ if [ "$#" -gt 0 ]; then
 fi
 python -c 'from app.config import settings; from alembic import command; from alembic.config import Config; command.upgrade(Config("alembic.ini"), "head") if settings.MIGRATE_ON_START else None'
 python -c 'from app.config import settings; from app.seed import main; main() if settings.SEED_PILOT else None'
+# Plan gratuito (sin servicio de worker): con RUN_WORKER_IN_WEB=true el worker corre en segundo plano en este mismo contenedor,
+# con su rol `erd_worker` (WORKER_DATABASE_URL) y sin heredar la URL del dueño de las migraciones. Si termina, se reinicia.
+# La config ya se validó arriba: con la bandera activa, WORKER_DATABASE_URL existe y no es el rol del API.
+case "$(printf '%s' "${RUN_WORKER_IN_WEB:-}" | tr '[:upper:]' '[:lower:]')" in
+  1|true|t|yes|y|on)
+    (
+      while :; do
+        env -u MIGRATION_DATABASE_URL RUN_WORKER_IN_WEB=false DATABASE_URL="$WORKER_DATABASE_URL" python -m app.worker || true
+        sleep 10
+      done
+    ) &
+    ;;
+esac
 # Render inyecta PORT; en local (docker compose) se mantiene 8000.
 # --no-proxy-headers es deliberado: ver backend/api/AUTH_ABUSE_PROTECTION.md («Proxy y despliegue»).
 # --no-access-log: el registro de acceso de uvicorn incluye la query completa (p. ej. el token firmado de /documents/download);

@@ -20,4 +20,4 @@ datos de los necesarios para demostrar el problema.
 ## Alcance y estado conocido
 
 Los hallazgos y el plan de corrección de las auditorías internas están en `docs/audit/`. Los avisos de dependencias aceptados de forma
-temporal (con fecha de revisión) están en `docs/security/accepted-advisories.json` y los vigila `.github/workflows/deps-monitor.yml`.
+temporal (con fecha de revisión) están en `docs/security/accepted-advisories.json` y se revisan con `npm run audit:monitor` (y `pip-audit` en `backend/api`) antes de cada despliegue; ya no hay workflows de GitHub que lo hagan.

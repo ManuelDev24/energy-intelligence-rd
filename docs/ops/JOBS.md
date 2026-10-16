@@ -47,7 +47,7 @@ python -m scripts.jobs requeue 42
 ```
 En la imagen de la API: `./docker-entrypoint.sh python -m app.worker`. Un proceso ejecuta un trabajo a la vez; más paralelismo = más procesos.
 
-**Despliegue (pendiente, requiere cuenta del dueño; ver ERD-DEPLOY-01):** en Render, un *Background Worker* (plan de pago) con ese comando, o un *Cron Job* cada 5 min con `--once` (más barato, latencia de hasta 5 min). `render.yaml` **no** lo incluye todavía.
+**Despliegue (piloto gratuito, `render.yaml`):** Render no ofrece workers gratuitos, así que con `RUN_WORKER_IN_WEB=true` `docker-entrypoint.sh` arranca `python -m app.worker` en segundo plano dentro del contenedor de la API, con `WORKER_DATABASE_URL` (rol `erd_worker`) y sin la URL del dueño; si termina, se reinicia a los 10 s. Mientras el servicio Free duerme (15 min sin tráfico) no se procesa nada: los trabajos esperan en la cola y se ejecutan al despertar. Con un plan de pago, volver a un servicio worker aparte.
 
 **Alertas sugeridas (sin configurar, ERD-OBS-01):** `dead > 0`; `oldest_queued_age_seconds > 300`; `stuck > 0`.
 

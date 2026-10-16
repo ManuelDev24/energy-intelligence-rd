@@ -2,13 +2,11 @@
 """ERD-DEPLOY-01 — comprobación estática de la configuración de despliegue (sin red, sin cuentas).
 
 Verifica que:
-  * cada variable de render.yaml existe en el código que la consume (API: campos de Settings en
-    backend/api/app/config.py; web: referencias en frontend-web/app) o es una variable de plataforma conocida;
-  * los secretos usan `sync: false` y no hay valores secretos escritos en el Blueprint;
-  * producción: rama main, auto-deploy apagado, migración como preDeployCommand, sin seed/migrate-on-start;
-  * staging: rama Dev; todas las instancias en la región virginia;
+  * render.yaml (piloto gratuito): un único servicio web Docker Free en «ohio» (junto a Neon us-east-2) con API + worker
+    (RUN_WORKER_IN_WEB), secretos con `sync: false`, cada variable existe en Settings, sin rol dueño ni migración al arrancar;
   * frontend-mobile/app/eas.json: cada EXPO_PUBLIC_* se usa en frontend-mobile/app/src y las URLs pasan la misma regla
     HTTPS que src/config.ts aplica en compilaciones release.
+Web y admin van en Vercel (docs/deploy/VERCEL_PLAN.md).
 
 Uso (desde la raíz del repo):  python3 infrastructure/deploy/check_deploy_config.py
 Requiere PyYAML o Ruby (para leer YAML). Sale con código 1 si algo falla.
@@ -22,17 +20,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-# Variables que consume la plataforma (Render/Node/Next), no el código de la app.
-PLATFORM_VARS = {"NODE_VERSION", "NEXT_TELEMETRY_DISABLED"}
-# Variables de recuperación de contraseña: las añade el trabajo de recuperación en curso.
-# Si aún no están en config.py se informan como PENDIENTE (aviso), no como error.
-PENDING_API_VARS = {"EMAIL_BACKEND", "RESEND_API_KEY", "EMAIL_FROM", "PASSWORD_RESET_URL"}
-SECRET_VARS = {"DATABASE_URL", "MIGRATION_DATABASE_URL", "AUTH_SIGNING_KEY", "RESEND_API_KEY", "STORAGE_S3_ACCESS_KEY_ID",
+SECRET_VARS = {"DATABASE_URL", "WORKER_DATABASE_URL", "MIGRATION_DATABASE_URL", "AUTH_SIGNING_KEY", "RESEND_API_KEY", "STORAGE_S3_ACCESS_KEY_ID",
                "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_ENCRYPTION_KEYS", "STORAGE_URL_SIGNING_KEY", "EXPO_ACCESS_TOKEN"}
-# Variables que API y worker deben compartir con el MISMO nombre (la config se valida igual en ambos).
-SHARED_API_WORKER = {"DATABASE_URL", "AUTH_SIGNING_KEY", "CORS_ORIGINS", "RESEND_API_KEY", "EMAIL_FROM",
-                     "PASSWORD_RESET_URL", "STORAGE_S3_BUCKET", "STORAGE_S3_ENDPOINT_URL", "STORAGE_S3_ACCESS_KEY_ID",
-                     "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_ENCRYPTION_KEYS", "STORAGE_URL_SIGNING_KEY"}
 # Copia de HTTPS_ORIGIN en frontend-mobile/app/src/config.ts.
 HTTPS_ORIGIN = re.compile(
     r"^https://(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*|\[[0-9a-f:.]+\])(?::\d{1,5})?/?$",
@@ -75,101 +64,41 @@ def referenced(folder: str, key: str, exts=(".ts", ".tsx", ".mjs", ".js")) -> bo
 
 
 def check_render() -> None:
+    """Piloto gratuito: un único servicio web Docker (API + worker en el mismo contenedor) en la región de Neon."""
     doc = load_yaml(ROOT / "render.yaml")
     fields = settings_fields()
-    envs = {e["name"]: e for e in doc["projects"][0]["environments"]}
-    if set(envs) != {"staging", "production"}:
-        errors.append(f"entornos esperados staging/production, hay {sorted(envs)}")
-    all_keys: dict[tuple[str, str], set[str]] = {}
-    for env_name, env in envs.items():
-        groups = {g["name"]: g["envVars"] for g in env.get("envVarGroups", [])}
-        for svc in env["services"]:
-            name = svc["name"]
-            keys: dict[str, dict] = {}
-            for item in svc.get("envVars", []):
-                if "fromGroup" in item:
-                    for gv in groups.get(item["fromGroup"], []):
-                        keys[gv["key"]] = gv
-                    if item["fromGroup"] not in groups:
-                        errors.append(f"{name}: grupo {item['fromGroup']} no definido en {env_name}")
-                else:
-                    keys[item["key"]] = item
-            if svc.get("region") != "virginia":
-                errors.append(f"{name}: región {svc.get('region')} (se esperaba virginia)")
-            expected_branch = "main" if env_name == "production" else "Dev"
-            if svc.get("branch") != expected_branch:
-                errors.append(f"{name}: rama {svc.get('branch')} (se esperaba {expected_branch})")
-            for key, item in keys.items():
-                if key in SECRET_VARS and item.get("sync") is not False:
-                    errors.append(f"{name}: secreto {key} sin sync:false")
-                if "value" in item and key in SECRET_VARS:
-                    errors.append(f"{name}: secreto {key} con valor escrito")
-            if svc["runtime"] == "docker":
-                for key in keys:
-                    if key in fields:
-                        continue
-                    if key in PENDING_API_VARS:
-                        warnings.append(f"{name}: {key} aún no existe en config.py (recuperación de contraseña en curso)")
-                    else:
-                        errors.append(f"{name}: {key} no es un campo de Settings (backend/api/app/config.py)")
-                for required in ("DATABASE_URL", "AUTH_SIGNING_KEY", "CORS_ORIGINS", "ENVIRONMENT", "AUTH_ENABLED", "DB_REQUIRE_RESTRICTED_ROLE"):
-                    if required not in keys:
-                        errors.append(f"{name}: falta {required}")
-                if keys.get("DB_REQUIRE_RESTRICTED_ROLE", {}).get("value") != "true":
-                    errors.append(f"{name}: DB_REQUIRE_RESTRICTED_ROLE debe ser \"true\" (auditoría C-01)")
-                if svc.get("type") != "worker" and "MIGRATION_DATABASE_URL" not in keys:
-                    errors.append(f"{name}: falta MIGRATION_DATABASE_URL (las migraciones usan el rol dueño; el API, erd_app)")
-                if svc.get("type") == "worker" and "MIGRATION_DATABASE_URL" in keys:
-                    errors.append(f"{name}: el worker no debe recibir MIGRATION_DATABASE_URL (rol dueño)")
-                if keys.get("ENVIRONMENT", {}).get("value") != env_name:
-                    errors.append(f"{name}: ENVIRONMENT debe ser {env_name}")
-                if keys.get("ALLOW_DRAFT_LEGAL", {}).get("value", "false") != "false":
-                    errors.append(f"{name}: ALLOW_DRAFT_LEGAL no puede fijarse en el blueprint (aceptar textos legales en borrador es una decisión explícita fuera del repo)")
-                for flag in ("MIGRATE_ON_START", "SEED_PILOT"):
-                    if keys.get(flag, {}).get("value", "false") != "false":
-                        errors.append(f"{name}: {flag} debe ser false")
-                if svc.get("type") == "worker":
-                    if svc.get("dockerCommand") != "python -m app.worker":
-                        errors.append(f"{name}: dockerCommand debe ser 'python -m app.worker'")
-                    if svc.get("healthCheckPath") or svc.get("preDeployCommand"):
-                        errors.append(f"{name}: un worker no lleva healthCheckPath ni preDeployCommand")
-                    if svc.get("plan") == "free":
-                        errors.append(f"{name}: Render no ofrece workers gratuitos")
-                elif svc.get("healthCheckPath") != "/health":
-                    errors.append(f"{name}: healthCheckPath debe ser /health")
-                if svc.get("type") != "worker" and env_name == "production" and svc.get("preDeployCommand") != "alembic upgrade head":
-                    errors.append(f"{name}: preDeployCommand debe ser 'alembic upgrade head'")
-                if svc.get("plan") == "free" and svc.get("preDeployCommand"):
-                    errors.append(f"{name}: Render no admite preDeployCommand en instancias free")
-            else:
-                for key in keys:
-                    if key in PLATFORM_VARS:
-                        continue
-                    if not referenced("frontend-web/app", key):
-                        errors.append(f"{name}: {key} no se usa en frontend-web/app")
-                for required in ("NEXT_PUBLIC_AUTH_ENABLED", "API_BASE_URL", "WEB_ORIGIN"):
-                    if required not in keys:
-                        errors.append(f"{name}: falta {required}")
-                if keys.get("NEXT_PUBLIC_AUTH_ENABLED", {}).get("value") != "true":
-                    errors.append(f"{name}: NEXT_PUBLIC_AUTH_ENABLED debe ser \"true\"")
-                if "NODE_ENV" in keys:
-                    errors.append(f"{name}: no fijar NODE_ENV (npm ci omitiría devDependencies del build)")
-            if env_name == "production" and svc.get("autoDeployTrigger") != "off":
-                errors.append(f"{name}: producción requiere autoDeployTrigger off")
-            all_keys[(env_name, name)] = set(keys)
-            print(f"  render.yaml · {env_name:<10} {name:<22} {len(keys):>2} variables")
-    # El worker y la API de un mismo entorno deben declarar las mismas variables compartidas.
-    for env_name in envs:
-        api = all_keys.get((env_name, "energyrd-api-staging" if env_name == "staging" else "energyrd-api-prod"), set())
-        worker = all_keys.get((env_name, "energyrd-worker-staging" if env_name == "staging" else "energyrd-worker-prod"))
-        if worker is None:
-            errors.append(f"{env_name}: falta el servicio worker (ERD-WORKER-01)")
-            continue
-        for key in sorted(SHARED_API_WORKER):
-            if (key in api) != (key in worker):
-                errors.append(f"{env_name}: {key} está en {'la API' if key in api else 'el worker'} pero no en el otro")
-        if "EXPO_ACCESS_TOKEN" not in worker:
-            errors.append(f"{env_name}: el worker debe declarar EXPO_ACCESS_TOKEN (avisos push)")
+    services = doc.get("services", [])
+    if [s.get("name") for s in services] != ["energyrd-api"]:
+        errors.append(f"render.yaml: se esperaba solo el servicio energyrd-api, hay {[s.get('name') for s in services]}")
+        return
+    svc = services[0]
+    keys = {item["key"]: item for item in svc.get("envVars", [])}
+    expected = {"type": "web", "runtime": "docker", "plan": "free", "region": "ohio", "healthCheckPath": "/health",
+                "dockerfilePath": "./backend/api/Dockerfile", "dockerContext": "./backend/api"}
+    for field, value in expected.items():
+        if svc.get(field) != value:
+            errors.append(f"energyrd-api: {field}={svc.get(field)!r} (se esperaba {value!r})")
+    if svc.get("preDeployCommand"):
+        errors.append("energyrd-api: Render no admite preDeployCommand en instancias free")
+    for key, item in keys.items():
+        if key not in fields:
+            errors.append(f"energyrd-api: {key} no es un campo de Settings (backend/api/app/config.py)")
+        if key in SECRET_VARS and (item.get("sync") is not False or "value" in item):
+            errors.append(f"energyrd-api: secreto {key} debe ir con sync:false y sin valor")
+    for required in ("DATABASE_URL", "WORKER_DATABASE_URL", "AUTH_SIGNING_KEY", "CORS_ORIGINS", "ENVIRONMENT", "AUTH_ENABLED",
+                     "DB_REQUIRE_RESTRICTED_ROLE", "RUN_WORKER_IN_WEB", "PASSWORD_RESET_URL"):
+        if required not in keys:
+            errors.append(f"energyrd-api: falta {required}")
+    fixed = {"ENVIRONMENT": "staging", "AUTH_ENABLED": "true", "DB_REQUIRE_RESTRICTED_ROLE": "true", "RUN_WORKER_IN_WEB": "true",
+             "MIGRATE_ON_START": "false", "SEED_PILOT": "false"}
+    for key, value in fixed.items():
+        if keys.get(key, {}).get("value", "false" if key in {"MIGRATE_ON_START", "SEED_PILOT"} else None) != value:
+            errors.append(f"energyrd-api: {key} debe ser {value!r}")
+    if "MIGRATION_DATABASE_URL" in keys:
+        errors.append("energyrd-api: el rol dueño (MIGRATION_DATABASE_URL) no se carga en Render; las migraciones se ejecutan aparte")
+    if "ALLOW_DRAFT_LEGAL" in keys:
+        errors.append("energyrd-api: ALLOW_DRAFT_LEGAL no puede fijarse en el blueprint")
+    print(f"  render.yaml · energyrd-api ({svc.get('plan')}, {svc.get('region')}) {len(keys):>2} variables")
 
 
 def check_eas() -> None:
